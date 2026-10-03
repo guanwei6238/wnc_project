@@ -1,0 +1,30 @@
+# bench/sweep.conf.example -- sourced by sweep.sh (plain bash).
+# cp sweep.conf.example sweep.conf && edit.
+
+ENGINES=(suricata snort3 zeek)        # zeek ignores RULES (run once)
+PCAPS=(/srv/pcaps/imix.pcap /srv/pcaps/http.pcap)
+MODE=live                             # offline | live
+IFACE=eth0                            # capture interface (live)
+THREADS=(1 2 4)                       # packet threads (suricata/snort3 live)
+RULES=(none full)                     # rule variants
+PPS_RATES=(1000 5000 10000 20000)     # live only; offline ignores it
+DURATION=30                           # seconds of replay per live run
+REPEATS=3
+
+# Generator trigger (run locally). $PPS $DURATION $PCAP $PCAP_BASENAME are substituted.
+# Leave unset to be prompted ("Start replay now ...") for every run.
+GEN_CMD='ssh gen tcpreplay -i eth1 --loop=0 --pps=$PPS --duration=$DURATION /srv/pcaps/$PCAP_BASENAME'
+
+OUT=results.csv
+LOGDIR=/run/bench-logs
+LABEL=sweep                           # label column for normal runs
+
+# Cool-down between live runs
+COOLDOWN=30                           # seconds
+TEMP_MAX=55                           # wait until vcgencmd temp (degC) is below this
+
+# --find-ndr (live only)
+PPS_MIN=1000
+PPS_MAX=40000
+RESOLUTION=500                        # stop when hi-lo <= RESOLUTION pps
+LOSS_TOLERANCE=0.1                    # max total drop %

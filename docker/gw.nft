@@ -1,0 +1,12 @@
+#!/usr/sbin/nft -f
+flush ruleset
+
+table inet gw {
+    chain forward {
+        type filter hook forward priority filter; policy accept;
+
+        ct state established,related accept
+
+        ct state new counter queue flags bypass to 0
+    }
+}

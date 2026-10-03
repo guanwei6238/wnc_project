@@ -1,0 +1,65 @@
+name: wnc
+
+networks:
+  lan:
+    driver: bridge
+    internal: true
+    driver_opts:
+      com.docker.network.bridge.name: wnc-lan
+    ipam:
+      config:
+        - subnet: 10.0.1.0/24
+          gateway: 10.0.1.254
+  wan:
+    driver: bridge
+    internal: true
+    driver_opts:
+      com.docker.network.bridge.name: wnc-wan
+    ipam:
+      config:
+        - subnet: 10.0.2.0/24
+          gateway: 10.0.2.254
+
+services:
+  cli:
+    build: .
+    image: wnc-lab:latest
+    container_name: wnc-cli
+    hostname: cli
+    environment:
+      ROLE: cli
+    cap_add: [NET_ADMIN, NET_RAW]   # 改路由 / 抓包需要
+    networks:
+      lan:
+        ipv4_address: 10.0.1.2
+
+  gw:
+    build: .
+    image: wnc-lab:latest
+    container_name: wnc-gw
+    hostname: gw
+    environment:
+      ROLE: gw
+    cap_add: [NET_ADMIN, NET_RAW]
+    sysctls:
+      net.ipv4.ip_forward: "1"
+    volumes:
+      - ../security_gateway/target/x86_64-unknown-linux-musl/debug:/opt/sg:ro
+      - ./:/etc/wnc:ro
+    networks:
+      lan:
+        ipv4_address: 10.0.1.1
+      wan:
+        ipv4_address: 10.0.2.1
+
+  srv:
+    build: .
+    image: wnc-lab:latest
+    container_name: wnc-srv
+    hostname: srv
+    environment:
+      ROLE: srv
+    cap_add: [NET_ADMIN, NET_RAW]
+    networks:
+      wan:
+        ipv4_address: 10.0.2.2
