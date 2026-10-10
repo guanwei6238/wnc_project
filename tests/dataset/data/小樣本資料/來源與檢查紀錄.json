@@ -1,0 +1,222 @@
+[
+  {
+    "case_id": "Somfy-01",
+    "obtained_at_utc": "2026-10-02T08:28:02.922589+00:00",
+    "files": [
+      {
+        "filename": "2019-07-03-15-15-47-first_start_somfy_gateway.pcap",
+        "url": "https://mcfp.felk.cvut.cz/publicDatasets/IoT-23-Dataset/IndividualScenarios/CTU-Honeypot-Capture-7-1/Somfy-01/2019-07-03-15-15-47-first_start_somfy_gateway.pcap",
+        "bytes": 2094105,
+        "sha256": "0ec756ff0e26fc6c7d985178a35206bd7bc5b8a33cc5c7a23d6bb0b103db2a2a",
+        "http_headers": {
+          "Content-Length": "2094105",
+          "Last-Modified": "Tue, 09 Jul 2019 09:23:44 GMT",
+          "ETag": "\"1ff419-58d3c1df98800\"",
+          "Content-Type": "application/vnd.tcpdump.pcap"
+        }
+      },
+      {
+        "filename": "conn.log.labeled",
+        "url": "https://mcfp.felk.cvut.cz/publicDatasets/IoT-23-Dataset/IndividualScenarios/CTU-Honeypot-Capture-7-1/Somfy-01/bro/conn.log.labeled",
+        "bytes": 18024,
+        "sha256": "fb37fb38393c48b064d3afd373b075ffe31063d4924a2df1c5d13fc490b830cc",
+        "http_headers": {
+          "Content-Length": "18024",
+          "Last-Modified": "Thu, 05 Dec 2019 18:12:15 GMT",
+          "ETag": "\"4668-598f8de73ddc0\"",
+          "Content-Type": null
+        }
+      }
+    ],
+    "verification_level": "downloaded_and_parsed_locally_only_no_replay_or_router_test",
+    "pcap": {
+      "format": "classic pcap",
+      "version": "2.4",
+      "linktype": 1,
+      "snaplen": 262144,
+      "packet_count": 8276,
+      "records_with_captured_length_less_than_original": 0,
+      "duration_seconds": 5087.821710824966,
+      "first_packet_utc": "2019-07-03T13:15:54.654715+00:00",
+      "last_packet_utc": "2019-07-03T14:40:42.476426+00:00",
+      "ipv4_protocol_packet_counts": {
+        "17": 317,
+        "1": 4,
+        "2": 1,
+        "6": 5857
+      },
+      "ethernet_type_counts": {
+        "0x9000": 509,
+        "0x0163": 85,
+        "0x0800": 6179,
+        "0x86dd": 880,
+        "0x0806": 623
+      },
+      "top_ipv4_addresses_packet_occurrences": [
+        [
+          "192.168.1.158",
+          5874
+        ],
+        [
+          "18.195.134.106",
+          5839
+        ],
+        [
+          "255.255.255.255",
+          287
+        ],
+        [
+          "0.0.0.0",
+          274
+        ],
+        [
+          "192.168.1.1",
+          39
+        ],
+        [
+          "192.168.4.1",
+          18
+        ],
+        [
+          "192.168.4.2",
+          18
+        ],
+        [
+          "78.46.102.180",
+          4
+        ]
+      ],
+      "eof_validation": "complete file records"
+    },
+    "labels": {
+      "row_count": 130,
+      "headers": [
+        "#separator \\x09",
+        "#set_separator\t,",
+        "#empty_field\t(empty)",
+        "#unset_field\t-",
+        "#path\tconn",
+        "#open\t2019-07-09-11-28-26",
+        "#fields\tts\tuid\tid.orig_h\tid.orig_p\tid.resp_h\tid.resp_p\tproto\tservice\tduration\torig_bytes\tresp_bytes\tconn_state\tlocal_orig\tlocal_resp\tmissed_bytes\thistory\torig_pkts\torig_ip_bytes\tresp_pkts\tresp_ip_bytes\ttunnel_parents   label   detailed-label",
+        "#types\ttime\tstring\taddr\tport\taddr\tport\tenum\tstring\tinterval\tcount\tcount\tstring\tbool\tbool\tcount\tstring\tcount\tcount\tcount\tcount\tset[string]   string   string",
+        "#close\t2019-07-09-11-28-26   benign   -"
+      ],
+      "last_fields_summary": {
+        "benign -": 130
+      },
+      "first_two_rows": [
+        "1562159819.172195\tCUg3u41D8SwgQw1Job\t0.0.0.0\t68\t255.255.255.255\t67\tudp\tdhcp\t30.004642\t8768\t0\tS0\t-\t-\t0\tD\t16\t9216\t0\t0\t-   benign   -",
+        "1562159849.173340\tCUpk9Y381SJuOHyK2d\t255.255.255.255\t68\t192.168.1.1\t67\tudp\tdhcp\t0.004564\t0\t3900\tSHR\t-\t-\t0\t^d\t0\t0\t13\t4264\t-   benign   -"
+      ],
+      "alignment_status": "same official scenario directory; individual flow-to-packet matching has not been performed"
+    }
+  },
+  {
+    "case_id": "Hakai-8-1",
+    "obtained_at_utc": "2026-10-02T08:28:06.515077+00:00",
+    "files": [
+      {
+        "filename": "2018-07-31-15-15-09-192.168.100.113.pcap",
+        "url": "https://mcfp.felk.cvut.cz/publicDatasets/IoT-23-Dataset/IndividualScenarios/CTU-IoT-Malware-Capture-8-1/2018-07-31-15-15-09-192.168.100.113.pcap",
+        "bytes": 2098362,
+        "sha256": "80dcc2602519479ddcde889fa902fee19a76696630811452f8df38888af894f2",
+        "http_headers": {
+          "Content-Length": "2098362",
+          "Last-Modified": "Wed, 30 Jan 2019 17:48:42 GMT",
+          "ETag": "\"2004ba-580b085445280\"",
+          "Content-Type": "application/vnd.tcpdump.pcap"
+        }
+      },
+      {
+        "filename": "conn.log.labeled",
+        "url": "https://mcfp.felk.cvut.cz/publicDatasets/IoT-23-Dataset/IndividualScenarios/CTU-IoT-Malware-Capture-8-1/bro/conn.log.labeled",
+        "bytes": 1431000,
+        "sha256": "4877ca8f0f01902fbd18d28b7d06cb3d0be082355b7f2c8862c9deef1782eb8a",
+        "http_headers": {
+          "Content-Length": "1431000",
+          "Last-Modified": "Wed, 25 Dec 2019 02:46:43 GMT",
+          "ETag": "\"15d5d8-59a7e45504ac0\"",
+          "Content-Type": null
+        }
+      }
+    ],
+    "verification_level": "downloaded_and_parsed_locally_only_no_replay_or_router_test",
+    "pcap": {
+      "format": "classic pcap",
+      "version": "2.4",
+      "linktype": 1,
+      "snaplen": 262144,
+      "packet_count": 23623,
+      "records_with_captured_length_less_than_original": 0,
+      "duration_seconds": 86395.26073098183,
+      "first_packet_utc": "2018-07-31T13:15:11.474174+00:00",
+      "last_packet_utc": "2018-08-01T13:15:06.734905+00:00",
+      "ipv4_protocol_packet_counts": {
+        "17": 4341,
+        "6": 12336
+      },
+      "ethernet_type_counts": {
+        "0x0800": 16677,
+        "0x0806": 6946
+      },
+      "top_ipv4_addresses_packet_occurrences": [
+        [
+          "192.168.100.113",
+          16677
+        ],
+        [
+          "178.128.185.250",
+          6168
+        ],
+        [
+          "128.185.250.50",
+          6166
+        ],
+        [
+          "147.231.100.5",
+          2638
+        ],
+        [
+          "31.31.74.35",
+          404
+        ],
+        [
+          "37.157.198.150",
+          404
+        ],
+        [
+          "81.2.254.224",
+          357
+        ],
+        [
+          "147.251.48.140",
+          292
+        ]
+      ],
+      "eof_validation": "complete file records"
+    },
+    "labels": {
+      "row_count": 10403,
+      "headers": [
+        "#separator \\x09",
+        "#set_separator\t,",
+        "#empty_field\t(empty)",
+        "#unset_field\t-",
+        "#path\tconn",
+        "#open\t2018-08-08-12-22-16",
+        "#fields\tts\tuid\tid.orig_h\tid.orig_p\tid.resp_h\tid.resp_p\tproto\tservice\tduration\torig_bytes\tresp_bytes\tconn_state\tlocal_orig\tlocal_resp\tmissed_bytes\thistory\torig_pkts\torig_ip_bytes\tresp_pkts\tresp_ip_bytes\ttunnel_parents   label   detailed-label",
+        "#types\ttime\tstring\taddr\tport\taddr\tport\tenum\tstring\tinterval\tcount\tcount\tstring\tbool\tbool\tcount\tstring\tcount\tcount\tcount\tcount\tset[string]   string   string",
+        "#close\t2018-08-08-12-22-18"
+      ],
+      "last_fields_summary": {
+        "Benign -": 2181,
+        "Malicious C&C": 8222
+      },
+      "first_two_rows": [
+        "1533042911.474174\tC5JLGOoxIw2dBZt47\t192.168.100.113\t123\t81.2.254.224\t123\tudp\t-\t0.005490\t48\t48\tSF\t-\t-\t0\tDd\t1\t76\t1\t76\t(empty)   Benign   -",
+        "1533042921.474234\tCf3cHf4jZr9nvD808i\t192.168.100.113\t123\t147.231.100.5\t123\tudp\t-\t0.001741\t48\t48\tSF\t-\t-\t0\tDd\t1\t76\t1\t76\t(empty)   Benign   -"
+      ],
+      "alignment_status": "same official scenario directory; individual flow-to-packet matching has not been performed"
+    }
+  }
+]

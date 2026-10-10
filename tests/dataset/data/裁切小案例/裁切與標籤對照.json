@@ -1,0 +1,70 @@
+{
+  "source": "IoT-23 individual scenario CTU-IoT-Malware-Capture-8-1",
+  "all_cc_label_conn_state_counts": {
+    "S0": 8222
+  },
+  "cases": [
+    {
+      "filename": "01_正常NTP_2封包.pcap",
+      "bytes": 236,
+      "sha256": "c2305ff81ef66bccab5b4c4b762153db6d5fa5dc02f452f8fd310610f2119db4",
+      "source_case_id": "Hakai-8-1",
+      "source_pcap_sha256": "80dcc2602519479ddcde889fa902fee19a76696630811452f8df38888af894f2",
+      "original_zeek_uid": "C5JLGOoxIw2dBZt47",
+      "original_label": "Benign",
+      "original_detailed_label": "-",
+      "conn_state": "SF",
+      "original_tuple": [
+        "192.168.100.113",
+        123,
+        "81.2.254.224",
+        123,
+        17
+      ],
+      "selection_time_start_epoch": "1533042911.474174",
+      "selection_time_end_epoch": "1533042911.479664",
+      "selection_method": "5tuple in both directions, original Zeek ts through ts+duration, +/-1 microsecond tolerance; retained original global header and packet records in order",
+      "packet_count": 2,
+      "expected_packets_from_label_log": 2,
+      "tcp_flags_hex": [],
+      "tcp_payload_bytes": [],
+      "intended_use": "正常 UDP request/response 樣本；專題需另設 allow 政策。",
+      "status": "local selection matched labelled flow packet counts; no engine or router test, no address rewriting"
+    },
+    {
+      "filename": "02_CnC標籤_SYN_3封包.pcap",
+      "bytes": 294,
+      "sha256": "91e5c8a1052465e519c5ec7f0e863d78e2dcc4bd8e9c203c81d1600ece2f7b74",
+      "source_case_id": "Hakai-8-1",
+      "source_pcap_sha256": "80dcc2602519479ddcde889fa902fee19a76696630811452f8df38888af894f2",
+      "original_zeek_uid": "C3eDKm2wnG96wuJNmc",
+      "original_label": "Malicious",
+      "original_detailed_label": "C&C",
+      "conn_state": "S0",
+      "original_tuple": [
+        "192.168.100.113",
+        43324,
+        "178.128.185.250",
+        50,
+        6
+      ],
+      "selection_time_start_epoch": "1533047044.299948",
+      "selection_time_end_epoch": "1533047047.451406",
+      "selection_method": "5tuple in both directions, original Zeek ts through ts+duration, +/-1 microsecond tolerance; retained original global header and packet records in order",
+      "packet_count": 3,
+      "expected_packets_from_label_log": 3,
+      "tcp_flags_hex": [
+        "0x2",
+        "0x2",
+        "0x2"
+      ],
+      "tcp_payload_bytes": [
+        0,
+        0,
+        0
+      ],
+      "intended_use": "原 C&C 標籤下的 SYN 嘗試；可做指定 IP/port deny 案例，不能宣稱辨識完整 C&C 或 DoS。",
+      "status": "local selection matched labelled flow packet counts; no engine or router test, no address rewriting"
+    }
+  ]
+}

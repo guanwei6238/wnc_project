@@ -1,0 +1,26 @@
+原始資料來源與引用
+
+IoT-23：Sebastian Garcia, Agustin Parmisano, Maria Jose Erquiaga (2020). IoT-23: A labeled dataset with malicious and benign IoT network traffic, Version 1.0.0. DOI:10.5281/zenodo.4743746
+作者頁：https://www.stratosphereips.org/datasets-iot23
+官方固定版本：https://zenodo.org/records/4743746
+個別檔案根目錄：https://mcfp.felk.cvut.cz/publicDatasets/IoT-23-Dataset/
+原始檔精確來源、取得時間、HTTP metadata 與 SHA-256：來源與檢查紀錄.json
+原始四檔未改寫；另提供兩個裁切 PCAP，標明來源與裁切方法，不含整包 dataset。
+根目錄寫 CC-BY 並連至 https://creativecommons.org/licenses/by/2.0/ 。部分 scenario README 保留泛用的需授權敘述，來源文字不一致，這項差異留存於本說明。不要把原論文授權當作其他 dataset 的授權。
+
+CIC-IDS2017 官方介紹：https://www.unb.ca/cic/datasets/ids-2017.html
+下載入口：https://cicresearch.ca/CICDataset/CIC-IDS-2017/
+引用：Iman Sharafaldin, Arash Habibi Lashkari, Ali A. Ghorbani (2018), Toward Generating a New Intrusion Detection Dataset and Intrusion Traffic Characterization, ICISSP.
+
+CIC-DDoS2019 官方介紹：https://www.unb.ca/cic/datasets/ddos-2019.html
+下載入口：https://cicresearch.ca/CICDataset/CICDDoS2019/
+引用：Iman Sharafaldin, Arash Habibi Lashkari, Saqib Hakak, Ali A. Ghorbani (2019), Developing Realistic Distributed Denial of Service (DDoS) Attack Dataset and Taxonomy, ICCST.
+
+CICIoT2023 官方介紹：https://www.unb.ca/cic/datasets/iotdataset-2023.html
+下載入口：https://cicresearch.ca/IOTDataset/CIC_IOT_Dataset2023/
+作者原論文：https://mdpi-res.com/d_attachment/sensors/sensors-23-05941/article_deploy/sensors-23-05941.pdf
+三份 CIC 只確認官方說明和登記入口，尚無當前下載清單、原始檔 hash 或重播結果。
+
+Zeek S0 說明：https://docs.zeek.org/en/current/scripts/base/protocols/conn/main.zeek.html#type-Conn::Info
+Tcpreplay 模型：https://tcpreplay.appneta.com/concepts/replay-model/
+其餘工具來源見逐頁講稿與來源.txt。

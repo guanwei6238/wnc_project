@@ -1,0 +1,9 @@
+# 重播工具 image。不改 lab 原本的 image，測試時用
+#   docker run --network container:wnc-cli ...
+# 「借用」cli 的網路 namespace 送封包 —— 等同在 Pi 測試時，
+# 從筆電上的 lan netns（scripts/netns.sh）送封包進 Pi 的 LAN port。
+FROM debian:trixie-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      tcpreplay \
+      tcpdump \
+ && rm -rf /var/lib/apt/lists/*
