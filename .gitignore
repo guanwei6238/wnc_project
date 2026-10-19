@@ -1,2 +1,6 @@
 My-Compiler/
 dist/
+
+# 有版權的論文 PDF（repo 是 public）
+research/literature/pdfs/
+research/literature/trust-bypass/pdfs/
