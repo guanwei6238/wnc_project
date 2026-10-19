@@ -1,0 +1,5 @@
+pcap,engine,rules,n,pkts,bytes,self_med,self_min,self_max,self_cv_pct,pps_med,mbps_med,diff_med,diff_cv_pct,self_minus_small_med,diff_vs_self_pct,pps_diff,mbps_diff,wall_med,cpu_raw_med,cpu_proc_med,maxrss_mb_max,alerts_set,suppressed_set,top_sids,pkts_match_all,bytes_match_all
+B1_pay5.pcap,snort,common,3,140000,138504832,1.713,1.705,1.716,0.329,81738.0,646.92,,,,,,,27.653,27.63,,363.7,27,,2027397:27,1,1
+B1_pay5.pcap,snort,full,3,140000,138504832,1.88,1.859,1.886,0.757,74474.0,589.43,,,,,,,28.232,28.22,,365.5,27,,2027397:27,1,1
+C_somfy02.pcap,snort,common,3,119638,31190192,5.454,5.45,5.455,0.052,21934.0,45.75,,,,,,,31.432,31.45,,363.6,0,,,1,1
+C_somfy02.pcap,snort,full,3,119638,31190192,5.599,5.57,5.602,0.321,21368.0,44.57,,,,,,,31.971,31.99,,365.1,0,,,1,1

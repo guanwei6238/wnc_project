@@ -1,0 +1,106 @@
+{
+ "pcap": "2018-10-25-14-06-32-192.168.1.132.pcap",
+ "log": "conn.log.labeled",
+ "pcap_bytes": 4594492,
+ "pcap_packets": 21664,
+ "pcap_ip_packets": 16921,
+ "pcap_truncated_tail": false,
+ "pcap_linktype": 1,
+ "pcap_covered_packets": 16779,
+ "pcap_time_range": [
+  1540469197.400159,
+  1540548043.799522
+ ],
+ "log_time_range": [
+  1540469197.400159,
+  1540548038.8068528
+ ],
+ "flows": 452,
+ "aligned": 317,
+ "unaligned": 135,
+ "skipped_flows_other_proto": {},
+ "malformed_log_lines": 0,
+ "unaligned_kinds": {
+  "fewer": 133,
+  "more": 2
+ },
+ "unaligned_examples": [
+  {
+   "line": 12,
+   "uid": "CGQf8t1kjdxB5PHXL4",
+   "ts": "1540469831.302625",
+   "proto": "tcp",
+   "flow": "192.168.1.132:53395 -> 2.16.60.82:443",
+   "label": "benign",
+   "conn_state": "SF",
+   "found_pkts": 7,
+   "expect_pkts": 8
+  },
+  {
+   "line": 19,
+   "uid": "CKT1nF2pKxpwesvEtj",
+   "ts": "1540470731.346472",
+   "proto": "tcp",
+   "flow": "192.168.1.132:53396 -> 2.16.60.82:443",
+   "label": "benign",
+   "conn_state": "SF",
+   "found_pkts": 5,
+   "expect_pkts": 6
+  },
+  {
+   "line": 26,
+   "uid": "CAkyqq4QzwUJQDuxnc",
+   "ts": "1540471631.533708",
+   "proto": "tcp",
+   "flow": "192.168.1.132:56406 -> 2.16.60.139:443",
+   "label": "benign",
+   "conn_state": "SF",
+   "found_pkts": 5,
+   "expect_pkts": 6
+  },
+  {
+   "line": 32,
+   "uid": "C0wssT3JKSiAqhCZw",
+   "ts": "1540472524.852647",
+   "proto": "tcp",
+   "flow": "192.168.1.132:56806 -> 52.209.221.67:80",
+   "label": "benign",
+   "conn_state": "SF",
+   "found_pkts": 13,
+   "expect_pkts": 14
+  },
+  {
+   "line": 33,
+   "uid": "CZAnC51NxxuVdfhg28",
+   "ts": "1540472524.944342",
+   "proto": "tcp",
+   "flow": "192.168.1.132:60404 -> 52.215.95.120:80",
+   "label": "benign",
+   "conn_state": "SF",
+   "found_pkts": 11,
+   "expect_pkts": 12
+  }
+ ],
+ "shards": 1,
+ "labels": {
+  "benign": {
+   "state SF": 436,
+   "state S0": 14,
+   "state RSTR": 1,
+   "state OTH": 1,
+   "flows": 452,
+   "aligned": 317,
+   "pkts": 16779,
+   "payload_pkts": 1505,
+   "flows_with_payload": 55
+  }
+ },
+ "scenario": "CTU-Honeypot-Capture-4-1",
+ "main_pcap": "2018-10-25-14-06-32-192.168.1.132.pcap",
+ "extra_pcaps": {
+  "2018-09-14-13-40-25-Philips-Hue-Bridge.pcap": 2429328
+ },
+ "log_file": "bro/conn.log.labeled",
+ "pcap_first_ts": 1540469197.400159,
+ "seconds": 0
+}

@@ -1,0 +1,239 @@
+Pi 狀態: throttled=0xe0000 temp=53.5'C 時脈 1000 MHz
+governor: performance  上限: 1000 MHz
+
+=================== 2026-10-11T12:10:14Z  開始 pi_E ===================
+jobs/round=16 rounds=4 (含 warm-up 1) -> /home/wnc/ids_throughput/results/pi_E.csv
+r0   1/16 snort    empty  A_scan17.pcap              self=5.792783 wall=6.0165 pk=600000/600000 void=
+r0   2/16 snort    empty  A_scan17.small.pcap        self=0.061117 wall=0.2848 pk=500/500 void=
+r0   3/16 snort    empty  B2_mix3.small.pcap         self=0.064239 wall=0.2876 pk=500/500 void=
+r0   4/16 suricata empty  A_scan17.small.pcap        self=0.063 wall=0.3115 pk=500/500 void=
+r0   5/16 suricata empty  B1_pay5.small.pcap         self=0.076 wall=0.3246 pk=500/500 void=
+r0   6/16 suricata empty  B2_mix3.pcap               self=18.753 wall=19.0461 pk=496959/496959 void=
+r0   7/16 snort    empty  B2_mix3.pcap               self=10.24311 wall=23.485 pk=496959/496959 void=
+r0   8/16 snort    empty  C_somfy02.pcap             self=1.487126 wall=1.71 pk=119638/119638 void=
+r0   9/16 suricata empty  C_somfy02.pcap             self=0.531 wall=0.7804 pk=119638/119638 void=
+r0  10/16 suricata empty  B2_mix3.small.pcap         self=0.064 wall=0.3104 pk=500/500 void=
+r0  11/16 suricata empty  A_scan17.pcap              self=6.783 wall=37.9548 pk=600000/600000 void=
+r0  12/16 suricata empty  B1_pay5.pcap               self=1.001 wall=1.2505 pk=140000/140000 void=
+r0  13/16 suricata empty  C_somfy02.small.pcap       self=0.063 wall=0.3081 pk=500/500 void=
+r0  14/16 snort    empty  B1_pay5.small.pcap         self=0.085743 wall=0.3106 pk=500/500 void=
+r0  15/16 snort    empty  B1_pay5.pcap               self=1.496801 wall=4.4455 pk=140000/140000 void=
+r0  16/16 snort    empty  C_somfy02.small.pcap       self=0.060989 wall=0.2859 pk=500/500 void=
+r1   1/16 snort    empty  B1_pay5.pcap               self=1.518934 wall=1.7442 pk=140000/140000 void=
+r1   2/16 suricata empty  A_scan17.small.pcap        self=0.064 wall=0.3139 pk=500/500 void=
+r1   3/16 suricata empty  B1_pay5.pcap               self=0.993 wall=1.241 pk=140000/140000 void=
+r1   4/16 suricata empty  B1_pay5.small.pcap         self=0.075 wall=0.3211 pk=500/500 void=
+r1   5/16 suricata empty  B2_mix3.small.pcap         self=0.058 wall=0.3067 pk=500/500 void=
+r1   6/16 snort    empty  A_scan17.small.pcap        self=0.06121 wall=0.2836 pk=500/500 void=
+r1   7/16 snort    empty  B1_pay5.small.pcap         self=0.085663 wall=0.3104 pk=500/500 void=
+r1   8/16 snort    empty  A_scan17.pcap              self=5.746138 wall=9.6848 pk=600000/600000 void=
+r1   9/16 snort    empty  B2_mix3.pcap               self=10.231429 wall=10.4558 pk=496959/496959 void=
+r1  10/16 suricata empty  B2_mix3.pcap               self=4.872 wall=5.1967 pk=496959/496959 void=
+r1  11/16 snort    empty  B2_mix3.small.pcap         self=0.06439 wall=0.2898 pk=500/500 void=
+r1  12/16 snort    empty  C_somfy02.small.pcap       self=0.062139 wall=0.2862 pk=500/500 void=
+r1  13/16 suricata empty  C_somfy02.small.pcap       self=0.064 wall=0.3118 pk=500/500 void=
+r1  14/16 suricata empty  C_somfy02.pcap             self=0.528 wall=0.7762 pk=119638/119638 void=
+r1  15/16 suricata empty  A_scan17.pcap              self=5.607 wall=12.8221 pk=600000/600000 void=
+r1  16/16 snort    empty  C_somfy02.pcap             self=1.48485 wall=1.7098 pk=119638/119638 void=
+r2   1/16 suricata empty  B1_pay5.pcap               self=1.007 wall=1.2548 pk=140000/140000 void=
+r2   2/16 suricata empty  A_scan17.small.pcap        self=0.056 wall=0.3044 pk=500/500 void=
+r2   3/16 snort    empty  C_somfy02.small.pcap       self=0.061112 wall=0.2841 pk=500/500 void=
+r2   4/16 suricata empty  B2_mix3.small.pcap         self=0.064 wall=0.3134 pk=500/500 void=
+r2   5/16 snort    empty  C_somfy02.pcap             self=1.482043 wall=1.7078 pk=119638/119638 void=
+r2   6/16 suricata empty  C_somfy02.pcap             self=0.531 wall=0.7802 pk=119638/119638 void=
+r2   7/16 suricata empty  B2_mix3.pcap               self=5.13 wall=5.427 pk=496959/496959 void=
+r2   8/16 suricata empty  A_scan17.pcap              self=6.573 wall=12.4426 pk=600000/600000 void=
+r2   9/16 suricata empty  B1_pay5.small.pcap         self=0.079 wall=0.3254 pk=500/500 void=
+r2  10/16 snort    empty  A_scan17.pcap              self=5.811323 wall=6.0339 pk=600000/600000 void=
+r2  11/16 snort    empty  B1_pay5.small.pcap         self=0.085969 wall=0.3115 pk=500/500 void=
+r2  12/16 snort    empty  B1_pay5.pcap               self=1.504919 wall=1.7315 pk=140000/140000 void=
+r2  13/16 snort    empty  B2_mix3.small.pcap         self=0.065465 wall=0.2907 pk=500/500 void=
+r2  14/16 snort    empty  B2_mix3.pcap               self=10.241892 wall=10.4679 pk=496959/496959 void=
+r2  15/16 snort    empty  A_scan17.small.pcap        self=0.061237 wall=0.2982 pk=500/500 void=
+r2  16/16 suricata empty  C_somfy02.small.pcap       self=0.059 wall=0.3067 pk=500/500 void=
+r3   1/16 suricata empty  A_scan17.pcap              self=6.414 wall=12.7271 pk=600000/600000 void=
+r3   2/16 snort    empty  A_scan17.small.pcap        self=0.061145 wall=0.2849 pk=500/500 void=
+r3   3/16 snort    empty  B2_mix3.small.pcap         self=0.064399 wall=0.2872 pk=500/500 void=
+r3   4/16 snort    empty  A_scan17.pcap              self=5.705438 wall=5.9289 pk=600000/600000 void=
+r3   5/16 suricata empty  B1_pay5.small.pcap         self=0.066 wall=0.3155 pk=500/500 void=
+r3   6/16 suricata empty  B1_pay5.pcap               self=0.994 wall=1.244 pk=140000/140000 void=
+r3   7/16 snort    empty  C_somfy02.pcap             self=1.479706 wall=1.7032 pk=119638/119638 void=
+r3   8/16 suricata empty  C_somfy02.small.pcap       self=0.053 wall=0.3005 pk=500/500 void=
+r3   9/16 snort    empty  C_somfy02.small.pcap       self=0.062235 wall=0.2871 pk=500/500 void=
+r3  10/16 suricata empty  B2_mix3.pcap               self=5.173 wall=5.5649 pk=496959/496959 void=
+r3  11/16 snort    empty  B2_mix3.pcap               self=10.224519 wall=10.4489 pk=496959/496959 void=
+r3  12/16 snort    empty  B1_pay5.small.pcap         self=0.086827 wall=0.3116 pk=500/500 void=
+r3  13/16 suricata empty  A_scan17.small.pcap        self=0.064 wall=0.312 pk=500/500 void=
+r3  14/16 suricata empty  C_somfy02.pcap             self=0.53 wall=0.7812 pk=119638/119638 void=
+r3  15/16 suricata empty  B2_mix3.small.pcap         self=0.068 wall=0.3146 pk=500/500 void=
+r3  16/16 snort    empty  B1_pay5.pcap               self=1.488805 wall=1.7143 pk=140000/140000 void=
+--- pi_E 結束 rc=0  2026-10-11T12:14:23Z
+
+=================== 2026-10-11T12:14:23Z  開始 pi_R1 ===================
+jobs/round=12 rounds=4 (含 warm-up 1) -> /home/wnc/ids_throughput/results/pi_R1.csv
+r0   1/12 suricata full   A_scan17.pcap              self=17.904 wall=52.8084 pk=600000/600000 void=
+r0   2/12 suricata common C_somfy02.pcap             self=2.866 wall=37.4142 pk=119638/119638 void=
+r0   3/12 suricata sel    B2_mix3.pcap               self=14.931 wall=49.2642 pk=496959/496959 void=
+r0   4/12 suricata common B1_pay5.pcap               self=1.155 wall=35.5609 pk=140000/140000 void=
+r0   5/12 suricata sel    A_scan17.pcap              self=17.893 wall=52.1084 pk=600000/600000 void=
+r0   6/12 suricata common B2_mix3.pcap               self=15.065 wall=49.689 pk=496959/496959 void=
+r0   7/12 suricata common A_scan17.pcap              self=18.003 wall=52.7392 pk=600000/600000 void=
+r0   8/12 suricata full   B1_pay5.pcap               self=1.186 wall=36.0138 pk=140000/140000 void=
+r0   9/12 suricata full   C_somfy02.pcap             self=2.87 wall=37.6744 pk=119638/119638 void=
+r0  10/12 suricata sel    C_somfy02.pcap             self=2.921 wall=37.3501 pk=119638/119638 void=
+r0  11/12 suricata sel    B1_pay5.pcap               self=1.183 wall=35.5248 pk=140000/140000 void=
+r0  12/12 suricata full   B2_mix3.pcap               self=15.163 wall=50.0083 pk=496959/496959 void=
+r1   1/12 suricata sel    A_scan17.pcap              self=17.887 wall=52.2483 pk=600000/600000 void=
+r1   2/12 suricata sel    B1_pay5.pcap               self=1.174 wall=35.5085 pk=140000/140000 void=
+r1   3/12 suricata common B1_pay5.pcap               self=1.17 wall=35.7585 pk=140000/140000 void=
+r1   4/12 suricata full   A_scan17.pcap              self=17.991 wall=52.9332 pk=600000/600000 void=
+r1   5/12 suricata full   B2_mix3.pcap               self=15.084 wall=50.0322 pk=496959/496959 void=
+r1   6/12 suricata sel    C_somfy02.pcap             self=2.913 wall=37.2293 pk=119638/119638 void=
+r1   7/12 suricata full   B1_pay5.pcap               self=1.206 wall=36.1951 pk=140000/140000 void=
+r1   8/12 suricata sel    B2_mix3.pcap               self=15.071 wall=49.285 pk=496959/496959 void=
+r1   9/12 suricata common C_somfy02.pcap             self=2.86 wall=37.4923 pk=119638/119638 void=
+r1  10/12 suricata full   C_somfy02.pcap             self=2.862 wall=37.8528 pk=119638/119638 void=
+r1  11/12 suricata common A_scan17.pcap              self=17.678 wall=52.2578 pk=600000/600000 void=
+r1  12/12 suricata common B2_mix3.pcap               self=15.137 wall=49.7569 pk=496959/496959 void=
+r2   1/12 suricata full   A_scan17.pcap              self=17.977 wall=53.0132 pk=600000/600000 void=
+r2   2/12 suricata sel    B2_mix3.pcap               self=15.096 wall=49.2738 pk=496959/496959 void=
+r2   3/12 suricata sel    A_scan17.pcap              self=17.749 wall=51.9795 pk=600000/600000 void=
+r2   4/12 suricata common B2_mix3.pcap               self=15.164 wall=49.653 pk=496959/496959 void=
+r2   5/12 suricata full   B1_pay5.pcap               self=1.175 wall=36.0295 pk=140000/140000 void=
+r2   6/12 suricata sel    C_somfy02.pcap             self=2.912 wall=37.1637 pk=119638/119638 void=
+r2   7/12 suricata common A_scan17.pcap              self=17.649 wall=52.2137 pk=600000/600000 void=
+r2   8/12 suricata full   C_somfy02.pcap             self=2.889 wall=37.7737 pk=119638/119638 void=
+r2   9/12 suricata sel    B1_pay5.pcap               self=1.176 wall=35.3973 pk=140000/140000 void=
+r2  10/12 suricata common B1_pay5.pcap               self=1.141 wall=35.8223 pk=140000/140000 void=
+r2  11/12 suricata full   B2_mix3.pcap               self=15.223 wall=50.1068 pk=496959/496959 void=
+r2  12/12 suricata common C_somfy02.pcap             self=2.953 wall=37.8369 pk=119638/119638 void=
+r3   1/12 suricata common A_scan17.pcap              self=17.658 wall=52.3819 pk=600000/600000 void=
+r3   2/12 suricata common B1_pay5.pcap               self=1.154 wall=35.6735 pk=140000/140000 void=
+r3   3/12 suricata full   A_scan17.pcap              self=18.013 wall=52.9578 pk=600000/600000 void=
+r3   4/12 suricata sel    B1_pay5.pcap               self=1.201 wall=35.4533 pk=140000/140000 void=
+r3   5/12 suricata full   C_somfy02.pcap             self=2.869 wall=37.7932 pk=119638/119638 void=
+r3   6/12 suricata common B2_mix3.pcap               self=15.182 wall=49.6786 pk=496959/496959 void=
+r3   7/12 suricata full   B1_pay5.pcap               self=1.186 wall=36.1478 pk=140000/140000 void=
+r3   8/12 suricata full   B2_mix3.pcap               self=15.38 wall=50.3948 pk=496959/496959 void=
+r3   9/12 suricata common C_somfy02.pcap             self=2.904 wall=37.5561 pk=119638/119638 void=
+r3  10/12 suricata sel    A_scan17.pcap              self=17.815 wall=52.168 pk=600000/600000 void=
+r3  11/12 suricata sel    B2_mix3.pcap               self=15.162 wall=49.4651 pk=496959/496959 void=
+r3  12/12 suricata sel    C_somfy02.pcap             self=3.0 wall=37.366 pk=119638/119638 void=
+--- pi_R1 結束 rc=0  2026-10-11T12:49:50Z
+
+=================== 2026-10-11T12:49:50Z  開始 pi_R2a1 ===================
+jobs/round=4 rounds=4 (含 warm-up 1) -> /home/wnc/ids_throughput/results/pi_R2a1.csv
+r0   1/4 snort    sel    A_scan17.pcap              self=9.212198 wall=34.0491 pk=600000/600000 void=
+r0   2/4 snort    sel    B2_mix3.pcap               self=23.359428 wall=48.3243 pk=496959/496959 void=
+r0   3/4 snort    sel    B1_pay5.pcap               self=1.543371 wall=26.4914 pk=140000/140000 void=
+r0   4/4 snort    sel    C_somfy02.pcap             self=5.362924 wall=30.2683 pk=119638/119638 void=
+r1   1/4 snort    sel    B1_pay5.pcap               self=1.548957 wall=26.4929 pk=140000/140000 void=
+r1   2/4 snort    sel    B2_mix3.pcap               self=23.441775 wall=48.5479 pk=496959/496959 void=
+r1   3/4 snort    sel    A_scan17.pcap              self=9.345923 wall=34.163 pk=600000/600000 void=
+r1   4/4 snort    sel    C_somfy02.pcap             self=5.32577 wall=30.2326 pk=119638/119638 void=
+r2   1/4 snort    sel    B2_mix3.pcap               self=23.352882 wall=48.1968 pk=496959/496959 void=
+r2   2/4 snort    sel    B1_pay5.pcap               self=1.56123 wall=26.411 pk=140000/140000 void=
+r2   3/4 snort    sel    A_scan17.pcap              self=9.331468 wall=34.1758 pk=600000/600000 void=
+r2   4/4 snort    sel    C_somfy02.pcap             self=5.315 wall=30.2717 pk=119638/119638 void=
+r3   1/4 snort    sel    C_somfy02.pcap             self=5.314171 wall=30.1519 pk=119638/119638 void=
+r3   2/4 snort    sel    A_scan17.pcap              self=9.293477 wall=34.4921 pk=600000/600000 void=
+r3   3/4 snort    sel    B2_mix3.pcap               self=23.397447 wall=48.2859 pk=496959/496959 void=
+r3   4/4 snort    sel    B1_pay5.pcap               self=1.554456 wall=26.403 pk=140000/140000 void=
+--- pi_R2a1 結束 rc=0  2026-10-11T12:59:25Z
+
+=================== 2026-10-11T12:59:25Z  開始 pi_R2a2 ===================
+jobs/round=4 rounds=4 (含 warm-up 1) -> /home/wnc/ids_throughput/results/pi_R2a2.csv
+r0   1/4 snort    common B1_pay5.pcap               self=1.713776 wall=27.5733 pk=140000/140000 void=
+r0   2/4 snort    common C_somfy02.pcap             self=5.459619 wall=31.6768 pk=119638/119638 void=
+r0   3/4 snort    full   B1_pay5.pcap               self=1.871124 wall=28.243 pk=140000/140000 void=
+r0   4/4 snort    full   C_somfy02.pcap             self=5.576984 wall=31.8691 pk=119638/119638 void=
+r1   1/4 snort    full   B1_pay5.pcap               self=1.859252 wall=28.4109 pk=140000/140000 void=
+r1   2/4 snort    common C_somfy02.pcap             self=5.454381 wall=31.4318 pk=119638/119638 void=
+r1   3/4 snort    common B1_pay5.pcap               self=1.712788 wall=27.6534 pk=140000/140000 void=
+r1   4/4 snort    full   C_somfy02.pcap             self=5.598998 wall=31.9714 pk=119638/119638 void=
+r2   1/4 snort    common C_somfy02.pcap             self=5.455463 wall=31.3318 pk=119638/119638 void=
+r2   2/4 snort    full   B1_pay5.pcap               self=1.87985 wall=28.2058 pk=140000/140000 void=
+r2   3/4 snort    common B1_pay5.pcap               self=1.716464 wall=27.6425 pk=140000/140000 void=
+r2   4/4 snort    full   C_somfy02.pcap             self=5.569583 wall=32.0216 pk=119638/119638 void=
+r3   1/4 snort    full   C_somfy02.pcap             self=5.60209 wall=31.9664 pk=119638/119638 void=
+r3   2/4 snort    common B1_pay5.pcap               self=1.705414 wall=27.7285 pk=140000/140000 void=
+r3   3/4 snort    common C_somfy02.pcap             self=5.450112 wall=31.4876 pk=119638/119638 void=
+r3   4/4 snort    full   B1_pay5.pcap               self=1.886486 wall=28.2324 pk=140000/140000 void=
+--- pi_R2a2 結束 rc=0  2026-10-11T13:07:27Z
+
+=================== 2026-10-11T13:07:27Z  開始 pi_R2b ===================
+jobs/round=4 rounds=2 (含 warm-up 0) -> /home/wnc/ids_throughput/results/pi_R2b.csv
+r0   1/4 snort    common A_scan17.pcap              self=1317.0045 wall=1342.9393 pk=600000/600000 void=
+r0   2/4 snort    common B2_mix3.pcap               self=711.227907 wall=737.3197 pk=496959/496959 void=
+r0   3/4 snort    full   A_scan17.pcap              self=1643.275982 wall=1669.7216 pk=600000/600000 void=
+r0   4/4 snort    full   B2_mix3.pcap               self=882.643354 wall=909.0936 pk=496959/496959 void=
+r1   1/4 snort    full   A_scan17.pcap              self=1637.092496 wall=1663.6962 pk=600000/600000 void=
+r1   2/4 snort    common B2_mix3.pcap               self=716.746363 wall=742.7579 pk=496959/496959 void=
+r1   3/4 snort    common A_scan17.pcap              self=1320.425377 wall=1346.4935 pk=600000/600000 void=
+r1   4/4 snort    full   B2_mix3.pcap               self=880.637803 wall=907.4721 pk=496959/496959 void=
+--- pi_R2b 結束 rc=0  2026-10-11T15:43:02Z
+
+=== 各批的彙總 ===
+rows: total=64 warmup=16 void(non-warmup)=0 used=48
+pcap                     engine   rules    n  self_med       pps   Mbps     cv%  diff_med   self-sm    d/s%   rss_mb alerts
+A_scan17.pcap            snort    empty    3     5.746  104418.0   50.1    0.9      5.736     5.685     0.9     62.0 0
+A_scan17.pcap            suricata empty    3     6.414   93545.0   44.9    8.4!    12.415      6.35    95.5    182.0 0
+B1_pay5.pcap             snort    empty    3     1.505   93028.0  736.3    1.0       1.42     1.419     0.1     53.0 0
+B1_pay5.pcap             suricata empty    3     0.994  140845.0 1114.7    0.8      0.928     0.928     0.1     55.0 0
+B2_mix3.pcap             snort    empty    3    10.231   48572.0   39.1    0.1     10.166    10.167    -0.0     75.0 0
+B2_mix3.pcap             suricata empty    3      5.13   96873.0   77.9    3.2      5.114     5.066     0.9     61.0 0
+C_somfy02.pcap           snort    empty    3     1.482   80725.0  168.4    0.2      1.424     1.421     0.2     53.0 0
+C_somfy02.pcap           suricata empty    3      0.53  225732.0  470.8    0.3      0.474     0.472     0.3     54.0 0
+
+[檢查]
+(a) 決定性/封包數: 通過
+(e) self vs diff 差距 >10% 的組: [('A_scan17.pcap', 'suricata', 'empty', 95.5)]
+rows: total=48 warmup=12 void(non-warmup)=0 used=36
+pcap                     engine   rules    n  self_med       pps   Mbps     cv%  diff_med   self-sm    d/s%   rss_mb alerts
+A_scan17.pcap            suricata common   3    17.658   33979.0   16.3    0.1                                1174.0 0
+A_scan17.pcap            suricata full     3    17.991   33350.0   16.0    0.1                                1184.0 0
+A_scan17.pcap            suricata sel      3    17.815   33679.0   16.2    0.4                                1180.0 0
+B1_pay5.pcap             suricata common   3     1.154  121317.0  960.2    1.3                                1174.0 3
+B1_pay5.pcap             suricata full     3     1.186  118044.0  934.3    1.3                                1185.0 3
+B1_pay5.pcap             suricata sel      3     1.176  119048.0  942.2    1.3                                1180.0 3
+B2_mix3.pcap             suricata common   3    15.164   32772.0   26.4    0.1                                1174.0 50529
+B2_mix3.pcap             suricata full     3    15.223   32645.0   26.3    1.0                                1184.0 50529
+B2_mix3.pcap             suricata sel      3    15.096   32920.0   26.5    0.3                                1180.0 50488
+C_somfy02.pcap           suricata common   3     2.904   41198.0   85.9    1.6                                1174.0 0
+C_somfy02.pcap           suricata full     3     2.869   41700.0   87.0    0.5                                1184.0 0
+C_somfy02.pcap           suricata sel      3     2.913   41070.0   85.7    1.7                                1180.0 0
+
+[檢查]
+(a) 決定性/封包數: 通過
+(e) self vs diff 差距 >10% 的組: 無
+rows: total=16 warmup=4 void(non-warmup)=0 used=12
+pcap                     engine   rules    n  self_med       pps   Mbps     cv%  diff_med   self-sm    d/s%   rss_mb alerts
+A_scan17.pcap            snort    sel      3     9.331   64299.0   30.9    0.3                                 369.0 0
+B1_pay5.pcap             snort    sel      3     1.554   90064.0  712.8    0.4                                 360.0 27
+B2_mix3.pcap             snort    sel      3    23.397   21240.0   17.1    0.2                                 382.0 253382
+C_somfy02.pcap           snort    sel      3     5.315   22510.0   47.0    0.1                                 360.0 0
+
+[檢查]
+(a) 決定性/封包數: 通過
+(e) self vs diff 差距 >10% 的組: 無
+rows: total=16 warmup=4 void(non-warmup)=0 used=12
+pcap                     engine   rules    n  self_med       pps   Mbps     cv%  diff_med   self-sm    d/s%   rss_mb alerts
+B1_pay5.pcap             snort    common   3     1.713   81738.0  646.9    0.3                                 364.0 27
+B1_pay5.pcap             snort    full     3      1.88   74474.0  589.4    0.8                                 366.0 27
+C_somfy02.pcap           snort    common   3     5.454   21934.0   45.8    0.1                                 364.0 0
+C_somfy02.pcap           snort    full     3     5.599   21368.0   44.6    0.3                                 365.0 0
+
+[檢查]
+(a) 決定性/封包數: 通過
+(e) self vs diff 差距 >10% 的組: 無
+rows: total=8 warmup=0 void(non-warmup)=0 used=8
+pcap                     engine   rules    n  self_med       pps   Mbps     cv%  diff_med   self-sm    d/s%   rss_mb alerts
+A_scan17.pcap            snort    common   2  1318.715     455.0    0.2    0.2                                 373.0 0
+A_scan17.pcap            snort    full     2  1640.184     366.0    0.2    0.3                                 374.0 0
+B2_mix3.pcap             snort    common   2   713.987     696.0    0.6    0.5                                 386.0 253382
+B2_mix3.pcap             snort    full     2   881.641     564.0    0.5    0.2                                 387.0 253382
+
+[檢查]
+(a) 決定性/封包數: 通過
+(e) self vs diff 差距 >10% 的組: 無
+ALL DONE 2026-10-11T15:43:03Z

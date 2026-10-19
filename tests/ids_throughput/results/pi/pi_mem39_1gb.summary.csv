@@ -1,0 +1,5 @@
+pcap,engine,rules,n,pkts,bytes,self_med,self_min,self_max,self_cv_pct,pps_med,mbps_med,diff_med,diff_cv_pct,self_minus_small_med,diff_vs_self_pct,pps_diff,mbps_diff,wall_med,cpu_raw_med,cpu_proc_med,maxrss_mb_max,alerts_set,suppressed_set,top_sids,pkts_match_all,bytes_match_all
+S_m39.pcap,snort,full,3,200000,24761281,517.03,511.385,523.278,1.15,387.0,0.38,,,,,,,544.167,559.67,,375.5,182059,,2003068:182007;2013504:19;2002028:9,1,1
+S_m39.pcap,snort,gw_corp,3,200000,24761281,10.053,10.014,10.072,0.294,19895.0,19.71,,,,,,,30.352,29.58,,302.1,182040,,2003068:182007;2002028:9;2002025:8,1,1
+S_m39.pcap,suricata,full,3,200000,24761281,14.885,14.857,15.924,3.995,13436.0,13.31,,,,,,,61.443,63.6,,751.2,36461,145606,2003068:36401;2013504:19;2002028:9,1,1
+S_m39.pcap,suricata,gw_corp,3,200000,24761281,14.041,13.91,14.127,0.779,14244.0,14.11,,,,,,,42.931,44.71,,760.0,36442,145606,2003068:36401;2002028:9;2002027:8,1,1

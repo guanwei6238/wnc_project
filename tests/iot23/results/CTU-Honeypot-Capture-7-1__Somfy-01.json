@@ -1,0 +1,46 @@
+{
+ "pcap": "2019-07-03-15-15-47-first_start_somfy_gateway.pcap",
+ "log": "conn.log.labeled",
+ "pcap_bytes": 2094105,
+ "pcap_packets": 8276,
+ "pcap_ip_packets": 7059,
+ "pcap_truncated_tail": false,
+ "pcap_linktype": 1,
+ "pcap_covered_packets": 7058,
+ "pcap_time_range": [
+  1562159754.654715,
+  1562164842.476426
+ ],
+ "log_time_range": [
+  1562159819.172195,
+  1562164842.4764261
+ ],
+ "flows": 130,
+ "aligned": 130,
+ "unaligned": 0,
+ "skipped_flows_other_proto": {},
+ "malformed_log_lines": 0,
+ "unaligned_kinds": {},
+ "unaligned_examples": [],
+ "shards": 1,
+ "labels": {
+  "benign": {
+   "state S0": 65,
+   "state SHR": 11,
+   "state OTH": 49,
+   "state SF": 4,
+   "state S1": 1,
+   "flows": 130,
+   "aligned": 130,
+   "pkts": 7058,
+   "payload_pkts": 3137,
+   "flows_with_payload": 1
+  }
+ },
+ "scenario": "CTU-Honeypot-Capture-7-1__Somfy-01",
+ "main_pcap": "2019-07-03-15-15-47-first_start_somfy_gateway.pcap",
+ "extra_pcaps": {},
+ "log_file": "bro/conn.log.labeled",
+ "pcap_first_ts": 1562159754.654715,
+ "seconds": 0
+}

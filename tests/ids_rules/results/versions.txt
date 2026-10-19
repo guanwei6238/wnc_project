@@ -1,0 +1,120 @@
+## BUILD_INFO
+snort3_tag=3.12.2.0
+snort3_commit=14aeb09f5a0856812dbe08ead3c21f99e8860aa0
+libdaq_tag=v3.0.27
+libdaq_commit=959b13d76aa3409acadfe22d1c30864698a297a7
+arch=amd64
+CMAKE_BUILD_TYPE:STRING=Release
+ENABLE_ADDRESS_SANITIZER:BOOL=OFF
+ENABLE_BENCHMARK_TESTS:BOOL=OFF
+ENABLE_CODE_COVERAGE:BOOL=OFF
+ENABLE_COREFILES:BOOL=ON
+ENABLE_DEBUG:BOOL=OFF
+ENABLE_DEBUG_MSGS:BOOL=OFF
+ENABLE_DEEP_PROFILING:BOOL=OFF
+ENABLE_FUZZERS:BOOL=OFF
+ENABLE_FUZZ_COVERAGE:BOOL=OFF
+ENABLE_FUZZ_SANITIZER:BOOL=OFF
+ENABLE_GDB:BOOL=ON
+ENABLE_HARDENED_BUILD:BOOL=OFF
+ENABLE_JEMALLOC:BOOL=OFF
+ENABLE_LARGE_PCAP:BOOL=OFF
+ENABLE_MEMORY_PROFILER:BOOL=OFF
+ENABLE_PIE:BOOL=OFF
+ENABLE_PROFILE:BOOL=OFF
+ENABLE_RULE_PROFILER:BOOL=OFF
+ENABLE_SAFEC:BOOL=ON
+ENABLE_SHELL:BOOL=OFF
+ENABLE_STATIC_DAQ:BOOL=ON
+ENABLE_STDLOG:BOOL=OFF
+ENABLE_TCMALLOC:BOOL=OFF
+ENABLE_THREAD_SANITIZER:BOOL=OFF
+ENABLE_TSC_CLOCK:BOOL=OFF
+ENABLE_UB_SANITIZER:BOOL=OFF
+ENABLE_UNIT_TESTS:BOOL=OFF
+HAVE_HYPERSCAN:INTERNAL=1
+HAVE_LZMA:INTERNAL=1
+## suricata --build-info
+This is Suricata version 7.0.10 RELEASE
+Features: NFQ PCAP_SET_BUFF AF_PACKET HAVE_PACKET_FANOUT LIBCAP_NG LIBNET1.1 HAVE_HTP_URI_NORMALIZE_HOOK PCRE_JIT HAVE_NSS HTTP2_DECOMPRESSION HAVE_LUA HAVE_JA3 HAVE_JA4 HAVE_LUAJIT HAVE_LIBJANSSON TLS TLS_C11 MAGIC RUST POPCNT64 
+SIMD support: SSE_4_2 SSE_4_1 SSE_3 SSE_2 
+64-bits, Little-endian architecture
+GCC version 14.2.0, C version 201112
+  PCRE jit:                                yes
+  LUA support:                             yes, through luajit
+  libluajit:                               yes
+  Hyperscan support:                       yes
+  Rust support:                            yes
+  Rust strict mode:                        no
+  Rust compiler path:                      /usr/bin/rustc
+  Rust compiler version:                   rustc 1.85.0 (4d91de4e4 2025-02-17) (built from a source tarball)
+  Cargo version:                           cargo 1.85.0 (d73d2caf9 2024-12-31)
+  Compiler:                                gcc (exec name) / g++ (real)
+  CFLAGS                                   -g -O2 -Werror=implicit-function-declaration -ffile-prefix-map=/build/reproducible-path/suricata-7.0.10=. -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fPIC -std=c11 -I/usr/include/dpdk -I/usr/include/dpdk/../x86_64-linux-gnu/dpdk -include rte_config.h -march=corei7 -mrtm -I/usr/include/x86_64-linux-gnu -I/usr/include/libnl3 -I/usr/include/dbus-1.0 -I/usr/lib/x86_64-linux-gnu/dbus-1.0/include  -I${srcdir}/../rust/gen -I${srcdir}/../rust/dist
+## snort -V
+
+   ,,_     -*> Snort++ <*-
+  o"  )~   Version 3.12.2.0
+   ''''    By Martin Roesch & The Snort Team
+           http://snort.org/contact#team
+           Copyright (C) 2014-2026 Cisco and/or its affiliates. All rights reserved.
+           Copyright (C) 1998-2013 Sourcefire, Inc., et al.
+           Using DAQ version 3.0.27
+           Using Hyperscan version 5.4.2 2024-12-30
+           Using libpcap version 1.10.5 (with TPACKET_V3)
+           Using LuaJIT version 2.1.1737090214
+           Using LZMA version 5.8.1
+           Using OpenSSL 3.5.7 9 Jun 2026
+           Using PCRE2 version 10.46 2025-08-27
+           Using ZLIB version 1.3.1
+
+## ldd
+	libhs.so.5 => /lib/x86_64-linux-gnu/libhs.so.5 (0x0000718dd35c1000)
+## snort search_method
+int search_engine.bleedover_port_limit = 1024: maximum ports in rule before demotion to any-any port group { 1:max32 }
+bool search_engine.bleedover_warnings_enabled = false: print warning if a rule is demoted to any-any port group
+bool search_engine.enable_single_rule_group = false: put all rules into one group
+bool search_engine.debug = false: print verbose fast pattern info
+bool search_engine.debug_print_nocontent_rule_tests = false: print rule group info during packet evaluation
+bool search_engine.debug_print_rule_group_build_details = false: print rule group info during compilation
+bool search_engine.debug_print_rule_groups_uncompiled = false: prints uncompiled rule group information
+bool search_engine.debug_print_rule_groups_compiled = false: prints compiled rule group information
+int search_engine.max_pattern_len = 0: truncate patterns when compiling into state machine (0 means no maximum) { 0:max32 }
+int search_engine.max_queue_events = 5: maximum number of matching fast pattern states to queue per packet { 2:100 }
+bool search_engine.detect_raw_tcp = false: detect on TCP payload before reassembly
+dynamic search_engine.search_method = ac_bnfa: set fast pattern algorithm - choose available search engine { ac_bnfa | ac_full | hyperscan }
+dynamic search_engine.offload_search_method: set fast pattern offload algorithm - choose available search engine { ac_bnfa | ac_full | hyperscan }
+string search_engine.rule_db_dir: directory for reading / writing rule group databases
+bool search_engine.split_any_any = true: evaluate any-any rules separately to save memory
+int search_engine.queue_limit = 0: maximum number of fast pattern matches to queue per packet (0 is unlimited) { 0:max32 }
+
+search_engine
+
+
+Help: configure fast pattern matcher
+
+Type: basic
+
+Usage: global
+
+Configuration: 
+
+int search_engine.bleedover_port_limit = 1024: maximum ports in rule before demotion to any-any port group { 1:max32 }
+bool search_engine.bleedover_warnings_enabled = false: print warning if a rule is demoted to any-any port group
+bool search_engine.enable_single_rule_group = false: put all rules into one group
+bool search_engine.debug = false: print verbose fast pattern info
+bool search_engine.debug_print_nocontent_rule_tests = false: print rule group info during packet evaluation
+bool search_engine.debug_print_rule_group_build_details = false: print rule group info during compilation
+bool search_engine.debug_print_rule_groups_uncompiled = false: prints uncompiled rule group information
+bool search_engine.debug_print_rule_groups_compiled = false: prints compiled rule group information
+int search_engine.max_pattern_len = 0: truncate patterns when compiling into state machine (0 means no maximum) { 0:max32 }
+int search_engine.max_queue_events = 5: maximum number of matching fast pattern states to queue per packet { 2:100 }
+bool search_engine.detect_raw_tcp = false: detect on TCP payload before reassembly
+dynamic search_engine.search_method = ac_bnfa: set fast pattern algorithm - choose available search engine { ac_bnfa | ac_full | hyperscan }
+dynamic search_engine.offload_search_method: set fast pattern offload algorithm - choose available search engine { ac_bnfa | ac_full | hyperscan }
+string search_engine.rule_db_dir: directory for reading / writing rule group databases
+bool search_engine.split_any_any = true: evaluate any-any rules separately to save memory
+int search_engine.queue_limit = 0: maximum number of fast pattern matches to queue per packet (0 is unlimited) { 0:max32 }
+
+Peg counts: 
+

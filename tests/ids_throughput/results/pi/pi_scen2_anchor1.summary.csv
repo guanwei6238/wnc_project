@@ -1,0 +1,3 @@
+pcap,engine,rules,n,pkts,bytes,self_med,self_min,self_max,self_cv_pct,pps_med,mbps_med,diff_med,diff_cv_pct,self_minus_small_med,diff_vs_self_pct,pps_diff,mbps_diff,wall_med,cpu_raw_med,cpu_proc_med,maxrss_mb_max,alerts_set,suppressed_set,top_sids,pkts_match_all,bytes_match_all
+C_somfy02.pcap,snort,full,3,119638,31190192,5.574,5.547,5.576,0.288,21462.0,44.76,,,,,,,31.898,31.92,,365.0,0,,,1,1
+C_somfy02.pcap,suricata,full,3,119638,31190192,2.89,2.875,2.894,0.347,41397.0,86.34,,,,,,,37.745,40.43,,1184.5,0,0,,1,1

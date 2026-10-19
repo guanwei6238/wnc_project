@@ -1,0 +1,607 @@
+Pi 狀態: throttled=0x0 temp=57.9'C 時脈 1000 MHz
+governor: performance  上限: 1000 MHz
+
+=================== 2026-10-17T12:50:31Z  開始 pi_scen2_anchor0 ===================
+jobs/round=2 rounds=4 (含 warm-up 1) -> /home/wnc/ids_throughput/results/pi_scen2_anchor0.csv
+r0   1/2 suricata full   C_somfy02.pcap             self=2.918 wall=37.8621 pk=119638/119638 void=
+r0   2/2 snort    full   C_somfy02.pcap             self=5.537869 wall=31.9284 pk=119638/119638 void=
+r1   1/2 suricata full   C_somfy02.pcap             self=2.939 wall=37.9586 pk=119638/119638 void=
+r1   2/2 snort    full   C_somfy02.pcap             self=5.578773 wall=32.0576 pk=119638/119638 void=
+r2   1/2 suricata full   C_somfy02.pcap             self=2.943 wall=37.9755 pk=119638/119638 void=
+r2   2/2 snort    full   C_somfy02.pcap             self=5.563964 wall=31.9917 pk=119638/119638 void=
+r3   1/2 snort    full   C_somfy02.pcap             self=5.585893 wall=32.0375 pk=119638/119638 void=
+r3   2/2 suricata full   C_somfy02.pcap             self=2.957 wall=38.2043 pk=119638/119638 void=
+--- pi_scen2_anchor0 結束 rc=0  2026-10-17T12:55:14Z
+
+=================== 2026-10-17T12:55:14Z  開始 pi_scen2_E ===================
+jobs/round=56 rounds=4 (含 warm-up 1) -> /home/wnc/ids_throughput/results/pi_scen2_E.csv
+r0   1/56 suricata empty  S_m42.small.pcap           self=0.066 wall=0.3193 pk=500/500 void=
+r0   2/56 snort    empty  S_m48.small.pcap           self=0.064557 wall=0.2902 pk=500/500 void=
+r0   3/56 snort    empty  S_m42.small.pcap           self=0.065677 wall=0.2923 pk=500/500 void=
+r0   4/56 snort    empty  S_m39.small.pcap           self=0.065745 wall=0.2938 pk=500/500 void=
+r0   5/56 suricata empty  S_m39.small.pcap           self=0.077 wall=0.3278 pk=500/500 void=
+r0   6/56 suricata empty  S_m36.small.pcap           self=0.063 wall=0.3206 pk=500/500 void=
+r0   7/56 snort    empty  S_h4.pcap                  self=0.36261 wall=0.5898 pk=21664/21664 void=
+r0   8/56 snort    empty  S_h5.pcap                  self=2.086634 wall=2.3144 pk=200000/200000 void=
+r0   9/56 suricata empty  S_m3.small.pcap            self=0.067 wall=0.3208 pk=500/500 void=
+r0  10/56 suricata empty  S_m48.pcap                 self=1.475 wall=1.9198 pk=200000/200000 void=
+r0  11/56 suricata empty  S_m36.pcap                 self=3.267 wall=7.9633 pk=200000/200000 void=
+r0  12/56 suricata empty  S_m20.small.pcap           self=0.078 wall=0.3345 pk=500/500 void=
+r0  13/56 snort    empty  S_m1.small.pcap            self=0.069724 wall=0.2952 pk=500/500 void=
+r0  14/56 suricata empty  S_m1.pcap                  self=2.389 wall=2.9487 pk=200000/200000 void=
+r0  15/56 suricata empty  S_h4.pcap                  self=0.286 wall=0.5437 pk=21664/21664 void=
+r0  16/56 snort    empty  S_m60.pcap                 self=2.1819 wall=2.4102 pk=200000/200000 void=
+r0  17/56 snort    empty  S_h5.small.pcap            self=0.086915 wall=0.3138 pk=500/500 void=
+r0  18/56 suricata empty  S_m39.pcap                 self=1.719 wall=8.4803 pk=200000/200000 void=
+r0  19/56 suricata empty  S_h5.small.pcap            self=0.067 wall=0.3197 pk=500/500 void=
+r0  20/56 snort    empty  S_m1.pcap                  self=5.17438 wall=5.3991 pk=200000/200000 void=
+r0  21/56 snort    empty  S_m34.pcap                 self=4.202507 wall=4.4292 pk=200000/200000 void=
+r0  22/56 suricata empty  S_m34.pcap                 self=1.935 wall=2.1891 pk=200000/200000 void=
+r0  23/56 suricata empty  S_h5.pcap                  self=1.389 wall=1.6408 pk=200000/200000 void=
+r0  24/56 snort    empty  S_m44.small.pcap           self=0.064475 wall=0.2902 pk=500/500 void=
+r0  25/56 suricata empty  S_m44.pcap                 self=1.37 wall=1.624 pk=200000/200000 void=
+r0  26/56 snort    empty  S_m36.small.pcap           self=0.06129 wall=0.2908 pk=500/500 void=
+r0  27/56 suricata empty  S_m44.small.pcap           self=0.067 wall=0.323 pk=500/500 void=
+r0  28/56 snort    empty  S_m34.small.pcap           self=0.065664 wall=0.2913 pk=500/500 void=
+r0  29/56 snort    empty  S_m39.pcap                 self=2.310935 wall=2.5432 pk=200000/200000 void=
+r0  30/56 suricata empty  S_m60.pcap                 self=0.881 wall=1.1372 pk=200000/200000 void=
+r0  31/56 snort    empty  S_m3.small.pcap            self=0.065596 wall=0.2928 pk=500/500 void=
+r0  32/56 suricata empty  S_somfy02.pcap             self=0.533 wall=0.7884 pk=119638/119638 void=
+r0  33/56 snort    empty  S_m3.pcap                  self=4.166179 wall=4.3992 pk=200000/200000 void=
+r0  34/56 snort    empty  S_somfy02.small.pcap       self=0.062358 wall=0.2906 pk=500/500 void=
+r0  35/56 suricata empty  S_somfy02.small.pcap       self=0.064 wall=0.3247 pk=500/500 void=
+r0  36/56 snort    empty  S_m20.pcap                 self=0.650383 wall=0.8793 pk=50156/50156 void=
+r0  37/56 snort    empty  S_m17.pcap                 self=2.058657 wall=2.2874 pk=200000/200000 void=
+r0  38/56 snort    empty  S_m20.small.pcap           self=0.067702 wall=0.295 pk=500/500 void=
+r0  39/56 suricata empty  S_m3.pcap                  self=2.167 wall=2.4651 pk=200000/200000 void=
+r0  40/56 snort    empty  S_m44.pcap                 self=2.576189 wall=2.8008 pk=200000/200000 void=
+r0  41/56 suricata empty  S_m1.small.pcap            self=0.068 wall=0.3243 pk=500/500 void=
+r0  42/56 snort    empty  S_somfy02.pcap             self=1.461712 wall=1.6884 pk=119638/119638 void=
+r0  43/56 suricata empty  S_m42.pcap                 self=0.547 wall=0.8019 pk=24484/24484 void=
+r0  44/56 suricata empty  S_m34.small.pcap           self=0.067 wall=0.3195 pk=500/500 void=
+r0  45/56 suricata empty  S_m17.pcap                 self=1.773 wall=4.6756 pk=200000/200000 void=
+r0  46/56 suricata empty  S_m20.pcap                 self=0.341 wall=0.5961 pk=50156/50156 void=
+r0  47/56 snort    empty  S_m42.pcap                 self=0.593011 wall=0.8209 pk=24484/24484 void=
+r0  48/56 suricata empty  S_m60.small.pcap           self=0.056 wall=0.3093 pk=500/500 void=
+r0  49/56 suricata empty  S_h4.small.pcap            self=0.065 wall=0.3204 pk=500/500 void=
+r0  50/56 suricata empty  S_m17.small.pcap           self=0.057 wall=0.3091 pk=500/500 void=
+r0  51/56 snort    empty  S_m17.small.pcap           self=0.062342 wall=0.2911 pk=500/500 void=
+r0  52/56 snort    empty  S_m36.pcap                 self=2.163494 wall=2.3904 pk=200000/200000 void=
+r0  53/56 snort    empty  S_m48.pcap                 self=3.703714 wall=3.9301 pk=200000/200000 void=
+r0  54/56 snort    empty  S_h4.small.pcap            self=0.063501 wall=0.2893 pk=500/500 void=
+r0  55/56 suricata empty  S_m48.small.pcap           self=0.067 wall=0.3206 pk=500/500 void=
+r0  56/56 snort    empty  S_m60.small.pcap           self=0.062407 wall=0.2883 pk=500/500 void=
+r1   1/56 suricata empty  S_h5.small.pcap            self=0.068 wall=0.3228 pk=500/500 void=
+r1   2/56 snort    empty  S_m48.pcap                 self=3.679948 wall=3.905 pk=200000/200000 void=
+r1   3/56 suricata empty  S_m39.pcap                 self=1.783 wall=8.5138 pk=200000/200000 void=
+r1   4/56 snort    empty  S_m36.pcap                 self=2.178934 wall=2.4056 pk=200000/200000 void=
+r1   5/56 snort    empty  S_m60.pcap                 self=2.202177 wall=2.43 pk=200000/200000 void=
+r1   6/56 snort    empty  S_m3.small.pcap            self=0.065497 wall=0.2933 pk=500/500 void=
+r1   7/56 suricata empty  S_m36.pcap                 self=3.012 wall=8.107 pk=200000/200000 void=
+r1   8/56 snort    empty  S_somfy02.small.pcap       self=0.06117 wall=0.2867 pk=500/500 void=
+r1   9/56 snort    empty  S_m42.small.pcap           self=0.064569 wall=0.2887 pk=500/500 void=
+r1  10/56 suricata empty  S_m1.pcap                  self=2.37 wall=3.0049 pk=200000/200000 void=
+r1  11/56 snort    empty  S_m17.pcap                 self=2.042839 wall=2.2688 pk=200000/200000 void=
+r1  12/56 snort    empty  S_h5.pcap                  self=2.100073 wall=2.3243 pk=200000/200000 void=
+r1  13/56 snort    empty  S_h4.small.pcap            self=0.06227 wall=0.2862 pk=500/500 void=
+r1  14/56 suricata empty  S_m44.pcap                 self=1.391 wall=1.6443 pk=200000/200000 void=
+r1  15/56 snort    empty  S_somfy02.pcap             self=1.470024 wall=1.6949 pk=119638/119638 void=
+r1  16/56 suricata empty  S_somfy02.pcap             self=0.533 wall=0.788 pk=119638/119638 void=
+r1  17/56 snort    empty  S_m48.small.pcap           self=0.064438 wall=0.2928 pk=500/500 void=
+r1  18/56 suricata empty  S_m20.small.pcap           self=0.085 wall=0.3398 pk=500/500 void=
+r1  19/56 snort    empty  S_m3.pcap                  self=4.207071 wall=4.4326 pk=200000/200000 void=
+r1  20/56 suricata empty  S_m60.small.pcap           self=0.066 wall=0.3194 pk=500/500 void=
+r1  21/56 snort    empty  S_m34.small.pcap           self=0.06548 wall=0.2912 pk=500/500 void=
+r1  22/56 snort    empty  S_m1.pcap                  self=5.175979 wall=5.4023 pk=200000/200000 void=
+r1  23/56 suricata empty  S_m1.small.pcap            self=0.065 wall=0.3197 pk=500/500 void=
+r1  24/56 suricata empty  S_m48.small.pcap           self=0.071 wall=0.3243 pk=500/500 void=
+r1  25/56 suricata empty  S_m36.small.pcap           self=0.065 wall=0.323 pk=500/500 void=
+r1  26/56 snort    empty  S_m36.small.pcap           self=0.061178 wall=0.2867 pk=500/500 void=
+r1  27/56 snort    empty  S_m60.small.pcap           self=0.062319 wall=0.2888 pk=500/500 void=
+r1  28/56 snort    empty  S_m20.small.pcap           self=0.067777 wall=0.2943 pk=500/500 void=
+r1  29/56 snort    empty  S_m34.pcap                 self=4.195999 wall=4.4222 pk=200000/200000 void=
+r1  30/56 suricata empty  S_m60.pcap                 self=0.879 wall=1.1299 pk=200000/200000 void=
+r1  31/56 snort    empty  S_h4.pcap                  self=0.362761 wall=0.5899 pk=21664/21664 void=
+r1  32/56 suricata empty  S_m3.pcap                  self=2.032 wall=2.3275 pk=200000/200000 void=
+r1  33/56 snort    empty  S_h5.small.pcap            self=0.086787 wall=0.3137 pk=500/500 void=
+r1  34/56 snort    empty  S_m39.small.pcap           self=0.065861 wall=0.2914 pk=500/500 void=
+r1  35/56 suricata empty  S_m48.pcap                 self=1.395 wall=1.8949 pk=200000/200000 void=
+r1  36/56 suricata empty  S_m44.small.pcap           self=0.066 wall=0.3198 pk=500/500 void=
+r1  37/56 snort    empty  S_m20.pcap                 self=0.630847 wall=0.856 pk=50156/50156 void=
+r1  38/56 suricata empty  S_m34.pcap                 self=1.45 wall=1.7041 pk=200000/200000 void=
+r1  39/56 snort    empty  S_m1.small.pcap            self=0.069744 wall=0.2956 pk=500/500 void=
+r1  40/56 snort    empty  S_m42.pcap                 self=0.592091 wall=0.8196 pk=24484/24484 void=
+r1  41/56 suricata empty  S_m20.pcap                 self=0.337 wall=0.5891 pk=50156/50156 void=
+r1  42/56 suricata empty  S_m3.small.pcap            self=0.067 wall=0.3196 pk=500/500 void=
+r1  43/56 suricata empty  S_h4.pcap                  self=0.281 wall=0.5319 pk=21664/21664 void=
+r1  44/56 snort    empty  S_m39.pcap                 self=2.30837 wall=2.5369 pk=200000/200000 void=
+r1  45/56 suricata empty  S_somfy02.small.pcap       self=0.069 wall=0.3259 pk=500/500 void=
+r1  46/56 suricata empty  S_h5.pcap                  self=1.39 wall=1.6434 pk=200000/200000 void=
+r1  47/56 suricata empty  S_m34.small.pcap           self=0.072 wall=0.325 pk=500/500 void=
+r1  48/56 snort    empty  S_m44.pcap                 self=2.592076 wall=2.8153 pk=200000/200000 void=
+r1  49/56 suricata empty  S_m42.pcap                 self=0.545 wall=0.7984 pk=24484/24484 void=
+r1  50/56 snort    empty  S_m44.small.pcap           self=0.065526 wall=0.2933 pk=500/500 void=
+r1  51/56 suricata empty  S_m17.small.pcap           self=0.057 wall=0.3105 pk=500/500 void=
+r1  52/56 suricata empty  S_h4.small.pcap            self=0.066 wall=0.3167 pk=500/500 void=
+r1  53/56 snort    empty  S_m17.small.pcap           self=0.062289 wall=0.2898 pk=500/500 void=
+r1  54/56 suricata empty  S_m42.small.pcap           self=0.066 wall=0.3192 pk=500/500 void=
+r1  55/56 suricata empty  S_m17.pcap                 self=2.151 wall=4.4758 pk=200000/200000 void=
+r1  56/56 suricata empty  S_m39.small.pcap           self=0.068 wall=0.3222 pk=500/500 void=
+r2   1/56 snort    empty  S_m20.small.pcap           self=0.066503 wall=0.2919 pk=500/500 void=
+r2   2/56 suricata empty  S_m20.pcap                 self=0.337 wall=0.5896 pk=50156/50156 void=
+r2   3/56 snort    empty  S_m34.small.pcap           self=0.065532 wall=0.2929 pk=500/500 void=
+r2   4/56 suricata empty  S_m17.pcap                 self=1.994 wall=4.6336 pk=200000/200000 void=
+r2   5/56 suricata empty  S_m17.small.pcap           self=0.066 wall=0.326 pk=500/500 void=
+r2   6/56 suricata empty  S_m48.small.pcap           self=0.067 wall=0.3189 pk=500/500 void=
+r2   7/56 snort    empty  S_m39.small.pcap           self=0.065466 wall=0.2915 pk=500/500 void=
+r2   8/56 snort    empty  S_m36.pcap                 self=2.157578 wall=2.3829 pk=200000/200000 void=
+r2   9/56 suricata empty  S_m36.pcap                 self=2.919 wall=8.0856 pk=200000/200000 void=
+r2  10/56 snort    empty  S_m34.pcap                 self=4.19769 wall=4.4235 pk=200000/200000 void=
+r2  11/56 snort    empty  S_m3.small.pcap            self=0.065372 wall=0.2908 pk=500/500 void=
+r2  12/56 suricata empty  S_h4.small.pcap            self=0.068 wall=0.3183 pk=500/500 void=
+r2  13/56 snort    empty  S_m44.pcap                 self=2.584335 wall=2.8107 pk=200000/200000 void=
+r2  14/56 snort    empty  S_m3.pcap                  self=4.165141 wall=4.3921 pk=200000/200000 void=
+r2  15/56 suricata empty  S_m39.pcap                 self=1.75 wall=8.4779 pk=200000/200000 void=
+r2  16/56 snort    empty  S_m42.pcap                 self=0.590855 wall=0.8179 pk=24484/24484 void=
+r2  17/56 suricata empty  S_m42.small.pcap           self=0.066 wall=0.3183 pk=500/500 void=
+r2  18/56 snort    empty  S_somfy02.pcap             self=1.469132 wall=1.7059 pk=119638/119638 void=
+r2  19/56 suricata empty  S_m44.pcap                 self=1.395 wall=1.6469 pk=200000/200000 void=
+r2  20/56 suricata empty  S_m3.small.pcap            self=0.065 wall=0.3166 pk=500/500 void=
+r2  21/56 snort    empty  S_m36.small.pcap           self=0.062423 wall=0.2875 pk=500/500 void=
+r2  22/56 suricata empty  S_m36.small.pcap           self=0.063 wall=0.3205 pk=500/500 void=
+r2  23/56 snort    empty  S_h5.pcap                  self=2.103388 wall=2.3298 pk=200000/200000 void=
+r2  24/56 snort    empty  S_h5.small.pcap            self=0.086922 wall=0.3129 pk=500/500 void=
+r2  25/56 snort    empty  S_m39.pcap                 self=2.339475 wall=2.5648 pk=200000/200000 void=
+r2  26/56 snort    empty  S_m48.pcap                 self=3.774481 wall=4.0035 pk=200000/200000 void=
+r2  27/56 snort    empty  S_m60.small.pcap           self=0.062385 wall=0.2911 pk=500/500 void=
+r2  28/56 snort    empty  S_m42.small.pcap           self=0.06457 wall=0.2916 pk=500/500 void=
+r2  29/56 suricata empty  S_m34.pcap                 self=1.469 wall=1.7223 pk=200000/200000 void=
+r2  30/56 snort    empty  S_m48.small.pcap           self=0.064491 wall=0.2912 pk=500/500 void=
+r2  31/56 suricata empty  S_m44.small.pcap           self=0.066 wall=0.3175 pk=500/500 void=
+r2  32/56 suricata empty  S_m60.pcap                 self=0.87 wall=1.1224 pk=200000/200000 void=
+r2  33/56 snort    empty  S_h4.pcap                  self=0.363874 wall=0.589 pk=21664/21664 void=
+r2  34/56 suricata empty  S_m3.pcap                  self=1.928 wall=2.3744 pk=200000/200000 void=
+r2  35/56 suricata empty  S_m34.small.pcap           self=0.067 wall=0.3214 pk=500/500 void=
+r2  36/56 suricata empty  S_m42.pcap                 self=0.544 wall=0.796 pk=24484/24484 void=
+r2  37/56 snort    empty  S_m44.small.pcap           self=0.064467 wall=0.292 pk=500/500 void=
+r2  38/56 suricata empty  S_h4.pcap                  self=0.284 wall=0.5367 pk=21664/21664 void=
+r2  39/56 suricata empty  S_somfy02.small.pcap       self=0.057 wall=0.3125 pk=500/500 void=
+r2  40/56 snort    empty  S_m17.pcap                 self=2.044689 wall=2.2707 pk=200000/200000 void=
+r2  41/56 suricata empty  S_h5.pcap                  self=1.413 wall=1.6684 pk=200000/200000 void=
+r2  42/56 snort    empty  S_m1.pcap                  self=5.162068 wall=5.3867 pk=200000/200000 void=
+r2  43/56 snort    empty  S_somfy02.small.pcap       self=0.062297 wall=0.2891 pk=500/500 void=
+r2  44/56 snort    empty  S_m17.small.pcap           self=0.062302 wall=0.2893 pk=500/500 void=
+r2  45/56 suricata empty  S_m1.small.pcap            self=0.059 wall=0.3144 pk=500/500 void=
+r2  46/56 suricata empty  S_m20.small.pcap           self=0.079 wall=0.334 pk=500/500 void=
+r2  47/56 snort    empty  S_h4.small.pcap            self=0.06221 wall=0.2887 pk=500/500 void=
+r2  48/56 suricata empty  S_m39.small.pcap           self=0.076 wall=0.3272 pk=500/500 void=
+r2  49/56 suricata empty  S_h5.small.pcap            self=0.077 wall=0.3322 pk=500/500 void=
+r2  50/56 suricata empty  S_m60.small.pcap           self=0.065 wall=0.3169 pk=500/500 void=
+r2  51/56 suricata empty  S_m48.pcap                 self=1.447 wall=1.9019 pk=200000/200000 void=
+r2  52/56 snort    empty  S_m20.pcap                 self=0.62226 wall=0.8491 pk=50156/50156 void=
+r2  53/56 suricata empty  S_m1.pcap                  self=2.614 wall=2.9775 pk=200000/200000 void=
+r2  54/56 suricata empty  S_somfy02.pcap             self=0.532 wall=0.787 pk=119638/119638 void=
+r2  55/56 snort    empty  S_m60.pcap                 self=2.233351 wall=2.4772 pk=200000/200000 void=
+r2  56/56 snort    empty  S_m1.small.pcap            self=0.069934 wall=0.2959 pk=500/500 void=
+r3   1/56 snort    empty  S_h4.pcap                  self=0.370539 wall=0.5985 pk=21664/21664 void=
+r3   2/56 snort    empty  S_m44.small.pcap           self=0.064476 wall=0.2939 pk=500/500 void=
+r3   3/56 snort    empty  S_m48.small.pcap           self=0.064598 wall=0.2912 pk=500/500 void=
+r3   4/56 snort    empty  S_h5.small.pcap            self=0.086915 wall=0.3135 pk=500/500 void=
+r3   5/56 snort    empty  S_m42.small.pcap           self=0.065575 wall=0.2927 pk=500/500 void=
+r3   6/56 snort    empty  S_m20.pcap                 self=0.629216 wall=0.855 pk=50156/50156 void=
+r3   7/56 suricata empty  S_somfy02.small.pcap       self=0.063 wall=0.3155 pk=500/500 void=
+r3   8/56 suricata empty  S_h5.pcap                  self=1.392 wall=1.6449 pk=200000/200000 void=
+r3   9/56 snort    empty  S_h5.pcap                  self=2.099949 wall=2.3277 pk=200000/200000 void=
+r3  10/56 suricata empty  S_m34.small.pcap           self=0.073 wall=0.3248 pk=500/500 void=
+r3  11/56 suricata empty  S_m17.pcap                 self=1.982 wall=4.604 pk=200000/200000 void=
+r3  12/56 suricata empty  S_m42.pcap                 self=0.558 wall=0.8117 pk=24484/24484 void=
+r3  13/56 snort    empty  S_m1.small.pcap            self=0.069774 wall=0.2967 pk=500/500 void=
+r3  14/56 snort    empty  S_m17.pcap                 self=2.043546 wall=2.2704 pk=200000/200000 void=
+r3  15/56 snort    empty  S_m20.small.pcap           self=0.067652 wall=0.2934 pk=500/500 void=
+r3  16/56 snort    empty  S_m60.small.pcap           self=0.062344 wall=0.2889 pk=500/500 void=
+r3  17/56 suricata empty  S_m17.small.pcap           self=0.056 wall=0.31 pk=500/500 void=
+r3  18/56 suricata empty  S_h5.small.pcap            self=0.075 wall=0.329 pk=500/500 void=
+r3  19/56 suricata empty  S_m39.pcap                 self=1.771 wall=8.5322 pk=200000/200000 void=
+r3  20/56 snort    empty  S_somfy02.pcap             self=1.474199 wall=1.6999 pk=119638/119638 void=
+r3  21/56 suricata empty  S_m3.pcap                  self=1.973 wall=2.2688 pk=200000/200000 void=
+r3  22/56 snort    empty  S_m60.pcap                 self=2.203444 wall=2.4292 pk=200000/200000 void=
+r3  23/56 suricata empty  S_somfy02.pcap             self=0.53 wall=0.7837 pk=119638/119638 void=
+r3  24/56 suricata empty  S_m39.small.pcap           self=0.073 wall=0.3225 pk=500/500 void=
+r3  25/56 suricata empty  S_m36.small.pcap           self=0.065 wall=0.3233 pk=500/500 void=
+r3  26/56 suricata empty  S_h4.pcap                  self=0.284 wall=0.5403 pk=21664/21664 void=
+r3  27/56 snort    empty  S_m39.pcap                 self=2.347816 wall=2.5753 pk=200000/200000 void=
+r3  28/56 suricata empty  S_m36.pcap                 self=3.29 wall=8.0099 pk=200000/200000 void=
+r3  29/56 snort    empty  S_h4.small.pcap            self=0.062262 wall=0.2884 pk=500/500 void=
+r3  30/56 suricata empty  S_m3.small.pcap            self=0.069 wall=0.3174 pk=500/500 void=
+r3  31/56 snort    empty  S_m34.pcap                 self=4.170581 wall=4.4037 pk=200000/200000 void=
+r3  32/56 suricata empty  S_m1.pcap                  self=2.264 wall=2.9076 pk=200000/200000 void=
+r3  33/56 snort    empty  S_m17.small.pcap           self=0.062354 wall=0.2871 pk=500/500 void=
+r3  34/56 snort    empty  S_somfy02.small.pcap       self=0.062264 wall=0.2884 pk=500/500 void=
+r3  35/56 snort    empty  S_m36.pcap                 self=2.174515 wall=2.3994 pk=200000/200000 void=
+r3  36/56 suricata empty  S_m1.small.pcap            self=0.064 wall=0.3141 pk=500/500 void=
+r3  37/56 suricata empty  S_m60.pcap                 self=0.877 wall=1.132 pk=200000/200000 void=
+r3  38/56 snort    empty  S_m36.small.pcap           self=0.062364 wall=0.2874 pk=500/500 void=
+r3  39/56 snort    empty  S_m39.small.pcap           self=0.065618 wall=0.2924 pk=500/500 void=
+r3  40/56 suricata empty  S_h4.small.pcap            self=0.064 wall=0.3187 pk=500/500 void=
+r3  41/56 suricata empty  S_m42.small.pcap           self=0.07 wall=0.3219 pk=500/500 void=
+r3  42/56 suricata empty  S_m20.pcap                 self=0.337 wall=0.5912 pk=50156/50156 void=
+r3  43/56 snort    empty  S_m44.pcap                 self=2.582656 wall=2.8073 pk=200000/200000 void=
+r3  44/56 suricata empty  S_m48.pcap                 self=1.459 wall=1.8667 pk=200000/200000 void=
+r3  45/56 suricata empty  S_m48.small.pcap           self=0.067 wall=0.319 pk=500/500 void=
+r3  46/56 suricata empty  S_m34.pcap                 self=1.439 wall=1.6931 pk=200000/200000 void=
+r3  47/56 snort    empty  S_m48.pcap                 self=3.726865 wall=3.9529 pk=200000/200000 void=
+r3  48/56 suricata empty  S_m44.pcap                 self=1.402 wall=1.6515 pk=200000/200000 void=
+r3  49/56 snort    empty  S_m1.pcap                  self=5.194296 wall=5.4194 pk=200000/200000 void=
+r3  50/56 suricata empty  S_m60.small.pcap           self=0.06 wall=0.3112 pk=500/500 void=
+r3  51/56 snort    empty  S_m3.pcap                  self=4.189062 wall=4.4177 pk=200000/200000 void=
+r3  52/56 snort    empty  S_m42.pcap                 self=0.587446 wall=0.817 pk=24484/24484 void=
+r3  53/56 snort    empty  S_m34.small.pcap           self=0.065688 wall=0.2923 pk=500/500 void=
+r3  54/56 snort    empty  S_m3.small.pcap            self=0.065599 wall=0.2927 pk=500/500 void=
+r3  55/56 suricata empty  S_m44.small.pcap           self=0.07 wall=0.3259 pk=500/500 void=
+r3  56/56 suricata empty  S_m20.small.pcap           self=0.081 wall=0.3317 pk=500/500 void=
+--- pi_scen2_E 結束 rc=0  2026-10-17T13:01:55Z
+
+=================== 2026-10-17T13:01:55Z  開始 pi_scen2_S ===================
+jobs/round=28 rounds=4 (含 warm-up 1) -> /home/wnc/ids_throughput/results/pi_scen2_S.csv
+r0   1/28 suricata full   S_m39.pcap                 self=12.999 wall=48.2306 pk=200000/200000 void=
+r0   2/28 suricata full   S_m3.pcap                  self=6.183 wall=41.3455 pk=200000/200000 void=
+r0   3/28 suricata full   S_m60.pcap                 self=1.12 wall=36.1635 pk=200000/200000 void=
+r0   4/28 suricata full   S_m44.pcap                 self=5.794 wall=40.8554 pk=200000/200000 void=
+r0   5/28 suricata gw_corp S_m3.pcap                  self=5.892 wall=30.7889 pk=200000/200000 void=
+r0   6/28 suricata gw_corp S_m1.pcap                  self=3.3 wall=28.1694 pk=200000/200000 void=
+r0   7/28 suricata full   S_m1.pcap                  self=3.424 wall=38.5084 pk=200000/200000 void=
+r0   8/28 suricata gw_corp S_h5.pcap                  self=1.609 wall=26.3822 pk=200000/200000 void=
+r0   9/28 suricata gw_corp S_m39.pcap                 self=12.662 wall=37.735 pk=200000/200000 void=
+r0  10/28 suricata gw_corp S_m44.pcap                 self=5.443 wall=30.3207 pk=200000/200000 void=
+r0  11/28 suricata gw_corp S_somfy02.pcap             self=2.353 wall=27.1872 pk=119638/119638 void=
+r0  12/28 suricata full   S_h5.pcap                  self=1.625 wall=36.6797 pk=200000/200000 void=
+r0  13/28 suricata gw_corp S_m20.pcap                 self=0.478 wall=25.3782 pk=50156/50156 void=
+r0  14/28 suricata gw_corp S_m36.pcap                 self=10.809 wall=35.6819 pk=200000/200000 void=
+r0  15/28 suricata full   S_m42.pcap                 self=1.223 wall=36.2883 pk=24484/24484 void=
+r0  16/28 suricata full   S_somfy02.pcap             self=2.923 wall=38.1069 pk=119638/119638 void=
+r0  17/28 suricata full   S_m34.pcap                 self=5.641 wall=40.743 pk=200000/200000 void=
+r0  18/28 suricata full   S_m17.pcap                 self=6.102 wall=41.1235 pk=200000/200000 void=
+r0  19/28 suricata gw_corp S_m34.pcap                 self=5.205 wall=30.1338 pk=200000/200000 void=
+r0  20/28 suricata gw_corp S_m42.pcap                 self=1.095 wall=25.8572 pk=24484/24484 void=
+r0  21/28 suricata full   S_h4.pcap                  self=0.601 wall=35.7105 pk=21664/21664 void=
+r0  22/28 suricata full   S_m20.pcap                 self=0.488 wall=35.554 pk=50156/50156 void=
+r0  23/28 suricata gw_corp S_m17.pcap                 self=5.966 wall=30.7485 pk=200000/200000 void=
+r0  24/28 suricata full   S_m36.pcap                 self=11.065 wall=46.0833 pk=200000/200000 void=
+r0  25/28 suricata full   S_m48.pcap                 self=3.025 wall=38.1461 pk=200000/200000 void=
+r0  26/28 suricata gw_corp S_h4.pcap                  self=0.549 wall=25.4247 pk=21664/21664 void=
+r0  27/28 suricata gw_corp S_m48.pcap                 self=2.793 wall=27.5906 pk=200000/200000 void=
+r0  28/28 suricata gw_corp S_m60.pcap                 self=1.12 wall=25.9314 pk=200000/200000 void=
+r1   1/28 suricata gw_corp S_m1.pcap                  self=3.287 wall=28.1705 pk=200000/200000 void=
+r1   2/28 suricata full   S_somfy02.pcap             self=2.905 wall=38.0972 pk=119638/119638 void=
+r1   3/28 suricata full   S_m1.pcap                  self=3.461 wall=38.4668 pk=200000/200000 void=
+r1   4/28 suricata full   S_m48.pcap                 self=2.982 wall=37.851 pk=200000/200000 void=
+r1   5/28 suricata full   S_m3.pcap                  self=6.205 wall=41.0734 pk=200000/200000 void=
+r1   6/28 suricata gw_corp S_m20.pcap                 self=0.468 wall=25.2147 pk=50156/50156 void=
+r1   7/28 suricata gw_corp S_m48.pcap                 self=2.787 wall=27.4953 pk=200000/200000 void=
+r1   8/28 suricata gw_corp S_m60.pcap                 self=1.093 wall=25.7085 pk=200000/200000 void=
+r1   9/28 suricata gw_corp S_m34.pcap                 self=5.147 wall=29.8083 pk=200000/200000 void=
+r1  10/28 suricata gw_corp S_m36.pcap                 self=10.742 wall=35.4678 pk=200000/200000 void=
+r1  11/28 suricata full   S_m34.pcap                 self=5.598 wall=40.4602 pk=200000/200000 void=
+r1  12/28 suricata full   S_m60.pcap                 self=1.123 wall=36.0055 pk=200000/200000 void=
+r1  13/28 suricata gw_corp S_h4.pcap                  self=0.528 wall=25.3235 pk=21664/21664 void=
+r1  14/28 suricata full   S_m36.pcap                 self=11.04 wall=45.8684 pk=200000/200000 void=
+r1  15/28 suricata gw_corp S_h5.pcap                  self=1.603 wall=26.2422 pk=200000/200000 void=
+r1  16/28 suricata gw_corp S_m3.pcap                  self=5.764 wall=30.4323 pk=200000/200000 void=
+r1  17/28 suricata full   S_m20.pcap                 self=0.481 wall=35.4617 pk=50156/50156 void=
+r1  18/28 suricata full   S_m39.pcap                 self=12.933 wall=47.9362 pk=200000/200000 void=
+r1  19/28 suricata gw_corp S_somfy02.pcap             self=2.587 wall=27.4302 pk=119638/119638 void=
+r1  20/28 suricata full   S_h5.pcap                  self=1.622 wall=36.4507 pk=200000/200000 void=
+r1  21/28 suricata full   S_m44.pcap                 self=5.981 wall=40.6961 pk=200000/200000 void=
+r1  22/28 suricata gw_corp S_m44.pcap                 self=5.41 wall=30.1594 pk=200000/200000 void=
+r1  23/28 suricata full   S_m42.pcap                 self=1.188 wall=35.9597 pk=24484/24484 void=
+r1  24/28 suricata full   S_h4.pcap                  self=0.58 wall=35.4972 pk=21664/21664 void=
+r1  25/28 suricata gw_corp S_m17.pcap                 self=5.932 wall=30.5536 pk=200000/200000 void=
+r1  26/28 suricata gw_corp S_m42.pcap                 self=1.082 wall=25.718 pk=24484/24484 void=
+r1  27/28 suricata full   S_m17.pcap                 self=6.061 wall=40.9425 pk=200000/200000 void=
+r1  28/28 suricata gw_corp S_m39.pcap                 self=12.622 wall=37.6309 pk=200000/200000 void=
+r2   1/28 suricata full   S_m3.pcap                  self=6.153 wall=40.8957 pk=200000/200000 void=
+r2   2/28 suricata gw_corp S_m44.pcap                 self=5.409 wall=30.0016 pk=200000/200000 void=
+r2   3/28 suricata gw_corp S_m34.pcap                 self=5.152 wall=29.8019 pk=200000/200000 void=
+r2   4/28 suricata gw_corp S_m42.pcap                 self=1.067 wall=25.7966 pk=24484/24484 void=
+r2   5/28 suricata gw_corp S_m3.pcap                  self=5.844 wall=30.6097 pk=200000/200000 void=
+r2   6/28 suricata gw_corp S_m20.pcap                 self=0.476 wall=25.227 pk=50156/50156 void=
+r2   7/28 suricata full   S_m39.pcap                 self=12.862 wall=47.8865 pk=200000/200000 void=
+r2   8/28 suricata full   S_m44.pcap                 self=5.963 wall=40.8378 pk=200000/200000 void=
+r2   9/28 suricata full   S_h4.pcap                  self=0.592 wall=35.4702 pk=21664/21664 void=
+r2  10/28 suricata full   S_m42.pcap                 self=1.168 wall=36.3726 pk=24484/24484 void=
+r2  11/28 suricata full   S_m36.pcap                 self=11.053 wall=46.0069 pk=200000/200000 void=
+r2  12/28 suricata gw_corp S_m36.pcap                 self=10.797 wall=35.5673 pk=200000/200000 void=
+r2  13/28 suricata gw_corp S_h4.pcap                  self=0.536 wall=25.2513 pk=21664/21664 void=
+r2  14/28 suricata gw_corp S_m48.pcap                 self=2.798 wall=27.4239 pk=200000/200000 void=
+r2  15/28 suricata full   S_m34.pcap                 self=5.632 wall=40.6104 pk=200000/200000 void=
+r2  16/28 suricata full   S_m17.pcap                 self=6.063 wall=41.0398 pk=200000/200000 void=
+r2  17/28 suricata full   S_h5.pcap                  self=1.617 wall=36.5859 pk=200000/200000 void=
+r2  18/28 suricata gw_corp S_somfy02.pcap             self=2.292 wall=26.9753 pk=119638/119638 void=
+r2  19/28 suricata gw_corp S_m17.pcap                 self=6.009 wall=30.8284 pk=200000/200000 void=
+r2  20/28 suricata gw_corp S_m39.pcap                 self=12.605 wall=37.5176 pk=200000/200000 void=
+r2  21/28 suricata gw_corp S_h5.pcap                  self=1.631 wall=26.1678 pk=200000/200000 void=
+r2  22/28 suricata gw_corp S_m60.pcap                 self=1.123 wall=25.8341 pk=200000/200000 void=
+r2  23/28 suricata full   S_m48.pcap                 self=2.98 wall=37.8453 pk=200000/200000 void=
+r2  24/28 suricata full   S_m20.pcap                 self=0.491 wall=35.445 pk=50156/50156 void=
+r2  25/28 suricata full   S_m1.pcap                  self=3.361 wall=38.3378 pk=200000/200000 void=
+r2  26/28 suricata full   S_somfy02.pcap             self=2.88 wall=37.6562 pk=119638/119638 void=
+r2  27/28 suricata full   S_m60.pcap                 self=1.172 wall=36.1145 pk=200000/200000 void=
+r2  28/28 suricata gw_corp S_m1.pcap                  self=3.213 wall=27.9356 pk=200000/200000 void=
+r3   1/28 suricata gw_corp S_m42.pcap                 self=1.068 wall=25.7894 pk=24484/24484 void=
+r3   2/28 suricata full   S_m60.pcap                 self=1.139 wall=36.1141 pk=200000/200000 void=
+r3   3/28 suricata gw_corp S_m36.pcap                 self=10.784 wall=35.5389 pk=200000/200000 void=
+r3   4/28 suricata gw_corp S_m39.pcap                 self=12.683 wall=37.6201 pk=200000/200000 void=
+r3   5/28 suricata gw_corp S_h5.pcap                  self=1.594 wall=26.2572 pk=200000/200000 void=
+r3   6/28 suricata full   S_m17.pcap                 self=6.087 wall=40.9984 pk=200000/200000 void=
+r3   7/28 suricata gw_corp S_m17.pcap                 self=5.886 wall=30.7089 pk=200000/200000 void=
+r3   8/28 suricata full   S_h4.pcap                  self=0.584 wall=35.4098 pk=21664/21664 void=
+r3   9/28 suricata full   S_m20.pcap                 self=0.501 wall=35.3545 pk=50156/50156 void=
+r3  10/28 suricata gw_corp S_somfy02.pcap             self=2.31 wall=26.9266 pk=119638/119638 void=
+r3  11/28 suricata gw_corp S_h4.pcap                  self=0.525 wall=25.2435 pk=21664/21664 void=
+r3  12/28 suricata full   S_somfy02.pcap             self=2.9 wall=37.853 pk=119638/119638 void=
+r3  13/28 suricata full   S_m36.pcap                 self=11.09 wall=45.9841 pk=200000/200000 void=
+r3  14/28 suricata full   S_h5.pcap                  self=1.637 wall=36.432 pk=200000/200000 void=
+r3  15/28 suricata full   S_m39.pcap                 self=12.924 wall=47.8838 pk=200000/200000 void=
+r3  16/28 suricata full   S_m42.pcap                 self=1.187 wall=36.0754 pk=24484/24484 void=
+r3  17/28 suricata full   S_m34.pcap                 self=5.606 wall=40.4663 pk=200000/200000 void=
+r3  18/28 suricata gw_corp S_m1.pcap                  self=3.248 wall=27.8782 pk=200000/200000 void=
+r3  19/28 suricata gw_corp S_m48.pcap                 self=2.805 wall=27.4938 pk=200000/200000 void=
+r3  20/28 suricata full   S_m48.pcap                 self=2.983 wall=37.8831 pk=200000/200000 void=
+r3  21/28 suricata full   S_m44.pcap                 self=6.095 wall=41.1389 pk=200000/200000 void=
+r3  22/28 suricata full   S_m1.pcap                  self=3.408 wall=38.3668 pk=200000/200000 void=
+r3  23/28 suricata gw_corp S_m60.pcap                 self=1.144 wall=25.9063 pk=200000/200000 void=
+r3  24/28 suricata full   S_m3.pcap                  self=6.114 wall=41.0634 pk=200000/200000 void=
+r3  25/28 suricata gw_corp S_m34.pcap                 self=5.138 wall=29.7666 pk=200000/200000 void=
+r3  26/28 suricata gw_corp S_m3.pcap                  self=6.461 wall=31.097 pk=200000/200000 void=
+r3  27/28 suricata gw_corp S_m44.pcap                 self=5.368 wall=29.9671 pk=200000/200000 void=
+r3  28/28 suricata gw_corp S_m20.pcap                 self=0.465 wall=25.1787 pk=50156/50156 void=
+--- pi_scen2_S 結束 rc=0  2026-10-17T14:06:17Z
+
+=================== 2026-10-17T14:06:17Z  開始 pi_scen2_N ===================
+jobs/round=28 rounds=4 (含 warm-up 1) -> /home/wnc/ids_throughput/results/pi_scen2_N.csv
+r0   1/28 snort    full   S_m39.pcap                 self=514.003841 wall=540.4817 pk=200000/200000 void=
+r0   2/28 snort    full   S_m3.pcap                  self=352.094783 wall=378.6047 pk=200000/200000 void=
+r0   3/28 snort    full   S_m60.pcap                 self=207.404202 wall=233.9286 pk=200000/200000 void=
+r0   4/28 snort    full   S_m44.pcap                 self=231.651861 wall=258.1799 pk=200000/200000 void=
+r0   5/28 snort    gw_corp S_m3.pcap                  self=8.735787 wall=28.2841 pk=200000/200000 void=
+r0   6/28 snort    gw_corp S_m1.pcap                  self=5.89068 wall=25.1847 pk=200000/200000 void=
+r0   7/28 snort    full   S_m1.pcap                  self=318.210102 wall=344.5575 pk=200000/200000 void=
+r0   8/28 snort    gw_corp S_h5.pcap                  self=2.15382 wall=21.4052 pk=200000/200000 void=
+r0   9/28 snort    gw_corp S_m39.pcap                 self=9.953343 wall=29.5366 pk=200000/200000 void=
+r0  10/28 snort    gw_corp S_m44.pcap                 self=17.508503 wall=36.8435 pk=200000/200000 void=
+r0  11/28 snort    gw_corp S_somfy02.pcap             self=4.88871 wall=24.1403 pk=119638/119638 void=
+r0  12/28 snort    full   S_h5.pcap                  self=2.488232 wall=28.7558 pk=200000/200000 void=
+r0  13/28 snort    gw_corp S_m20.pcap                 self=0.823403 wall=20.1411 pk=50156/50156 void=
+r0  14/28 snort    gw_corp S_m36.pcap                 self=2.611694 wall=21.9141 pk=200000/200000 void=
+r0  15/28 snort    full   S_m42.pcap                 self=16.234548 wall=42.495 pk=24484/24484 void=
+r0  16/28 snort    full   S_somfy02.pcap             self=5.565397 wall=31.922 pk=119638/119638 void=
+r0  17/28 snort    full   S_m34.pcap                 self=265.239217 wall=291.5654 pk=200000/200000 void=
+r0  18/28 snort    full   S_m17.pcap                 self=537.669917 wall=564.0889 pk=200000/200000 void=
+r0  19/28 snort    gw_corp S_m34.pcap                 self=13.091913 wall=32.3668 pk=200000/200000 void=
+r0  20/28 snort    gw_corp S_m42.pcap                 self=1.042581 wall=20.3453 pk=24484/24484 void=
+r0  21/28 snort    full   S_h4.pcap                  self=12.188615 wall=38.5651 pk=21664/21664 void=
+r0  22/28 snort    full   S_m20.pcap                 self=7.94524 wall=34.3593 pk=50156/50156 void=
+r0  23/28 snort    gw_corp S_m17.pcap                 self=2.472482 wall=21.8489 pk=200000/200000 void=
+r0  24/28 snort    full   S_m36.pcap                 self=531.014319 wall=557.2222 pk=200000/200000 void=
+r0  25/28 snort    full   S_m48.pcap                 self=530.838355 wall=557.0613 pk=200000/200000 void=
+r0  26/28 snort    gw_corp S_h4.pcap                  self=0.757211 wall=20.0974 pk=21664/21664 void=
+r0  27/28 snort    gw_corp S_m48.pcap                 self=4.263707 wall=23.6045 pk=200000/200000 void=
+r0  28/28 snort    gw_corp S_m60.pcap                 self=2.758201 wall=22.1749 pk=200000/200000 void=
+r1   1/28 snort    gw_corp S_m1.pcap                  self=5.869504 wall=25.2434 pk=200000/200000 void=
+r1   2/28 snort    full   S_somfy02.pcap             self=5.565815 wall=31.9177 pk=119638/119638 void=
+r1   3/28 snort    full   S_m1.pcap                  self=321.298202 wall=347.7119 pk=200000/200000 void=
+r1   4/28 snort    full   S_m48.pcap                 self=532.353995 wall=558.6148 pk=200000/200000 void=
+r1   5/28 snort    full   S_m3.pcap                  self=354.359554 wall=380.6721 pk=200000/200000 void=
+r1   6/28 snort    gw_corp S_m20.pcap                 self=0.831465 wall=20.1942 pk=50156/50156 void=
+r1   7/28 snort    gw_corp S_m48.pcap                 self=4.390414 wall=23.6805 pk=200000/200000 void=
+r1   8/28 snort    gw_corp S_m60.pcap                 self=2.78903 wall=22.1342 pk=200000/200000 void=
+r1   9/28 snort    gw_corp S_m34.pcap                 self=12.995814 wall=32.3131 pk=200000/200000 void=
+r1  10/28 snort    gw_corp S_m36.pcap                 self=2.591068 wall=21.9043 pk=200000/200000 void=
+r1  11/28 snort    full   S_m34.pcap                 self=268.601631 wall=295.277 pk=200000/200000 void=
+r1  12/28 snort    full   S_m60.pcap                 self=219.123023 wall=245.449 pk=200000/200000 void=
+r1  13/28 snort    gw_corp S_h4.pcap                  self=0.755267 wall=20.1624 pk=21664/21664 void=
+r1  14/28 snort    full   S_m36.pcap                 self=543.339706 wall=569.671 pk=200000/200000 void=
+r1  15/28 snort    gw_corp S_h5.pcap                  self=2.113374 wall=21.422 pk=200000/200000 void=
+r1  16/28 snort    gw_corp S_m3.pcap                  self=8.705892 wall=28.0311 pk=200000/200000 void=
+r1  17/28 snort    full   S_m20.pcap                 self=7.955822 wall=34.2382 pk=50156/50156 void=
+r1  18/28 snort    full   S_m39.pcap                 self=506.665621 wall=533.0078 pk=200000/200000 void=
+r1  19/28 snort    gw_corp S_somfy02.pcap             self=4.939333 wall=24.4551 pk=119638/119638 void=
+r1  20/28 snort    full   S_h5.pcap                  self=2.476731 wall=28.7412 pk=200000/200000 void=
+r1  21/28 snort    full   S_m44.pcap                 self=232.760615 wall=259.1124 pk=200000/200000 void=
+r1  22/28 snort    gw_corp S_m44.pcap                 self=17.527321 wall=36.7959 pk=200000/200000 void=
+r1  23/28 snort    full   S_m42.pcap                 self=16.184163 wall=42.5246 pk=24484/24484 void=
+r1  24/28 snort    full   S_h4.pcap                  self=12.187829 wall=38.6134 pk=21664/21664 void=
+r1  25/28 snort    gw_corp S_m17.pcap                 self=2.505845 wall=21.9753 pk=200000/200000 void=
+r1  26/28 snort    gw_corp S_m42.pcap                 self=1.030015 wall=20.3861 pk=24484/24484 void=
+r1  27/28 snort    full   S_m17.pcap                 self=528.118677 wall=554.4379 pk=200000/200000 void=
+r1  28/28 snort    gw_corp S_m39.pcap                 self=9.995205 wall=29.3272 pk=200000/200000 void=
+r2   1/28 snort    full   S_m3.pcap                  self=350.242906 wall=376.5665 pk=200000/200000 void=
+r2   2/28 snort    gw_corp S_m44.pcap                 self=17.539917 wall=36.8268 pk=200000/200000 void=
+r2   3/28 snort    gw_corp S_m34.pcap                 self=12.581663 wall=31.8914 pk=200000/200000 void=
+r2   4/28 snort    gw_corp S_m42.pcap                 self=1.034401 wall=20.3554 pk=24484/24484 void=
+r2   5/28 snort    gw_corp S_m3.pcap                  self=8.727043 wall=28.1344 pk=200000/200000 void=
+r2   6/28 snort    gw_corp S_m20.pcap                 self=0.829301 wall=20.7679 pk=50156/50156 void=
+r2   7/28 snort    full   S_m39.pcap                 self=512.286846 wall=538.7924 pk=200000/200000 void=
+r2   8/28 snort    full   S_m44.pcap                 self=230.528099 wall=257.0632 pk=200000/200000 void=
+r2   9/28 snort    full   S_h4.pcap                  self=12.166878 wall=38.5326 pk=21664/21664 void=
+r2  10/28 snort    full   S_m42.pcap                 self=16.218256 wall=42.5219 pk=24484/24484 void=
+r2  11/28 snort    full   S_m36.pcap                 self=539.375249 wall=565.6316 pk=200000/200000 void=
+r2  12/28 snort    gw_corp S_m36.pcap                 self=2.578659 wall=21.8764 pk=200000/200000 void=
+r2  13/28 snort    gw_corp S_h4.pcap                  self=0.753636 wall=20.0399 pk=21664/21664 void=
+r2  14/28 snort    gw_corp S_m48.pcap                 self=4.262486 wall=23.5658 pk=200000/200000 void=
+r2  15/28 snort    full   S_m34.pcap                 self=265.859755 wall=292.1255 pk=200000/200000 void=
+r2  16/28 snort    full   S_m17.pcap                 self=537.689532 wall=564.0579 pk=200000/200000 void=
+r2  17/28 snort    full   S_h5.pcap                  self=2.461307 wall=28.8666 pk=200000/200000 void=
+r2  18/28 snort    gw_corp S_somfy02.pcap             self=4.906835 wall=24.223 pk=119638/119638 void=
+r2  19/28 snort    gw_corp S_m17.pcap                 self=2.496018 wall=21.8259 pk=200000/200000 void=
+r2  20/28 snort    gw_corp S_m39.pcap                 self=10.000568 wall=29.2706 pk=200000/200000 void=
+r2  21/28 snort    gw_corp S_h5.pcap                  self=2.126494 wall=21.5022 pk=200000/200000 void=
+r2  22/28 snort    gw_corp S_m60.pcap                 self=2.785922 wall=22.0598 pk=200000/200000 void=
+r2  23/28 snort    full   S_m48.pcap                 self=536.990775 wall=563.3294 pk=200000/200000 void=
+r2  24/28 snort    full   S_m20.pcap                 self=7.961886 wall=34.4344 pk=50156/50156 void=
+r2  25/28 snort    full   S_m1.pcap                  self=322.38437 wall=348.589 pk=200000/200000 void=
+r2  26/28 snort    full   S_somfy02.pcap             self=5.639729 wall=32.3641 pk=119638/119638 void=
+r2  27/28 snort    full   S_m60.pcap                 self=216.172002 wall=242.4499 pk=200000/200000 void=
+r2  28/28 snort    gw_corp S_m1.pcap                  self=5.860503 wall=25.2174 pk=200000/200000 void=
+r3   1/28 snort    gw_corp S_m42.pcap                 self=1.034503 wall=20.3663 pk=24484/24484 void=
+r3   2/28 snort    full   S_m60.pcap                 self=216.651544 wall=242.9089 pk=200000/200000 void=
+r3   3/28 snort    gw_corp S_m36.pcap                 self=2.592694 wall=21.9132 pk=200000/200000 void=
+r3   4/28 snort    gw_corp S_m39.pcap                 self=10.05883 wall=29.3782 pk=200000/200000 void=
+r3   5/28 snort    gw_corp S_h5.pcap                  self=2.11575 wall=21.4438 pk=200000/200000 void=
+r3   6/28 snort    full   S_m17.pcap                 self=532.394819 wall=558.8138 pk=200000/200000 void=
+r3   7/28 snort    gw_corp S_m17.pcap                 self=2.461363 wall=21.8589 pk=200000/200000 void=
+r3   8/28 snort    full   S_h4.pcap                  self=12.211711 wall=39.4308 pk=21664/21664 void=
+r3   9/28 snort    full   S_m20.pcap                 self=7.957722 wall=34.3688 pk=50156/50156 void=
+r3  10/28 snort    gw_corp S_somfy02.pcap             self=4.919921 wall=24.3108 pk=119638/119638 void=
+r3  11/28 snort    gw_corp S_h4.pcap                  self=0.754518 wall=20.1484 pk=21664/21664 void=
+r3  12/28 snort    full   S_somfy02.pcap             self=5.59437 wall=31.8419 pk=119638/119638 void=
+r3  13/28 snort    full   S_m36.pcap                 self=535.815593 wall=562.3869 pk=200000/200000 void=
+r3  14/28 snort    full   S_h5.pcap                  self=2.490695 wall=28.7923 pk=200000/200000 void=
+r3  15/28 snort    full   S_m39.pcap                 self=514.531767 wall=540.8964 pk=200000/200000 void=
+r3  16/28 snort    full   S_m42.pcap                 self=16.14472 wall=42.4145 pk=24484/24484 void=
+r3  17/28 snort    full   S_m34.pcap                 self=265.312616 wall=291.5282 pk=200000/200000 void=
+r3  18/28 snort    gw_corp S_m1.pcap                  self=5.859969 wall=25.2558 pk=200000/200000 void=
+r3  19/28 snort    gw_corp S_m48.pcap                 self=4.275924 wall=23.5377 pk=200000/200000 void=
+r3  20/28 snort    full   S_m48.pcap                 self=536.552046 wall=562.8156 pk=200000/200000 void=
+r3  21/28 snort    full   S_m44.pcap                 self=229.494547 wall=255.7533 pk=200000/200000 void=
+r3  22/28 snort    full   S_m1.pcap                  self=321.444861 wall=347.7269 pk=200000/200000 void=
+r3  23/28 snort    gw_corp S_m60.pcap                 self=2.763419 wall=22.1238 pk=200000/200000 void=
+r3  24/28 snort    full   S_m3.pcap                  self=353.86496 wall=380.1323 pk=200000/200000 void=
+r3  25/28 snort    gw_corp S_m34.pcap                 self=12.173876 wall=31.4858 pk=200000/200000 void=
+r3  26/28 snort    gw_corp S_m3.pcap                  self=8.709132 wall=28.0055 pk=200000/200000 void=
+r3  27/28 snort    gw_corp S_m44.pcap                 self=17.493465 wall=36.8469 pk=200000/200000 void=
+r3  28/28 snort    gw_corp S_m20.pcap                 self=0.82654 wall=20.2292 pk=50156/50156 void=
+--- pi_scen2_N 結束 rc=0  2026-10-17T18:51:31Z
+
+=================== 2026-10-17T18:51:31Z  開始 pi_scen2_anchor1 ===================
+jobs/round=2 rounds=4 (含 warm-up 1) -> /home/wnc/ids_throughput/results/pi_scen2_anchor1.csv
+r0   1/2 suricata full   C_somfy02.pcap             self=2.866 wall=37.736 pk=119638/119638 void=
+r0   2/2 snort    full   C_somfy02.pcap             self=5.567432 wall=31.9933 pk=119638/119638 void=
+r1   1/2 suricata full   C_somfy02.pcap             self=2.89 wall=37.7709 pk=119638/119638 void=
+r1   2/2 snort    full   C_somfy02.pcap             self=5.575677 wall=31.8133 pk=119638/119638 void=
+r2   1/2 suricata full   C_somfy02.pcap             self=2.894 wall=37.7449 pk=119638/119638 void=
+r2   2/2 snort    full   C_somfy02.pcap             self=5.574445 wall=31.8977 pk=119638/119638 void=
+r3   1/2 snort    full   C_somfy02.pcap             self=5.547322 wall=31.9339 pk=119638/119638 void=
+r3   2/2 suricata full   C_somfy02.pcap             self=2.875 wall=37.6043 pk=119638/119638 void=
+--- pi_scen2_anchor1 結束 rc=0  2026-10-17T18:56:11Z
+
+=== 各批的彙總 ===
+rows: total=8 warmup=2 void(non-warmup)=0 used=6
+pcap                     engine   rules    n  self_med       pps   Mbps     cv%  diff_med   self-sm    d/s%   rss_mb alerts
+C_somfy02.pcap           snort    full     3     5.579   21445.0   44.7    0.2                                 365.0 0
+C_somfy02.pcap           suricata full     3     2.943   40652.0   84.8    0.3                                1184.0 0
+
+[檢查]
+(a) 決定性/封包數: 通過
+(e) self vs diff 差距 >10% 的組: 無
+rows: total=224 warmup=56 void(non-warmup)=0 used=168
+pcap                     engine   rules    n  self_med       pps   Mbps     cv%  diff_med   self-sm    d/s%   rss_mb alerts
+S_h4.pcap                snort    empty    3     0.364   59537.0   93.4    1.2      0.304     0.302     0.7     52.0 0
+S_h4.pcap                suricata empty    3     0.284   76282.0  119.7    0.6      0.218     0.216     1.1     54.0 0
+S_h5.pcap                snort    empty    3       2.1   95235.0  754.2    0.1      2.014     2.013     0.0     53.0 0
+S_h5.pcap                suricata empty    3     1.392  143678.0 1137.9    0.9      1.321     1.322    -0.1     55.0 0
+S_m1.pcap                snort    empty    3     5.176   38640.0   22.1    0.3      5.107     5.106     0.0     70.0 0
+S_m1.pcap                suricata empty    3      2.37   84388.0   48.2    7.4!     2.663     2.305    15.5     61.0 0
+S_m17.pcap               snort    empty    3     2.044   97869.0   47.0    0.0      1.981     1.981     0.0     62.0 0
+S_m17.pcap               suricata empty    3     1.994  100301.0   48.2    4.6      4.294     1.928   122.7     97.0 0
+S_m20.pcap               snort    empty    3     0.629   79712.0   41.4    0.7      0.562     0.562     0.0     52.0 0
+S_m20.pcap               suricata empty    3     0.337  148831.0   77.3    0.0      0.256     0.256    -0.2     54.0 0
+S_m3.pcap                snort    empty    3     4.189   47743.0   37.5    0.5      4.125     4.123     0.0     68.0 0
+S_m3.pcap                suricata empty    3     1.973  101368.0   79.6    2.6      2.008     1.904     5.5     61.0 0
+S_m34.pcap               snort    empty    3     4.196   47664.0  380.7    0.4      4.131     4.131     0.0     55.0 0
+S_m34.pcap               suricata empty    3      1.45  137931.0  664.1    1.0      1.379     1.378     0.1     54.0 0
+S_m36.pcap               snort    empty    3     2.175   91975.0   44.2    0.5      2.112     2.112    -0.0     62.0 0
+S_m36.pcap               suricata empty    3     3.012   66401.0   31.9    6.3!     7.765     2.947   163.5    140.0 0
+S_m39.pcap               snort    empty    3     2.339   85489.0   84.7    0.9      2.273     2.274    -0.0     64.0 0
+S_m39.pcap               suricata empty    3     1.771  112931.0  111.8    0.9      8.192     1.698   382.4    165.0 0
+S_m42.pcap               snort    empty    3     0.591   41438.0   34.1    0.4      0.526     0.526     0.0     57.0 0
+S_m42.pcap               suricata empty    3     0.545   44925.0   36.9    1.4      0.479     0.479     0.0     55.0 0
+S_m44.pcap               snort    empty    3     2.584   77389.0  841.8    0.2      2.519      2.52    -0.0     52.0 0
+S_m44.pcap               suricata empty    3     1.395  143369.0 1559.5    0.4      1.326     1.329    -0.3     54.0 0
+S_m48.pcap               snort    empty    3     3.727   53664.0   36.4    1.3      3.662     3.662    -0.0    121.0 0
+S_m48.pcap               suricata empty    3     1.447  138217.0   93.8    2.4      1.571      1.38    13.8     59.0 0
+S_m60.pcap               snort    empty    3     2.203   90767.0   44.0    0.8      2.141     2.141     0.0     52.0 0
+S_m60.pcap               suricata empty    3     0.877  228050.0  110.5    0.5       0.81     0.813    -0.3     54.0 0
+S_somfy02.pcap           snort    empty    3      1.47   81385.0  169.7    0.2      1.411     1.409     0.2     53.0 0
+S_somfy02.pcap           suricata empty    3     0.532  224883.0  469.0    0.3      0.468     0.467     0.3     54.0 0
+
+[檢查]
+(a) 決定性/封包數: 通過
+(e) self vs diff 差距 >10% 的組: [('S_m1.pcap', 'suricata', 'empty', 15.5), ('S_m17.pcap', 'suricata', 'empty', 122.7), ('S_m36.pcap', 'suricata', 'empty', 163.5), ('S_m39.pcap', 'suricata', 'empty', 382.4), ('S_m48.pcap', 'suricata', 'empty', 13.8)]
+rows: total=112 warmup=28 void(non-warmup)=0 used=84
+pcap                     engine   rules    n  self_med       pps   Mbps     cv%  diff_med   self-sm    d/s%   rss_mb alerts
+S_h4.pcap                suricata full     3     0.584   37096.0   58.2    1.0                                1184.0 0
+S_h4.pcap                suricata gw_corp   3     0.528   41030.0   64.4    1.1                                 918.0 0
+S_h5.pcap                suricata full     3     1.622  123305.0  976.5    0.6                                1184.0 3
+S_h5.pcap                suricata gw_corp   3     1.603  124766.0  988.1    1.2                                 918.0 0
+S_m1.pcap                suricata full     3     3.408   58685.0   33.5    1.5                                1184.0 9
+S_m1.pcap                suricata gw_corp   3     3.248   61576.0   35.2    1.1                                 918.0 0
+S_m17.pcap               suricata full     3     6.063   32987.0   15.8    0.2                                1184.0 0
+S_m17.pcap               suricata gw_corp   3     5.932   33715.0   16.2    1.0                                 918.0 0
+S_m20.pcap               suricata full     3     0.491  102151.0   53.0    2.0                                1184.0 0
+S_m20.pcap               suricata gw_corp   3     0.468  107171.0   55.6    1.2                                 918.0 0
+S_m3.pcap                suricata full     3     6.153   32504.0   25.5    0.7                                1184.0 20876
+S_m3.pcap                suricata gw_corp   3     5.844   34223.0   26.9    6.3!                                918.0 20876
+S_m34.pcap               suricata full     3     5.606   35676.0  171.8    0.3                                1184.0 6917,6918,6919  <-- NOT DETERMINISTIC
+S_m34.pcap               suricata gw_corp   3     5.147   38858.0  187.1    0.1                                 918.0 6906,6907,6908  <-- NOT DETERMINISTIC
+S_m36.pcap               suricata full     3    11.053   18095.0    8.7    0.2                                1184.0 0
+S_m36.pcap               suricata gw_corp   3    10.784   18546.0    8.9    0.3                                 918.0 0
+S_m39.pcap               suricata full     3    12.924   15475.0   15.3    0.3                                1240.0 36461
+S_m39.pcap               suricata gw_corp   3    12.622   15845.0   15.7    0.3                                 977.0 36442
+S_m42.pcap               suricata full     3     1.187   20627.0   17.0    1.0                                1184.0 2019
+S_m42.pcap               suricata gw_corp   3     1.068   22925.0   18.9    0.8                                 918.0 1994
+S_m44.pcap               suricata full     3     5.981   33439.0  363.7    1.2                                1184.0 22
+S_m44.pcap               suricata gw_corp   3     5.409   36975.0  402.2    0.4                                 918.0 11
+S_m48.pcap               suricata full     3     2.982   67069.0   45.5    0.1                                1184.0 22
+S_m48.pcap               suricata gw_corp   3     2.798   71480.0   48.5    0.3                                 918.0 11
+S_m60.pcap               suricata full     3     1.139  175593.0   85.1    2.2                                1184.0 0
+S_m60.pcap               suricata gw_corp   3     1.123  178094.0   86.3    2.3                                 918.0 0
+S_somfy02.pcap           suricata full     3       2.9   41254.0   86.0    0.5                                1184.0 0
+S_somfy02.pcap           suricata gw_corp   3      2.31   51791.0  108.0    6.9!                                918.0 0
+
+[檢查]
+(a) 決定性/封包數: 有問題: [('S_m34.pcap', 'suricata', 'full', '6917,6918,6919', 1), ('S_m34.pcap', 'suricata', 'gw_corp', '6906,6907,6908', 1)]
+(e) self vs diff 差距 >10% 的組: 無
+rows: total=112 warmup=28 void(non-warmup)=0 used=84
+pcap                     engine   rules    n  self_med       pps   Mbps     cv%  diff_med   self-sm    d/s%   rss_mb alerts
+S_h4.pcap                snort    full     3    12.188    1778.0    2.8    0.2                                 364.0 0
+S_h4.pcap                snort    gw_corp   3     0.755   28712.0   45.0    0.1                                 290.0 0
+S_h5.pcap                snort    full     3     2.477   80752.0  639.5    0.6                                 365.0 27
+S_h5.pcap                snort    gw_corp   3     2.116   94529.0  748.6    0.3                                 292.0 0
+S_m1.pcap                snort    full     3   321.445     622.0    0.4    0.2                                 382.0 0
+S_m1.pcap                snort    gw_corp   3     5.861   34127.0   19.5    0.1                                 309.0 0
+S_m17.pcap               snort    full     3   532.395     376.0    0.2    0.9                                 374.0 0
+S_m17.pcap               snort    gw_corp   3     2.496   80128.0   38.5    0.9                                 301.0 0
+S_m20.pcap               snort    full     3     7.958    6303.0    3.3    0.0                                 364.0 0
+S_m20.pcap               snort    gw_corp   3     0.829   60480.0   31.4    0.3                                 290.0 0
+S_m3.pcap                snort    full     3   353.865     565.0    0.4    0.6                                 380.0 104720
+S_m3.pcap                snort    gw_corp   3     8.709   22964.0   18.0    0.1                                 306.0 104720
+S_m34.pcap               snort    full     3    265.86     752.0    6.0    0.7                                 367.0 6195
+S_m34.pcap               snort    gw_corp   3    12.582   15896.0  127.0    3.3                                 294.0 6183
+S_m36.pcap               snort    full     3   539.375     371.0    0.2    0.7                                 374.0 0
+S_m36.pcap               snort    gw_corp   3     2.591   77188.0   37.1    0.3                                 301.0 0
+S_m39.pcap               snort    full     3   512.287     390.0    0.4    0.8                                 376.0 182059
+S_m39.pcap               snort    gw_corp   3    10.001   19999.0   19.8    0.4                                 302.0 182040
+S_m42.pcap               snort    full     3    16.184    1513.0    1.2    0.2                                 369.0 2013
+S_m42.pcap               snort    gw_corp   3     1.034   23670.0   19.5    0.2                                 296.0 1988
+S_m44.pcap               snort    full     3   230.528     868.0    9.4    0.7                                 364.0 8
+S_m44.pcap               snort    gw_corp   3    17.527   11411.0  124.1    0.1                                 291.0 4
+S_m48.pcap               snort    full     3   536.552     373.0    0.2    0.5                                 433.0 22
+S_m48.pcap               snort    gw_corp   3     4.276   46774.0   31.7    1.6                                 360.0 11
+S_m60.pcap               snort    full     3   216.652     923.0    0.5    0.7                                 364.0 0
+S_m60.pcap               snort    gw_corp   3     2.786   71790.0   34.8    0.5                                 290.0 0
+S_somfy02.pcap           snort    full     3     5.594   21385.0   44.6    0.7                                 365.0 0
+S_somfy02.pcap           snort    gw_corp   3      4.92   24317.0   50.7    0.3                                 292.0 0
+
+[檢查]
+(a) 決定性/封包數: 通過
+(e) self vs diff 差距 >10% 的組: 無
+rows: total=8 warmup=2 void(non-warmup)=0 used=6
+pcap                     engine   rules    n  self_med       pps   Mbps     cv%  diff_med   self-sm    d/s%   rss_mb alerts
+C_somfy02.pcap           snort    full     3     5.574   21462.0   44.8    0.3                                 365.0 0
+C_somfy02.pcap           suricata full     3      2.89   41397.0   86.3    0.3                                1184.0 0
+
+[檢查]
+(a) 決定性/封包數: 通過
+(e) self vs diff 差距 >10% 的組: 無
+ALL DONE 2026-10-17T18:56:12Z

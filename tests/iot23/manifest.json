@@ -1,0 +1,436 @@
+{
+ "source": "Zenodo record 4743746 (DOI 10.5281/zenodo.4743746), CC-BY-4.0",
+ "tarball": {
+  "name": "iot_23_datasets_full.tar.gz",
+  "size_bytes": 21510801277,
+  "md5_zenodo": "7132e603f9750b8580b6cebdbcd43e9c",
+  "md5_computed": "7132e603f9750b8580b6cebdbcd43e9c",
+  "md5_match": true,
+  "sha256_computed": "ced07fb52b0fdeef9b44c65682490f67c1b1477c92feefbc80c44a2062351f35"
+ },
+ "extracted_root": "/home/sixsquare/datasets/iot23/extracted/run1",
+ "files": [
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-Honeypot-Capture-4-1/2018-09-14-13-40-25-Philips-Hue-Bridge.pcap",
+   "size_bytes": 2429328,
+   "sha256": "11b3ab42e86e4e05370f45a0074ebdbb5597f104e17f8f2b382252b3b433b96f"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-Honeypot-Capture-4-1/2018-10-25-14-06-32-192.168.1.132.pcap",
+   "size_bytes": 4594492,
+   "sha256": "f770897e6cc3fa45857aee25ef7d3ab39dba39127b5bb813e0e0d48d3b905347"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-Honeypot-Capture-4-1/README.md",
+   "size_bytes": 2357,
+   "sha256": "8155d9cd7764c899b5b2df9e8ff905406757c838850fc5370cd4941c40ebb955"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-Honeypot-Capture-4-1/bro/conn.log.labeled",
+   "size_bytes": 61653,
+   "sha256": "aebe40ea0e03b120265a5c7bc140dd9b0d3fe2fce65559e84776b7dd5360e71e"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-Honeypot-Capture-5-1/2018-09-21-capture.pcap",
+   "size_bytes": 381382656,
+   "sha256": "f6c2a4808a3fc3d7c01ae7656f1b341a1c7338bcd4d5a371f96280035efcbf79"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-Honeypot-Capture-5-1/README.md",
+   "size_bytes": 311,
+   "sha256": "b970d43aef87cd87ae9906e0da32d5a1b4bc53df8015d166248a4231487af368"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-Honeypot-Capture-5-1/bro/conn.log.labeled",
+   "size_bytes": 182147,
+   "sha256": "f36db06e7d6ba7364e932a5b003f75835e004b320d70019e8a2f0ba8685d9262"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-Honeypot-Capture-7-1/Somfy-01/2019-07-03-15-15-47-first_start_somfy_gateway.pcap",
+   "size_bytes": 2094105,
+   "sha256": "0ec756ff0e26fc6c7d985178a35206bd7bc5b8a33cc5c7a23d6bb0b103db2a2a"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-Honeypot-Capture-7-1/Somfy-01/bro/conn.log.labeled",
+   "size_bytes": 18024,
+   "sha256": "fb37fb38393c48b064d3afd373b075ffe31063d4924a2df1c5d13fc490b830cc"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-Honeypot-Capture-7-1/Somfy-02/2019-07-03-16-41-09-192.168.1.158.pcap",
+   "size_bytes": 33104424,
+   "sha256": "2a32158374fce6635272ff8fc0ff39b88e1e759100a6384b9a2c8b14ad5dc7b6"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-Honeypot-Capture-7-1/Somfy-03/2019-07-04-16-41-10-192.168.1.158.pcap",
+   "size_bytes": 17182720,
+   "sha256": "1096e452a9749eb915503a58f23d997649563b6d36a2184367467a77239ba247"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-Honeypot-Capture-7-1/Somfy-04/2019-07-05-16-41-14-192.168.1.158.pcap",
+   "size_bytes": 33213386,
+   "sha256": "b7e06c6dbd9cc731b13c741cb6244a36de0f181eeb884c409704f1d5bb991738"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-Honeypot-Capture-7-1/Somfy-05/2019-07-06-16-41-17-192.168.1.158.pcap",
+   "size_bytes": 33358852,
+   "sha256": "34727a2ce14ed4b842dd14d7aa89373f5aad6f100decc4ab11b445663087ab98"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-Honeypot-Capture-7-1/Somfy-06/2019-07-07-16-41-19-192.168.1.158.pcap",
+   "size_bytes": 32964494,
+   "sha256": "c2ff3ec3b1c6865b225479de3aeb6017af273ce65160664bcd61a149c301534c"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-1-1/2018-05-09-192.168.100.103.pcap",
+   "size_bytes": 145928231,
+   "sha256": "8ebcd17af4e2d20b1cf7ad564760756f457a80b791a0757a2b1a624b2724969c"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-1-1/README.md",
+   "size_bytes": 1745,
+   "sha256": "27b932e5777c5b457eafc2f9cd8db3792527e509b31b123dfdf70d6e0c86fcfa"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-1-1/bro/conn.log.labeled",
+   "size_bytes": 148305428,
+   "sha256": "953e8c27a9b2fcfc2776aa136baf9249e6dde4cf752b9192ac7ca0e63b86e232"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-17-1/2018-09-06-11-43-12-192.168.100.111.only15000000.pcap",
+   "size_bytes": 1140255362,
+   "sha256": "e59c02e21d77761ff6b55965d1b4cc5dced6832e437967fadeb8c365c8a4bf88"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-17-1/2018-09-06-11-43-12-192.168.100.111.pcap",
+   "size_bytes": 8316708998,
+   "sha256": "e9490a559d7e978e57eb17e4bd330a4ec296a2cbd3663640be5d170fe5b528c1"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-17-1/README.md",
+   "size_bytes": 2018,
+   "sha256": "22882055e6671cc46d737f5bcf017e3f20e02bb6bdeef6efed2eb9ac5826a40a"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-17-1/bro/conn.log.labeled",
+   "size_bytes": 8139370158,
+   "sha256": "a675cac4d34ce9cefdbf55092203e2cae0ebbbc319881b1e5f69053ca97527da"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-20-1/2018-10-02-13-12-30-192.168.100.103.pcap",
+   "size_bytes": 4057401,
+   "sha256": "4d0a00c33a4bf11228158baddd47c38f702731ea8d75ef1201061fc8bbd878b9"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-20-1/README.md",
+   "size_bytes": 1786,
+   "sha256": "67a196f4c4203865df1e5ffe767551590d611d60aaab1b2df0ff865cfaee3e3c"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-20-1/bro/conn.log.labeled",
+   "size_bytes": 419604,
+   "sha256": "ef48ad72f65efd13d517223e61e4d877ba53a082ddb8159324b18d3f310d0711"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-21-1/2018-10-03-15-22-32-192.168.100.113.pcap",
+   "size_bytes": 4063997,
+   "sha256": "40b6928cedcda03fe5ded8a9994ec007a6d784028f37cbc00bbe3a26a7893023"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-21-1/README.md",
+   "size_bytes": 1787,
+   "sha256": "bfbafe60b85f7425f888ebfb5a2c37cc5beb9eb2a98cb76bc17e4f5b52143c0b"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-21-1/bro/conn.log.labeled",
+   "size_bytes": 428943,
+   "sha256": "b63db259aead078f50fc150aa97ace4d1f69576e1245334962759d978ce437eb"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-3-1/2018-05-21_capture.pcap",
+   "size_bytes": 57919772,
+   "sha256": "c674dc0c8d584fa66e6f00c60df973c5fbacad551c850a76d75ec9952641d00b"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-3-1/README.md",
+   "size_bytes": 3663,
+   "sha256": "426f8ce8680c2593815f6d8bdc4f1f9cf183210a26d9459f135d4d100e91558f"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-3-1/test.pcap",
+   "size_bytes": 984289,
+   "sha256": "174b6b76ed2794a60d7005d76f7fa5481adc4f3ee5545e7fc78be4da4e0fa418"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-3-1/bro/conn.log.labeled",
+   "size_bytes": 24383537,
+   "sha256": "9851009bbca03e15089fa1a356dd4b5eee4a98161a51703626058a0b507f50d0"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-33-1/2018-12-20-21-10-00-192.168.1.197.pcap",
+   "size_bytes": 4142551050,
+   "sha256": "cd9971119cb0d5839b535c51e0af61f4b8fc3b580d3a14e19c04af4b1703dee0"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-33-1/README.md",
+   "size_bytes": 1537,
+   "sha256": "f560ff65ab70d133c346499d7f3c0477ffd499701c84e422b32cac841ccd5a99"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-33-1/bro/conn.log.labeled",
+   "size_bytes": 7867920121,
+   "sha256": "73b639712ac8f093df37a3e687834fca205682e8c63a971a3ca91c15ae819fa2"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-34-1/2018-12-21-15-50-14-192.168.1.195.irc.pcap",
+   "size_bytes": 3754028,
+   "sha256": "7c44d85ed817e08be8e6a2a82bb5433d62e5706a88cd641f9f24c29980e8b970"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-34-1/2018-12-21-15-50-14-192.168.1.195.pcap",
+   "size_bytes": 126317980,
+   "sha256": "92ec7e2f6658ee4b007d0b816986c46cc0338bc5e2bec6ceaaca566c695e4699"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-34-1/README.md",
+   "size_bytes": 1547,
+   "sha256": "1c8737b164fa10a863c9af0f260b35c7e1bb79736f5be673f6994ba1cd06a476"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-34-1/bro/conn.log.labeled",
+   "size_bytes": 3019311,
+   "sha256": "7d1d052835439d77dae246b588d7628813bbdef21fdf3b323f4b3eb2c61ef146"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-35-1/104.248.160.24-23.pcap",
+   "size_bytes": 775712,
+   "sha256": "13771a4b8b579515dca2a22ccd27748f9269e7446b6585f090c63178a302dff7"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-35-1/104.248.160.24-80.pcap",
+   "size_bytes": 321708203,
+   "sha256": "cbfb23606cd65ef82c3311746d056a18a96f29033230993527a16647d3a0739c"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-35-1/104.248.160.24.port80TCP.pcap",
+   "size_bytes": 1225095,
+   "sha256": "adaccebdabad15e964507a88eced38cdea720a8c8e91ea14dc647d4f68e4351a"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-35-1/104.248.160.24.port80UDP.pcap",
+   "size_bytes": 320483132,
+   "sha256": "3f371046cf713a23c54f193235342913d3d132f392c1c1452406531a780d5530"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-35-1/2018-12-21-15-33-59-192.168.1.196.pcap",
+   "size_bytes": 3810783348,
+   "sha256": "cad2d1131793d9ccdb3010d28c5d94c80ec3a955e7a83b89851bcecb386afbdd"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-35-1/85.217.225.181.23.pcap",
+   "size_bytes": 8783,
+   "sha256": "dc41e6f38ec76289741591364da0626244115b4b667b31eb03e611552b94bbc4"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-35-1/README.md",
+   "size_bytes": 1526,
+   "sha256": "62e48b0391f2ea036c3cf197a6d88fcf81f0f2e07d9c38533ee931c4a0579cd8"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-35-1/malware-capture-35-1-port-23.pcap",
+   "size_bytes": 1481611135,
+   "sha256": "6ba4dd6ef35d2b2c22ee39e010e84b90682ec4e6f69c4409b7c8e023c7f9c93b"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-35-1/bro/conn.log.labeled",
+   "size_bytes": 1340179107,
+   "sha256": "dde3ac95a8dfe9c3308d92c9eb9ac75612e2ad1a34341f15351f525933f2df3a"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-36-1/2018-12-21-13-36-41-192.168.1.198.pcap",
+   "size_bytes": 1039545119,
+   "sha256": "f58eeae6db19b8e4d8c5c0cb624f44ae23fd94e62fc16a86b26dd0d63fb87ed9"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-36-1/README.md",
+   "size_bytes": 1532,
+   "sha256": "071bf8a9d801b6890d6065aa93835a9a68d33a06acc11dadae3e680040b80794"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-36-1/bro/conn.log.labeled",
+   "size_bytes": 1787852355,
+   "sha256": "cec2d4d3736a025694b0b272498ca9b672fd8d37d76e290b93c810e4df73dc63"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-39-1/2019-01-09-21-25-11-192.168.1.194.pcap",
+   "size_bytes": 5617836032,
+   "sha256": "9d6e7dabbd53455174765549cd30035bf2469da854877ca44eca178ddb5d1904"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-39-1/README.md",
+   "size_bytes": 1525,
+   "sha256": "5b2b5d76e14a44251fdbb6208867d9b9e61d05eeec78578c1ad74ce250dbba0c"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-39-1/bro/conn.log.labeled",
+   "size_bytes": 10885361439,
+   "sha256": "304c1667cb4ece9d1d14336fdd707962ab0ae2c98f12db7784d293ce17c6223b"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-42-1/2019-01-10-14-34-38-192.168.1.197.pcap",
+   "size_bytes": 2908160,
+   "sha256": "7573797f17aae96e3804a3cfb22d531b74c17bbae740de1e14048f89130fba37"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-42-1/README.md",
+   "size_bytes": 1528,
+   "sha256": "3b3ca5b655db82a93e7f69fcbba76bb9de3f4fff3ea2938726062abe4ff889b3"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-42-1/bro/conn.log.labeled",
+   "size_bytes": 585829,
+   "sha256": "269fa1b22d9a37e159cf41b81a213a0032d21306f5d39b4c20cb0d211b04e8aa"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-43-1/2019-01-10-19-22-51-192.168.1.198.pcap",
+   "size_bytes": 6345876572,
+   "sha256": "fb4e80dd8a1ab796e931914609533a6d9052adc9f7a8b378ac6da6c848d50898"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-43-1/README.md",
+   "size_bytes": 1592,
+   "sha256": "886f4f35ced21028811657e0b52b46618509c868940b469490d3df13474380b5"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-43-1/bro/conn.log.labeled",
+   "size_bytes": 9363261631,
+   "sha256": "b2b485367edf1319a78914da346cc12fc54f4d178822efccd4e86b016599c5e7"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-44-1/2019-01-10-21-06-26-192.168.1.199.pcap",
+   "size_bytes": 1822543872,
+   "sha256": "fa9304fefc2af6c65a40734842c080e54ff623a83bad8aba9f628f2f4e30fa40"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-44-1/README.md",
+   "size_bytes": 1527,
+   "sha256": "296294529a47ffe3d52dcc8787c694ddd20b097e0c9966a53c097c622b2a6910"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-44-1/bro/conn.log.labeled",
+   "size_bytes": 31179,
+   "sha256": "12cd99bcda78140dd5f31cf3d786642f150e42e0ebc3599190f35314e406f71f"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-48-1/2019-02-28-19-15-13-192.168.1.200.pcap",
+   "size_bytes": 1222967296,
+   "sha256": "538cd72e9583bf7be30501f6d9de6694498118e9300f7835e63c7f6ce693ad3c"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-48-1/README.md",
+   "size_bytes": 1522,
+   "sha256": "fd8035f10bc57f4fe6114ade18eaae7de26b9385f1b9ed67ccedd1b3a51e7f83"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-48-1/bro/conn.log.labeled",
+   "size_bytes": 531738215,
+   "sha256": "9f69946243df93c199876c0783cb4b5fb188e6d2325c593858f2db8fb5fa847f"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-49-1/2019-02-28-20-50-15-192.168.1.193.pcap",
+   "size_bytes": 1381228544,
+   "sha256": "327331a744810dc21eaf74736d7250acc0b6270781af18495566a1774c65956c"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-49-1/README.md",
+   "size_bytes": 1582,
+   "sha256": "7554343f0f2e2eceaf06f000e911a1c0bc5b4b07ccf14529a9c1f67d3b8eafdd"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-49-1/bro/conn.log.labeled",
+   "size_bytes": 853630635,
+   "sha256": "12e12cd6d01cb0f2b5330c217069ab4de103aa2044a97dd60d8af5f0d3cfa54f"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-52-1/2019-03-08-13-24-30-192.168.1.197.pcap",
+   "size_bytes": 4904467819,
+   "sha256": "5a12f51f99973337e67993e40db9d62fdfa97aa8281707e658858f6ae5c69714"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-52-1/README.md",
+   "size_bytes": 1532,
+   "sha256": "69e6c5587d2e824da096aadab883dba0a4ee14b5b835648a55925880eef6c9a3"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-52-1/bro/conn.log.labeled",
+   "size_bytes": 3070319722,
+   "sha256": "68796959779c4ec5b77bf0d40b220af2b4fa5550fc212725add1b48ae86f61a9"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-60-1/2019-09-20-02-40-32-192.168.1.195.pcap",
+   "size_bytes": 22028429274,
+   "sha256": "a66900fcc719ed17320f718e5efd23c3a33667cd16de1e3fca88a6036748aeaa"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-60-1/README.md",
+   "size_bytes": 1873,
+   "sha256": "6ab25ea8b2cc2d95b19c5b9f477d81c4a8e9ae0e04c3cf489d1e8461e3ce2fba"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-60-1/bro/conn.log.labeled",
+   "size_bytes": 467559811,
+   "sha256": "4e15902f6c39b1fad60605e667761b10c0c9866beb514aa6320b7baf108ea7c0"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-7-1/2018-07-20-17-31-20-192.168.100.108.pcap",
+   "size_bytes": 940133712,
+   "sha256": "722944176f45d7634e9b482141c02d3ebc0e6d0438c03979e0b3d00c9bbca212"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-7-1/README.md",
+   "size_bytes": 2791,
+   "sha256": "58b07e98594bc61f7d639822fc0a58e5d7d9ec4dac568024cb206770db15c941"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-7-1/bro/conn.log.labeled",
+   "size_bytes": 1581263847,
+   "sha256": "3d603dc7c5a78f59b65aee892c8ccdca6023c8517ce1322eda6ecf2d903bfd73"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-8-1/2018-07-31-15-15-09-192.168.100.113.pcap",
+   "size_bytes": 2098362,
+   "sha256": "80dcc2602519479ddcde889fa902fee19a76696630811452f8df38888af894f2"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-8-1/README.md",
+   "size_bytes": 1688,
+   "sha256": "1788755a075f580c3628e4698ba4dad699f91c058dede73bae3f480bb5cba840"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-8-1/bro/conn.log.labeled",
+   "size_bytes": 1431000,
+   "sha256": "4877ca8f0f01902fbd18d28b7d06cb3d0be082355b7f2c8862c9deef1782eb8a"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-9-1/2018-07-25-10-53-16-192.168.100.111.pcap",
+   "size_bytes": 494553863,
+   "sha256": "cee9d9474122b8093a741f6f1ba69a7a3a69c18d1b69c29b414472ecd6889386"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-9-1/README.md",
+   "size_bytes": 1806,
+   "sha256": "4faafd766fb8f0637df8b704ab9fd69ca4bb041d41158c83aee123b088b25fb4"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-9-1/telnet.pcap",
+   "size_bytes": 288412401,
+   "sha256": "00fc35fd219f286784bda293a3143f0e6103d2eb97c082cba6b01a5db751c8d8"
+  },
+  {
+   "path": "opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-9-1/bro/conn.log.labeled",
+   "size_bytes": 993459767,
+   "sha256": "b2749ab394d6a8f96dab5f9aa0e848c9c5b85ad4a6fa3034040d718de56c918b"
+  }
+ ],
+ "file_count": 84,
+ "seconds": 202
+}

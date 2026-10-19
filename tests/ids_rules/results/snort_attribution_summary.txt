@@ -1,0 +1,22 @@
+Snort 版 ET Open（Snort 3.12.2.0 載入，經 snort2lua 轉換）逐條歸因摘要
+啟用規則 52491；snort2lua 轉換成功 52447、未轉換 44；載入被拒絕 2；最終接受 52445 (99.91%)
+
+== snort2lua 未轉換原因 (total=44)
+     25  unknown_option=fast_pattern
+      6  unknown_option=http_header
+      4  (snort2lua 註解) The 'asn1' rule option keyword is no longer supported
+      2  unknown_option=http_uri
+      2  unknown_option=nocase
+      2  unknown_option=distance
+      1  (snort2lua 註解) The 'ftpbounce' rule option keyword is no longer supported
+      1  unknown_option=http_client_body
+      1  unknown_option=depth
+
+== Snort 3 載入被拒絕原因(摘要) (total=2)
+      1  pcre2 compile failed: unrecognized character follows \
+      1  pcre2 compile failed: digits missing after \x or in \x{} or \o{} or \N{U+}
+
+== 迭代移除紀錄
+round 1  sid 2036593  pcre2 compile of '^Referer\x3a\x20[^\r\n]+\metamask\.io\/' failed at offset 25 : unrecognized character follow
+round 1  sid 2064800  pcre2 compile of '\xs3cserver\x3e[^\x26]*?(?:(?:\x3b|%3[Bb])|(?:\x7c|%7[Cc])|(?:\x0a|%0[Aa])|(?:\x60|%60)|(?:\
+

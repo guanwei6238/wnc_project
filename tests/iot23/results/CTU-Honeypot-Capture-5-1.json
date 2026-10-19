@@ -1,0 +1,109 @@
+{
+ "pcap": "2018-09-21-capture.pcap",
+ "log": "conn.log.labeled",
+ "pcap_bytes": 381382656,
+ "pcap_packets": 398312,
+ "pcap_ip_packets": 397060,
+ "pcap_truncated_tail": true,
+ "pcap_linktype": 1,
+ "pcap_covered_packets": 396667,
+ "pcap_time_range": [
+  1537522822.96553,
+  1537542574.600219
+ ],
+ "log_time_range": [
+  1537522822.96553,
+  1537542574.600219
+ ],
+ "flows": 1374,
+ "aligned": 1094,
+ "unaligned": 280,
+ "skipped_flows_other_proto": {},
+ "malformed_log_lines": 0,
+ "unaligned_kinds": {
+  "fewer": 280
+ },
+ "unaligned_examples": [
+  {
+   "line": 21,
+   "uid": "CrZmX42rcVaIRmylO4",
+   "ts": "1537523549.357457",
+   "proto": "tcp",
+   "flow": "192.168.2.3:43216 -> 176.32.98.203:80",
+   "label": "benign",
+   "conn_state": "SF",
+   "found_pkts": 7,
+   "expect_pkts": 8
+  },
+  {
+   "line": 22,
+   "uid": "CT9yHm4yFFcGqsSV55",
+   "ts": "1537523549.696574",
+   "proto": "tcp",
+   "flow": "192.168.2.3:40621 -> 93.184.216.34:80",
+   "label": "benign",
+   "conn_state": "SF",
+   "found_pkts": 5,
+   "expect_pkts": 6
+  },
+  {
+   "line": 23,
+   "uid": "CZIEEo18Q2lzPpCEHc",
+   "ts": "1537523549.939362",
+   "proto": "tcp",
+   "flow": "192.168.2.3:40623 -> 93.184.216.34:80",
+   "label": "benign",
+   "conn_state": "SF",
+   "found_pkts": 5,
+   "expect_pkts": 6
+  },
+  {
+   "line": 24,
+   "uid": "CpTNNy36sGjGpbFVmb",
+   "ts": "1537523550.139896",
+   "proto": "tcp",
+   "flow": "192.168.2.3:40624 -> 93.184.216.34:80",
+   "label": "benign",
+   "conn_state": "SF",
+   "found_pkts": 5,
+   "expect_pkts": 6
+  },
+  {
+   "line": 29,
+   "uid": "Cc5PQFR39JLU3bqaj",
+   "ts": "1537523551.589071",
+   "proto": "tcp",
+   "flow": "192.168.2.3:54908 -> 52.46.157.6:443",
+   "label": "benign",
+   "conn_state": "SF",
+   "found_pkts": 23,
+   "expect_pkts": 24
+  }
+ ],
+ "shards": 1,
+ "labels": {
+  "benign": {
+   "state S0": 468,
+   "state SF": 611,
+   "state RSTO": 2,
+   "state OTH": 102,
+   "state SHR": 3,
+   "state RSTR": 54,
+   "state S3": 27,
+   "state SH": 101,
+   "state S1": 4,
+   "state RSTRH": 2,
+   "flows": 1374,
+   "aligned": 1094,
+   "pkts": 396667,
+   "payload_pkts": 255304,
+   "flows_with_payload": 277
+  }
+ },
+ "scenario": "CTU-Honeypot-Capture-5-1",
+ "main_pcap": "2018-09-21-capture.pcap",
+ "extra_pcaps": {},
+ "log_file": "bro/conn.log.labeled",
+ "pcap_first_ts": 1537522822.96553,
+ "seconds": 1
+}

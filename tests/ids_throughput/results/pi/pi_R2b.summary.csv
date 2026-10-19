@@ -1,0 +1,5 @@
+pcap,engine,rules,n,pkts,bytes,self_med,self_min,self_max,self_cv_pct,pps_med,mbps_med,diff_med,diff_cv_pct,self_minus_small_med,diff_vs_self_pct,pps_diff,mbps_diff,wall_med,cpu_raw_med,cpu_proc_med,maxrss_mb_max,alerts_set,suppressed_set,top_sids,pkts_match_all,bytes_match_all
+A_scan17.pcap,snort,common,2,600000,36019964,1318.715,1317.005,1320.425,0.183,455.0,0.22,,,,,,,1344.716,1388.565,,372.8,0,,,1,1
+A_scan17.pcap,snort,full,2,600000,36019964,1640.184,1637.092,1643.276,0.267,366.0,0.18,,,,,,,1666.709,1722.085,,374.3,0,,,1,1
+B2_mix3.pcap,snort,common,2,496959,49968404,713.987,711.228,716.746,0.547,696.0,0.56,,,,,,,740.039,763.015,,385.5,253382,,2003068:253371;2034743:6;2000348:5,1,1
+B2_mix3.pcap,snort,full,2,496959,49968404,881.641,880.638,882.643,0.161,563.5,0.45,,,,,,,908.283,937.11,,387.1,253382,,2003068:253371;2034743:6;2000348:5,1,1

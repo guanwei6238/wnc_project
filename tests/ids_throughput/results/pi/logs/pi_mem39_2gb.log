@@ -1,0 +1,40 @@
+===== pi_mem39_2gb  開始 2026-10-18T08:14:24Z =====
+MemTotal=1847 MB  available=1622 MB used=224 MB
+swap: /dev/zram0 1846 MB used 0 MB; 
+throttled=0x0 temp=56.4'C  governor=performance max=1000 MHz
+total_mem 設定: total_mem=2048
+等 ARM 時脈降到 1000 MHz（目前 1800 MHz）...
+ARM 時脈: 1000 MHz
+jobs/round=4 rounds=4 (含 warm-up 1) -> /home/wnc/ids_throughput/results/pi_mem39_2gb.csv
+r0   1/4 suricata full   S_m39.pcap                 self=13.176 wall=50.0033 pk=200000/200000 void=
+r0   2/4 snort    full   S_m39.pcap                 self=523.471475 wall=551.3027 pk=200000/200000 void=
+r0   3/4 suricata gw_corp S_m39.pcap                 self=12.775 wall=38.1987 pk=200000/200000 void=
+r0   4/4 snort    gw_corp S_m39.pcap                 self=10.039658 wall=29.6026 pk=200000/200000 void=
+r1   1/4 suricata gw_corp S_m39.pcap                 self=12.772 wall=38.091 pk=200000/200000 void=
+r1   2/4 snort    full   S_m39.pcap                 self=537.947358 wall=564.6005 pk=200000/200000 void=
+r1   3/4 suricata full   S_m39.pcap                 self=13.06 wall=50.7124 pk=200000/200000 void=
+r1   4/4 snort    gw_corp S_m39.pcap                 self=10.111071 wall=32.54 pk=200000/200000 void=
+r2   1/4 snort    full   S_m39.pcap                 self=532.278311 wall=562.3889 pk=200000/200000 void=
+r2   2/4 suricata gw_corp S_m39.pcap                 self=12.792 wall=39.7713 pk=200000/200000 void=
+r2   3/4 suricata full   S_m39.pcap                 self=13.109 wall=50.7134 pk=200000/200000 void=
+r2   4/4 snort    gw_corp S_m39.pcap                 self=10.054089 wall=29.6702 pk=200000/200000 void=
+r3   1/4 snort    gw_corp S_m39.pcap                 self=10.054985 wall=29.6304 pk=200000/200000 void=
+r3   2/4 suricata full   S_m39.pcap                 self=12.996 wall=50.6593 pk=200000/200000 void=
+r3   3/4 snort    full   S_m39.pcap                 self=528.282501 wall=557.3737 pk=200000/200000 void=
+r3   4/4 suricata gw_corp S_m39.pcap                 self=12.76 wall=38.4149 pk=200000/200000 void=
+rc=0
+MemTotal=1847 MB  available=1621 MB used=225 MB
+swap: /dev/zram0 1846 MB used 10 MB; 
+throttled=0x0 temp=62.3'C  governor=performance max=1000 MHz
+--- VmSwap 取樣（Suricata full）---
+probe full rc=0 peak VmRSS=1239MB RssAnon=1228MB VmSwap=0MB pswpin=1 pswpout=0
+	System time (seconds): 5.83
+	Maximum resident set size (kbytes): 1269460
+	Major (requiring I/O) page faults: 0
+--- VmSwap 取樣（Suricata gw_corp）---
+probe gw_corp rc=0 peak VmRSS=977MB RssAnon=966MB VmSwap=0MB pswpin=0 pswpout=0
+	System time (seconds): 4.80
+	Maximum resident set size (kbytes): 1000840
+	Major (requiring I/O) page faults: 0
+===== pi_mem39_2gb  結束 2026-10-18T09:02:10Z =====
+MEMSCEN DONE 2gb
