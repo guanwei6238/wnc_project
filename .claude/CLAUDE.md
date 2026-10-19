@@ -7,6 +7,9 @@
 - 需要**兩個網路 port**（內網 / 外網分離）
 - OS：Linux-like，目前傾向 Raspberry Pi OS Lite 64-bit（Debian trixie）
 
+## 當前研究目標(會隨著每次計畫的討論改變)
+研究如何在資源受限的 IoT Security Gateway 上，透過高效率的封包處理、Flow 資料收集與雲端卸載機制，降低地端運算及傳輸成本，同時維持網路轉送效能與雲端 IDS 所需資料的完整性和即時性。
+
 ---
 
 ## 最重要的工作方式規則
