@@ -1,0 +1,25 @@
+# wnc-gw configuration example
+#
+# Copy this file to /etc/wnc-gw/setting.toml (the default path), or pass
+# another file with `wnc-gw -c <FILE>`.
+#
+# Every value below is commented out on purpose: the gateway never guesses
+# which interface plays which role. Uncomment and edit the ones you need.
+
+[ports]
+# Each port is selected by interface name or by MAC address:
+#   - name: as shown by `ip link` or `wnc-gw show interfaces`, e.g. "eth0"
+#   - MAC:  aa:bb:cc:dd:ee:ff or aa-bb-cc-dd-ee-ff (case-insensitive)
+#
+# A MAC is matched against the permanent (factory) MAC first; the current MAC
+# is used only when no interface has that permanent MAC. If more than one
+# interface matches, select the port by name instead.
+#
+# `--lan` and `--wan` on the command line override these values.
+# Run `wnc-gw doctor` to see which interface each port resolves to.
+
+# Internal side (the network being protected).
+# lan = "eth0"
+
+# External side (towards the Internet).
+# wan = "9c:69:d3:2a:11:54"

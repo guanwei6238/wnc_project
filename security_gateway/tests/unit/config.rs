@@ -120,3 +120,33 @@ fn load_reads_file() {
     assert_eq!(config.file, Some(path));
     assert_eq!(config.wan.value, name("eth1"));
 }
+
+const EXAMPLE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/setting.example.toml"));
+
+#[test]
+fn example_sets_nothing_by_default() {
+    let config = parse(EXAMPLE).unwrap();
+    assert_eq!(config.ports.lan, None);
+    assert_eq!(config.ports.wan, None);
+}
+
+#[test]
+fn example_values_are_valid() {
+    let uncommented = EXAMPLE
+        .lines()
+        .map(|line| match line.strip_prefix("# ") {
+            Some(rest)
+                if rest
+                    .split_once(" = ")
+                    .is_some_and(|(key, _)| key.bytes().all(|b| b.is_ascii_lowercase() || b == b'_')) =>
+            {
+                rest
+            }
+            _ => line,
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let config = parse(&uncommented).unwrap();
+    assert!(config.ports.lan.is_some());
+    assert!(config.ports.wan.is_some());
+}
