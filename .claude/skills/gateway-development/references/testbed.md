@@ -1,0 +1,100 @@
+# Docker testbed 與 Pi
+
+## 目錄
+1. 建置與掛載
+2. testbed 的拓樸
+3. 常用指令
+4. 模擬情境
+5. Docker 會掩蓋的問題
+6. 搬到 Pi
+
+## 1. 建置與掛載
+
+```bash
+cd security_gateway
+cargo build --target x86_64-unknown-linux-musl     # 靜態連結，容器裡不需要任何函式庫
+cargo test  --target x86_64-unknown-linux-musl
+```
+
+gw 容器的掛載（`docker/compose.yml`）：
+
+| 主機 | 容器 | 用途 |
+|---|---|---|
+| `security_gateway/target/x86_64-unknown-linux-musl/debug` | `/opt/sg`（唯讀） | 編好的 `wnc-gw` 在筆電重新編譯後，容器裡馬上看得到 |
+| `docker/wnc-gw/` | `/etc/wnc-gw`（唯讀） | `setting.toml`，路徑和 Pi 上的預設路徑相同。掛的是目錄而不是單一檔案，因為編輯器存檔時常會換掉整個檔案，單檔掛載會因此失效 |
+| `/lib/modules` | `/lib/modules`（唯讀） | 讓 doctor 看到和主機 `modprobe` 相同的模組清單。容器裡的模組自動載入，實際上是主機 kernel 呼叫主機的 modprobe |
+| `docker/` | `/etc/wnc`（唯讀） | 舊的實驗檔案 |
+
+改了 `compose.yml` 之後要重建：`./down.sh && ./up.sh`。只改程式碼的話不用重建，重新編譯就好。
+
+## 2. testbed 的拓樸
+
+目前是 L3 routing（D3 還沒決定；如果選 L2，拓樸要跟著改）：
+
+```
+cli 10.0.1.2 ── lan 10.0.1.0/24 ── eth0 [gw] eth1 ── wan 10.0.2.0/24 ── srv 10.0.2.2（iperf3 server）
+                                   10.0.1.1  10.0.2.1
+                                   MAC 02:00:00:00:01:01 / 02:00:00:00:02:01（固定）
+```
+
+- gw 有 `NET_ADMIN`、`NET_RAW`，並開了 `ip_forward=1`。
+- MAC 在 compose 裡固定，否則每次重建容器都會變，設定檔就對不上。
+- `docker/wnc-gw/setting.toml` 用 MAC 指定 LAN、WAN。veth 沒有出廠 MAC，所以實際上走的是「目前 MAC」這條路。
+- image 是 Debian trixie，和 Pi OS 同一代，內含 iproute2、nftables、conntrack、tcpdump、iperf3、ethtool。**還沒有安裝 Suricata**，等整合方式決定後再加。
+
+## 3. 常用指令
+
+```bash
+cd docker && ./up.sh                                        # 建 image、啟動、ping 驗證
+docker exec -u nobody wnc-gw /opt/sg/wnc-gw doctor          # 用沒有權限的帳號執行
+docker exec -u nobody wnc-gw /opt/sg/wnc-gw show interfaces
+docker exec wnc-gw ip -d link                               # 拿來和程式輸出對照
+docker exec wnc-cli ping -c1 -W2 10.0.2.2                   # 確認轉送沒有被弄壞
+./down.sh
+```
+
+功能不需要權限時，一律用 `-u nobody` 執行，證明它真的不需要權限。需要權限的功能要說明需要哪個 capability。
+
+## 4. 模擬情境
+
+都在容器裡執行，不會動到主機。用完一定要清掉，再 ping 一次確認轉送正常。
+
+| 要模擬 | 指令 | 預期 |
+|---|---|---|
+| 管理者關閉介面 | `docker exec wnc-gw ip link set eth1 down`（之後 `up`） | `AdminDown` |
+| 沒有 carrier | `ip link add va type veth peer name vb && ip link set va up`，再用 `--lan va` | OPER 是 `LOWERLAYERDOWN`，判定為 `NoCarrier` |
+| driver 不回報 link 狀態 | `ip link add d0 type dummy && ip link set d0 up`，再用 `--lan d0` | OPER 是 `UNKNOWN` |
+| MAC 歧義 | `ip link add br-test type bridge && ip link set br-test address 02:00:00:00:01:01` | LAN 的 MAC 對到 `eth0`、`br-test` 兩個介面，報錯；改用 `--lan eth0` 就能解決 |
+| 設定檔錯誤 | 在容器的 `/tmp` 寫一個錯誤的 toml（欄位打錯、MAC 格式錯、缺欄位），用 `-c /tmp/x.toml` 指定 | 報錯並指出行號和欄位 |
+| 讀不到模組目錄 | 拿掉 `/lib/modules` 的掛載（或在其他沒掛載的容器裡跑） | 沒載入的模組變成 `unknown` |
+
+## 5. Docker 會掩蓋的問題
+
+| 問題 | 原因 | 怎麼處理 |
+|---|---|---|
+| 把自己鎖在外面 | `docker exec` 不經過網路，規則把流量全擋掉也進得去。Pi 上是 SSH 經過資料 port（eth1）連進去，會直接斷線 | 會改流量的步驟要另外設計「從網路連 gw」的驗證，例如加一個 admin 容器 |
+| 動到別人的設定 | 容器的 netns 一開始是空的，`flush ruleset` 只會清掉容器自己的規則 | 只動自己的 nft table。驗證時先放一張假的「系統 table」，確認跑完之後它還在 |
+| XDP 看起來可以用 | veth 支援 native XDP，Pi 的網卡不支援 | 只把 Docker 的結果當成「邏輯對」 |
+| kernel 不一樣 | 容器用的是筆電的 kernel（Ubuntu 7.0），不是 Pi 的 6.12 rpi | 模組、kernel 設定（例如 `NF_CONNTRACK_BRIDGE`）要在 Pi 上用 doctor 確認 |
+| 輸出順序亂掉 | `docker exec` 把 stdout 和 stderr 分開傳回 | doctor 的報告全部印在 stdout |
+| 實體網卡的行為 | veth 沒有 driver、沒有出廠 MAC、不會被拔插 | driver、出廠 MAC 在筆電主機上用唯讀的方式驗證；USB 網卡拔插要到 Pi 上測 |
+
+## 6. 搬到 Pi
+
+- **前提**：同一個功能已經通過 Docker 驗證。
+- **編譯**：Pi 要用 aarch64 版本。筆電還沒裝這個 target，要先執行 `rustup target add aarch64-unknown-linux-musl`，再用 `cargo build --target aarch64-unknown-linux-musl`。
+- **連線**：`ssh wnc@10.254.254.2`，走的是 Pi 的 `eth1`（ASIX USB 網卡），**它同時是之後的資料 port**。任何會改網路設定的步驟都要先想好怎麼避免把自己鎖在外面（獨立的管理通道、自動回復、永不封鎖清單）。
+- **Pi 的網卡**：
+
+  | 介面 | 是什麼 | MAC |
+  |---|---|---|
+  | `eth0` | 板載 bcmgenet | `e4:5f:01:2d:03:bf` |
+  | `eth1` | ASIX USB | `9c:69:d3:2a:11:54` |
+
+  名稱在 Pi 3B+ 和 Pi 4 上是相反的，所以一律用 MAC 或確認過的名稱指定。
+- **到 Pi 上要確認的事**：
+  - 兩張網卡有沒有出廠 MAC（`addr_assign_type` 是不是 0）。
+  - ASIX 網卡實際用哪個 driver。
+  - 階段 1 需要的模組在 6.12 rpi kernel 上的狀態。
+  - USB 網卡重插後 ifindex 會變。
+- **Pi 的固定設定**（時脈、校時、Suricata 服務）、關機順序：見專案記憶 `pi-experiment-delegation`，以及 `scripts/README.md`。
