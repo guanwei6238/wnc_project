@@ -3,7 +3,7 @@
 ## 專案目標
 
 開發一台**安全閘道器（security gateway）**：流量先在本地檢測，本地判斷不出來的才送到雲端做重量級分析。
-- 前期原型：**Raspberry Pi 3 Model B+**（之後會換正式設備）
+- 前期原型：**Raspberry Pi 4**（之後會換正式設備）
 - 需要**兩個網路 port**（內網 / 外網分離）
 - OS：Linux-like，目前傾向 Raspberry Pi OS Lite 64-bit（Debian trixie）
 
