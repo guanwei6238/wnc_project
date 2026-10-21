@@ -1,0 +1,122 @@
+use super::*;
+use crate::kernel::netif::MacAddr;
+
+const PHY: MacAddr = MacAddr([0x9c, 0x69, 0xd3, 0x2a, 0x11, 0x54]);
+
+fn name(s: &str) -> PortSelector {
+    PortSelector::Name(s.to_owned())
+}
+
+#[test]
+fn parse_ports() {
+    let config = parse("[ports]\nlan = \"eth0\"\nwan = \"9c:69:d3:2a:11:54\"\n").unwrap();
+    assert_eq!(config.ports.lan, Some(name("eth0")));
+    assert_eq!(config.ports.wan, Some(PortSelector::Mac(PHY)));
+}
+
+#[test]
+fn parse_empty_file() {
+    let config = parse("").unwrap();
+    assert_eq!(config.ports.lan, None);
+    assert_eq!(config.ports.wan, None);
+}
+
+#[test]
+fn parse_rejects_unknown_field() {
+    let err = parse("[ports]\nlna = \"eth0\"\n").unwrap_err();
+    assert!(err.contains("unknown field"), "{err}");
+}
+
+#[test]
+fn parse_rejects_unknown_section() {
+    let err = parse("[port]\nlan = \"eth0\"\n").unwrap_err();
+    assert!(err.contains("unknown field"), "{err}");
+}
+
+#[test]
+fn parse_rejects_invalid_selector() {
+    let err = parse("[ports]\nlan = \"eth/0\"\n").unwrap_err();
+    assert!(err.contains("invalid interface name or MAC address"), "{err}");
+}
+
+#[test]
+fn parse_rejects_wrong_type() {
+    assert!(parse("[ports]\nlan = 1\n").is_err());
+}
+
+#[test]
+fn merge_from_file() {
+    let file_config = parse("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n").unwrap();
+    let config = merge(Some("/x.toml".into()), file_config, Overrides::default()).unwrap();
+    assert_eq!(config.file, Some(PathBuf::from("/x.toml")));
+    assert_eq!(config.lan, Setting { value: name("eth0"), source: Source::File });
+    assert_eq!(config.wan, Setting { value: name("eth1"), source: Source::File });
+}
+
+#[test]
+fn command_line_overrides_file() {
+    let file_config = parse("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n").unwrap();
+    let overrides = Overrides {
+        lan: Some(name("eth2")),
+        wan: None,
+    };
+    let config = merge(None, file_config, overrides).unwrap();
+    assert_eq!(config.lan, Setting { value: name("eth2"), source: Source::CommandLine });
+    assert_eq!(config.wan, Setting { value: name("eth1"), source: Source::File });
+}
+
+#[test]
+fn missing_role_is_an_error() {
+    let file_config = parse("[ports]\nlan = \"eth0\"\n").unwrap();
+    let err = merge(None, file_config, Overrides::default()).unwrap_err();
+    assert!(matches!(err, ConfigError::Missing { role: Role::Wan }));
+    assert_eq!(
+        err.to_string(),
+        "WAN port is not specified (set ports.wan in the config file or pass --wan)"
+    );
+}
+
+#[test]
+fn port_specs_in_role_order() {
+    let file_config = parse("[ports]\nlan = \"eth0\"\nwan = \"9c:69:d3:2a:11:54\"\n").unwrap();
+    let config = merge(None, file_config, Overrides::default()).unwrap();
+    assert_eq!(
+        config.port_specs(),
+        vec![
+            PortSpec { role: Role::Lan, selector: name("eth0") },
+            PortSpec { role: Role::Wan, selector: PortSelector::Mac(PHY) },
+        ]
+    );
+}
+
+#[test]
+fn missing_default_file_uses_command_line() {
+    let overrides = Overrides {
+        lan: Some(name("eth0")),
+        wan: Some(name("eth1")),
+    };
+    let config = load_from(PathBuf::from("/nonexistent/setting.toml"), false, overrides).unwrap();
+    assert_eq!(config.file, None);
+    assert_eq!(config.lan.source, Source::CommandLine);
+}
+
+#[test]
+fn missing_explicit_file_is_an_error() {
+    let overrides = Overrides {
+        lan: Some(name("eth0")),
+        wan: Some(name("eth1")),
+    };
+    let err = load(Some(Path::new("/nonexistent/setting.toml")), overrides).unwrap_err();
+    assert!(matches!(err, ConfigError::Read { ref source, .. } if source.kind() == io::ErrorKind::NotFound));
+}
+
+#[test]
+fn load_reads_file() {
+    let path = std::env::temp_dir().join(format!("wnc-gw-config-test-{}.toml", std::process::id()));
+    std::fs::write(&path, "[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n").unwrap();
+    let result = load(Some(&path), Overrides::default());
+    std::fs::remove_file(&path).unwrap();
+    let config = result.unwrap();
+    assert_eq!(config.file, Some(path));
+    assert_eq!(config.wan.value, name("eth1"));
+}

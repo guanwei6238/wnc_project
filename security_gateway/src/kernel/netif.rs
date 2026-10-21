@@ -1,6 +1,7 @@
 use std::fmt;
 use std::io;
 use std::path::Path;
+use std::str::FromStr;
 
 use futures::TryStreamExt;
 use rtnetlink::packet_route::link::{
@@ -14,6 +15,32 @@ impl fmt::Display for MacAddr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let [a, b, c, d, e, g] = self.0;
         write!(f, "{a:02x}:{b:02x}:{c:02x}:{d:02x}:{e:02x}:{g:02x}")
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("invalid MAC address {0:?} (expected aa:bb:cc:dd:ee:ff or aa-bb-cc-dd-ee-ff)")]
+pub struct ParseMacError(String);
+
+impl FromStr for MacAddr {
+    type Err = ParseMacError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let err = || ParseMacError(s.to_owned());
+        let separator = if s.contains(':') { ':' } else { '-' };
+        let mut parts = s.split(separator);
+        let mut bytes = [0u8; 6];
+        for byte in &mut bytes {
+            let part = parts.next().ok_or_else(err)?;
+            if part.len() != 2 || !part.bytes().all(|b| b.is_ascii_hexdigit()) {
+                return Err(err());
+            }
+            *byte = u8::from_str_radix(part, 16).map_err(|_| err())?;
+        }
+        if parts.next().is_some() {
+            return Err(err());
+        }
+        Ok(Self(bytes))
     }
 }
 
@@ -48,6 +75,7 @@ pub struct Interface {
     pub index: u32,
     pub name: String,
     pub mac: Option<MacAddr>,
+    pub perm_mac: Option<MacAddr>,
     pub admin_up: bool,
     pub oper_state: OperState,
     pub kind: Option<String>,
@@ -57,9 +85,9 @@ pub struct Interface {
 
 #[derive(Debug, thiserror::Error)]
 pub enum NetifError {
-    #[error("無法建立 netlink 連線: {0}")]
+    #[error("failed to open netlink connection: {0}")]
     Connect(io::Error),
-    #[error("讀取介面列表失敗: {0}")]
+    #[error("failed to dump interfaces: {0}")]
     Dump(String),
 }
 
@@ -100,6 +128,7 @@ fn from_link_message(msg: LinkMessage) -> Interface {
         index: msg.header.index,
         name: String::new(),
         mac: None,
+        perm_mac: None,
         admin_up: msg.header.flags.contains(LinkFlags::Up),
         oper_state: OperState::Unknown,
         kind: None,
@@ -111,9 +140,8 @@ fn from_link_message(msg: LinkMessage) -> Interface {
     for attr in msg.attributes {
         match attr {
             LinkAttribute::IfName(name) => iface.name = name,
-            LinkAttribute::Address(bytes) if is_ether => {
-                iface.mac = <[u8; 6]>::try_from(bytes.as_slice()).ok().map(MacAddr);
-            }
+            LinkAttribute::Address(bytes) if is_ether => iface.mac = mac_from_bytes(&bytes),
+            LinkAttribute::PermAddress(bytes) if is_ether => iface.perm_mac = mac_from_bytes(&bytes),
             LinkAttribute::OperState(state) => iface.oper_state = oper_state(state),
             LinkAttribute::Controller(index) => iface.master = Some(index),
             LinkAttribute::LinkInfo(infos) => {
@@ -127,6 +155,10 @@ fn from_link_message(msg: LinkMessage) -> Interface {
         }
     }
     iface
+}
+
+fn mac_from_bytes(bytes: &[u8]) -> Option<MacAddr> {
+    <[u8; 6]>::try_from(bytes).ok().map(MacAddr)
 }
 
 fn oper_state(state: State) -> OperState {
@@ -147,5 +179,5 @@ fn read_driver(name: &str) -> Option<String> {
 }
 
 #[cfg(test)]
-#[path = "../tests/unit/netif.rs"]
+#[path = "../../tests/unit/kernel/netif.rs"]
 mod tests;

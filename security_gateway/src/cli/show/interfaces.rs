@@ -1,7 +1,7 @@
 use std::process::ExitCode;
 
 use clap::Args;
-use security_gateway::netif::{Interface, NetifError, Netlink};
+use security_gateway::kernel::netif::{Interface, NetifError, Netlink};
 
 #[derive(Debug, Args)]
 pub struct InterfacesArgs {}
@@ -13,7 +13,7 @@ pub async fn run(_args: InterfacesArgs) -> ExitCode {
             ExitCode::SUCCESS
         }
         Err(e) => {
-            eprintln!("錯誤: {e}");
+            eprintln!("error: {e}");
             ExitCode::FAILURE
         }
     }
@@ -25,8 +25,8 @@ async fn load() -> Result<Vec<Interface>, NetifError> {
 
 fn print_interfaces(interfaces: &[Interface]) {
     println!(
-        "{:<4} {:<15} {:<17} {:<5} {:<14} {:<8} {:<15} {}",
-        "IDX", "NAME", "MAC", "ADMIN", "OPER", "KIND", "MASTER", "DRIVER"
+        "{:<4} {:<15} {:<17} {:<17} {:<5} {:<14} {:<8} {:<15} {}",
+        "IDX", "NAME", "MAC", "PERM", "ADMIN", "OPER", "KIND", "MASTER", "DRIVER"
     );
     for iface in interfaces {
         let master = iface.master.map(|index| {
@@ -36,10 +36,11 @@ fn print_interfaces(interfaces: &[Interface]) {
                 .map_or_else(|| format!("#{index}"), |other| other.name.clone())
         });
         println!(
-            "{:<4} {:<15} {:<17} {:<5} {:<14} {:<8} {:<15} {}",
+            "{:<4} {:<15} {:<17} {:<17} {:<5} {:<14} {:<8} {:<15} {}",
             iface.index,
             iface.name,
             iface.mac.map_or_else(|| "-".to_owned(), |mac| mac.to_string()),
+            iface.perm_mac.map_or_else(|| "-".to_owned(), |mac| mac.to_string()),
             if iface.admin_up { "up" } else { "down" },
             iface.oper_state.to_string(),
             iface.kind.as_deref().unwrap_or("-"),

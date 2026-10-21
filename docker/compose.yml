@@ -46,11 +46,14 @@ services:
     volumes:
       - ../security_gateway/target/x86_64-unknown-linux-musl/debug:/opt/sg:ro
       - ./:/etc/wnc:ro
+      - ./wnc-gw:/etc/wnc-gw:ro
     networks:
       lan:
         ipv4_address: 10.0.1.1
+        mac_address: 02:00:00:00:01:01
       wan:
         ipv4_address: 10.0.2.1
+        mac_address: 02:00:00:00:02:01
 
   srv:
     build: .
