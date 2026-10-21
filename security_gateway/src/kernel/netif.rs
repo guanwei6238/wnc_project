@@ -8,6 +8,9 @@ use rtnetlink::packet_route::link::{
     LinkAttribute, LinkFlags, LinkInfo, LinkLayerType, LinkMessage, State,
 };
 
+const SYS_CLASS_NET: &str = "/sys/class/net";
+const DEVICE_DRIVER: &str = "device/driver";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacAddr(pub [u8; 6]);
 
@@ -81,6 +84,29 @@ pub struct Interface {
     pub kind: Option<String>,
     pub master: Option<u32>,
     pub driver: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LinkStatus {
+    Up,
+    AdminDown,
+    NoCarrier,
+    Unknown,
+    Other(OperState),
+}
+
+impl Interface {
+    pub fn link_status(&self) -> LinkStatus {
+        if !self.admin_up {
+            return LinkStatus::AdminDown;
+        }
+        match self.oper_state {
+            OperState::Up => LinkStatus::Up,
+            OperState::Down | OperState::LowerLayerDown => LinkStatus::NoCarrier,
+            OperState::Unknown => LinkStatus::Unknown,
+            other => LinkStatus::Other(other),
+        }
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -174,7 +200,7 @@ fn oper_state(state: State) -> OperState {
 }
 
 fn read_driver(name: &str) -> Option<String> {
-    let target = std::fs::read_link(Path::new("/sys/class/net").join(name).join("device/driver")).ok()?;
+    let target = std::fs::read_link(Path::new(SYS_CLASS_NET).join(name).join(DEVICE_DRIVER)).ok()?;
     Some(target.file_name()?.to_str()?.to_owned())
 }
 

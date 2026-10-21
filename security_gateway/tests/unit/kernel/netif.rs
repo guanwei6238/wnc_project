@@ -127,3 +127,28 @@ fn parse_mac_rejects_invalid() {
         assert!(s.parse::<MacAddr>().is_err(), "{s:?} should be rejected");
     }
 }
+
+fn with_state(admin_up: bool, oper_state: OperState) -> Interface {
+    let mut iface = from_link_message(message(LinkLayerType::Ether, vec![]));
+    iface.admin_up = admin_up;
+    iface.oper_state = oper_state;
+    iface
+}
+
+#[test]
+fn link_status() {
+    assert_eq!(with_state(true, OperState::Up).link_status(), LinkStatus::Up);
+    assert_eq!(with_state(false, OperState::Down).link_status(), LinkStatus::AdminDown);
+    assert_eq!(with_state(true, OperState::Down).link_status(), LinkStatus::NoCarrier);
+    assert_eq!(with_state(true, OperState::LowerLayerDown).link_status(), LinkStatus::NoCarrier);
+    assert_eq!(with_state(true, OperState::Unknown).link_status(), LinkStatus::Unknown);
+    assert_eq!(
+        with_state(true, OperState::Dormant).link_status(),
+        LinkStatus::Other(OperState::Dormant)
+    );
+}
+
+#[test]
+fn admin_down_takes_precedence() {
+    assert_eq!(with_state(false, OperState::Unknown).link_status(), LinkStatus::AdminDown);
+}
