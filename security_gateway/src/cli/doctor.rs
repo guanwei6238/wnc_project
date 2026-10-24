@@ -3,7 +3,8 @@ use std::process::ExitCode;
 
 use clap::Args;
 use security_gateway::config::{self, Config, Overrides};
-use security_gateway::kernel::modules::{ModuleIndex, ModuleState};
+use security_gateway::forwarding::{self, EnvCheck, EnvState, Forwarding, Level, Mode};
+use security_gateway::kernel::modules::{ModuleIndex, ModuleState, RequiredModule};
 use security_gateway::kernel::netif::{Interface, LinkStatus, NetifError, Netlink};
 use security_gateway::ports::{self, Port, ResolveError};
 
@@ -51,6 +52,7 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: Doctor
         Some(path) => println!("config: {}", path.display()),
         None => println!("config: none ({} not found)", config::DEFAULT_PATH),
     }
+    println!("mode:   {} ({})", config.mode.value, config.mode.source);
     println!();
 
     let interfaces = match load_interfaces().await {
@@ -65,7 +67,13 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: Doctor
     let mut findings = port_findings(&results);
     println!();
 
-    findings.extend(check_modules());
+    let mode = config.mode.value;
+    let forwarding = forwarding::for_mode(mode);
+    let ports: Vec<Port> = results.iter().filter_map(|r| r.as_ref().ok().cloned()).collect();
+    findings.extend(check_environment(mode, forwarding.as_ref(), &ports, &interfaces));
+    println!();
+
+    findings.extend(check_modules(forwarding.required_modules()));
 
     if !findings.is_empty() {
         println!();
@@ -117,35 +125,79 @@ fn link_finding(port: &Port) -> Option<Finding> {
     })
 }
 
-struct RequiredModule {
-    name: &'static str,
-    purpose: &'static str,
+fn check_environment(
+    mode: Mode,
+    forwarding: &dyn Forwarding,
+    ports: &[Port],
+    interfaces: &[Interface],
+) -> Vec<Finding> {
+    let checks = forwarding.check_environment(ports, interfaces);
+    print_environment(mode, &checks);
+    env_findings(mode, &checks)
+}
+
+fn env_findings(mode: Mode, checks: &[EnvCheck]) -> Vec<Finding> {
+    checks
+        .iter()
+        .filter_map(|check| match &check.state {
+            EnvState::Met { .. } => None,
+            EnvState::Unmet { problem, fix, .. } => Some(Finding {
+                severity: match check.level {
+                    Level::Required => Severity::Error,
+                    Level::Recommended => Severity::Warning,
+                },
+                message: format!("{mode} mode: {problem}; {fix}"),
+            }),
+            EnvState::Unknown { reason } => Some(Finding {
+                severity: Severity::Warning,
+                message: format!("{mode} mode: cannot verify {}: {reason}", check.item),
+            }),
+        })
+        .collect()
+}
+
+fn print_environment(mode: Mode, checks: &[EnvCheck]) {
+    println!("{:<36} {}", format!("{} MODE CHECK", mode.to_string().to_uppercase()), "RESULT");
+    for check in checks {
+        let result = match &check.state {
+            EnvState::Met { actual } if actual.is_empty() => "ok".to_owned(),
+            EnvState::Met { actual } => format!("ok ({actual})"),
+            EnvState::Unmet { actual, .. } => format!("not met ({actual})"),
+            EnvState::Unknown { .. } => "unknown".to_owned(),
+        };
+        println!("{:<36} {}", check.item, result);
+    }
 }
 
 const REQUIRED_MODULES: &[RequiredModule] = &[
     RequiredModule {
         name: "nf_tables",
         purpose: "nftables rules",
+        must_be_loaded: false,
     },
     RequiredModule {
         name: "nft_queue",
         purpose: "queueing packets to the IDS",
+        must_be_loaded: false,
     },
     RequiredModule {
         name: "nfnetlink_queue",
         purpose: "passing queued packets to user space",
+        must_be_loaded: false,
     },
     RequiredModule {
         name: "nf_conntrack",
         purpose: "connection tracking",
+        must_be_loaded: false,
     },
     RequiredModule {
         name: "nft_ct",
         purpose: "matching and setting ct mark",
+        must_be_loaded: false,
     },
 ];
 
-fn check_modules() -> Vec<Finding> {
+fn check_modules(mode_modules: &[RequiredModule]) -> Vec<Finding> {
     let index = match ModuleIndex::load() {
         Ok(index) => index,
         Err(e) => {
@@ -157,6 +209,7 @@ fn check_modules() -> Vec<Finding> {
     };
     let states: Vec<_> = REQUIRED_MODULES
         .iter()
+        .chain(mode_modules)
         .map(|module| (module, index.state(module.name)))
         .collect();
     print_modules(index.release(), &states);
@@ -168,7 +221,17 @@ fn module_findings(release: &str, states: &[(&RequiredModule, ModuleState)]) -> 
         .iter()
         .filter_map(|(module, state)| {
             let (severity, message) = match state {
-                ModuleState::Loaded | ModuleState::Builtin | ModuleState::Loadable => return None,
+                ModuleState::Loaded | ModuleState::Builtin => return None,
+                ModuleState::Loadable if !module.must_be_loaded => return None,
+                ModuleState::Loadable => (
+                    Severity::Error,
+                    format!(
+                        "kernel module {name} is not loaded (needed for {}) and the kernel does not load it on demand; \
+                         load it with: modprobe {name}, and list it in /etc/modules-load.d/ to load it at boot",
+                        module.purpose,
+                        name = module.name
+                    ),
+                ),
                 ModuleState::Missing => (
                     Severity::Error,
                     format!("kernel module {} is missing (needed for {})", module.name, module.purpose),

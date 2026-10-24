@@ -29,7 +29,7 @@ gw 容器的掛載（`docker/compose.yml`）：
 
 ## 2. testbed 的拓樸
 
-目前是 L3 routing（D3 還沒決定；如果選 L2，拓樸要跟著改）：
+目前是 L3 routing，對應設定 `mode = "routed"`。D3 已決定兩種都支援、預設 bridge，但 bridge 的 testbed 還沒做：
 
 ```
 cli 10.0.1.2 ── lan 10.0.1.0/24 ── eth0 [gw] eth1 ── wan 10.0.2.0/24 ── srv 10.0.2.2（iperf3 server）

@@ -106,7 +106,7 @@ RequiredModule {
 | Suricata | 整合方式 A/B/C（`suricata-integration.md` §9） | A：找到執行檔，並確認 `--build-info` 有 `NFQueue support: yes`，版本只顯示不判斷。B：plugin 必須和 Suricata 的 major.minor 一致，要檢查版本。C：檢查我們連結的 libsuricata 和規則目錄。新的探測放在 `ids/suricata.rs`；呼叫外部程式要加逾時（tokio 要開 `process`、`time`） |
 | `nft` 執行檔 | O4：用 nft JSON 呼叫執行檔，還是直接走 netlink | 走 JSON 才需要 |
 | `nf_conntrack_netlink` 模組 | N5：改 ct mark 用 ctnetlink 還是 nft set | 用 ctnetlink 才加進 `REQUIRED_MODULES` |
-| sysctl、bridge 相關模組（`br_netfilter`，或 Pi 上可能沒有的 `nf_conntrack_bridge`） | D3：L2 bridge 還是 L3 routing | L3：`net.ipv4.ip_forward`；L2：bridge 的 netfilter 模組和 sysctl |
+| sysctl、bridge 相關模組 | D3 已決定（2026-10-24），下一步實作 | L3：`net.ipv4.ip_forward`；L2：兩個 port 在同一個 bridge、`br_netfilter` **必須已載入**（它不會自動載入，沒載入時橋接流量完全繞過 nft）、`bridge-nf-call-iptables`/`ip6tables` 是 1。Pi 上沒有 `nf_conntrack_bridge`，不列為需求 |
 | TCX 可用性（kernel ≥ 6.6、bpffs、JIT） | 階段 2 開始時 | 探測放在 `kernel/` |
 | XDP 能力（netdev genetlink 的 xdp-features） | 換正式設備時（Pi 4 兩張網卡都沒有 native XDP） | rust-netlink 沒有 netdev family，要自己寫（約 150–250 行）。只接受 native XDP，不要退回 generic XDP |
 

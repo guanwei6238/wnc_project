@@ -10,6 +10,13 @@ const MODULES_BUILTIN: &str = "modules.builtin";
 const MODULES_DEP: &str = "modules.dep";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RequiredModule {
+    pub name: &'static str,
+    pub purpose: &'static str,
+    pub must_be_loaded: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModuleState {
     Loaded,
     Builtin,

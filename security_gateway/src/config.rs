@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
+use crate::forwarding::Mode;
 use crate::ports::{PortSelector, PortSpec, Role};
 
 pub const DEFAULT_PATH: &str = "/etc/wnc-gw/setting.toml";
@@ -18,6 +19,7 @@ pub struct Overrides {
 pub enum Source {
     CommandLine,
     File,
+    Default,
 }
 
 impl fmt::Display for Source {
@@ -25,6 +27,7 @@ impl fmt::Display for Source {
         f.write_str(match self {
             Self::CommandLine => "command line",
             Self::File => "config file",
+            Self::Default => "default",
         })
     }
 }
@@ -38,6 +41,7 @@ pub struct Setting<T> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Config {
     pub file: Option<PathBuf>,
+    pub mode: Setting<Mode>,
     pub lan: Setting<PortSelector>,
     pub wan: Setting<PortSelector>,
 }
@@ -78,6 +82,7 @@ fn role_key(role: Role) -> &'static str {
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct FileConfig {
+    mode: Option<Mode>,
     #[serde(default)]
     ports: FilePorts,
 }
@@ -130,7 +135,18 @@ fn merge(file: Option<PathBuf>, file_config: FileConfig, overrides: Overrides) -
             })
             .ok_or(ConfigError::Missing { role })
     };
+    let mode = match file_config.mode {
+        Some(value) => Setting {
+            value,
+            source: Source::File,
+        },
+        None => Setting {
+            value: Mode::default(),
+            source: Source::Default,
+        },
+    };
     Ok(Config {
+        mode,
         lan: pick(Role::Lan, overrides.lan, file_config.ports.lan)?,
         wan: pick(Role::Wan, overrides.wan, file_config.ports.wan)?,
         file,

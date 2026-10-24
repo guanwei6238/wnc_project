@@ -15,8 +15,21 @@ fn parse_ports() {
 }
 
 #[test]
+fn parse_mode() {
+    let config = parse("mode = \"routed\"\n").unwrap();
+    assert_eq!(config.mode, Some(Mode::Routed));
+}
+
+#[test]
+fn parse_rejects_invalid_mode() {
+    let err = parse("mode = \"bridged\"\n").unwrap_err();
+    assert!(err.contains("invalid mode \"bridged\""), "{err}");
+}
+
+#[test]
 fn parse_empty_file() {
     let config = parse("").unwrap();
+    assert_eq!(config.mode, None);
     assert_eq!(config.ports.lan, None);
     assert_eq!(config.ports.wan, None);
 }
@@ -49,8 +62,16 @@ fn merge_from_file() {
     let file_config = parse("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n").unwrap();
     let config = merge(Some("/x.toml".into()), file_config, Overrides::default()).unwrap();
     assert_eq!(config.file, Some(PathBuf::from("/x.toml")));
+    assert_eq!(config.mode, Setting { value: Mode::Bridge, source: Source::Default });
     assert_eq!(config.lan, Setting { value: name("eth0"), source: Source::File });
     assert_eq!(config.wan, Setting { value: name("eth1"), source: Source::File });
+}
+
+#[test]
+fn mode_from_file() {
+    let file_config = parse("mode = \"routed\"\n[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n").unwrap();
+    let config = merge(None, file_config, Overrides::default()).unwrap();
+    assert_eq!(config.mode, Setting { value: Mode::Routed, source: Source::File });
 }
 
 #[test]
@@ -126,6 +147,7 @@ const EXAMPLE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/setting
 #[test]
 fn example_sets_nothing_by_default() {
     let config = parse(EXAMPLE).unwrap();
+    assert_eq!(config.mode, None);
     assert_eq!(config.ports.lan, None);
     assert_eq!(config.ports.wan, None);
 }
@@ -147,6 +169,7 @@ fn example_values_are_valid() {
         .collect::<Vec<_>>()
         .join("\n");
     let config = parse(&uncommented).unwrap();
+    assert!(config.mode.is_some());
     assert!(config.ports.lan.is_some());
     assert!(config.ports.wan.is_some());
 }

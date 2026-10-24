@@ -6,6 +6,14 @@
 # Every value below is commented out on purpose: the gateway never guesses
 # which interface plays which role. Uncomment and edit the ones you need.
 
+# Forwarding mode (default: "bridge"):
+#   - "bridge": LAN and WAN are ports of one Linux bridge and the gateway filters
+#     the bridged traffic (transparent; both sides are in the same subnet).
+#     Create the bridge with your network manager; wnc-gw only checks it.
+#   - "routed": the gateway routes between two subnets.
+# Run `wnc-gw doctor` to see the mode in effect and what it requires.
+# mode = "bridge"
+
 [ports]
 # Each port is selected by interface name or by MAC address:
 #   - name: as shown by `ip link` or `wnc-gw show interfaces`, e.g. "eth0"
