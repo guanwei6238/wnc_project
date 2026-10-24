@@ -12,7 +12,7 @@
 | 編號 | 主題 | 位置 |
 |---|---|---|
 | D2 | 自建延遲攻擊資料集的四個問題 | SYNTHESIS §11 |
-| D3 | L2 bridge 還是 L3 routing。會影響 flowtable 能不能用（只支援 L3）、bridge conntrack 的模組 | SYNTHESIS §11；`platform-backends.md` §3、§5 |
+| D3 | **[已決定] 2026-10-24：兩種都支援，預設 bridge**，bridge 預設由 OS 建立（SKILL.md §1）。Pi 上 `nf_conntrack_bridge` 確認沒有，走 `br_netfilter`；實測結果在 SYNTHESIS §11 D3。還沒決定：wire mode 要不要當第三種模式 | SYNTHESIS §11；`platform-backends.md` §3、§5 |
 | D4 | 要不要在 Pi 4 上量決策模型 | SYNTHESIS §11 |
 | D5 | 特徵來源表 | SYNTHESIS §11 |
 | D6 | 階段 2 要不要提前。CLAUDE.md 的平台已改成 Pi 4，但「eBPF 是後期的事」那條規則還在 | SYNTHESIS §11 |
@@ -48,7 +48,11 @@
 | (b) 另外開放「動作外掛」，要管理者明確開啟 | 彈性大 | 外掛可以改變流量去向，安全審查成本高 |
 | (c) 讓外掛直接掛 XDP/TCX | 最簡單 | 外掛等於擁有 verdict，可以偽造 mark 繞過信任模型 |
 
-傾向 (a)。不管選哪個，都要做簽章加 ELF 白名單；Pi OS 沒有 BPF LSM，kernel 端沒辦法替我們擋。
+**[已決定] 2026-10-22：支援完整功能。** 掛點不限（TCX、XDP、socket filter、freplace 都可以），也可以 drop、redirect；掛在哪、做什麼是管理者的責任。開發者的說法：「eBPF 也可以被 doctor 來說明有什麼，這樣就是他管理的問題」。
+
+- (c) 列的代價仍然成立。框架不擋，改成揭露：載入前掃描 ELF 產生能力報告，doctor 列出每個 port 上的程式（`ebpf-plugins.md` §1、§4）。
+- ELF 掃描的結果用來揭露，不拿來拒絕載入。
+- [建議] 開發者還沒確認：只有本機管理者能裝外掛，bundle 要有簽章；核心程式在 TCX 排第一，對永不封鎖清單回傳 PASS，預設開啟、可以關。
 
 ### O4. nft 操作用哪個 crate，以及專案授權
 
@@ -86,6 +90,8 @@
   - (b) 關掉 GRO
   - (c) 有 native XDP 的硬體上用 XDP 算特徵
 - 要看雲端特徵需不需要每個封包的大小和到達間隔（IAT），也要在 Pi 4 上量 GRO 關掉之後的 CPU 成本。
+- 2026-10-24：XDP 預設原則（SKILL.md §1）定了之後，(c) 在有 native XDP 的硬體上就是預設。Pi 4 還是走 TC，(a)、(b) 的問題仍在。掛 generic XDP 雖然也會關掉 GRO，但還多了複製的成本，不能當成 (b) 的做法。
+- [建議] 同一個特徵在 XDP 和 TC 算出來的值不同，上傳的資料要記錄是在哪個 hook 算的（`ebpf-plugins.md` §8）。
 
 ### O8. 插件簽章與金鑰保管
 

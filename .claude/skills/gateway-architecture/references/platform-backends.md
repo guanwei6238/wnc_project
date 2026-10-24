@@ -122,7 +122,7 @@ L2 bridge 模式，或需要細粒度撤銷和抽樣時，改用 tc eBPF。
   - 不要用 `PrivateNetwork`，因為服務要看得到實體網卡。
 - **L2 bridge 模式要注意**（和 SYNTHESIS §11 D3 有關）：
   - Pi 的 bcm2711_defconfig 有 `BRIDGE_NETFILTER=m`、`NF_TABLES_BRIDGE=m`，但沒有列 `NF_CONNTRACK_BRIDGE`（主 agent 核對）。bridge family 的 conntrack 可能要改用 br_netfilter，或自己編 kernel。
-  - [待查證] 在 Pi 上用 `modinfo nf_conntrack_bridge` 或 `/proc/config.gz` 確認。
+  - 2026-10-24 在 Pi（6.18.50+rpt-rpi-v8）上確認：`nf_conntrack_bridge` 沒有，`br_netfilter` 可以載入。bridge 模式走 `br_netfilter`，實測結果見 SYNTHESIS §11 D3。
 
 ## 6. IDS engine adapter
 

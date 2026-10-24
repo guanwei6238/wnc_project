@@ -32,7 +32,11 @@ description: 這個專案（Rust 實作的 security gateway：Suricata 8 + nftab
 | NAT | 不做 | [已決定] 10-20 |
 | 雲端 | 不看 payload；一部分用 Jev 類決策模型，一部分用 ML；特徵格式未定 | [已決定] 10-20 |
 | Fast path | tc eBPF，不用 XDP 當 fast path | [已決定] 10-20 |
-| L2 bridge 或 L3 routing | 未定（SYNTHESIS §11 D3） | 待決 |
+| 框架定位 | 框架只定描述語法（型別、合併規則、CEL 計算式）；eBPF 程式、它輸出的欄位、送雲端的欄位和計算方式都由使用者設定 | [已決定] 10-22 |
+| Suricata 擷取方式 | 走 NFQUEUE，不用 AF_PACKET＋XDP；行為由使用者設定，預設不做 inline drop（verdict 一律 accept，擋人由 nft 執行） | [已決定] 10-22 |
+| eBPF 外掛 | 支援完整功能（掛點不限，可以 drop、redirect），由管理者負責；框架負責揭露（doctor 列出每個 port 上的程式） | [已決定] 10-22 |
+| XDP | 可以設定要不要用。預設只有 port 有 native XDP 才掛，否則核心程式掛 TC，不會自動選 generic。使用者的 XDP 外掛遇到沒有 native 的網卡就不載入，請使用者改成 TC 程式，除非明確指定 generic。doctor 顯示每個 port 用 native 或 generic（`references/ebpf-plugins.md` §7） | [已決定] 10-24 |
+| L2 bridge 或 L3 routing | 兩種都支援，用設定 `mode` 選，預設 bridge。bridge 預設由 OS 建立、wnc-gw 只檢查（之後可以設定成由 wnc-gw 建立）。bridge 模式走 `br_netfilter`，nft 規則和 L3 共用 `inet`；方向用 netdev ingress 打的 mark 判斷，不用 `iifname`。依模式而不同的功能寫成 trait（SYNTHESIS §11 D3 有實測結果） | [已決定] 10-24 |
 | 分三階段做 | 1 nftables + NFQUEUE + ct mark → 2 tc eBPF 算特徵 → 3 tc eBPF 轉送信任 flow | [建議]（SYNTHESIS §4.4） |
 | 和 Suricata 的整合方式 | 方案 A：原版套件 + EVE + unix socket + ct mark | [建議]（`suricata-integration.md` §9） |
 
@@ -41,10 +45,10 @@ description: 這個專案（Rust 實作的 security gateway：Suricata 8 + nftab
 ```
 某個 port 收到封包
   │
-  ├─ XDP：只有 driver 支援 native XDP 才掛；Pi 4 兩個 port 都不支援
-  │       用途只限 DROP（ban）和 PASS（算特徵）[建議]
+  ├─ XDP：port 有 native XDP 才掛核心程式，否則改掛 TC；Pi 4 兩個 port 都不支援
+  │       核心程式在這裡做 ban（DROP）和算特徵（PASS）[建議]
   ▼
-tc ingress（核心 eBPF 程式）
+tc ingress（TCX：核心 eBPF 程式排第一 [建議]，使用者外掛排在後面）
   │  解析 header → 更新 flow 特徵 map → 查信任 map
   │  階段 3：信任 flow 直接 redirect 到另一個 port，下面全部跳過
   ▼
@@ -53,7 +57,7 @@ netfilter（我們自己的 table）
   │  ct mark = trusted → accept（L3 模式可改交給 flowtable）
   │  其他 → queue
   ▼
-NFQUEUE → Suricata 8（IPS 模式）→ verdict
+NFQUEUE → Suricata 8 → verdict（預設一律 accept，不做 inline drop）
   ▼
 從另一個 port 送出
 
@@ -91,7 +95,7 @@ privd 的 IPC 走 unix socket，用 `SO_PEERCRED` 檢查呼叫者的 uid，只�
 
 | # | 插件點 | 形式 | 誰能裝 | 最重要的限制 | 細節 |
 |---|---|---|---|---|---|
-| 1 | eBPF 分析外掛 | BPF ELF，以 freplace（EXT）替換核心程式預留的 hook 函式，回傳特徵值 | 本機管理者；bundle 要有簽章 | 不能自己掛 XDP 或 TCX；helper 走白名單；不能改 mark 或 ct；map 唯讀 | `references/ebpf-plugins.md` |
+| 1 | eBPF 外掛 | BPF ELF；掛點由設定決定（TCX、XDP、socket filter、freplace） | 本機管理者；bundle 要有簽章 [建議] | 不限制能力，改成揭露：載入前掃描 ELF 產生能力報告；doctor 列出每個 port 上的程式，不是框架載入的顯示 warning [建議] | `references/ebpf-plugins.md` |
 | 2 | 欄位腳本 | CEL 運算式（之後可再加 Rhai） | 本機管理者 | 在 `gw-transform` 執行；輸出要通過 schema 驗證；不輸出來自封包的字串 | `references/field-scripts.md` |
 | 3 | 雲端 connector | 設定（endpoint、憑證、schema 版本）加 transport 實作 | 本機管理者 | mTLS；回應只能是白名單動作；雲端不能下發程式碼 | `references/cloud-api.md` |
 | 4 | 防火牆操作 | 增刪自己 table 裡 named set 的元素 | 管理者，以及受限制的雲端 | 不開放 `nft -f`；永不封鎖清單 | `references/rules-nft-suricata.md` |
@@ -154,7 +158,7 @@ privd 的 IPC 走 unix socket，用 `SO_PEERCRED` 檢查呼叫者的 uid，只�
 3. 欄位腳本（CEL）和雲端 connector，這時把 process 拆開。
 4. 規則管線，以及 nft set 的操作 API。
 5. 階段 3：fast path 後端（tc redirect；L3 模式可以加 flowtable 後端）。
-6. eBPF 分析外掛（EXT）、XDP probe、OpenWrt 後端。
+6. eBPF 外掛的載入與揭露、XDP probe、OpenWrt 後端。
 
 ## 8. 什麼時候讀哪份文件
 
