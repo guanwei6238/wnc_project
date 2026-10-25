@@ -108,8 +108,9 @@ fn membership_checks(ports: &[Port], interfaces: &[Interface]) -> Vec<EnvCheck> 
             vec![unmet(
                 problems.join(" and "),
                 format!(
-                    "create a bridge containing both ports with your network manager \
-                     (to try it out: ip link add br0 type bridge; ip link set {} master br0; ip link set {} master br0)",
+                    "create a bridge containing both ports with your network manager; this interrupts connections \
+                     over these ports, including SSH (to try it out from a local console: ip link add br0 type bridge; \
+                     ip link set {} master br0; ip link set {} master br0)",
                     lan.interface.name, wan.interface.name
                 ),
             )]

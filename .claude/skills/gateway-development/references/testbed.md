@@ -67,7 +67,9 @@ docker exec wnc-cli ping -c1 -W2 10.0.2.2                   # 確認轉送沒有
 | MAC 歧義 | `ip link add br-test type bridge && ip link set br-test address 02:00:00:00:01:01` | LAN 的 MAC 對到 `eth0`、`br-test` 兩個介面，報錯；改用 `--lan eth0` 就能解決 |
 | 設定檔錯誤 | 在容器的 `/tmp` 寫一個錯誤的 toml（欄位打錯、MAC 格式錯、缺欄位），用 `-c /tmp/x.toml` 指定 | 報錯並指出行號和欄位 |
 | 讀不到模組目錄 | 拿掉 `/lib/modules` 的掛載（或在其他沒掛載的容器裡跑） | 沒載入的模組變成 `unknown` |
+| bridge 模式 | 在 gw 裡建臨時的 veth 和 bridge：`ip link add va type veth peer name vb; ip link add vc type veth peer name vd; ip link add br-test type bridge; ip link set va master br-test; ip link set vc master br-test`，全部 `up`，再用 `-c` 指定 `mode = "bridge"`、`lan = "va"`、`wan = "vc"` 的設定 | 一切正常時 4 項 ok；`ip link set vc nomaster` 報 error；換到另一個 bridge 報 error；`br-test` down 是 warning |
 | 介面上已經掛了 XDP 程式 | 臨時容器（`--cap-add SYS_ADMIN --cap-add NET_ADMIN --security-opt apparmor=unconfined`）裡掛 bpffs：`mount -t bpf bpf /tmp/bpffs`，用 Python 呼叫 bpf syscall 載入一個只回傳 `XDP_PASS` 的程式並 pin 起來，再 `ip link set dev va xdpgeneric pinned …`（native 用 `xdpdrv`）。筆電沒有 clang，所以不用 `.o` 檔 | generic 的顯示 `generic (id N)` 並提出 warning；native 的顯示 `native (id N)` |
+| 改 sysctl（例如 `bridge-nf-call-iptables=0`） | testbed 容器改不了（見 §5），改用臨時容器：`docker run --rm --network none --cap-add NET_ADMIN --security-opt apparmor=unconfined --security-opt systempaths=unconfined …` | 對應的 error |
 
 ## 5. Docker 會掩蓋的問題
 
@@ -76,26 +78,26 @@ docker exec wnc-cli ping -c1 -W2 10.0.2.2                   # 確認轉送沒有
 | 把自己鎖在外面 | `docker exec` 不經過網路，規則把流量全擋掉也進得去。Pi 上是 SSH 經過資料 port（eth1）連進去，會直接斷線 | 會改流量的步驟要另外設計「從網路連 gw」的驗證，例如加一個 admin 容器 |
 | 動到別人的設定 | 容器的 netns 一開始是空的，`flush ruleset` 只會清掉容器自己的規則 | 只動自己的 nft table。驗證時先放一張假的「系統 table」，確認跑完之後它還在 |
 | XDP 看起來可以用 | veth 支援 native XDP（回報 basic、redirect、rx-sg），Pi 的網卡不支援 | 只把 Docker 的結果當成「邏輯對」。`xdp = "auto"` 在 Docker 會選 native XDP，在 Pi 會選 TC；要模擬 Pi 就用 `xdp = "off"` |
-| kernel 不一樣 | 容器用的是筆電的 kernel（Ubuntu 7.0），不是 Pi 的 6.12 rpi | 模組、kernel 設定（例如 `NF_CONNTRACK_BRIDGE`）要在 Pi 上用 doctor 確認 |
+| kernel 不一樣 | 容器用的是筆電的 kernel（Ubuntu 7.0），不是 Pi 的 6.18.50+rpt-rpi-v8 | 模組、kernel 設定要在 Pi 上用 doctor 確認。例如筆電有 `nf_conntrack_bridge`，Pi 沒有 |
+| 容器裡改不了 sysctl | Docker 把 `/proc/sys` 掛成唯讀，預設的 AppArmor profile 也禁止寫入 | 需要改 sysctl 的情境用臨時容器加 `--security-opt apparmor=unconfined --security-opt systempaths=unconfined`；netns 還要加 `--cap-add SYS_ADMIN` |
+| 主機的模組會影響 testbed | 模組是整台筆電共用的。筆電載入 `br_netfilter` 時，主機 bridge 上的封包也會經過 Docker 的防火牆規則，`internal` 網路的隔離規則會丟掉跨網段的封包，cli→srv 就不通了（2026-10-24 確認） | 不要在筆電上載入 `br_netfilter`；需要它的測試放到 Pi 上做。卸載模組一律用 `rmmod <模組>`，**不要用 `modprobe -r`**：它會連帶卸載 `bridge`，刪掉筆電上所有的 bridge（包括其他專案的 Docker 網路），只能重啟 dockerd 恢復 |
 | 輸出順序亂掉 | `docker exec` 把 stdout 和 stderr 分開傳回 | doctor 的報告全部印在 stdout |
 | 實體網卡的行為 | veth 沒有 driver、沒有出廠 MAC、不會被拔插 | driver、出廠 MAC 在筆電主機上用唯讀的方式驗證；USB 網卡拔插要到 Pi 上測 |
 
 ## 6. 搬到 Pi
 
 - **前提**：同一個功能已經通過 Docker 驗證。
-- **編譯**：Pi 要用 aarch64 版本。筆電還沒裝這個 target，要先執行 `rustup target add aarch64-unknown-linux-musl`，再用 `cargo build --target aarch64-unknown-linux-musl`。
+- **編譯**：Pi 要用 aarch64 版本（筆電已經裝好 target）：`CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=rust-lld cargo build --target aarch64-unknown-linux-musl`。不指定 linker 的話，會用筆電的 x86 `cc`，連結會失敗。
 - **連線**：`ssh wnc@10.254.254.2`，走的是 Pi 的 `eth1`（ASIX USB 網卡），**它同時是之後的資料 port**。任何會改網路設定的步驟都要先想好怎麼避免把自己鎖在外面（獨立的管理通道、自動回復、永不封鎖清單）。
 - **Pi 的網卡**：
 
   | 介面 | 是什麼 | MAC |
   |---|---|---|
   | `eth0` | 板載 bcmgenet | `e4:5f:01:2d:03:bf` |
-  | `eth1` | ASIX USB | `9c:69:d3:2a:11:54` |
+  | `eth1` | ASIX USB，driver 是 `cdc_ncm` | `9c:69:d3:24:1b:d9` |
 
-  名稱在 Pi 3B+ 和 Pi 4 上是相反的，所以一律用 MAC 或確認過的名稱指定。
+  名稱在 Pi 3B+ 和 Pi 4 上是相反的，所以一律用 MAC 或確認過的名稱指定。2026-10-16 筆電和 Pi 的兩張 USB 網卡對調過，eth1 原本的 `9c:69:d3:2a:11:54` 現在在筆電上；MAC 以 Pi 上 `ip -br link` 讀到的為準。
 - **到 Pi 上要確認的事**：
-  - 兩張網卡有沒有出廠 MAC（`addr_assign_type` 是不是 0）。
-  - ASIX 網卡實際用哪個 driver。
-  - 階段 1 需要的模組在 6.12 rpi kernel 上的狀態。
   - USB 網卡重插後 ifindex 會變。
-- **Pi 的固定設定**（時脈、校時、Suricata 服務）、關機順序：見專案記憶 `pi-experiment-delegation`，以及 `scripts/README.md`。
+  - 已確認（2026-10-24，doctor 在 Pi 上跑過）：兩張網卡都用出廠 MAC 對應成功；eth1 的 driver 是 `cdc_ncm`；階段 1 和 bridge 模式需要的模組都是 loadable，`nf_conntrack_bridge` 沒有。
+- **Pi 的固定設定**（時脈、校時、Suricata 服務）、關機順序：見專案記憶 `pi-experiment-delegation`，以及 `scripts/README.md`。系統的 Suricata 服務目前是 enabled（開機就以 af-packet 模式跑），做量測前要先停掉，量完再啟動。
