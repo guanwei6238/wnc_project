@@ -80,7 +80,10 @@ fn sysctl_zero_is_unmet() {
         EnvState::Unmet {
             actual: "0".into(),
             problem: "net.ipv4.ip_forward is 0, so IPv4 traffic is not forwarded".into(),
-            fix: "set it with: sysctl -w net.ipv4.ip_forward=1, and persist it in /etc/sysctl.d/".into(),
+            fix: format!(
+                "set it with: sysctl -w net.ipv4.ip_forward=1, and {}",
+                Current.persist_sysctl_hint("net.ipv4.ip_forward", "1")
+            ),
         }
     );
 }

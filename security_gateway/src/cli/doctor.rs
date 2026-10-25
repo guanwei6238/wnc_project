@@ -8,6 +8,7 @@ use security_gateway::forwarding::{self, EnvCheck, EnvState, Forwarding, Level, 
 use security_gateway::kernel::modules::{ModuleIndex, ModuleState, RequiredModule};
 use security_gateway::kernel::netdev::{Netdev, XdpFeatures};
 use security_gateway::kernel::netif::{Interface, LinkStatus, NetifError, Netlink, XdpAttachment, XdpMode};
+use security_gateway::platform::{BootConfig, Current};
 use security_gateway::ports::{self, Port, ResolveError};
 
 #[derive(Debug, Args)]
@@ -331,8 +332,9 @@ fn module_findings(release: &str, states: &[(&RequiredModule, ModuleState)]) -> 
                     Severity::Error,
                     format!(
                         "kernel module {name} is not loaded (needed for {}) and the kernel does not load it on demand; \
-                         load it with: modprobe {name}, and list it in /etc/modules-load.d/ to load it at boot",
+                         load it with: modprobe {name}, and {}",
                         module.purpose,
+                        Current.persist_module_hint(module.name),
                         name = module.name
                     ),
                 ),

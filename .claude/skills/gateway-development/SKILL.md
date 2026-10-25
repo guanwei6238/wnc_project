@@ -1,11 +1,11 @@
 ---
 name: gateway-development
-description: 在 security_gateway/（執行檔 wnc-gw）加功能或改程式時的實作慣例：程式該放哪一層（cli/、config、ports、forwarding/、kernel/，之後的 ids/、platform/）、型別與英文錯誤訊息怎麼寫、設定欄位與 CLI 參數怎麼加、單元測試放 tests/unit/ 並鏡像 src、新功能要在 wnc-gw doctor 補哪些檢查，以及「先在 Docker testbed 驗證、再上 Pi」的流程。只要要在 wnc-gw 新增或修改子命令、setting.toml 欄位、kernel 互動（netlink、sysfs、procfs、nftables、conntrack、eBPF 載入）、doctor 檢查或測試，或要在 Docker／Pi 上驗證 gateway，都先讀這份 skill，即使使用者只說「加一個功能」「檢查一下環境」「接下來做 X」。目標架構與安全底線另見 gateway-architecture。
+description: 在 security_gateway/（執行檔 wnc-gw）加功能或改程式時的實作慣例：程式該放哪一層（cli/、config、ports、forwarding/、datapath/、kernel/、platform/，之後的 ids/）、型別與英文錯誤訊息怎麼寫、設定欄位與 CLI 參數怎麼加、單元測試放 tests/unit/ 並鏡像 src、新功能要在 wnc-gw doctor 補哪些檢查，以及「先在 Docker testbed 驗證、再上 Pi」的流程。只要要在 wnc-gw 新增或修改子命令、setting.toml 欄位、kernel 互動（netlink、sysfs、procfs、nftables、conntrack、eBPF 載入）、doctor 檢查或測試，或要在 Docker／Pi 上驗證 gateway，都先讀這份 skill，即使使用者只說「加一個功能」「檢查一下環境」「接下來做 X」。目標架構與安全底線另見 gateway-architecture。
 ---
 
 # wnc-gw 開發指南
 
-這份 skill 描述**現在的程式長什麼樣子，以及要怎麼往上加**。目標架構、插件點與安全底線在 `gateway-architecture`；兩份都適用時一起讀。內容反映 2026-10-25（commit `fcf94bd` 之後，加上 XDP 設定與偵測）的狀態，程式之後若有變動，以實際程式碼為準，並回頭更新這份 skill。
+這份 skill 描述**現在的程式長什麼樣子，以及要怎麼往上加**。目標架構、插件點與安全底線在 `gateway-architecture`；兩份都適用時一起讀。內容反映 2026-10-25（commit `509ac60` 之後，加上 `platform/`）的狀態，程式之後若有變動，以實際程式碼為準，並回頭更新這份 skill。
 
 ## 0. 動手之前
 
@@ -26,12 +26,15 @@ security_gateway/
 │   │   ├── mod.rs          Cli（全域參數 -c/--config、--lan、--wan）、Command、run()
 │   │   ├── doctor.rs       doctor：載入設定 → 各項檢查 → 印報告 → 結束碼
 │   │   └── show/           show 的巢狀子命令（mod.rs 分派，interfaces.rs 列介面）
-│   ├── lib.rs              只宣告功能模組：config、forwarding、kernel、ports
+│   ├── lib.rs              只宣告功能模組：config、datapath、forwarding、kernel、platform、ports
 │   ├── config.rs           setting.toml + CLI 覆寫 → Config（每個值帶 Source）
 │   ├── datapath/           核心 eBPF 程式在每個 port 掛在哪、怎麼掛（mod.rs 只放 pub mod / pub use）
 │   │   └── hook.rs         XdpPolicy（xdp 設定）、CoreHook、core_hook() 選擇規則
 │   ├── ports.rs            Role、PortSelector（名稱或 MAC）、resolve()
 │   ├── forwarding/         轉送模式：Mode、trait Forwarding，bridge.rs（Bridged）、routed.rs（Routed）
+│   ├── platform/           因 OS 而異的部分：每種差異一個 trait，每個 OS 一個 struct
+│   │   ├── mod.rs          trait BootConfig；pub use debian::Debian as Current（編譯時選 OS）
+│   │   └── debian.rs       Debian：/etc/modules-load.d/、/etc/sysctl.d/
 │   └── kernel/             跟 Linux kernel 打交道的薄模組
 │       ├── mod.rs
 │       ├── netif.rs        rtnetlink 列介面、sysfs 讀 driver、MacAddr、LinkStatus
@@ -54,11 +57,11 @@ security_gateway/
 | `forwarding/` | 依轉送模式（bridge、routed）而不同的部分：`trait Forwarding` 和各模式的實作。目前提供環境檢查（`EnvCheck`）和模式需要的模組，只有 doctor 用到；之後各階段需要依模式而不同的功能時，在 trait 上加方法 | 兩種模式共用的邏輯（例如 nft 規則、netdev ingress 打方向 mark）；嚴重程度（由 doctor 決定） |
 | `kernel/` | 在 user space 跟 kernel 溝通：netlink、sysfs、procfs；之後的 nft、conntrack、bpf 載入、sysctl | 判斷好壞或嚴重程度；LAN/WAN 等 gateway 概念；讀設定檔 |
 | `ids/`（尚未建立） | IDS engine 的 adapter（EVE、unix socket、探測）。Suricata 的整合方式 A/B/C 還沒決定，見 `research/literature/trust-bypass/suricata-integration.md` §9 | — |
-| `platform/`（尚未建立） | 真正因平台而異的東西（Debian 的 systemd 對 OpenWrt 的 procd、檔案對 UCI） | netlink、nft、eBPF：這些在兩個平台都一樣，屬於 `kernel/` |
+| `platform/` | 真正因 OS 而異的東西：設定怎麼在開機後保留、服務管理（systemd 對 procd）、設定來源（檔案對 UCI）。每種差異定一個 trait，每個 OS 一個 struct 實作全部 trait；`Current` 在編譯時指向目前的 OS。目前只有 `BootConfig`（kernel 模組和 sysctl 寫在哪裡才會在開機後保留，給 doctor 的修法提示用）和 `Debian`。每個 OS 的實作一律編譯（`pub mod`），只有 `Current` 依 feature 選，所以每次建置都會測到所有 OS。新增 OS：加 `<os>.rs`、`tests/unit/platform/<os>.rs`、一個 cargo feature，再讓 `Current` 依 feature 選 | netlink、nft、eBPF、`modprobe`、`sysctl -w`、`ip link` 這類 kernel 介面和立即生效的指令：在每個 OS 上都一樣，屬於 `kernel/` 或直接寫在呼叫端；不是由 OS 決定的選擇（fast path 後端依 probe、IDS engine 依 O6）也不放這裡 |
 
 規則：
 
-- **依賴方向單向**：`cli → config → forwarding / ports → kernel`（`config` 只用到 `forwarding::Mode` 和 `PortSelector` 這類值型別）。下層不認識上層的概念。
+- **依賴方向單向**：`cli → config → forwarding / ports → kernel`（`config` 只用到 `forwarding::Mode` 和 `PortSelector` 這類值型別）。`platform` 和 `kernel` 一樣在最底層，不依賴其他模組。下層不認識上層的概念。
 - **薄模組**：外部 crate 的型別（`rtnetlink`、`netlink-packet-route`，之後的 aya 等）不出現在模組對外的介面上，對外一律用自己的型別。升級或替換 crate 時只動那個模組。需要轉換時寫私有函式（例如 `from_link_message()`），不要對外實作 `From<外部型別>`。
 - **kernel 層只翻譯、不判斷**：例如 `Interface::link_status()` 把 admin 與 oper 狀態翻成 `AdminDown`、`NoCarrier` 等原因；「NoCarrier 算 warning」是 doctor 的判斷。
 - **lib 與 bin 分開**：功能模組只在 `lib.rs` 宣告，`main.rs` 只宣告 `mod cli;`，bin 用 `security_gateway::…` 引用 lib。同一個模組若被兩邊各宣告一次，會被編譯兩次，變成兩個不同的型別。
@@ -72,6 +75,7 @@ security_gateway/
 - 在邊界就解析成型別（parse, don't validate）。例如 MAC 讀進來就是 `MacAddr`，`Config` 的欄位沒有 `Option`，缺值在 `config::load()` 就回傳 `ConfigError::Missing`，下游不用再檢查 `None`。
 - 衍生出來的資料寫成方法，不另存欄位（例如 `link_status()` 從 `admin_up` 和 `oper_state` 推算），避免兩份資料不一致。
 - 錯誤用 `thiserror` 定義 enum，讓呼叫者能分辨種類。
+- 錯誤型別和產生它的程式放在同一個檔案，不集中成整個 crate 共用的 `error.rs`。同一個資料夾裡有兩個以上的檔案共用同一個錯誤時，才放進那個資料夾的 `error.rs`（例如之後的 `kernel/bpf/`）。要用 `?` 傳遞好幾種錯誤時，在需要的那一層定義包裝的 enum（`#[from]`）。
 - **錯誤訊息一律英文**：小寫開頭、結尾不加句號；CLI 印出時前綴 `error: `（和 clap 一致）。測試的 assert 訊息也用英文。
 - 會解析使用者輸入的型別實作 `FromStr`（clap 直接用），需要從設定檔讀的再實作 `Deserialize`（內部轉呼叫 `FromStr`）。`Display` 要能和 `FromStr` 互相轉回，並寫測試確認。
 
@@ -118,6 +122,7 @@ security_gateway/
 - 不要把測試寫在 src 檔案裡，也不要為了測試把函式改成 `pub`（那會讓外部 crate 的型別流出薄模組）。
 - `tests/*.rs` 和 `tests/*/main.rs` 會被 Cargo 當成整合測試（黑箱，只看得到 `pub`）。`tests/unit/` 不會被自動偵測，所以不衝突。之後的黑箱測試放在 `tests/` 的另一個子目錄，名稱跟開發者確認。
 - 把 I/O 和邏輯分開，讓邏輯可以餵假資料測：例如 `ModuleIndex::load()` 讀檔，`from_parts()` 只解析字串；`config::load()` 讀檔，`parse()`、`merge()` 是純函式。
+- 預期文字裡跟 OS 有關的部分用 `Current` 產生（例如 `Current.persist_module_hint("br_netfilter")`），各 OS 的完整文字只在 `tests/unit/platform/<os>.rs` 逐字檢查。這樣換 OS 建置時，其他測試不用改。
 - 要讓 repo 內的檔案和程式保持同步時，用 `include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/…"))` 在測試裡讀進來檢查（`setting.example.toml` 就是這樣）。
 
 ## 4. 新功能要配上 doctor 檢查

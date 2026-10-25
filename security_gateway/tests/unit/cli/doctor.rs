@@ -125,10 +125,11 @@ fn module_that_must_be_loaded_but_is_only_loadable_is_an_error() {
         findings,
         vec![Finding {
             severity: Severity::Error,
-            message: "kernel module br_netfilter is not loaded (needed for passing bridged traffic through nftables) \
-                      and the kernel does not load it on demand; load it with: modprobe br_netfilter, \
-                      and list it in /etc/modules-load.d/ to load it at boot"
-                .into(),
+            message: format!(
+                "kernel module br_netfilter is not loaded (needed for passing bridged traffic through nftables) \
+                 and the kernel does not load it on demand; load it with: modprobe br_netfilter, and {}",
+                Current.persist_module_hint("br_netfilter")
+            ),
         }]
     );
 }

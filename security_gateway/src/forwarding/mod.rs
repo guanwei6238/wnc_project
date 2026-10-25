@@ -7,6 +7,7 @@ use std::str::FromStr;
 use crate::kernel::modules::RequiredModule;
 use crate::kernel::netif::Interface;
 use crate::kernel::sysctl;
+use crate::platform::{BootConfig, Current};
 use crate::ports::{Port, Role};
 
 pub use bridge::Bridged;
@@ -101,7 +102,11 @@ fn sysctl_checks(
                 Ok(Some(value)) if value == "1" => EnvState::Met { actual: value },
                 Ok(Some(value)) => EnvState::Unmet {
                     problem: format!("{} is {value}, so {}", r.key, r.consequence),
-                    fix: format!("set it with: sysctl -w {}=1, and persist it in /etc/sysctl.d/", r.key),
+                    fix: format!(
+                        "set it with: sysctl -w {}=1, and {}",
+                        r.key,
+                        Current.persist_sysctl_hint(r.key, "1")
+                    ),
                     actual: value,
                 },
                 Ok(None) => EnvState::Unknown {

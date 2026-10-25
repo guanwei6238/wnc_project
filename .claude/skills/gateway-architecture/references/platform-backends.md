@@ -33,6 +33,7 @@ trait XdpProbe       { /* 見 ebpf-plugins.md §7 */ }
 trait IdsEngine      { /* 見 §6 */ }
 ```
 
+- 已實作（2026-10-25）：`src/platform/` 的 `BootConfig`（kernel 模組和 sysctl 寫在哪裡才會在開機後保留，目前只產生 doctor 的修法提示），只有 `Debian` 實作，`Current` 在編譯時選。上面的其他 trait 照同樣的形狀加：每種差異一個 trait，由同一個 OS struct 實作。
 - 依兩件事選出可用的組合：`{bridge, routed}` 模式（SYNTHESIS §11 D3）和 `probe()` 的結果。
 - probe 失敗時，退回「只有 ct mark accept、不加速」。這個做法在每個平台都能用。
 

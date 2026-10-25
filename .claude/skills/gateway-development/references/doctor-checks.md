@@ -23,6 +23,8 @@
 
 訊息要說明**怎麼修**，不只說出了什麼問題，例如 `bring it up with: ip link set eth1 up`。
 
+修法裡跟 OS 有關的部分（例如設定要寫在哪裡才會在開機後保留）從 `platform` 取得（`Current.persist_module_hint()`、`persist_sysctl_hint()`），不要寫死路徑。`modprobe`、`sysctl -w`、`ip link` 這類立即生效的指令在每個 OS 上都一樣，可以直接寫。
+
 ## 2. 輸出放哪裡
 
 - **stdout**：檢查報告，包括每一段的表格，以及最後集中印出的 `error:`、`warning:`、`note:`。設定檔錯誤也算報告的一部分。
