@@ -1,4 +1,5 @@
 pub mod doctor;
+pub mod run;
 pub mod show;
 
 use std::path::PathBuf;
@@ -27,6 +28,7 @@ pub struct Cli {
 #[derive(Debug, Subcommand)]
 pub enum Command {
     Doctor(doctor::DoctorArgs),
+    Run(run::RunArgs),
     Show(show::ShowArgs),
 }
 
@@ -39,6 +41,7 @@ pub async fn run() -> ExitCode {
 
     match cli.command {
         Command::Doctor(args) => doctor::run(cli.config.as_deref(), overrides, args).await,
+        Command::Run(args) => run::run(cli.config.as_deref(), overrides, args).await,
         Command::Show(args) => show::run(args).await,
     }
 }

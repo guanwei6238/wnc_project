@@ -19,7 +19,9 @@
 | `Warning` | 執行環境的暫時狀態，修好後 gateway 不用重啟就能運作；或無法確認 | 0 | link down、沒有 carrier、模組狀態 unknown |
 | `Note` | 資訊，不需要處理 | 0 | driver 不回報 link 狀態（`UNKNOWN`） |
 
-為什麼 link down 不算 error：之後 systemd 會在啟動 gateway 前跑 doctor，並以結束碼決定要不要啟動。gateway 串在網路中間，如果因為開機時線沒插好就拒絕啟動，等線插上之後網路會整個不通，或流量完全沒被檢查。
+`wnc-gw run` 啟動前會先跑同一套檢查（`doctor::passes()`，2026-10-25 決定），有任何 error 就不啟動、不動 kernel；warning 印出來之後照常啟動。所以嚴重程度直接決定 gateway 能不能啟動。
+
+為什麼 link down 不算 error：gateway 串在網路中間，如果因為開機時線沒插好就拒絕啟動，等線插上之後網路會整個不通，或流量完全沒被檢查。
 
 訊息要說明**怎麼修**，不只說出了什麼問題，例如 `bring it up with: ip link set eth1 up`。
 

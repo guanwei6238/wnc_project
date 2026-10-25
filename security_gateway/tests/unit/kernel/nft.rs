@@ -46,3 +46,51 @@ fn unexpected_first_line_has_no_version() {
 fn json_on_first_line_is_ignored() {
     assert_eq!(NftInfo::parse("json: yes\n").json, None);
 }
+
+fn json(batch: Batch<'_>) -> serde_json::Value {
+    serde_json::to_value(batch.to_nftables()).unwrap()
+}
+
+#[test]
+fn delete_adds_the_table_first() {
+    assert_eq!(
+        json(delete_batch(Family::Inet, "demo")),
+        serde_json::json!({"nftables": [
+            {"add": {"table": {"family": "inet", "name": "demo"}}},
+            {"delete": {"table": {"family": "inet", "name": "demo"}}},
+        ]})
+    );
+}
+
+#[test]
+fn replace_deletes_then_recreates_in_one_batch() {
+    let table = Table {
+        family: Family::Inet,
+        name: "demo".into(),
+        chains: vec![BaseChain {
+            name: "fwd".into(),
+            hook: Hook::Forward,
+            priority: 0,
+            policy: Policy::Accept,
+            rules: vec![vec![Statement::Counter]],
+        }],
+    };
+    assert_eq!(
+        json(replace_batch(&table)),
+        serde_json::json!({"nftables": [
+            {"add": {"table": {"family": "inet", "name": "demo"}}},
+            {"delete": {"table": {"family": "inet", "name": "demo"}}},
+            {"add": {"table": {"family": "inet", "name": "demo"}}},
+            {"add": {"chain": {
+                "family": "inet", "table": "demo", "name": "fwd",
+                "type": "filter", "hook": "forward", "prio": 0, "policy": "accept",
+            }}},
+            {"add": {"rule": {"family": "inet", "table": "demo", "chain": "fwd", "expr": [{"counter": null}]}}},
+        ]})
+    );
+}
+
+#[test]
+fn family_display() {
+    assert_eq!(Family::Inet.to_string(), "inet");
+}

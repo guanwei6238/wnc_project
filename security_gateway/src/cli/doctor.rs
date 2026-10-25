@@ -51,6 +51,14 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: Doctor
             return ExitCode::FAILURE;
         }
     };
+    if passes(&config).await {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    }
+}
+
+pub async fn passes(config: &Config) -> bool {
     match &config.file {
         Some(path) => println!("config: {}", path.display()),
         None => println!("config: none ({} not found)", config::DEFAULT_PATH),
@@ -63,11 +71,11 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: Doctor
         Ok(interfaces) => interfaces,
         Err(e) => {
             eprintln!("error: {e}");
-            return ExitCode::FAILURE;
+            return false;
         }
     };
     let results = ports::resolve(&config.port_specs(), &interfaces);
-    print_ports(&config, &results);
+    print_ports(config, &results);
     let mut findings = port_findings(&results);
     println!();
 
@@ -91,11 +99,7 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: Doctor
     for finding in &findings {
         finding.print();
     }
-    if findings.iter().any(|f| f.severity == Severity::Error) {
-        ExitCode::FAILURE
-    } else {
-        ExitCode::SUCCESS
-    }
+    !findings.iter().any(|f| f.severity == Severity::Error)
 }
 
 fn port_findings(results: &[Result<Port, ResolveError>]) -> Vec<Finding> {

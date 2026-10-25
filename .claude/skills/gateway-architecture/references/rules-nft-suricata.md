@@ -31,7 +31,7 @@
   - CIDR 前綴有下限，例如 IPv4 不能比 /24 還大。
 - set 宣告一律明確寫出 `size`、`flags timeout` 和預設的 `timeout`。set 的預設 size 是多少沒查到，不要依賴它。
 - 永不封鎖清單由 privd 檢查（SKILL.md §5 第 5 點）。
-- base chain 和 set 宣告由 privd 用固定範本建立。使用者規則只能引用 set，不能新增 chain 或 rule。
+- base chain 和 set 宣告由 privd 用固定範本建立（`src/firewall.rs`）。使用者只能管理 set 的內容，不能新增 chain 或 rule。**[已決定] 2026-10-25**（`decisions.md` O11）。
 - 執行 nft 的 process 只給 `CAP_NET_ADMIN`。
 - JSON 格式依 `libnftables-json(5)`（主 agent 核對本機 man page），`timeout` 是數字：
 
