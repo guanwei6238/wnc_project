@@ -64,6 +64,17 @@
 - 牽涉授權：Suricata 官方的 Rust crate 是 GPL-2.0-only，`rustables` 是 GPL-3.0+。專案的授權還沒定。
 - 傾向：先用 `nftables` crate（JSON），並在 Rust 端驗證 schema。授權問題要找開發者或計畫方確認。
 
+**[已決定] 2026-10-25：用 nft JSON**（`nftables` crate 產生 JSON，spawn `/usr/sbin/nft`）。table、chain、rule、set 元素全部經過 nft。
+
+- 授權：專案可能閉源。`rustables`（GPL-3.0+）和 `nftnl`（要連結 GPL-2+ 的 libnftnl）都會讓 wnc-gw 受 GPL 約束，所以排除。spawn 獨立的 `nft` 程式不受影響。最後仍要請計畫方確認。
+- 效能（2026-10-25 在 Pi 4 上量測，鎖頻 1000 MHz）：選哪個方案只影響寫入，不影響每個封包的轉送成本。
+  - Plain set 加元素：nft 每次呼叫約 7.7 ms，自己寫 netlink 約 53 µs。一次寫 1000 個時，nft 要 17.2 ms，netlink 要 1.66 ms。set 裡已經有 10 萬個元素時，結果也一樣。
+  - Interval set 會隨 set 變大線性變慢：set 有 10 萬個元素時，nft 每次寫入約 1.9 s，netlink 每次 commit 約 14.8 ms。原因沒有查證。
+- 因此：
+  - 寫入 set 元素的介面設計成一次給一批。privd 收集一小段時間的寫入，再一起送出。
+  - [建議] 會常常變動的單一 IP 黑名單放 plain set；CIDR 或範圍清單放另一個 interval set，只在整批更新時重新載入。
+  - 如果之後量到 nft 寫入太吃 CPU，只把「寫入元素」改成自己寫 netlink。只需要新增實作，table 和 rule 的程式不用改。
+
 ### O5. flowtable 要不要當 fast path 後端
 
 - 只能在 L3 routing 模式下用（跟著 D3 決定）。

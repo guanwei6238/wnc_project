@@ -258,3 +258,62 @@ fn generic_policy_is_a_warning() {
     assert_eq!(findings[0].severity, Severity::Warning);
     assert!(findings[0].message.starts_with("LAN (eth0): xdp = \"generic\" makes the core program use generic XDP"));
 }
+
+fn nft_info(json: Option<bool>) -> Result<NftInfo, NftError> {
+    Ok(NftInfo {
+        version: Some("1.1.3".into()),
+        json,
+    })
+}
+
+#[test]
+fn nft_with_json_has_no_finding() {
+    assert_eq!(nft_finding(&nft_info(Some(true))), None);
+}
+
+#[test]
+fn nft_without_json_is_an_error() {
+    assert_eq!(
+        nft_finding(&nft_info(Some(false))),
+        Some(Finding {
+            severity: Severity::Error,
+            message: "/usr/sbin/nft is built without JSON support (needed for installing the gateway's nftables \
+                      rules); install an nftables build with JSON support"
+                .into(),
+        })
+    );
+}
+
+#[test]
+fn unreported_json_support_is_a_warning() {
+    assert_eq!(
+        nft_finding(&nft_info(None)),
+        Some(Finding {
+            severity: Severity::Warning,
+            message: "cannot verify JSON support of /usr/sbin/nft: nft -V does not report it".into(),
+        })
+    );
+}
+
+#[test]
+fn missing_nft_is_an_error() {
+    assert_eq!(
+        nft_finding(&Err(NftError::NotFound)),
+        Some(Finding {
+            severity: Severity::Error,
+            message: "/usr/sbin/nft not found (needed for installing the gateway's nftables rules); install nftables"
+                .into(),
+        })
+    );
+}
+
+#[test]
+fn nft_probe_failure_is_a_warning() {
+    assert_eq!(
+        nft_finding(&Err(NftError::Timeout)),
+        Some(Finding {
+            severity: Severity::Warning,
+            message: "could not check nft: /usr/sbin/nft did not finish within 5 seconds".into(),
+        })
+    );
+}

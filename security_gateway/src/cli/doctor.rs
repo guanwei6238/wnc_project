@@ -8,6 +8,7 @@ use security_gateway::forwarding::{self, EnvCheck, EnvState, Forwarding, Level, 
 use security_gateway::kernel::modules::{ModuleIndex, ModuleState, RequiredModule};
 use security_gateway::kernel::netdev::{Netdev, XdpFeatures};
 use security_gateway::kernel::netif::{Interface, LinkStatus, NetifError, Netlink, XdpAttachment, XdpMode};
+use security_gateway::kernel::nft::{self, NFT, NftError, NftInfo};
 use security_gateway::platform::{BootConfig, Current};
 use security_gateway::ports::{self, Port, ResolveError};
 
@@ -80,6 +81,9 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: Doctor
     println!();
 
     findings.extend(check_modules(forwarding.required_modules()));
+    println!();
+
+    findings.extend(check_nft().await);
 
     if !findings.is_empty() {
         println!();
@@ -361,6 +365,47 @@ fn print_modules(release: &str, states: &[(&RequiredModule, ModuleState)]) {
     for (module, state) in states {
         println!("{:<16} {:<9} {}", module.name, state.to_string(), module.purpose);
     }
+}
+
+async fn check_nft() -> Vec<Finding> {
+    let info = nft::info().await;
+    print_nft(&info);
+    nft_finding(&info).into_iter().collect()
+}
+
+fn nft_finding(info: &Result<NftInfo, NftError>) -> Option<Finding> {
+    const PURPOSE: &str = "needed for installing the gateway's nftables rules";
+    let (severity, message) = match info {
+        Ok(NftInfo { json: Some(true), .. }) => return None,
+        Ok(NftInfo { json: Some(false), .. }) => (
+            Severity::Error,
+            format!("{NFT} is built without JSON support ({PURPOSE}); install an nftables build with JSON support"),
+        ),
+        Ok(NftInfo { json: None, .. }) => (
+            Severity::Warning,
+            format!("cannot verify JSON support of {NFT}: nft -V does not report it"),
+        ),
+        Err(NftError::NotFound) => (Severity::Error, format!("{NFT} not found ({PURPOSE}); install nftables")),
+        Err(e) => (Severity::Warning, format!("could not check nft: {e}")),
+    };
+    Some(Finding { severity, message })
+}
+
+fn print_nft(info: &Result<NftInfo, NftError>) {
+    let (version, json) = match info {
+        Ok(info) => (
+            info.version.as_deref().unwrap_or("unknown"),
+            match info.json {
+                Some(true) => "yes",
+                Some(false) => "no",
+                None => "unknown",
+            },
+        ),
+        Err(NftError::NotFound) => ("not found", "-"),
+        Err(_) => ("unknown", "unknown"),
+    };
+    println!("{:<16} {:<10} {}", "COMMAND", "VERSION", "JSON");
+    println!("{NFT:<16} {version:<10} {json}");
 }
 
 async fn load_interfaces() -> Result<Vec<Interface>, NetifError> {

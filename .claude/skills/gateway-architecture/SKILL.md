@@ -37,6 +37,7 @@ description: 這個專案（Rust 實作的 security gateway：Suricata 8 + nftab
 | eBPF 外掛 | 支援完整功能（掛點不限，可以 drop、redirect），由管理者負責；框架負責揭露（doctor 列出每個 port 上的程式） | [已決定] 10-22 |
 | XDP | 可以設定要不要用。預設只有 port 有 native XDP 才掛，否則核心程式掛 TC，不會自動選 generic。使用者的 XDP 外掛遇到沒有 native 的網卡就不載入，請使用者改成 TC 程式，除非明確指定 generic。doctor 顯示每個 port 用 native 或 generic（`references/ebpf-plugins.md` §7） | [已決定] 10-24 |
 | L2 bridge 或 L3 routing | 兩種都支援，用設定 `mode` 選，預設 bridge。bridge 預設由 OS 建立、wnc-gw 只檢查（之後可以設定成由 wnc-gw 建立）。bridge 模式走 `br_netfilter`，nft 規則和 L3 共用 `inet`；方向用 netdev ingress 打的 mark 判斷，不用 `iifname`。依模式而不同的功能寫成 trait（SYNTHESIS §11 D3 有實測結果） | [已決定] 10-24 |
+| 怎麼操作 nftables（O4） | 用 nft JSON：`nftables` crate 產生 JSON，spawn `/usr/sbin/nft`；不自己寫 netlink，也不連結 GPL 的 libnftnl。nft 每次寫入約 7.7 ms（Pi 實測），所以 set 元素要批次寫入（`references/decisions.md` O4） | [已決定] 10-25 |
 | 分三階段做 | 1 nftables + NFQUEUE + ct mark → 2 tc eBPF 算特徵 → 3 tc eBPF 轉送信任 flow | [建議]（SYNTHESIS §4.4） |
 | 和 Suricata 的整合方式 | 方案 A：原版套件 + EVE + unix socket + ct mark | [建議]（`suricata-integration.md` §9） |
 

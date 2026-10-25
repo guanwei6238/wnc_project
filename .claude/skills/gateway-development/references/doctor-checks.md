@@ -58,6 +58,7 @@ warning: …
 |---|---|---|
 | port 的 link 狀態 | `Interface::link_status()` → `LinkStatus` | `link_finding()` |
 | kernel 模組 | `ModuleIndex::load()`、`state()` → `ModuleState` | `module_findings()` |
+| `nft` 執行檔 | `kernel::nft::info()` 執行 `nft -V`（有逾時）→ `NftInfo` | `nft_finding()` |
 
 ## 4. 加一個檢查的步驟
 
@@ -105,10 +106,8 @@ RequiredModule {
 
 | 檢查 | 等哪個決定 | 決定之後要做的 |
 |---|---|---|
-| Suricata | 整合方式 A/B/C（`suricata-integration.md` §9） | A：找到執行檔，並確認 `--build-info` 有 `NFQueue support: yes`，版本只顯示不判斷。B：plugin 必須和 Suricata 的 major.minor 一致，要檢查版本。C：檢查我們連結的 libsuricata 和規則目錄。新的探測放在 `ids/suricata.rs`；呼叫外部程式要加逾時（tokio 要開 `process`、`time`） |
-| `nft` 執行檔 | O4：用 nft JSON 呼叫執行檔，還是直接走 netlink | 走 JSON 才需要 |
+| Suricata | 整合方式 A/B/C（`suricata-integration.md` §9） | A：找到執行檔，並確認 `--build-info` 有 `NFQueue support: yes`，版本只顯示不判斷。B：plugin 必須和 Suricata 的 major.minor 一致，要檢查版本。C：檢查我們連結的 libsuricata 和規則目錄。新的探測放在 `ids/suricata.rs`；呼叫外部程式要加逾時，寫法參考 `kernel/nft.rs` 的 `run()` |
 | `nf_conntrack_netlink` 模組 | N5：改 ct mark 用 ctnetlink 還是 nft set | 用 ctnetlink 才加進 `REQUIRED_MODULES` |
-| sysctl、bridge 相關模組 | D3 已決定（2026-10-24），下一步實作 | L3：`net.ipv4.ip_forward`；L2：兩個 port 在同一個 bridge、`br_netfilter` **必須已載入**（它不會自動載入，沒載入時橋接流量完全繞過 nft）、`bridge-nf-call-iptables`/`ip6tables` 是 1。Pi 上沒有 `nf_conntrack_bridge`，不列為需求 |
 | TCX 可用性（kernel ≥ 6.6、bpffs、JIT） | 階段 2 開始時 | 探測放在 `kernel/` |
 
 做完其中一項，就把它從這張表移到實作裡，並更新這份文件。
