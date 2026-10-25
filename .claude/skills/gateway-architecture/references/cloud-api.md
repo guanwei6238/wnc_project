@@ -10,6 +10,8 @@
 
 ## 2. 設定 [建議]
 
+**[已決定] 2026-10-25（`decisions.md` O12）**：endpoint、path、上傳欄位都寫在 `setting.toml`；欄位格式見 `field-scripts.md` §5。下面的 YAML 是 10-20 的草稿，只用來說明有哪些項目，實際格式用 TOML，等實作時再定。
+
 ```yaml
 cloud:
   endpoint: "https://ids.example.internal/v1"   # 只接受 https；只能在本機改，雲端改不了
@@ -44,6 +46,21 @@ cloud:
 - 上傳量是研究要量的成本之一，所以 connector 要記錄每一批的 bytes 數。
 
 ## 5. 處理雲端回應 [建議]
+
+**[已決定] 2026-10-25（`decisions.md` O12）：先做可設定的對應（R2）。** 設定檔描述「回應裡哪個欄位是判定結果、目標、TTL」，以及「對方的標籤怎麼對應到 trust、block、observe」。能做的動作只有這三種，對應不到的標籤一律丟掉並記錄。以下的檢查不論 R1 或 R2 都要做。之後可能改成固定格式（R1）。示意（格式未定）：
+
+```toml
+[cloud.response]
+records = "/verdicts"      # JSON pointer，指向判定的陣列
+action = "/label"
+target = "/src_ip"
+ttl = "/ttl"
+
+[cloud.response.actions]
+malicious = "block"
+benign = "trust"
+unknown = "observe"
+```
 
 - **schema 要嚴格**：serde 開 `deny_unknown_fields`。動作只能是 `trust`、`block`、`observe` 三種。
 - **目標**：只能是單一 IP 或 flow 的 5-tuple；網段大小有上限。

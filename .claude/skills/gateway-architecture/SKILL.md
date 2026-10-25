@@ -39,6 +39,8 @@ description: 這個專案（Rust 實作的 security gateway：Suricata 8 + nftab
 | L2 bridge 或 L3 routing | 兩種都支援，用設定 `mode` 選，預設 bridge。bridge 預設由 OS 建立、wnc-gw 只檢查（之後可以設定成由 wnc-gw 建立）。bridge 模式走 `br_netfilter`，nft 規則和 L3 共用 `inet`；方向用 netdev ingress 打的 mark 判斷，不用 `iifname`。依模式而不同的功能寫成 trait（SYNTHESIS §11 D3 有實測結果） | [已決定] 10-24 |
 | 怎麼操作 nftables（O4） | 用 nft JSON：`nftables` crate 產生 JSON，spawn `/usr/sbin/nft`；不自己寫 netlink，也不連結 GPL 的 libnftnl。nft 每次寫入約 7.7 ms（Pi 實測），所以 set 元素要批次寫入（`references/decisions.md` O4） | [已決定] 10-25 |
 | 我們的 nft table 與黑名單（O11） | table 骨架寫死在程式裡（`src/firewall.rs`），只有參數從設定檔讀；使用者只能管理 set 的內容。黑名單放在 nft set，Suricata 只負責偵測 | [已決定] 10-25 |
+| 雲端 API 的格式（O12） | request 由設定檔描述：endpoint、path、上傳欄位（型別加 CEL 計算式，輸入可以是使用者 eBPF 的輸出、EVE、conntrack）。回應先做可設定的對應（R2），動作固定只有 trust/block/observe；之後可能改成固定格式（R1） | [已決定] 10-25 |
+| 雲端迴路的時機（O13） | 階段 1 的地端執行點做完後，先接最小的雲端迴路，排在階段 2 前面；模擬的雲端由我們自己做 | [已決定] 10-25 |
 | 分三階段做 | 1 nftables + NFQUEUE + ct mark → 2 tc eBPF 算特徵 → 3 tc eBPF 轉送信任 flow | [建議]（SYNTHESIS §4.4） |
 | 和 Suricata 的整合方式 | 方案 A：原版套件 + EVE + unix socket + ct mark | [建議]（`suricata-integration.md` §9） |
 
@@ -153,11 +155,11 @@ privd 的 IPC 走 unix socket，用 `SO_PEERCRED` 檢查呼叫者的 uid，只�
 
 ## 7. 實作順序 [建議]
 
-每一步開始前都先跟開發者討論，做完就停下來讓開發者確認。
+每一步開始前都先跟開發者討論，做完就停下來讓開發者確認。第 2 步排在階段 2 前面是 2026-10-25 的決定（O13），其他還是建議。
 
 1. 階段 1：nftables（自己的 table）+ NFQUEUE + ct mark；agent 讀 EVE、改 ct mark。privd 介面先定成 trait。
-2. 階段 2：tc 核心 eBPF 算特徵，要處理 GRO（見 `references/ebpf-plugins.md` §8）。
-3. 欄位腳本（CEL）和雲端 connector，這時把 process 拆開。
+2. 最小的雲端迴路：我們自己做的模擬雲端，加上 connector（request 照設定組、回應照設定對應，O12）和欄位腳本（CEL）。特徵先用 EVE 和 conntrack 計數。什麼時候拆 process 要再決定（O1）。
+3. 階段 2：tc 核心 eBPF 算特徵，要處理 GRO（見 `references/ebpf-plugins.md` §8）。算出來的特徵只是雲端迴路多一個輸入來源。
 4. 規則管線，以及 nft set 的操作 API。
 5. 階段 3：fast path 後端（tc redirect；L3 模式可以加 flowtable 後端）。
 6. eBPF 外掛的載入與揭露、XDP probe、OpenWrt 後端。
