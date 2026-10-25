@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
+use crate::datapath::XdpPolicy;
 use crate::forwarding::Mode;
 use crate::ports::{PortSelector, PortSpec, Role};
 
@@ -42,6 +43,7 @@ pub struct Setting<T> {
 pub struct Config {
     pub file: Option<PathBuf>,
     pub mode: Setting<Mode>,
+    pub xdp: Setting<XdpPolicy>,
     pub lan: Setting<PortSelector>,
     pub wan: Setting<PortSelector>,
 }
@@ -83,6 +85,7 @@ fn role_key(role: Role) -> &'static str {
 #[serde(deny_unknown_fields)]
 struct FileConfig {
     mode: Option<Mode>,
+    xdp: Option<XdpPolicy>,
     #[serde(default)]
     ports: FilePorts,
 }
@@ -135,22 +138,26 @@ fn merge(file: Option<PathBuf>, file_config: FileConfig, overrides: Overrides) -
             })
             .ok_or(ConfigError::Missing { role })
     };
-    let mode = match file_config.mode {
+    Ok(Config {
+        mode: file_or_default(file_config.mode),
+        xdp: file_or_default(file_config.xdp),
+        lan: pick(Role::Lan, overrides.lan, file_config.ports.lan)?,
+        wan: pick(Role::Wan, overrides.wan, file_config.ports.wan)?,
+        file,
+    })
+}
+
+fn file_or_default<T: Default>(from_file: Option<T>) -> Setting<T> {
+    match from_file {
         Some(value) => Setting {
             value,
             source: Source::File,
         },
         None => Setting {
-            value: Mode::default(),
+            value: T::default(),
             source: Source::Default,
         },
-    };
-    Ok(Config {
-        mode,
-        lan: pick(Role::Lan, overrides.lan, file_config.ports.lan)?,
-        wan: pick(Role::Wan, overrides.wan, file_config.ports.wan)?,
-        file,
-    })
+    }
 }
 
 #[cfg(test)]

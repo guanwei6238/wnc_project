@@ -108,6 +108,5 @@ RequiredModule {
 | `nf_conntrack_netlink` 模組 | N5：改 ct mark 用 ctnetlink 還是 nft set | 用 ctnetlink 才加進 `REQUIRED_MODULES` |
 | sysctl、bridge 相關模組 | D3 已決定（2026-10-24），下一步實作 | L3：`net.ipv4.ip_forward`；L2：兩個 port 在同一個 bridge、`br_netfilter` **必須已載入**（它不會自動載入，沒載入時橋接流量完全繞過 nft）、`bridge-nf-call-iptables`/`ip6tables` 是 1。Pi 上沒有 `nf_conntrack_bridge`，不列為需求 |
 | TCX 可用性（kernel ≥ 6.6、bpffs、JIT） | 階段 2 開始時 | 探測放在 `kernel/` |
-| XDP 能力（netdev genetlink 的 xdp-features） | 換正式設備時（Pi 4 兩張網卡都沒有 native XDP） | rust-netlink 沒有 netdev family，要自己寫（約 150–250 行）。只接受 native XDP，不要退回 generic XDP |
 
 做完其中一項，就把它從這張表移到實作裡，並更新這份文件。

@@ -40,6 +40,41 @@ fn ethernet_link() {
     assert_eq!(iface.kind.as_deref(), Some("veth"));
     assert_eq!(iface.master, Some(5));
     assert_eq!(iface.driver, None);
+    assert_eq!(iface.xdp, None);
+}
+
+#[test]
+fn generic_xdp_attachment() {
+    let msg = message(
+        LinkLayerType::Ether,
+        vec![LinkAttribute::Xdp(vec![LinkXdp::Attached(XdpAttached::SocketBuffer), LinkXdp::ProgId(42)])],
+    );
+    assert_eq!(
+        from_link_message(msg).xdp,
+        Some(XdpAttachment { mode: XdpMode::Generic, prog_id: Some(42) })
+    );
+}
+
+#[test]
+fn no_xdp_attached_is_none() {
+    let msg = message(LinkLayerType::Ether, vec![LinkAttribute::Xdp(vec![LinkXdp::Attached(XdpAttached::None)])]);
+    assert_eq!(from_link_message(msg).xdp, None);
+}
+
+#[test]
+fn multiple_xdp_programs() {
+    let msg = message(
+        LinkLayerType::Ether,
+        vec![LinkAttribute::Xdp(vec![
+            LinkXdp::Attached(XdpAttached::Multiple),
+            LinkXdp::DrvProgId(3),
+            LinkXdp::SkbProgId(4),
+        ])],
+    );
+    assert_eq!(
+        from_link_message(msg).xdp,
+        Some(XdpAttachment { mode: XdpMode::Multiple, prog_id: None })
+    );
 }
 
 #[test]

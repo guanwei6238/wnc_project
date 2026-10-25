@@ -3,9 +3,11 @@ use std::process::ExitCode;
 
 use clap::Args;
 use security_gateway::config::{self, Config, Overrides};
+use security_gateway::datapath::{CoreHook, XdpPolicy, core_hook};
 use security_gateway::forwarding::{self, EnvCheck, EnvState, Forwarding, Level, Mode};
 use security_gateway::kernel::modules::{ModuleIndex, ModuleState, RequiredModule};
-use security_gateway::kernel::netif::{Interface, LinkStatus, NetifError, Netlink};
+use security_gateway::kernel::netdev::{Netdev, XdpFeatures};
+use security_gateway::kernel::netif::{Interface, LinkStatus, NetifError, Netlink, XdpAttachment, XdpMode};
 use security_gateway::ports::{self, Port, ResolveError};
 
 #[derive(Debug, Args)]
@@ -36,7 +38,6 @@ impl Finding {
 }
 
 pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: DoctorArgs) -> ExitCode {
-    // 檢查結果（含設定檔錯誤）印在 stdout；stderr 只留給 doctor 自己無法完成檢查的情況
     let config = match config::load(config_path, overrides) {
         Ok(config) => config,
         Err(e) => {
@@ -53,6 +54,7 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: Doctor
         None => println!("config: none ({} not found)", config::DEFAULT_PATH),
     }
     println!("mode:   {} ({})", config.mode.value, config.mode.source);
+    println!("xdp:    {} ({})", config.xdp.value, config.xdp.source);
     println!();
 
     let interfaces = match load_interfaces().await {
@@ -71,6 +73,9 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: Doctor
     let forwarding = forwarding::for_mode(mode);
     let ports: Vec<Port> = results.iter().filter_map(|r| r.as_ref().ok().cloned()).collect();
     findings.extend(check_environment(mode, forwarding.as_ref(), &ports, &interfaces));
+    println!();
+
+    findings.extend(check_xdp(config.xdp.value, &ports).await);
     println!();
 
     findings.extend(check_modules(forwarding.required_modules()));
@@ -166,6 +171,105 @@ fn print_environment(mode: Mode, checks: &[EnvCheck]) {
             EnvState::Unknown { .. } => "unknown".to_owned(),
         };
         println!("{:<36} {}", check.item, result);
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct XdpRow {
+    port: Port,
+    native: Option<XdpFeatures>,
+    hook: CoreHook,
+}
+
+async fn check_xdp(policy: XdpPolicy, ports: &[Port]) -> Vec<Finding> {
+    let netdev = Netdev::connect();
+    let mut error = None;
+    let mut rows = Vec::new();
+    for port in ports {
+        let detected = match &netdev {
+            Ok(netdev) => netdev.xdp_features(port.interface.index).await.map_err(|e| e.to_string()),
+            Err(e) => Err(e.to_string()),
+        };
+        let native = match detected {
+            Ok(features) => Some(features),
+            Err(e) => {
+                error.get_or_insert(e);
+                None
+            }
+        };
+        rows.push(XdpRow {
+            port: port.clone(),
+            native,
+            hook: core_hook(policy, native),
+        });
+    }
+    print_xdp(&rows);
+    xdp_findings(policy, error.as_deref(), &rows)
+}
+
+fn xdp_findings(policy: XdpPolicy, detection_error: Option<&str>, rows: &[XdpRow]) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    if let (Some(e), XdpPolicy::Auto) = (detection_error, policy) {
+        findings.push(Finding {
+            severity: Severity::Warning,
+            message: format!("cannot detect native XDP support ({e}); the core program will use TC"),
+        });
+    }
+    for row in rows {
+        let (role, name) = (row.port.role, &row.port.interface.name);
+        if let Some(XdpAttachment {
+            mode: XdpMode::Generic,
+            prog_id,
+        }) = row.port.interface.xdp
+        {
+            let program = prog_id.map_or("a generic XDP program".to_owned(), |id| format!("generic XDP program {id}"));
+            findings.push(Finding {
+                severity: Severity::Warning,
+                message: format!(
+                    "{role} ({name}): {program} is attached; generic XDP disables GRO on this interface and is slower \
+                     than TC (detach it with: ip link set dev {name} xdpgeneric off)"
+                ),
+            });
+        }
+        if row.hook == CoreHook::GenericXdp {
+            findings.push(Finding {
+                severity: Severity::Warning,
+                message: format!(
+                    "{role} ({name}): xdp = \"generic\" makes the core program use generic XDP, which disables GRO \
+                     on this interface; use \"auto\" to get native XDP or TC"
+                ),
+            });
+        }
+    }
+    findings
+}
+
+fn print_xdp(rows: &[XdpRow]) {
+    println!(
+        "{:<4} {:<15} {:<10} {:<28} {:<18} {}",
+        "ROLE", "INTERFACE", "DRIVER", "NATIVE XDP", "ATTACHED XDP", "CORE HOOK"
+    );
+    for row in rows {
+        let iface = &row.port.interface;
+        let native = match row.native {
+            None => "unknown".to_owned(),
+            Some(features) if features.0 == 0 => "no".to_owned(),
+            Some(features) => features.to_string(),
+        };
+        let attached = match iface.xdp {
+            None => "none".to_owned(),
+            Some(XdpAttachment { mode, prog_id: None }) => mode.to_string(),
+            Some(XdpAttachment { mode, prog_id: Some(id) }) => format!("{mode} (id {id})"),
+        };
+        println!(
+            "{:<4} {:<15} {:<10} {:<28} {:<18} {}",
+            row.port.role.to_string(),
+            iface.name,
+            iface.driver.as_deref().unwrap_or("-"),
+            native,
+            attached,
+            row.hook
+        );
     }
 }
 

@@ -1,4 +1,5 @@
 use super::*;
+use crate::datapath::XdpPolicy;
 use crate::kernel::netif::MacAddr;
 
 const PHY: MacAddr = MacAddr([0x9c, 0x69, 0xd3, 0x2a, 0x11, 0x54]);
@@ -24,6 +25,18 @@ fn parse_mode() {
 fn parse_rejects_invalid_mode() {
     let err = parse("mode = \"bridged\"\n").unwrap_err();
     assert!(err.contains("invalid mode \"bridged\""), "{err}");
+}
+
+#[test]
+fn parse_xdp() {
+    let config = parse("xdp = \"off\"\n").unwrap();
+    assert_eq!(config.xdp, Some(XdpPolicy::Off));
+}
+
+#[test]
+fn parse_rejects_invalid_xdp() {
+    let err = parse("xdp = \"native\"\n").unwrap_err();
+    assert!(err.contains("invalid xdp setting \"native\""), "{err}");
 }
 
 #[test]
@@ -63,15 +76,18 @@ fn merge_from_file() {
     let config = merge(Some("/x.toml".into()), file_config, Overrides::default()).unwrap();
     assert_eq!(config.file, Some(PathBuf::from("/x.toml")));
     assert_eq!(config.mode, Setting { value: Mode::Bridge, source: Source::Default });
+    assert_eq!(config.xdp, Setting { value: XdpPolicy::Auto, source: Source::Default });
     assert_eq!(config.lan, Setting { value: name("eth0"), source: Source::File });
     assert_eq!(config.wan, Setting { value: name("eth1"), source: Source::File });
 }
 
 #[test]
 fn mode_from_file() {
-    let file_config = parse("mode = \"routed\"\n[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n").unwrap();
+    let file_config =
+        parse("mode = \"routed\"\nxdp = \"generic\"\n[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n").unwrap();
     let config = merge(None, file_config, Overrides::default()).unwrap();
     assert_eq!(config.mode, Setting { value: Mode::Routed, source: Source::File });
+    assert_eq!(config.xdp, Setting { value: XdpPolicy::Generic, source: Source::File });
 }
 
 #[test]
@@ -148,6 +164,7 @@ const EXAMPLE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/setting
 fn example_sets_nothing_by_default() {
     let config = parse(EXAMPLE).unwrap();
     assert_eq!(config.mode, None);
+    assert_eq!(config.xdp, None);
     assert_eq!(config.ports.lan, None);
     assert_eq!(config.ports.wan, None);
 }
@@ -170,6 +187,7 @@ fn example_values_are_valid() {
         .join("\n");
     let config = parse(&uncommented).unwrap();
     assert!(config.mode.is_some());
+    assert!(config.xdp.is_some());
     assert!(config.ports.lan.is_some());
     assert!(config.ports.wan.is_some());
 }

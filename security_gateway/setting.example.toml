@@ -14,6 +14,15 @@
 # Run `wnc-gw doctor` to see the mode in effect and what it requires.
 # mode = "bridge"
 
+# Where the gateway's core eBPF program attaches on each port (default: "auto"):
+#   - "auto":    native XDP on ports whose driver supports it, TC otherwise.
+#                Generic XDP is never chosen automatically: it is slower than TC.
+#   - "off":     always TC.
+#   - "generic": generic XDP even without driver support (for testing; it
+#                disables GRO on the interface).
+# Run `wnc-gw doctor` to see which hook each port would use.
+# xdp = "auto"
+
 [ports]
 # Each port is selected by interface name or by MAC address:
 #   - name: as shown by `ip link` or `wnc-gw show interfaces`, e.g. "eth0"

@@ -67,6 +67,7 @@ docker exec wnc-cli ping -c1 -W2 10.0.2.2                   # 確認轉送沒有
 | MAC 歧義 | `ip link add br-test type bridge && ip link set br-test address 02:00:00:00:01:01` | LAN 的 MAC 對到 `eth0`、`br-test` 兩個介面，報錯；改用 `--lan eth0` 就能解決 |
 | 設定檔錯誤 | 在容器的 `/tmp` 寫一個錯誤的 toml（欄位打錯、MAC 格式錯、缺欄位），用 `-c /tmp/x.toml` 指定 | 報錯並指出行號和欄位 |
 | 讀不到模組目錄 | 拿掉 `/lib/modules` 的掛載（或在其他沒掛載的容器裡跑） | 沒載入的模組變成 `unknown` |
+| 介面上已經掛了 XDP 程式 | 臨時容器（`--cap-add SYS_ADMIN --cap-add NET_ADMIN --security-opt apparmor=unconfined`）裡掛 bpffs：`mount -t bpf bpf /tmp/bpffs`，用 Python 呼叫 bpf syscall 載入一個只回傳 `XDP_PASS` 的程式並 pin 起來，再 `ip link set dev va xdpgeneric pinned …`（native 用 `xdpdrv`）。筆電沒有 clang，所以不用 `.o` 檔 | generic 的顯示 `generic (id N)` 並提出 warning；native 的顯示 `native (id N)` |
 
 ## 5. Docker 會掩蓋的問題
 
@@ -74,7 +75,7 @@ docker exec wnc-cli ping -c1 -W2 10.0.2.2                   # 確認轉送沒有
 |---|---|---|
 | 把自己鎖在外面 | `docker exec` 不經過網路，規則把流量全擋掉也進得去。Pi 上是 SSH 經過資料 port（eth1）連進去，會直接斷線 | 會改流量的步驟要另外設計「從網路連 gw」的驗證，例如加一個 admin 容器 |
 | 動到別人的設定 | 容器的 netns 一開始是空的，`flush ruleset` 只會清掉容器自己的規則 | 只動自己的 nft table。驗證時先放一張假的「系統 table」，確認跑完之後它還在 |
-| XDP 看起來可以用 | veth 支援 native XDP，Pi 的網卡不支援 | 只把 Docker 的結果當成「邏輯對」 |
+| XDP 看起來可以用 | veth 支援 native XDP（回報 basic、redirect、rx-sg），Pi 的網卡不支援 | 只把 Docker 的結果當成「邏輯對」。`xdp = "auto"` 在 Docker 會選 native XDP，在 Pi 會選 TC；要模擬 Pi 就用 `xdp = "off"` |
 | kernel 不一樣 | 容器用的是筆電的 kernel（Ubuntu 7.0），不是 Pi 的 6.12 rpi | 模組、kernel 設定（例如 `NF_CONNTRACK_BRIDGE`）要在 Pi 上用 doctor 確認 |
 | 輸出順序亂掉 | `docker exec` 把 stdout 和 stderr 分開傳回 | doctor 的報告全部印在 stdout |
 | 實體網卡的行為 | veth 沒有 driver、沒有出廠 MAC、不會被拔插 | driver、出廠 MAC 在筆電主機上用唯讀的方式驗證；USB 網卡拔插要到 Pi 上測 |

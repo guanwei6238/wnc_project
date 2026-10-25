@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 use futures::TryStreamExt;
 use rtnetlink::packet_route::link::{
-    LinkAttribute, LinkFlags, LinkInfo, LinkLayerType, LinkMessage, State,
+    LinkAttribute, LinkFlags, LinkInfo, LinkLayerType, LinkMessage, LinkXdp, State, XdpAttached,
 };
 
 const SYS_CLASS_NET: &str = "/sys/class/net";
@@ -84,6 +84,32 @@ pub struct Interface {
     pub kind: Option<String>,
     pub master: Option<u32>,
     pub driver: Option<String>,
+    pub xdp: Option<XdpAttachment>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum XdpMode {
+    Native,
+    Generic,
+    Offload,
+    Multiple,
+}
+
+impl fmt::Display for XdpMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Native => "native",
+            Self::Generic => "generic",
+            Self::Offload => "offload",
+            Self::Multiple => "multiple",
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct XdpAttachment {
+    pub mode: XdpMode,
+    pub prog_id: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -160,6 +186,7 @@ fn from_link_message(msg: LinkMessage) -> Interface {
         kind: None,
         master: None,
         driver: None,
+        xdp: None,
     };
     let is_ether = msg.header.link_layer_type == LinkLayerType::Ether;
 
@@ -170,6 +197,7 @@ fn from_link_message(msg: LinkMessage) -> Interface {
             LinkAttribute::PermAddress(bytes) if is_ether => iface.perm_mac = mac_from_bytes(&bytes),
             LinkAttribute::OperState(state) => iface.oper_state = oper_state(state),
             LinkAttribute::Controller(index) => iface.master = Some(index),
+            LinkAttribute::Xdp(attrs) => iface.xdp = xdp_attachment(&attrs),
             LinkAttribute::LinkInfo(infos) => {
                 for info in infos {
                     if let LinkInfo::Kind(kind) = info {
@@ -181,6 +209,22 @@ fn from_link_message(msg: LinkMessage) -> Interface {
         }
     }
     iface
+}
+
+fn xdp_attachment(attrs: &[LinkXdp]) -> Option<XdpAttachment> {
+    let mut mode = None;
+    let mut prog_id = None;
+    for attr in attrs {
+        match attr {
+            LinkXdp::Attached(XdpAttached::Driver) => mode = Some(XdpMode::Native),
+            LinkXdp::Attached(XdpAttached::SocketBuffer) => mode = Some(XdpMode::Generic),
+            LinkXdp::Attached(XdpAttached::Hardware) => mode = Some(XdpMode::Offload),
+            LinkXdp::Attached(XdpAttached::Multiple) => mode = Some(XdpMode::Multiple),
+            LinkXdp::ProgId(id) => prog_id = Some(*id),
+            _ => {}
+        }
+    }
+    mode.map(|mode| XdpAttachment { mode, prog_id })
 }
 
 fn mac_from_bytes(bytes: &[u8]) -> Option<MacAddr> {

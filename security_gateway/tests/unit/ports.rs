@@ -16,6 +16,7 @@ fn iface(index: u32, name: &str, mac: Option<MacAddr>, perm_mac: Option<MacAddr>
         kind: kind.map(str::to_owned),
         master: None,
         driver: None,
+        xdp: None,
     }
 }
 

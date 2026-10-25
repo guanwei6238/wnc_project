@@ -16,6 +16,7 @@ fn port(role: Role, name: &str, admin_up: bool, oper_state: OperState) -> Port {
             kind: None,
             master: None,
             driver: None,
+            xdp: None,
         },
         matched_by: MatchedBy::Name,
     }
@@ -188,4 +189,71 @@ fn unknown_check_is_a_warning() {
             message: "bridge mode: cannot verify net.bridge.bridge-nf-call-iptables: br_netfilter is not loaded".into(),
         }]
     );
+}
+
+fn xdp_row(attached: Option<XdpAttachment>, native: Option<XdpFeatures>, hook: CoreHook) -> XdpRow {
+    let mut port = port(Role::Lan, "eth0", true, OperState::Up);
+    port.interface.xdp = attached;
+    XdpRow { port, native, hook }
+}
+
+#[test]
+fn native_xdp_has_no_finding() {
+    let rows = [xdp_row(None, Some(XdpFeatures(1)), CoreHook::NativeXdp)];
+    assert_eq!(xdp_findings(XdpPolicy::Auto, None, &rows), vec![]);
+}
+
+#[test]
+fn tc_fallback_has_no_finding() {
+    let rows = [xdp_row(None, Some(XdpFeatures(0)), CoreHook::Tc)];
+    assert_eq!(xdp_findings(XdpPolicy::Auto, None, &rows), vec![]);
+}
+
+#[test]
+fn detection_failure_is_a_warning_in_auto() {
+    let rows = [xdp_row(None, None, CoreHook::Tc)];
+    assert_eq!(
+        xdp_findings(XdpPolicy::Auto, Some("netdev query failed: x"), &rows),
+        vec![Finding {
+            severity: Severity::Warning,
+            message: "cannot detect native XDP support (netdev query failed: x); the core program will use TC".into(),
+        }]
+    );
+    assert_eq!(xdp_findings(XdpPolicy::Off, Some("netdev query failed: x"), &rows), vec![]);
+}
+
+#[test]
+fn attached_generic_xdp_is_a_warning() {
+    let attached = XdpAttachment {
+        mode: XdpMode::Generic,
+        prog_id: Some(42),
+    };
+    let findings = xdp_findings(XdpPolicy::Off, None, &[xdp_row(Some(attached), Some(XdpFeatures(0)), CoreHook::Tc)]);
+    assert_eq!(
+        findings,
+        vec![Finding {
+            severity: Severity::Warning,
+            message: "LAN (eth0): generic XDP program 42 is attached; generic XDP disables GRO on this interface \
+                      and is slower than TC (detach it with: ip link set dev eth0 xdpgeneric off)"
+                .into(),
+        }]
+    );
+}
+
+#[test]
+fn attached_native_xdp_has_no_finding() {
+    let attached = XdpAttachment {
+        mode: XdpMode::Native,
+        prog_id: Some(7),
+    };
+    let rows = [xdp_row(Some(attached), Some(XdpFeatures(1)), CoreHook::NativeXdp)];
+    assert_eq!(xdp_findings(XdpPolicy::Auto, None, &rows), vec![]);
+}
+
+#[test]
+fn generic_policy_is_a_warning() {
+    let findings = xdp_findings(XdpPolicy::Generic, None, &[xdp_row(None, None, CoreHook::GenericXdp)]);
+    assert_eq!(findings.len(), 1);
+    assert_eq!(findings[0].severity, Severity::Warning);
+    assert!(findings[0].message.starts_with("LAN (eth0): xdp = \"generic\" makes the core program use generic XDP"));
 }

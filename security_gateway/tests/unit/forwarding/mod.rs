@@ -13,6 +13,7 @@ pub(super) fn iface(index: u32, name: &str, kind: Option<&str>, master: Option<u
         kind: kind.map(str::to_owned),
         master,
         driver: None,
+        xdp: None,
     }
 }
 

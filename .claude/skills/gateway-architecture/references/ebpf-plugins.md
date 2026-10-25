@@ -141,6 +141,7 @@
   - libbpf：`bpf_xdp_query` 的 `feature_flags`。
   - libbpf-rs：`Xdp::query` 可以直接讀。
   - aya：沒有 API。要自己寫 genl 查詢，或用 DRV_MODE 嘗試 attach，失敗再退回。
+  - wnc-gw（2026-10-25 已實作）：`kernel/netdev.rs` 用 genetlink 對每個介面各送一次 `NETDEV_CMD_DEV_GET`（帶 ifindex）。不用 dump，因為 kernel 的 dump 回應不帶 `NLM_F_MULTI`，netlink-proto 只會收第一則。doctor 的 XDP 段落顯示 native 功能、已掛的 XDP 程式（`IFLA_XDP_ATTACHED`，native/generic/offload）和 `core_hook()` 選到的 hook。實測：Pi 的 bcmgenet、cdc_ncm 都回報 0；筆電 7.0 的 veth 回報 basic、redirect、rx-sg。
 - 依用途分開判斷：
   - DROP、PASS：只要收封包的 port 有 basic。
   - redirect：除了收封包的 port，送出的 port 還要有 ndo-xmit。
