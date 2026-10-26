@@ -54,6 +54,7 @@ pub enum Event {
 
 pub trait Lifecycle {
     fn next_event(&mut self) -> impl Future<Output = Option<Event>>;
+    fn allow_restart(&mut self);
     fn stop(self) -> impl Future<Output = ()>;
 }
 

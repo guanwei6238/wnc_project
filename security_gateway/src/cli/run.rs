@@ -1,15 +1,16 @@
 use std::path::Path;
 use std::process::ExitCode;
+use std::time::Instant;
 
 use clap::Args;
 use security_gateway::config::{self, Config, Overrides};
-use security_gateway::firewall::{self, FAMILY, TABLE};
-use security_gateway::ids::lifecycle::Lifecycle;
+use security_gateway::firewall::{self, FAMILY, Inspection, TABLE, WhenUnavailable};
+use security_gateway::ids::lifecycle::{Event, Lifecycle};
 use security_gateway::ids::spawned::{Options, SpawnedSuricata};
 use security_gateway::kernel::nft::Nft;
 use security_gateway::platform::{Current, Dirs};
 use tokio::signal::unix::{Signal, SignalKind, signal};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use super::{doctor, logging};
 
@@ -42,16 +43,21 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: RunArg
 
     let table = format!("{FAMILY} {TABLE}");
     let nft = Nft::new(config.nftables.path.value.as_path());
-    if let Err(e) = firewall::install(&nft).await {
+    let inspection = Inspection {
+        queue: config.suricata.queue.value,
+        when_unavailable: config.suricata.when_unavailable.value,
+    };
+    if let Err(e) = firewall::install(&nft, inspection).await {
         error!(table = table.as_str(), error = %e, "failed to install table");
         return ExitCode::FAILURE;
     }
     info!(table = table.as_str(), "table installed; waiting for SIGINT or SIGTERM");
+    log_uninspected(inspection.when_unavailable);
 
-    let mut code = serve(&config, &mut interrupt, &mut terminate).await;
+    let mut code = serve(&config, &nft, inspection, &mut interrupt, &mut terminate).await;
 
     match firewall::remove(&nft).await {
-        Ok(()) => info!(table = table.as_str(), "table removed"),
+        Ok(()) => warn!(table = table.as_str(), "table removed; forwarded traffic passes without inspection"),
         Err(e) => {
             error!(table = table.as_str(), error = %e, "failed to remove table");
             code = ExitCode::FAILURE;
@@ -60,7 +66,13 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: RunArg
     code
 }
 
-async fn serve(config: &Config, interrupt: &mut Signal, terminate: &mut Signal) -> ExitCode {
+async fn serve(
+    config: &Config,
+    nft: &Nft,
+    inspection: Inspection,
+    interrupt: &mut Signal,
+    terminate: &mut Signal,
+) -> ExitCode {
     let mut suricata = match SpawnedSuricata::start(suricata_options(config)) {
         Ok(suricata) => suricata,
         Err(e) => {
@@ -68,7 +80,8 @@ async fn serve(config: &Config, interrupt: &mut Signal, terminate: &mut Signal) 
             return ExitCode::FAILURE;
         }
     };
-    let code = loop {
+    let mut uninspected_since = Some(Instant::now());
+    let mut code = loop {
         tokio::select! {
             _ = interrupt.recv() => {
                 info!(signal = "SIGINT", "stopping");
@@ -78,16 +91,52 @@ async fn serve(config: &Config, interrupt: &mut Signal, terminate: &mut Signal) 
                 info!(signal = "SIGTERM", "stopping");
                 break ExitCode::SUCCESS;
             }
-            event = suricata.next_event() => {
-                if event.is_none() {
+            event = suricata.next_event() => match event {
+                None => {
                     error!("suricata supervision ended unexpectedly");
                     break ExitCode::FAILURE;
+                }
+                Some(Event::Ready { .. }) => {
+                    if let Err(e) = firewall::start_inspection(nft, inspection).await {
+                        error!(error = %e, "failed to queue forwarded traffic to suricata");
+                        break ExitCode::FAILURE;
+                    }
+                    let uninspected_ms = uninspected_since.take().map_or(0, |since| since.elapsed().as_millis() as u64);
+                    info!(queue = %inspection.queue, uninspected_ms, "forwarded traffic is inspected");
+                }
+                Some(Event::Stopped { .. }) => {
+                    if uninspected_since.is_none() {
+                        if let Err(e) = firewall::stop_inspection(nft, inspection).await {
+                            error!(error = %e, "failed to stop queueing forwarded traffic; not restarting suricata");
+                            break ExitCode::FAILURE;
+                        }
+                        uninspected_since = Some(Instant::now());
+                        log_uninspected(inspection.when_unavailable);
+                    }
+                    suricata.allow_restart();
                 }
             }
         }
     };
+    if uninspected_since.is_none() {
+        match firewall::stop_inspection(nft, inspection).await {
+            Ok(()) => log_uninspected(inspection.when_unavailable),
+            Err(e) => {
+                error!(error = %e, "failed to stop queueing forwarded traffic");
+                code = ExitCode::FAILURE;
+            }
+        }
+    }
     suricata.stop().await;
     code
+}
+
+fn log_uninspected(when_unavailable: WhenUnavailable) {
+    let when = when_unavailable.to_string();
+    match when_unavailable {
+        WhenUnavailable::Accept => warn!(when_unavailable = when.as_str(), "forwarded traffic passes without inspection"),
+        WhenUnavailable::Drop => warn!(when_unavailable = when.as_str(), "forwarded traffic is dropped without inspection"),
+    }
 }
 
 fn suricata_options(config: &Config) -> Options {
@@ -96,6 +145,7 @@ fn suricata_options(config: &Config) -> Options {
         config: config.suricata.config.value.as_path().to_path_buf(),
         queue: config.suricata.queue.value,
         ready_timeout: config.suricata.ready_timeout.value,
+        fail_open: config.suricata.when_unavailable.value == WhenUnavailable::Accept,
         runtime_dir: Current.runtime_dir().to_path_buf(),
         log_dir: Current.log_dir().join("suricata"),
     }

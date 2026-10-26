@@ -172,6 +172,7 @@ fn example_sets_nothing_by_default() {
     assert_eq!(config.suricata.config, None);
     assert_eq!(config.suricata.queue, None);
     assert_eq!(config.suricata.ready_timeout, None);
+    assert_eq!(config.suricata.when_unavailable, None);
 }
 
 #[test]
@@ -200,6 +201,7 @@ fn example_values_are_valid() {
     assert!(config.suricata.config.is_some());
     assert!(config.suricata.queue.is_some());
     assert!(config.suricata.ready_timeout.is_some());
+    assert!(config.suricata.when_unavailable.is_some());
 }
 
 fn path(s: &str) -> AbsolutePath {
@@ -286,6 +288,32 @@ fn suricata_queue_and_ready_timeout_from_file() {
         config.suricata.ready_timeout,
         Setting { value: std::time::Duration::from_secs(30), source: Source::File }
     );
+}
+
+#[test]
+fn when_unavailable_defaults_to_accept() {
+    let file_config = parse("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n").unwrap();
+    let config = merge(None, file_config, Overrides::default()).unwrap();
+    assert_eq!(
+        config.suricata.when_unavailable,
+        Setting { value: WhenUnavailable::Accept, source: Source::Default }
+    );
+}
+
+#[test]
+fn when_unavailable_from_file() {
+    let file_config = parse("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n[suricata]\nwhen_unavailable = \"drop\"\n").unwrap();
+    let config = merge(None, file_config, Overrides::default()).unwrap();
+    assert_eq!(
+        config.suricata.when_unavailable,
+        Setting { value: WhenUnavailable::Drop, source: Source::File }
+    );
+}
+
+#[test]
+fn parse_rejects_unknown_when_unavailable() {
+    let err = parse("[suricata]\nwhen_unavailable = \"open\"\n").unwrap_err();
+    assert!(err.contains("invalid when_unavailable \"open\" (expected \"accept\" or \"drop\")"), "{err}");
 }
 
 #[test]

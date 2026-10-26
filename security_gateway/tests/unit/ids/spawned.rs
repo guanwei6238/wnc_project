@@ -9,6 +9,7 @@ fn options(dir: &Path, path: PathBuf, ready_timeout: Duration) -> Options {
         config: "/etc/suricata/suricata.yaml".into(),
         queue: QueueRange::default(),
         ready_timeout,
+        fail_open: true,
         runtime_dir: dir.join("run"),
         log_dir: dir.join("log"),
     }
@@ -28,11 +29,15 @@ fn passes_config_queue_and_own_directories() {
             "/x/log",
             "--set",
             "unix-command.filename=/x/run/suricata.sock",
+            "--set",
+            "nfq.fail-open=yes",
         ]
         .map(OsString::from)
     );
     options.queue = "0-3".parse().unwrap();
-    assert_eq!(suricata_args(&options)[3], "0:3");
+    options.fail_open = false;
+    let args = suricata_args(&options);
+    assert_eq!((&args[3], &args[9]), (&OsString::from("0:3"), &OsString::from("nfq.fail-open=no")));
 }
 
 #[test]
@@ -110,7 +115,7 @@ async fn runs_the_command_with_notify_socket() {
     assert_eq!(
         std::fs::read_to_string(&out).unwrap(),
         format!(
-            "-c /etc/suricata/suricata.yaml -q 0 -l {} --set unix-command.filename={}\n{}\n",
+            "-c /etc/suricata/suricata.yaml -q 0 -l {} --set unix-command.filename={} --set nfq.fail-open=yes\n{}\n",
             scratch.0.join("log").display(),
             run.join("suricata.sock").display(),
             run.join("notify.sock").display()
@@ -124,11 +129,39 @@ async fn restarts_after_an_exit() {
     let script = scratch.script("exit 1");
     let mut suricata = SpawnedSuricata::start(options(&scratch.0, script, Duration::from_secs(10))).unwrap();
     let first = next(&mut suricata).await;
+    suricata.allow_restart();
     let second = next(&mut suricata).await;
     suricata.stop().await;
     for event in [first, second] {
         assert!(matches!(event, Event::Stopped { exit: Some(Exit::Code(1)), .. }), "{event:?}");
     }
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn waits_for_permission_before_restarting() {
+    let scratch = Scratch::new("gate");
+    let runs = scratch.0.join("runs");
+    let script = scratch.script(&format!("echo run >> {}; exit 1", runs.display()));
+    let mut suricata = SpawnedSuricata::start(options(&scratch.0, script, Duration::from_secs(10))).unwrap();
+    next(&mut suricata).await;
+    let waited = tokio::time::timeout(Duration::from_millis(1500), suricata.next_event()).await;
+    assert!(waited.is_err(), "restarted without permission: {waited:?}");
+    assert_eq!(std::fs::read_to_string(&runs).unwrap().lines().count(), 1);
+    suricata.allow_restart();
+    next(&mut suricata).await;
+    suricata.stop().await;
+    assert_eq!(std::fs::read_to_string(&runs).unwrap().lines().count(), 2);
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn stops_while_waiting_for_permission() {
+    let scratch = Scratch::new("gate-stop");
+    let script = scratch.script("exit 1");
+    let mut suricata = SpawnedSuricata::start(options(&scratch.0, script, Duration::from_secs(10))).unwrap();
+    next(&mut suricata).await;
+    let started = Instant::now();
+    suricata.stop().await;
+    assert!(started.elapsed() < Duration::from_secs(1), "stopping took {:?}", started.elapsed());
 }
 
 #[tokio::test(flavor = "current_thread")]

@@ -63,5 +63,12 @@
 # not ready in time, it is stopped and started again.
 # ready_timeout = 300
 
+# What happens to forwarded traffic while Suricata cannot inspect it: while it
+# starts or restarts, and when it falls behind (default: "accept").
+#   "accept"  pass it without inspection (`wnc-gw doctor` warns about this)
+#   "drop"    drop it, so the network stops while Suricata is unavailable
+# Either way, the log records when inspection stops and starts again.
+# when_unavailable = "accept"
+
 # The gateway runs these programs with its own privileges. `wnc-gw doctor`
 # warns when a non-root account can modify them or the directories they are in.

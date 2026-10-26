@@ -208,6 +208,16 @@
   - Suricata 的 stdout、stderr 收進 wnc-gw 的 log，每行帶 `source="suricata"` 和 pid，依 `E:`、`W:` 對應等級。這是 supervisor 常見的做法：同一條時間線，又分得出是誰說的。
   - 退避從 1 秒加倍到 60 秒，就緒後穩定 5 分鐘就重算，不放棄。`[suricata] ready_timeout` 預設 300 秒。
   - 用 `PR_SET_PDEATHSIG`：wnc-gw 被強制結束（`kill -9`、OOM、SSH 斷線的 SIGHUP）時 Suricata 也會結束，不會留下佔著 queue 的孤兒。正式部署時 systemd 的 cgroup 也會清掉，這主要是給沒有 systemd 的情況。
+- 2b-3 的細節（2026-10-26 決定）：
+  - 設定是 `[suricata] when_unavailable = "accept" | "drop"`，預設 `"accept"`；`"accept"` 時 doctor 給 warning。
+  - forward chain 最後 `jump ids`，queue 規則放在獨立的 `ids` chain。切換時在同一個 nft transaction 裡 `flush chain` 再加規則，不重裝整張 table：之後 table 裡會有黑名單 set 這類動態內容，重裝會清掉。
+  - `ids` 的兩種狀態：就緒時 `counter queue num N`（`accept` 加 `bypass`）；沒就緒時 `counter`（`accept`，交給 policy 放行）或 `counter drop`。`nfq.fail-open` 由 wnc-gw 用 `--set` 強制成和設定一致（`accept` 是 yes），不看 suricata.yaml。
+  - 順序：裝 table（沒就緒狀態）→ `READY=1` 後換成 queue → Suricata 結束時先換回沒就緒狀態，**換好之後才呼叫 `Lifecycle::allow_restart()` 讓 supervisor 重啟**（不靠退避的 1 秒剛好夠）；換規則失敗就不重啟、停 Suricata、wnc-gw 以結束碼 1 結束 → 停止時也是先換回沒就緒狀態，再停 Suricata，最後移除 table。之後的 (a) systemd 模式，對應的關卡是 `ExecStartPre` 的 hook。
+  - log：進入沒檢查的狀態時 WARN「forwarded traffic passes without inspection」或「…is dropped without inspection」（帶 `when_unavailable`）；恢復時 INFO「forwarded traffic is inspected」，帶 `uninspected_ms`（包含啟動時等 Suricata 就緒的時間）。移除 table 時 WARN「table removed; forwarded traffic passes without inspection」。兩種模式都用 WARN：丟掉是設定好的行為，失敗本身（Suricata 結束）另外有記。
+  - 還沒做到：
+    - Suricata 跟不上、kernel 因 fail-open 直接放行的封包，kernel 不計數（`/proc/net/netfilter/nfnetlink_queue` 的 `queue_dropped` 只算丟掉的），要比對 `ids` 的 counter 和 Suricata 自己的統計，留給之後的監控步驟，和「記下沒檢查的封包數」一起做。
+    - `drop` 在 wnc-gw 結束、table 被移除後就不成立，和 O9「停止時 table 要移除還是保留」一起決定。
+    - Suricata 當掉時還在 queue 裡等判決的封包會被 kernel 丟掉，`bypass` 只管之後進來的封包（Docker 實測：每秒 20 個 ping 掉 2 個）。
 
 ### O15. log 存在哪裡
 

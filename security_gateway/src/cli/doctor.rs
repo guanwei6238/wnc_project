@@ -6,6 +6,7 @@ use clap::Args;
 use security_gateway::access::{self, Writable, Writer};
 use security_gateway::config::{self, AbsolutePath, Config, Overrides, Setting, SuricataSettings};
 use security_gateway::datapath::{CoreHook, XdpPolicy, core_hook};
+use security_gateway::firewall::WhenUnavailable;
 use security_gateway::forwarding::{self, EnvCheck, EnvState, Forwarding, Level, Mode};
 use security_gateway::ids::suricata::{RuleFile, RuleFileState, Suricata, SuricataConfig, SuricataError, SuricataInfo};
 use security_gateway::kernel::modules::{ModuleIndex, ModuleState, RequiredModule};
@@ -432,6 +433,7 @@ async fn check_suricata(settings: &SuricataSettings) -> Vec<Finding> {
     let info = suricata.info().await;
     print_suricata(&settings.path, &info);
     let mut findings = suricata_findings(suricata.path(), &info);
+    findings.extend(when_unavailable_finding(settings.when_unavailable.value));
     if info.is_ok() {
         findings.push(spawned_finding());
         println!();
@@ -502,6 +504,18 @@ fn spawned_finding() -> Finding {
         message: "suricata is started by wnc-gw and shares its account and privileges, so a compromised suricata \
                   can do whatever the gateway can"
             .to_owned(),
+    }
+}
+
+fn when_unavailable_finding(when_unavailable: WhenUnavailable) -> Option<Finding> {
+    match when_unavailable {
+        WhenUnavailable::Accept => Some(Finding {
+            severity: Severity::Warning,
+            message: "forwarded traffic passes without inspection while suricata starts, restarts or falls behind \
+                      (when_unavailable = \"accept\"); set when_unavailable = \"drop\" to drop it instead"
+                .to_owned(),
+        }),
+        WhenUnavailable::Drop => None,
     }
 }
 

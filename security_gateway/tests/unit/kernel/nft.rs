@@ -74,6 +74,7 @@ fn replace_deletes_then_recreates_in_one_batch() {
             policy: Policy::Accept,
             rules: vec![vec![Statement::Counter]],
         }],
+        regular_chains: vec![],
     };
     assert_eq!(
         json(replace_batch(&table)),
@@ -87,6 +88,70 @@ fn replace_deletes_then_recreates_in_one_batch() {
             }}},
             {"add": {"rule": {"family": "inet", "table": "demo", "chain": "fwd", "expr": [{"counter": null}]}}},
         ]})
+    );
+}
+
+#[test]
+fn replace_creates_every_chain_before_any_rule() {
+    let table = Table {
+        family: Family::Inet,
+        name: "demo".into(),
+        chains: vec![BaseChain {
+            name: "fwd".into(),
+            hook: Hook::Forward,
+            priority: 0,
+            policy: Policy::Accept,
+            rules: vec![vec![Statement::Jump("sub".into())]],
+        }],
+        regular_chains: vec![RegularChain {
+            name: "sub".into(),
+            rules: vec![vec![Statement::Counter, Statement::Drop]],
+        }],
+    };
+    let ops = json(replace_batch(&table))["nftables"].as_array().unwrap().clone();
+    assert_eq!(
+        &ops[2..],
+        [
+            serde_json::json!({"add": {"table": {"family": "inet", "name": "demo"}}}),
+            serde_json::json!({"add": {"chain": {"family": "inet", "table": "demo", "name": "sub"}}}),
+            serde_json::json!({"add": {"chain": {
+                "family": "inet", "table": "demo", "name": "fwd",
+                "type": "filter", "hook": "forward", "prio": 0, "policy": "accept",
+            }}}),
+            serde_json::json!({"add": {"rule": {
+                "family": "inet", "table": "demo", "chain": "sub", "expr": [{"counter": null}, {"drop": null}],
+            }}}),
+            serde_json::json!({"add": {"rule": {
+                "family": "inet", "table": "demo", "chain": "fwd", "expr": [{"jump": {"target": "sub"}}],
+            }}}),
+        ]
+    );
+}
+
+#[test]
+fn replace_rules_flushes_the_chain_in_the_same_batch() {
+    let rules = [vec![Statement::Counter, Statement::Queue { queue: "0".parse().unwrap(), bypass: true }]];
+    assert_eq!(
+        json(replace_rules_batch(Family::Inet, "demo", "sub", &rules)),
+        serde_json::json!({"nftables": [
+            {"flush": {"chain": {"family": "inet", "table": "demo", "name": "sub"}}},
+            {"add": {"rule": {
+                "family": "inet", "table": "demo", "chain": "sub",
+                "expr": [{"counter": null}, {"queue": {"num": 0, "flags": ["bypass"]}}],
+            }}},
+        ]})
+    );
+}
+
+#[test]
+fn queue_ranges_and_flags() {
+    let expr = |queue: &str, bypass| {
+        serde_json::to_value(statement(&Statement::Queue { queue: queue.parse().unwrap(), bypass })).unwrap()
+    };
+    assert_eq!(expr("2", false), serde_json::json!({"queue": {"num": 2}}));
+    assert_eq!(
+        expr("0-3", true),
+        serde_json::json!({"queue": {"num": {"range": [0, 3]}, "flags": ["bypass"]}})
     );
 }
 

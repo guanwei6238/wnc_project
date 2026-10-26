@@ -5,7 +5,7 @@ description: 在 security_gateway/（執行檔 wnc-gw）加功能或改程式時
 
 # wnc-gw 開發指南
 
-這份 skill 描述**現在的程式長什麼樣子，以及要怎麼往上加**。目標架構、插件點與安全底線在 `gateway-architecture`；兩份都適用時一起讀。內容反映 2026-10-26（commit `48449a7` 之後，加上 wnc-gw 啟動和停止 Suricata：`ids/lifecycle.rs`、`ids/spawned.rs`、`kernel/nfqueue.rs`、platform 的 `Dirs`）的狀態，程式之後若有變動，以實際程式碼為準，並回頭更新這份 skill。
+這份 skill 描述**現在的程式長什麼樣子，以及要怎麼往上加**。目標架構、插件點與安全底線在 `gateway-architecture`；兩份都適用時一起讀。內容反映 2026-10-26（commit `f0c4687` 之後，加上 2b-3：`firewall.rs` 的 `ids` chain 在 Suricata 就緒後才把流量送進 queue、`[suricata] when_unavailable`、`Lifecycle::allow_restart()`）的狀態，程式之後若有變動，以實際程式碼為準，並回頭更新這份 skill。
 
 ## 0. 動手之前
 
@@ -26,17 +26,17 @@ security_gateway/
 │   │   ├── mod.rs          Cli（全域參數 -c/--config、--lan、--wan）、Command、run()
 │   │   ├── doctor.rs       doctor：載入設定 → passes()（各項檢查、印報告，沒有 error 才回傳 true）→ 結束碼
 │   │   ├── logging.rs      init()：tracing 的輸出設定（stderr、UTC 時間、終端機才上色），只有 run 會呼叫
-│   │   ├── run.rs          run：開 log → 載入設定 → doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM → 安裝 table → 啟動 Suricata（SpawnedSuricata）→ 等訊號 → 停止 Suricata → 移除 table；過程都記成 log 事件
+│   │   ├── run.rs          run：開 log → 載入設定 → doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM → 安裝 table（ids chain 是沒就緒狀態）→ 啟動 Suricata（SpawnedSuricata）→ Ready 時 start_inspection、Stopped 時 stop_inspection 再 allow_restart → 收到訊號：stop_inspection → 停止 Suricata → 移除 table；沒檢查的時段都記成 log 事件
 │   │   └── show/           show 的巢狀子命令（mod.rs 分派，interfaces.rs 列介面）
 │   ├── lib.rs              只宣告功能模組：access、config、datapath、firewall、forwarding、ids、kernel、platform、ports
 │   ├── access.rs           除了 root 之外誰能改某個路徑（檔案本身、每一層目錄、跟著 symlink 之後的實際位置）；/etc/passwd、/etc/group 查名稱
 │   ├── config.rs           setting.toml + CLI 覆寫 → Config（每個值帶 Source）；AbsolutePath（路徑設定必須是絕對路徑）
 │   ├── datapath/           核心 eBPF 程式在每個 port 掛在哪、怎麼掛（mod.rs 只放 pub mod / pub use）
 │   │   └── hook.rs         XdpPolicy（xdp 設定）、CoreHook、core_hook() 選擇規則
-│   ├── firewall.rs         我們自己的 nft table（inet wnc_gw）長什麼樣子；install()、remove()
+│   ├── firewall.rs         我們自己的 nft table（inet wnc_gw）：forward chain 最後 jump 到 ids chain；ids 依 Suricata 狀態換成 queue 或沒就緒的規則（WhenUnavailable、Inspection）；install()、start_inspection()、stop_inspection()、remove()
 │   ├── ids/                跟 IDS engine 打交道的薄模組（mod.rs 只放 pub mod）
-│   │   ├── lifecycle.rs    Suricata 生命週期的介面：trait Lifecycle、Event（Ready、Stopped）、Exit；DEFAULT_READY_TIMEOUT
-│   │   ├── spawned.rs      O14 的 (b)：wnc-gw 自己啟動 Suricata（NOTIFY_SOCKET 收 READY=1、輸出轉成 log、退避重啟、ready_timeout、PR_SET_PDEATHSIG）
+│   │   ├── lifecycle.rs    Suricata 生命週期的介面：trait Lifecycle（next_event、allow_restart、stop）、Event（Ready、Stopped）、Exit；DEFAULT_READY_TIMEOUT
+│   │   ├── spawned.rs      O14 的 (b)：wnc-gw 自己啟動 Suricata（NOTIFY_SOCKET 收 READY=1、輸出轉成 log、Stopped 之後等 allow_restart 再退避重啟、ready_timeout、PR_SET_PDEATHSIG、--set nfq.fail-open）
 │   │   └── suricata.rs     Suricata（路徑由設定決定）：--build-info → SuricataInfo；--dump-config -c → SuricataConfig（規則路徑）；check_rule_files()
 │   ├── ports.rs            Role、PortSelector（名稱或 MAC）、resolve()
 │   ├── forwarding/         轉送模式：Mode、trait Forwarding，bridge.rs（Bridged）、routed.rs（Routed）
@@ -49,7 +49,7 @@ security_gateway/
 │       ├── modules.rs      /proc/modules + modules.{builtin,dep} → ModuleState；RequiredModule
 │       ├── netdev.rs       netdev genetlink：每個介面的 native XDP 功能（XdpFeatures）
 │       ├── nfqueue.rs      QueueRange（queue 設定：0 或 "0-3"）
-│       ├── nft.rs          Nft（路徑由設定決定）：自己的 Table/BaseChain/Statement 型別 → nftables crate 的 JSON → nft -j -f -（有逾時）；nft -V → NftInfo
+│       ├── nft.rs          Nft（路徑由設定決定）：自己的 Table/BaseChain/RegularChain/Statement（Counter、Jump、Queue、Drop）型別 → nftables crate 的 JSON → nft -j -f -（有逾時）；replace_table、replace_rules（同一個 transaction 裡 flush chain 再加規則）、delete_table；nft -V → NftInfo
 │       └── sysctl.rs       讀 /proc/sys（key 不存在時回傳 None）
 └── tests/unit/             白箱單元測試，路徑鏡像 src/（見 §3.7）
 ```
@@ -65,7 +65,7 @@ security_gateway/
 | `ports.rs` | LAN/WAN 角色模型：把使用者的指定對應到 kernel 介面 | 讀設定檔（它只接收 `PortSpec`，不知道值從哪來） |
 | `datapath/` | 只負責一件事：核心 eBPF 程式在每個 port 掛在哪裡，以及怎麼掛上去、拆下來。一個功能一個檔案：`hook.rs`（`xdp` 設定和 `core_hook()`，目前只有 doctor 用）；之後加 `ingress.rs`（`IngressHook` trait 的 `NativeXdp`、`Tc` 實作，階段 2）、`egress.rs`、`maps.rs`（ban、trust map 的讀寫） | bpf syscall 和載入、掛載的底層操作（`kernel/bpf/`）；使用者的 eBPF 外掛（另開 `plugins/`）；讀特徵 map、合併、送雲端（另開模組，例如 `telemetry/`）；依 bridge/routed 而不同的轉送方式（`forwarding/` 的 trait 方法） |
 | `forwarding/` | 依轉送模式（bridge、routed）而不同的部分：`trait Forwarding` 和各模式的實作。目前提供環境檢查（`EnvCheck`）和模式需要的模組，只有 doctor 用到；之後各階段需要依模式而不同的功能時，在 trait 上加方法 | 兩種模式共用的邏輯（例如 nft 規則、netdev ingress 打方向 mark）；嚴重程度（由 doctor 決定） |
-| `firewall.rs` | 我們的 nft table 要長什麼樣子（table 名稱、chain、hook、priority、policy、規則），以及安裝、移除。之後的 NFQUEUE、ct mark、黑名單 set 都加在這裡。只用 `kernel::nft` 自己的型別 | 產生 JSON、執行 nft（`kernel/nft.rs`）；依 bridge/routed 而不同的部分（`forwarding/`）|
+| `firewall.rs` | 我們的 nft table 要長什麼樣子（table 名稱、chain、hook、priority、policy、規則），以及安裝、移除、切換 queue。之後的 ct mark、黑名單 set 也加在這裡，規則放在 `jump ids` 前面。只用 `kernel::nft` 自己的型別。動態內容（之後的 set）會被 `replace_table` 清掉，所以執行中只用 `replace_rules` 換單一 chain | 產生 JSON、執行 nft（`kernel/nft.rs`）；依 bridge/routed 而不同的部分（`forwarding/`）|
 | `access.rs` | 檔案存取權的事實：哪些非 root 的帳號（擁有者、群組、所有人）能改某個路徑，包含每一層目錄和 symlink 的實際位置；sticky 目錄只算擁有者 | 判斷好壞（doctor 決定給 warning）；要檢查哪些檔案（doctor 決定） |
 | `kernel/` | 在 user space 跟 kernel 溝通：netlink、sysfs、procfs；之後的 nft、conntrack、bpf 載入、sysctl | 判斷好壞或嚴重程度；LAN/WAN 等 gateway 概念；讀設定檔 |
 | `ids/` | 跟 IDS engine 打交道：執行 Suricata、解析它的輸出，之後的 EVE、unix socket 也放這裡。整合方式是 A（2026-10-25 決定）：Suricata 是獨立的 process，不內嵌 libsuricata。`suricata.rs` 是探測（`--build-info`、`--dump-config`、規則檔，給 doctor 用）。`lifecycle.rs` 是 O14 的生命週期介面，對外只有「已就緒」「已停止」兩種事件；`spawned.rs` 是 wnc-gw 自己啟動 Suricata 的實作，之後 systemd 管理的實作也實作同一個 trait。實作自己記 log（啟動、就緒、結束、退避），用介面的一方（`run`、之後的 queue 管理）只依事件行動，不重複記錄 | 判斷好壞或嚴重程度（由 doctor 決定）；把封包導進 queue 的 nft 規則（`firewall.rs`） |
@@ -123,7 +123,7 @@ security_gateway/
 - 用 `tracing`（`tracing-subscriber` 只開 `fmt`、`std`、`ansi`）。lib 只用 `info!`、`warn!`、`error!` 這類 macro 發出事件，**不設定輸出**；輸出由 bin 的 `cli/logging.rs` 決定，目前只有 `run` 呼叫 `init()`。
 - **報告和事件分開**：doctor 的報告印在 stdout（它是報告，見 `references/doctor-checks.md` §2）；`run` 這類長時間執行的命令，過程中發生的事一律記成事件，印在 stderr。用 systemd 執行時 stderr 直接進 journald。
 - 訊息照錯誤訊息的規則：英文、小寫開頭、結尾不加句號。會變的值放欄位，不要塞進訊息：`info!(table = table.as_str(), "table installed")`，錯誤放 `error = %e`。欄位名稱用 snake_case，有單位的寫在名稱裡（`ready_ms`、`uptime_s`）。字串欄位用 `as_str()` 記錄，輸出時會加引號，含空白也不會跟其他欄位混在一起。
-- **會讓流量沒經過檢查的事件，一定要記**（開發者 2026-10-26 的要求）：Suricata 啟動、就緒、結束（結束碼或 signal、執行多久）、重啟，以及 queue 規則的裝上和拆掉。「從什麼時候到什麼時候沒有檢查」要能直接從 log 讀出來。
+- **會讓流量沒經過檢查的事件，一定要記**（開發者 2026-10-26 的要求）：Suricata 啟動、就緒、結束（結束碼或 signal、執行多久）、重啟，以及 queue 規則的裝上和拆掉。「從什麼時候到什麼時候沒有檢查」要能直接從 log 讀出來：目前是 WARN「forwarded traffic passes without inspection」（或 `is dropped without inspection`）到 INFO「forwarded traffic is inspected」（帶 `uninspected_ms`）。
 - 時間是 UTC。Pi 沒有校時時，log 的時間不可信（2026-10-26 時 Pi 慢了 6 天）。
 - **log 存在哪裡**：wnc-gw 不自己寫檔案。Debian 上由 systemd unit 的 `LogNamespace=wnc-gw` 保存（O15，2026-10-26 決定，寫 unit 時實作）；開發時直接跑 `run` 要自己導向，例如 `2> run.log`。
 - 還沒做：JSON 輸出（量測時再加）、在 journald 底下省略重複的時間（寫 systemd unit 時再加）、用設定調整等級（目前固定 INFO）。

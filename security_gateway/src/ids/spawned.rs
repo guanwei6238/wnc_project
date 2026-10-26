@@ -29,12 +29,14 @@ pub struct Options {
     pub config: PathBuf,
     pub queue: QueueRange,
     pub ready_timeout: Duration,
+    pub fail_open: bool,
     pub runtime_dir: PathBuf,
     pub log_dir: PathBuf,
 }
 
 pub struct SpawnedSuricata {
     events: mpsc::UnboundedReceiver<Event>,
+    restart: mpsc::UnboundedSender<()>,
     stop: Option<oneshot::Sender<()>>,
     task: JoinHandle<()>,
 }
@@ -51,10 +53,12 @@ impl SpawnedSuricata {
         }
         let notify = UnixDatagram::bind(&notify_path)?;
         let (events_tx, events) = mpsc::unbounded_channel();
+        let (restart, restart_rx) = mpsc::unbounded_channel();
         let (stop_tx, stop_rx) = oneshot::channel();
-        let task = tokio::spawn(supervise(options, notify, events_tx, stop_rx));
+        let task = tokio::spawn(supervise(options, notify, events_tx, restart_rx, stop_rx));
         Ok(Self {
             events,
+            restart,
             stop: Some(stop_tx),
             task,
         })
@@ -64,6 +68,10 @@ impl SpawnedSuricata {
 impl Lifecycle for SpawnedSuricata {
     async fn next_event(&mut self) -> Option<Event> {
         self.events.recv().await
+    }
+
+    fn allow_restart(&mut self) {
+        let _ = self.restart.send(());
     }
 
     async fn stop(mut self) {
@@ -78,6 +86,7 @@ async fn supervise(
     options: Options,
     notify: UnixDatagram,
     events: mpsc::UnboundedSender<Event>,
+    mut restart: mpsc::UnboundedReceiver<()>,
     mut stop: oneshot::Receiver<()>,
 ) {
     let mut backoff = Backoff::new();
@@ -108,6 +117,10 @@ async fn supervise(
                 warn!(pid, exit = exit_text.as_str(), uptime_s = uptime.as_secs(), was_ready, "suricata exited");
                 if run.ready_at.is_some_and(|at| at.elapsed() >= STABLE_AFTER) {
                     backoff.reset();
+                }
+                tokio::select! {
+                    allowed = restart.recv() => if allowed.is_none() { return },
+                    _ = &mut stop => return,
                 }
             }
         }
@@ -195,6 +208,7 @@ fn suricata_args(options: &Options) -> Vec<OsString> {
     };
     let mut control = OsString::from("unix-command.filename=");
     control.push(options.runtime_dir.join(CONTROL_SOCKET));
+    let fail_open = if options.fail_open { "nfq.fail-open=yes" } else { "nfq.fail-open=no" };
     vec![
         "-c".into(),
         options.config.clone().into(),
@@ -204,6 +218,8 @@ fn suricata_args(options: &Options) -> Vec<OsString> {
         options.log_dir.clone().into(),
         "--set".into(),
         control,
+        "--set".into(),
+        fail_open.into(),
     ]
 }
 

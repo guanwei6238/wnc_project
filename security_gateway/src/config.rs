@@ -8,6 +8,7 @@ use std::time::Duration;
 use serde::Deserialize;
 
 use crate::datapath::XdpPolicy;
+use crate::firewall::WhenUnavailable;
 use crate::forwarding::Mode;
 use crate::ids::{lifecycle, suricata};
 use crate::kernel::nfqueue::QueueRange;
@@ -105,6 +106,7 @@ pub struct SuricataSettings {
     pub config: Setting<AbsolutePath>,
     pub queue: Setting<QueueRange>,
     pub ready_timeout: Setting<Duration>,
+    pub when_unavailable: Setting<WhenUnavailable>,
 }
 
 impl Config {
@@ -173,6 +175,7 @@ struct FileSuricata {
     config: Option<AbsolutePath>,
     queue: Option<QueueRange>,
     ready_timeout: Option<NonZeroU64>,
+    when_unavailable: Option<WhenUnavailable>,
 }
 
 pub fn load(path: Option<&Path>, overrides: Overrides) -> Result<Config, ConfigError> {
@@ -238,6 +241,7 @@ fn merge(file: Option<PathBuf>, file_config: FileConfig, overrides: Overrides) -
                     source: Source::Default,
                 },
             },
+            when_unavailable: file_or_default(file_config.suricata.when_unavailable),
         },
         file,
     })

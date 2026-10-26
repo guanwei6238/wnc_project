@@ -620,6 +620,20 @@ fn access_probe_failure_is_a_warning() {
 }
 
 #[test]
+fn accepting_uninspected_traffic_is_a_warning() {
+    assert_eq!(
+        when_unavailable_finding(WhenUnavailable::Accept),
+        Some(Finding {
+            severity: Severity::Warning,
+            message: "forwarded traffic passes without inspection while suricata starts, restarts or falls behind \
+                      (when_unavailable = \"accept\"); set when_unavailable = \"drop\" to drop it instead"
+                .into(),
+        })
+    );
+    assert_eq!(when_unavailable_finding(WhenUnavailable::Drop), None);
+}
+
+#[test]
 fn spawned_suricata_is_a_warning() {
     assert_eq!(
         spawned_finding(),
