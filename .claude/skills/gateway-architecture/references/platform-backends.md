@@ -121,6 +121,7 @@ L2 bridge 模式，或需要細粒度撤銷和抽樣時，改用 tc eBPF。
   - `ProtectSystem=strict`、`ProtectHome=yes`、`PrivateTmp=yes`、`RestrictNamespaces=yes`、`MemoryDenyWriteExecute=yes`
   - `SystemCallFilter=@system-service bpf`：`bpf` 不在 `@system-service` 裡。
   - 不要用 `PrivateNetwork`，因為服務要看得到實體網卡。
+- **log 存放**（O15，2026-10-26 決定）：unit 裡寫 `LogNamespace=wnc-gw`，wnc-gw 的 log 由一個獨立的 journald instance 保存，設定放 `/etc/systemd/journald@wnc-gw.conf`（`Storage=persistent` 加上大小上限）。Raspberry Pi OS 自帶 `/usr/lib/systemd/journald.conf.d/40-rpi-volatile-storage.conf`（`Storage=volatile`），整個系統的 journal 只存在記憶體、重開機就消失；用獨立 namespace 只讓 wnc-gw 的 log 寫進 SD 卡，系統其他部分不變。查詢：`journalctl --namespace=wnc-gw`。需要 systemd ≥ 245（Pi 是 257）。
 - **L2 bridge 模式要注意**（和 SYNTHESIS §11 D3 有關）：
   - Pi 的 bcm2711_defconfig 有 `BRIDGE_NETFILTER=m`、`NF_TABLES_BRIDGE=m`，但沒有列 `NF_CONNTRACK_BRIDGE`（主 agent 核對）。bridge family 的 conntrack 可能要改用 br_netfilter，或自己編 kernel。
   - 2026-10-24 在 Pi（6.18.50+rpt-rpi-v8）上確認：`nf_conntrack_bridge` 沒有，`br_netfilter` 可以載入。bridge 模式走 `br_netfilter`，實測結果見 SYNTHESIS §11 D3。

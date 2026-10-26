@@ -1,4 +1,5 @@
 pub mod doctor;
+mod logging;
 pub mod run;
 pub mod show;
 

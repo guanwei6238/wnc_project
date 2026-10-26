@@ -116,5 +116,6 @@ docker exec wnc-cli ping -c1 -W2 10.0.2.2                   # 確認轉送沒有
   - USB 網卡重插後 ifindex 會變。
   - 已確認（2026-10-24，doctor 在 Pi 上跑過）：兩張網卡都用出廠 MAC 對應成功；eth1 的 driver 是 `cdc_ncm`；階段 1 和 bridge 模式需要的模組都是 loadable，`nf_conntrack_bridge` 沒有。
   - Pi 上的 Suricata 是 7.0.10，`--build-info` 沒有 `Systemd support` 那一行，doctor 會給一個 warning（2026-10-25 確認）。Docker 的 gw 是 8.0.7。
+  - Pi 的 journald 是 `Storage=volatile`（Raspberry Pi OS 的 `40-rpi-volatile-storage.conf`），log 只在記憶體，重開機就消失；Pi 的時鐘也不準（2026-10-26 時慢了 6 天）。要事後查 log 的實驗，先把 stderr 導到檔案。
   - Pi 的 `/var/lib/suricata/rules/` 是空的，系統的 Suricata 目前載入 0 條規則；doctor 會報「suricata has no rules to load」（2026-10-26 確認）。
 - **Pi 的固定設定**（時脈、校時、Suricata 服務）、關機順序：見專案記憶 `pi-experiment-delegation`，以及 `scripts/README.md`。系統的 Suricata 服務目前是 enabled（開機就以 af-packet 模式跑），做量測前要先停掉，量完再啟動。

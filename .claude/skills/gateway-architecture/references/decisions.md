@@ -202,3 +202,15 @@
 - **可以設定，預設放行。** 條件：一定要記 log，標出 Suricata 什麼時候掛掉、哪一段時間的流量沒有經過檢查。log 用 `tracing`，在 wnc-gw 開始管 Suricata 之前先做。
 - **執行檔和設定檔的路徑可以設定**（`[nftables] path`、`[suricata] path`、`[suricata] config`），必須是絕對路徑。doctor 檢查非 root 帳號能不能改這些檔案或它們所在的目錄，可以的話給 warning（不擋）。
 - 步驟：2b-1 路徑與設定檢查 → 2b-1.5 log 基礎 → 2b-2 wnc-gw 啟動和停止 Suricata → 2b-3 queue 規則與放行或丟掉 → 2b-4 檢查其他 Suricata。
+
+### O15. log 存在哪裡
+
+wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 stderr 會進 journald，但 Raspberry Pi OS 把 journald 設成 `Storage=volatile`（`/usr/lib/systemd/journald.conf.d/40-rpi-volatile-storage.conf`），重開機後 log 就消失，無法事後查 Suricata 什麼時候掛掉。
+
+| 選項 | 好處 | 代價 |
+|---|---|---|
+| (a) 整個系統的 journald 改成 persistent | 一行設定 | 改的是整台機器，所有服務的 log 都寫 SD 卡 |
+| (b) wnc-gw 自己寫 log 檔並輪替 | 不依賴 OS | 自己處理輪替和大小上限；log 存兩份 |
+| (c) wnc-gw 用自己的 journald namespace（`LogNamespace=wnc-gw`） | 只有 wnc-gw 的 log 持久保存，可以單獨設大小上限 | 只能用在 systemd；OpenWrt（procd、logd 只在記憶體）要另外處理 |
+
+**[已決定] 2026-10-26：Debian 用 (c)。** 在寫 systemd unit 和安裝程序時實作；OpenWrt 的做法放在 platform 層，到時再決定。開發時直接跑 `run`，就自己把 stderr 導到檔案。

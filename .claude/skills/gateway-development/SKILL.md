@@ -5,7 +5,7 @@ description: 在 security_gateway/（執行檔 wnc-gw）加功能或改程式時
 
 # wnc-gw 開發指南
 
-這份 skill 描述**現在的程式長什麼樣子，以及要怎麼往上加**。目標架構、插件點與安全底線在 `gateway-architecture`；兩份都適用時一起讀。內容反映 2026-10-26（commit `2036328` 之後，加上 nft 和 Suricata 的路徑設定、Suricata 設定檔與規則檔的檢查、`access.rs`）的狀態，程式之後若有變動，以實際程式碼為準，並回頭更新這份 skill。
+這份 skill 描述**現在的程式長什麼樣子，以及要怎麼往上加**。目標架構、插件點與安全底線在 `gateway-architecture`；兩份都適用時一起讀。內容反映 2026-10-26（commit `d29607e` 之後，加上 `tracing` 的 log）的狀態，程式之後若有變動，以實際程式碼為準，並回頭更新這份 skill。
 
 ## 0. 動手之前
 
@@ -25,7 +25,8 @@ security_gateway/
 │   ├── cli/                ← bin：只放參數與膠水
 │   │   ├── mod.rs          Cli（全域參數 -c/--config、--lan、--wan）、Command、run()
 │   │   ├── doctor.rs       doctor：載入設定 → passes()（各項檢查、印報告，沒有 error 才回傳 true）→ 結束碼
-│   │   ├── run.rs          run：載入設定 → doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM → 安裝 table → 等訊號 → 移除 table
+│   │   ├── logging.rs      init()：tracing 的輸出設定（stderr、UTC 時間、終端機才上色），只有 run 會呼叫
+│   │   ├── run.rs          run：開 log → 載入設定 → doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM → 安裝 table → 等訊號 → 移除 table；過程都記成 log 事件
 │   │   └── show/           show 的巢狀子命令（mod.rs 分派，interfaces.rs 列介面）
 │   ├── lib.rs              只宣告功能模組：access、config、datapath、firewall、forwarding、ids、kernel、platform、ports
 │   ├── access.rs           除了 root 之外誰能改某個路徑（檔案本身、每一層目錄、跟著 symlink 之後的實際位置）；/etc/passwd、/etc/group 查名稱
@@ -47,7 +48,7 @@ security_gateway/
 │       ├── netdev.rs       netdev genetlink：每個介面的 native XDP 功能（XdpFeatures）
 │       ├── nft.rs          Nft（路徑由設定決定）：自己的 Table/BaseChain/Statement 型別 → nftables crate 的 JSON → nft -j -f -（有逾時）；nft -V → NftInfo
 │       └── sysctl.rs       讀 /proc/sys（key 不存在時回傳 None）
-└── tests/unit/             白箱單元測試，路徑鏡像 src/（見 §3.6）
+└── tests/unit/             白箱單元測試，路徑鏡像 src/（見 §3.7）
 ```
 
 ## 2. 分層：程式該放哪裡
@@ -113,11 +114,21 @@ security_gateway/
 - 呼叫外部程式用 `Command::new().arg()`，不組 shell 字串，並加逾時。用 tokio 的 `Command`，設 `kill_on_drop(true)`，再用 `tokio::time::timeout` 包住，逾時時子行程才會被砍掉（`kernel/nft.rs` 和 `ids/suricata.rs` 的 `run()`）。每個呼叫外部程式的模組各有一個私有的 `run()`，錯誤型別帶執行檔的路徑；目前只有兩份，沒有抽成共用模組，因為抽出來就要改動既有的 `kernel/nft.rs`。執行檔用絕對路徑，不從 PATH 找：之後由有權限的 process 執行時，PATH 可能被換掉，而且 Pi 上一般帳號的 PATH 沒有 `/usr/sbin`。
 - 新增 crate 前，用全域需求評估（之後是否還會用到、是否純 Rust、能否編 musl/aarch64、維護狀態、授權）。
 
-### 3.5 註解
+### 3.5 log
+
+- 用 `tracing`（`tracing-subscriber` 只開 `fmt`、`std`、`ansi`）。lib 只用 `info!`、`warn!`、`error!` 這類 macro 發出事件，**不設定輸出**；輸出由 bin 的 `cli/logging.rs` 決定，目前只有 `run` 呼叫 `init()`。
+- **報告和事件分開**：doctor 的報告印在 stdout（它是報告，見 `references/doctor-checks.md` §2）；`run` 這類長時間執行的命令，過程中發生的事一律記成事件，印在 stderr。用 systemd 執行時 stderr 直接進 journald。
+- 訊息照錯誤訊息的規則：英文、小寫開頭、結尾不加句號。會變的值放欄位，不要塞進訊息：`info!(table = table.as_str(), "table installed")`，錯誤放 `error = %e`。欄位名稱用 snake_case，有單位的寫在名稱裡（`ready_ms`、`uptime_s`）。字串欄位用 `as_str()` 記錄，輸出時會加引號，含空白也不會跟其他欄位混在一起。
+- **會讓流量沒經過檢查的事件，一定要記**（開發者 2026-10-26 的要求）：Suricata 啟動、就緒、結束（結束碼或 signal、執行多久）、重啟，以及 queue 規則的裝上和拆掉。「從什麼時候到什麼時候沒有檢查」要能直接從 log 讀出來。
+- 時間是 UTC。Pi 沒有校時時，log 的時間不可信（2026-10-26 時 Pi 慢了 6 天）。
+- **log 存在哪裡**：wnc-gw 不自己寫檔案。Debian 上由 systemd unit 的 `LogNamespace=wnc-gw` 保存（O15，2026-10-26 決定，寫 unit 時實作）；開發時直接跑 `run` 要自己導向，例如 `2> run.log`。
+- 還沒做：JSON 輸出（量測時再加）、在 journald 底下省略重複的時間（寫 systemd unit 時再加）、用設定調整等級（目前固定 INFO）。
+
+### 3.6 註解
 
 開發者偏好精簡的程式碼，「為什麼這樣寫」放在對話裡說明。只在不寫會被誤用或誤改的地方留簡短註解（中文即可），例如安全假設、反直覺的寫法（`from_str_radix` 接受 `"+f"`）。
 
-### 3.6 測試
+### 3.7 測試
 
 - 白箱單元測試放 `tests/unit/<與 src 相同的路徑>.rs`。src 檔案結尾只留三行：
 
