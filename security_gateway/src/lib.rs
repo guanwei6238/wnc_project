@@ -1,3 +1,4 @@
+pub mod access;
 pub mod config;
 pub mod datapath;
 pub mod firewall;

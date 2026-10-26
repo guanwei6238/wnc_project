@@ -40,3 +40,18 @@
 
 # External side (towards the Internet).
 # wan = "9c:69:d3:2a:11:54"
+
+[nftables]
+# Absolute path of the nft command (default: "/usr/sbin/nft").
+# path = "/usr/sbin/nft"
+
+[suricata]
+# Absolute path of the suricata command (default: "/usr/bin/suricata").
+# Point it at another installation to use a specific Suricata version.
+# path = "/usr/bin/suricata"
+
+# Suricata's own config file (default: "/etc/suricata/suricata.yaml").
+# config = "/etc/suricata/suricata.yaml"
+
+# The gateway runs these programs with its own privileges. `wnc-gw doctor`
+# warns when a non-root account can modify them or the directories they are in.

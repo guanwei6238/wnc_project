@@ -1,5 +1,6 @@
 use std::fmt;
 use std::io;
+use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Stdio};
 use std::time::Duration;
 
@@ -10,8 +11,13 @@ use nftables::types::{NfChainPolicy, NfChainType, NfFamily, NfHook};
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 
-pub const NFT: &str = "/usr/sbin/nft";
+pub const DEFAULT_PATH: &str = "/usr/sbin/nft";
 const TIMEOUT: Duration = Duration::from_secs(5);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Nft {
+    path: PathBuf,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NftInfo {
@@ -65,27 +71,83 @@ pub struct BaseChain {
 
 #[derive(Debug, thiserror::Error)]
 pub enum NftError {
-    #[error("{} not found", NFT)]
-    NotFound,
-    #[error("failed to run {}: {}", NFT, .0)]
-    Spawn(io::Error),
-    #[error("{} did not finish within {} seconds", NFT, TIMEOUT.as_secs())]
-    Timeout,
-    #[error("{} failed ({status}): {stderr}", NFT)]
-    Failed { status: ExitStatus, stderr: String },
+    #[error("{} not found", .path.display())]
+    NotFound { path: PathBuf },
+    #[error("failed to run {}: {source}", .path.display())]
+    Spawn { path: PathBuf, source: io::Error },
+    #[error("{} did not finish within {} seconds", .path.display(), TIMEOUT.as_secs())]
+    Timeout { path: PathBuf },
+    #[error("{} failed ({status}): {stderr}", .path.display())]
+    Failed {
+        path: PathBuf,
+        status: ExitStatus,
+        stderr: String,
+    },
 }
 
-pub async fn info() -> Result<NftInfo, NftError> {
-    let stdout = run(&["-V"], b"").await?;
-    Ok(NftInfo::parse(&String::from_utf8_lossy(&stdout)))
-}
+impl Nft {
+    pub fn new(path: impl Into<PathBuf>) -> Self {
+        Self { path: path.into() }
+    }
 
-pub async fn replace_table(table: &Table) -> Result<(), NftError> {
-    apply(replace_batch(table)).await
-}
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
 
-pub async fn delete_table(family: Family, name: &str) -> Result<(), NftError> {
-    apply(delete_batch(family, name)).await
+    pub async fn info(&self) -> Result<NftInfo, NftError> {
+        let stdout = self.run(&["-V"], b"").await?;
+        Ok(NftInfo::parse(&String::from_utf8_lossy(&stdout)))
+    }
+
+    pub async fn replace_table(&self, table: &Table) -> Result<(), NftError> {
+        self.apply(replace_batch(table)).await
+    }
+
+    pub async fn delete_table(&self, family: Family, name: &str) -> Result<(), NftError> {
+        self.apply(delete_batch(family, name)).await
+    }
+
+    async fn apply(&self, batch: Batch<'_>) -> Result<(), NftError> {
+        let json = serde_json::to_vec(&batch.to_nftables()).expect("nftables schema serializes to JSON");
+        self.run(&["-j", "-f", "-"], &json).await.map(drop)
+    }
+
+    async fn run(&self, args: &[&str], input: &[u8]) -> Result<Vec<u8>, NftError> {
+        let path = || self.path.clone();
+        let mut child = match Command::new(&self.path)
+            .args(args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .kill_on_drop(true)
+            .spawn()
+        {
+            Ok(child) => child,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => return Err(NftError::NotFound { path: path() }),
+            Err(source) => return Err(NftError::Spawn { path: path(), source }),
+        };
+        let mut stdin = child.stdin.take().expect("stdin is piped");
+        let output = async move {
+            match stdin.write_all(input).await {
+                Err(e) if e.kind() != io::ErrorKind::BrokenPipe => return Err(e),
+                _ => drop(stdin),
+            }
+            child.wait_with_output().await
+        };
+        let output = match tokio::time::timeout(TIMEOUT, output).await {
+            Err(_) => return Err(NftError::Timeout { path: path() }),
+            Ok(Err(source)) => return Err(NftError::Spawn { path: path(), source }),
+            Ok(Ok(output)) => output,
+        };
+        if !output.status.success() {
+            return Err(NftError::Failed {
+                path: path(),
+                status: output.status,
+                stderr: String::from_utf8_lossy(&output.stderr).trim().to_owned(),
+            });
+        }
+        Ok(output.stdout)
+    }
 }
 
 impl NftInfo {
@@ -172,46 +234,6 @@ fn statement(statement: Statement) -> stmt::Statement<'static> {
     match statement {
         Statement::Counter => stmt::Statement::Counter(Counter::Anonymous(None)),
     }
-}
-
-async fn apply(batch: Batch<'_>) -> Result<(), NftError> {
-    let json = serde_json::to_vec(&batch.to_nftables()).expect("nftables schema serializes to JSON");
-    run(&["-j", "-f", "-"], &json).await.map(drop)
-}
-
-async fn run(args: &[&str], input: &[u8]) -> Result<Vec<u8>, NftError> {
-    let mut child = match Command::new(NFT)
-        .args(args)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .kill_on_drop(true)
-        .spawn()
-    {
-        Ok(child) => child,
-        Err(e) if e.kind() == io::ErrorKind::NotFound => return Err(NftError::NotFound),
-        Err(e) => return Err(NftError::Spawn(e)),
-    };
-    let mut stdin = child.stdin.take().expect("stdin is piped");
-    let output = async move {
-        match stdin.write_all(input).await {
-            Err(e) if e.kind() != io::ErrorKind::BrokenPipe => return Err(e),
-            _ => drop(stdin),
-        }
-        child.wait_with_output().await
-    };
-    let output = match tokio::time::timeout(TIMEOUT, output).await {
-        Err(_) => return Err(NftError::Timeout),
-        Ok(Err(e)) => return Err(NftError::Spawn(e)),
-        Ok(Ok(output)) => output,
-    };
-    if !output.status.success() {
-        return Err(NftError::Failed {
-            status: output.status,
-            stderr: String::from_utf8_lossy(&output.stderr).trim().to_owned(),
-        });
-    }
-    Ok(output.stdout)
 }
 
 #[cfg(test)]

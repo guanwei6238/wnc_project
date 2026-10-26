@@ -51,6 +51,7 @@ services:
       - ../security_gateway/target/x86_64-unknown-linux-musl/debug:/opt/sg:ro
       - ./:/etc/wnc:ro
       - ./wnc-gw:/etc/wnc-gw:ro
+      - ./suricata-rules:/var/lib/suricata/rules:ro
       - /lib/modules:/lib/modules:ro
     networks:
       lan:

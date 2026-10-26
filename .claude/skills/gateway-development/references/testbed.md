@@ -24,6 +24,7 @@ gw 容器的掛載（`docker/compose.yml`）：
 | `docker/wnc-gw/` | `/etc/wnc-gw`（唯讀） | `setting.toml`，路徑和 Pi 上的預設路徑相同。掛的是目錄而不是單一檔案，因為編輯器存檔時常會換掉整個檔案，單檔掛載會因此失效 |
 | `/lib/modules` | `/lib/modules`（唯讀） | 讓 doctor 看到和主機 `modprobe` 相同的模組清單。容器裡的模組自動載入，實際上是主機 kernel 呼叫主機的 modprobe |
 | `docker/` | `/etc/wnc`（唯讀） | 舊的實驗檔案 |
+| `docker/suricata-rules/` | `/var/lib/suricata/rules`（唯讀） | 只有一條 ICMP 規則的 `suricata.rules`，讓 Suricata 有規則可以載入（剛裝好的 Debian 沒有規則，doctor 會報 error）。改規則不用重建 image |
 
 改了 `compose.yml` 之後要重建：`./down.sh && ./up.sh`。只改程式碼的話不用重建，重新編譯就好。
 
@@ -73,6 +74,13 @@ docker exec wnc-cli ping -c1 -W2 10.0.2.2                   # 確認轉送沒有
 | `run` 拒絕啟動 | `docker exec wnc-gw /opt/sg/wnc-gw --lan eth9 run` | 先印 doctor 報告，最後 `error: not starting because the checks above found errors`，結束碼 1，沒有 `inet wnc_gw` |
 | doctor 通過、但 nft 失敗 | `run` 會先跑 doctor，所以要先讓 doctor 通過：臨時容器加 `--cap-add NET_ADMIN --sysctl net.ipv4.ip_forward=1`，建兩張 dummy 網卡，用 `mode = "routed"` 的設定加 `--lan d1 --wan d2`。再分別把 `/usr/sbin/nft` 換成 `exec sleep 30` 的腳本，或先 `sleep 2` 再執行真的 nft 的腳本（啟動 2.5 秒後送 SIGINT，這時正在安裝）。沒有權限：`docker exec --user 65534 wnc-gw /opt/sg/wnc-gw run` | 卡住：doctor 是 warning，安裝逾時，`error: failed to install table inet wnc_gw: …`，結束碼 1。安裝中收到 Ctrl-C：會等安裝完再移除，結束碼 0、不留 table。沒有權限：`Operation not permitted`，結束碼 1。刪掉 nft 時 doctor 就會報 error，不會啟動 |
 | 改 sysctl（例如 `bridge-nf-call-iptables=0`） | testbed 容器改不了（見 §5），改用臨時容器：`docker run --rm --network none --cap-add NET_ADMIN --security-opt apparmor=unconfined --security-opt systempaths=unconfined …` | 對應的 error |
+| 沒有規則、規則只有註解 | 用 `wnc-lab-gw:latest` 開臨時容器（沒有掛載規則目錄），跑 `--lan lo --wan lo doctor`；再寫一個只有 `#` 開頭的 `suricata.rules` | `missing` 或 `no rules`，error「suricata has no rules to load」 |
+| 規則用萬用字元、規則檔不存在 | 把 suricata.yaml 複製到 `/tmp`，用 `sed` 把 `rule-files` 改成 `"*.rules"` 加一個不存在的絕對路徑，再用 `-c` 指定 `[suricata] config` | `not checked` 和 `missing`，兩個 warning，沒有 error |
+| Suricata 設定檔不存在 | `[suricata] config = "/nonexistent.yaml"` | error，訊息附上 Suricata 自己的錯誤（`conf-yaml-loader: failed to open file`） |
+| 路徑不是絕對路徑 | `[suricata] path = "suricata"` | 讀設定檔就報錯，指出行號，結束碼 1 |
+| 另一份 Suricata、可被非 root 修改 | 臨時容器裡 `cp /usr/bin/suricata /opt/s8/bin/`，`chown -R nobody /opt/s8/bin`，`chmod 777 /opt/s8`，設定 `[suricata] path` | SOURCE 是 `config file`；warning 依帳號列出 nobody 擁有的檔案和目錄、可以寫 `/opt/s8` 的群組和所有人 |
+| 規則檔讀不到 | `chmod 600` 規則檔，用 `nobody` 跑 doctor | `unreadable`，warning（不是 error：以其他帳號執行的 Suricata 可能讀得到） |
+| 用設定的 nft 路徑安裝 table | gw 裡 `ln -s /usr/sbin/nft /opt/nftalt/nft`，複製 setting.toml 加上 `[nftables] path`，用 `-c` 跑 `run`；再改成不存在的路徑 | 照常裝上、移除 table；不存在時 doctor 報 error，`run` 拒絕啟動 |
 | 找不到 Suricata | testbed 的 gw 裡暫時改名：`mv /usr/bin/suricata /usr/bin/suricata.off`（用完改回來）；或用沒有 Suricata 的 `wnc-lab:latest` 開臨時容器 | doctor 報 error，`run` 拒絕啟動 |
 | Suricata 7.0 | 用 `wnc-lab:latest` 開臨時容器，裝 trixie 的 `suricata`（7.0.10），掛上 `/opt/sg`，跑 `--lan lo --wan lo doctor` | READY NOTIFY 是 `unknown`，給 warning |
 | Suricata 的能力是 no、逾時、執行失敗 | 用 `wnc-lab-gw:latest` 開臨時容器，把 `/usr/bin/suricata` 換成假腳本：用 `sed` 把真的 `--build-info` 輸出改成 `no` 或刪掉那一行、`exec sleep 30`、`exit 1`、拿掉執行權限 | no 是 error；沒有那一行是 warning；逾時（5 秒，子程序會被砍掉）和執行失敗都是 warning |
@@ -87,6 +95,7 @@ docker exec wnc-cli ping -c1 -W2 10.0.2.2                   # 確認轉送沒有
 | kernel 不一樣 | 容器用的是筆電的 kernel（Ubuntu 7.0），不是 Pi 的 6.18.50+rpt-rpi-v8 | 模組、kernel 設定要在 Pi 上用 doctor 確認。例如筆電有 `nf_conntrack_bridge`，Pi 沒有 |
 | 容器裡改不了 sysctl | Docker 把 `/proc/sys` 掛成唯讀，預設的 AppArmor profile 也禁止寫入 | 需要改 sysctl 的情境用臨時容器加 `--security-opt apparmor=unconfined --security-opt systempaths=unconfined`；netns 還要加 `--cap-add SYS_ADMIN` |
 | 主機的模組會影響 testbed | 模組是整台筆電共用的。筆電載入 `br_netfilter` 時，主機 bridge 上的封包也會經過 Docker 的防火牆規則，`internal` 網路的隔離規則會丟掉跨網段的封包，cli→srv 就不通了（2026-10-24 確認） | 不要在筆電上載入 `br_netfilter`；需要它的測試放到 Pi 上做。卸載模組一律用 `rmmod <模組>`，**不要用 `modprobe -r`**：它會連帶卸載 `bridge`，刪掉筆電上所有的 bridge（包括其他專案的 Docker 網路），只能重啟 dockerd 恢復 |
+| 設定檔看起來可以被非 root 修改 | `/etc/wnc-gw` 是從筆電掛載進去的，擁有者是筆電上的 uid 1000，目錄和檔案也是 group 可寫 | testbed 的 doctor 會一直有這條 warning，這是正確的（筆電上的帳號確實能改它）。Pi 上照正式部署的方式放在 root 擁有的 `/etc/wnc-gw` 就不會出現 |
 | 輸出順序亂掉 | `docker exec` 把 stdout 和 stderr 分開傳回 | doctor 的報告全部印在 stdout |
 | 實體網卡的行為 | veth 沒有 driver、沒有出廠 MAC、不會被拔插 | driver、出廠 MAC 在筆電主機上用唯讀的方式驗證；USB 網卡拔插要到 Pi 上測 |
 
@@ -107,4 +116,5 @@ docker exec wnc-cli ping -c1 -W2 10.0.2.2                   # 確認轉送沒有
   - USB 網卡重插後 ifindex 會變。
   - 已確認（2026-10-24，doctor 在 Pi 上跑過）：兩張網卡都用出廠 MAC 對應成功；eth1 的 driver 是 `cdc_ncm`；階段 1 和 bridge 模式需要的模組都是 loadable，`nf_conntrack_bridge` 沒有。
   - Pi 上的 Suricata 是 7.0.10，`--build-info` 沒有 `Systemd support` 那一行，doctor 會給一個 warning（2026-10-25 確認）。Docker 的 gw 是 8.0.7。
+  - Pi 的 `/var/lib/suricata/rules/` 是空的，系統的 Suricata 目前載入 0 條規則；doctor 會報「suricata has no rules to load」（2026-10-26 確認）。
 - **Pi 的固定設定**（時脈、校時、Suricata 服務）、關機順序：見專案記憶 `pi-experiment-delegation`，以及 `scripts/README.md`。系統的 Suricata 服務目前是 enabled（開機就以 af-packet 模式跑），做量測前要先停掉，量完再啟動。

@@ -1,15 +1,17 @@
-use std::path::Path;
+use std::io;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::Args;
-use security_gateway::config::{self, Config, Overrides};
+use security_gateway::access::{self, Writable, Writer};
+use security_gateway::config::{self, AbsolutePath, Config, Overrides, Setting, SuricataSettings};
 use security_gateway::datapath::{CoreHook, XdpPolicy, core_hook};
 use security_gateway::forwarding::{self, EnvCheck, EnvState, Forwarding, Level, Mode};
-use security_gateway::ids::suricata::{self, SURICATA, SuricataError, SuricataInfo};
+use security_gateway::ids::suricata::{RuleFile, RuleFileState, Suricata, SuricataConfig, SuricataError, SuricataInfo};
 use security_gateway::kernel::modules::{ModuleIndex, ModuleState, RequiredModule};
 use security_gateway::kernel::netdev::{Netdev, XdpFeatures};
 use security_gateway::kernel::netif::{Interface, LinkStatus, NetifError, Netlink, XdpAttachment, XdpMode};
-use security_gateway::kernel::nft::{self, NFT, NftError, NftInfo};
+use security_gateway::kernel::nft::{Nft, NftError, NftInfo};
 use security_gateway::platform::{BootConfig, Current};
 use security_gateway::ports::{self, Port, ResolveError};
 
@@ -92,10 +94,13 @@ pub async fn passes(config: &Config) -> bool {
     findings.extend(check_modules(forwarding.required_modules()));
     println!();
 
-    findings.extend(check_nft().await);
+    findings.extend(check_nft(&config.nftables.path).await);
     println!();
 
-    findings.extend(check_suricata().await);
+    findings.extend(check_suricata(&config.suricata).await);
+    println!();
+
+    findings.extend(check_access(config));
 
     if !findings.is_empty() {
         println!();
@@ -375,31 +380,33 @@ fn print_modules(release: &str, states: &[(&RequiredModule, ModuleState)]) {
     }
 }
 
-async fn check_nft() -> Vec<Finding> {
-    let info = nft::info().await;
-    print_nft(&info);
-    nft_finding(&info).into_iter().collect()
+async fn check_nft(path: &Setting<AbsolutePath>) -> Vec<Finding> {
+    let nft = Nft::new(path.value.as_path());
+    let info = nft.info().await;
+    print_nft(path, &info);
+    nft_finding(nft.path(), &info).into_iter().collect()
 }
 
-fn nft_finding(info: &Result<NftInfo, NftError>) -> Option<Finding> {
+fn nft_finding(path: &Path, info: &Result<NftInfo, NftError>) -> Option<Finding> {
     const PURPOSE: &str = "needed for installing the gateway's nftables rules";
+    let nft = path.display();
     let (severity, message) = match info {
         Ok(NftInfo { json: Some(true), .. }) => return None,
         Ok(NftInfo { json: Some(false), .. }) => (
             Severity::Error,
-            format!("{NFT} is built without JSON support ({PURPOSE}); install an nftables build with JSON support"),
+            format!("{nft} is built without JSON support ({PURPOSE}); install an nftables build with JSON support"),
         ),
         Ok(NftInfo { json: None, .. }) => (
             Severity::Warning,
-            format!("cannot verify JSON support of {NFT}: nft -V does not report it"),
+            format!("cannot verify JSON support of {nft}: nft -V does not report it"),
         ),
-        Err(NftError::NotFound) => (Severity::Error, format!("{NFT} not found ({PURPOSE}); install nftables")),
+        Err(NftError::NotFound { .. }) => (Severity::Error, format!("{nft} not found ({PURPOSE}); install nftables")),
         Err(e) => (Severity::Warning, format!("could not check nft: {e}")),
     };
     Some(Finding { severity, message })
 }
 
-fn print_nft(info: &Result<NftInfo, NftError>) {
+fn print_nft(path: &Setting<AbsolutePath>, info: &Result<NftInfo, NftError>) {
     let (version, json) = match info {
         Ok(info) => (
             info.version.as_deref().unwrap_or("unknown"),
@@ -409,26 +416,41 @@ fn print_nft(info: &Result<NftInfo, NftError>) {
                 None => "unknown",
             },
         ),
-        Err(NftError::NotFound) => ("not found", "-"),
+        Err(NftError::NotFound { .. }) => ("not found", "-"),
         Err(_) => ("unknown", "unknown"),
     };
-    println!("{:<16} {:<10} {}", "COMMAND", "VERSION", "JSON");
-    println!("{NFT:<16} {version:<10} {json}");
+    println!("{:<18} {:<12} {:<10} {}", "COMMAND", "SOURCE", "VERSION", "JSON");
+    println!(
+        "{:<18} {:<12} {version:<10} {json}",
+        path.value.to_string(),
+        path.source.to_string()
+    );
 }
 
-async fn check_suricata() -> Vec<Finding> {
-    let info = suricata::info().await;
-    print_suricata(&info);
-    suricata_findings(&info)
+async fn check_suricata(settings: &SuricataSettings) -> Vec<Finding> {
+    let suricata = Suricata::new(settings.path.value.as_path());
+    let info = suricata.info().await;
+    print_suricata(&settings.path, &info);
+    let mut findings = suricata_findings(suricata.path(), &info);
+    if info.is_ok() {
+        println!();
+        let config = settings.config.value.as_path();
+        let dump = suricata.dump_config(config).await;
+        let rule_files = dump.as_ref().map(SuricataConfig::check_rule_files).unwrap_or_default();
+        print_suricata_config(&settings.config, &dump, &rule_files);
+        findings.extend(suricata_config_findings(config, &dump, &rule_files));
+    }
+    findings
 }
 
-fn suricata_findings(info: &Result<SuricataInfo, SuricataError>) -> Vec<Finding> {
+fn suricata_findings(path: &Path, info: &Result<SuricataInfo, SuricataError>) -> Vec<Finding> {
+    let suricata = path.display();
     let info = match info {
         Ok(info) => info,
-        Err(SuricataError::NotFound) => {
+        Err(SuricataError::NotFound { .. }) => {
             return vec![Finding {
                 severity: Severity::Error,
-                message: format!("{SURICATA} not found (needed for inspecting traffic); install suricata"),
+                message: format!("{suricata} not found (needed for inspecting traffic); install suricata"),
             }];
         }
         Err(e) => {
@@ -444,13 +466,13 @@ fn suricata_findings(info: &Result<SuricataInfo, SuricataError>) -> Vec<Finding>
         Some(false) => findings.push(Finding {
             severity: Severity::Error,
             message: format!(
-                "{SURICATA} is built without NFQueue support (needed for receiving the packets the gateway queues); \
+                "{suricata} is built without NFQueue support (needed for receiving the packets the gateway queues); \
                  install a suricata build with NFQueue support"
             ),
         }),
         None => findings.push(Finding {
             severity: Severity::Warning,
-            message: format!("cannot verify NFQueue support of {SURICATA}: --build-info does not report it"),
+            message: format!("cannot verify NFQueue support of {suricata}: --build-info does not report it"),
         }),
     }
     match info.ready_notify {
@@ -458,14 +480,14 @@ fn suricata_findings(info: &Result<SuricataInfo, SuricataError>) -> Vec<Finding>
         Some(false) => findings.push(Finding {
             severity: Severity::Error,
             message: format!(
-                "{SURICATA} is built without systemd support (needed for the readiness notification the gateway \
+                "{suricata} is built without systemd support (needed for the readiness notification the gateway \
                  waits for before queueing packets); install a suricata build with systemd support"
             ),
         }),
         None => findings.push(Finding {
             severity: Severity::Warning,
             message: format!(
-                "cannot verify systemd support of {SURICATA} (needed for the readiness notification): \
+                "cannot verify systemd support of {suricata} (needed for the readiness notification): \
                  --build-info does not report it (Suricata 8.0 and later do)"
             ),
         }),
@@ -473,7 +495,7 @@ fn suricata_findings(info: &Result<SuricataInfo, SuricataError>) -> Vec<Finding>
     findings
 }
 
-fn print_suricata(info: &Result<SuricataInfo, SuricataError>) {
+fn print_suricata(path: &Setting<AbsolutePath>, info: &Result<SuricataInfo, SuricataError>) {
     let yes_no = |value: Option<bool>| match value {
         Some(true) => "yes",
         Some(false) => "no",
@@ -485,11 +507,230 @@ fn print_suricata(info: &Result<SuricataInfo, SuricataError>) {
             yes_no(info.nfqueue),
             yes_no(info.ready_notify),
         ),
-        Err(SuricataError::NotFound) => ("not found", "-", "-"),
+        Err(SuricataError::NotFound { .. }) => ("not found", "-", "-"),
         Err(_) => ("unknown", "unknown", "unknown"),
     };
-    println!("{:<18} {:<10} {:<8} {}", "COMMAND", "VERSION", "NFQUEUE", "READY NOTIFY");
-    println!("{SURICATA:<18} {version:<10} {nfqueue:<8} {ready_notify}");
+    println!(
+        "{:<18} {:<12} {:<10} {:<8} {}",
+        "COMMAND", "SOURCE", "VERSION", "NFQUEUE", "READY NOTIFY"
+    );
+    println!(
+        "{:<18} {:<12} {version:<10} {nfqueue:<8} {ready_notify}",
+        path.value.to_string(),
+        path.source.to_string()
+    );
+}
+
+fn suricata_config_findings(
+    config: &Path,
+    dump: &Result<SuricataConfig, SuricataError>,
+    rule_files: &[RuleFile],
+) -> Vec<Finding> {
+    let config = config.display();
+    match dump {
+        Ok(_) => {}
+        Err(SuricataError::Failed { stderr, .. }) => {
+            return vec![Finding {
+                severity: Severity::Error,
+                message: format!("suricata cannot load {config}: {}", suricata_errors(stderr)),
+            }];
+        }
+        Err(e) => {
+            return vec![Finding {
+                severity: Severity::Warning,
+                message: format!("could not check {config}: {e}"),
+            }];
+        }
+    }
+    let fix = format!("download rules (for example with suricata-update) or set rule-files in {config}");
+    if rule_files.is_empty() {
+        return vec![Finding {
+            severity: Severity::Error,
+            message: format!("suricata has no rules to load: rule-files is empty; {fix}"),
+        }];
+    }
+    let usable = rule_files.iter().any(|f| matches!(f.state, RuleFileState::HasRules));
+    let unknown = rule_files.iter().any(|f| {
+        matches!(
+            f.state,
+            RuleFileState::Unreadable(_) | RuleFileState::Wildcard | RuleFileState::NoRulePath
+        )
+    });
+    if !usable && !unknown {
+        let problems: Vec<String> = rule_files.iter().filter_map(rule_file_problem).collect();
+        return vec![Finding {
+            severity: Severity::Error,
+            message: format!("suricata has no rules to load: {}; {fix}", problems.join(", ")),
+        }];
+    }
+    rule_files
+        .iter()
+        .filter_map(|file| {
+            let message = match &file.state {
+                RuleFileState::HasRules => return None,
+                RuleFileState::Missing | RuleFileState::NoRules => format!("rule file {}", rule_file_problem(file)?),
+                RuleFileState::Unreadable(e) => format!("cannot read rule file {}: {e}", rule_file_name(file)),
+                RuleFileState::Wildcard => {
+                    format!("cannot verify rule files {}: wildcard patterns are not checked", file.entry)
+                }
+                RuleFileState::NoRulePath => {
+                    format!("cannot verify rule file {}: default-rule-path is not set in {config}", file.entry)
+                }
+            };
+            Some(Finding {
+                severity: Severity::Warning,
+                message,
+            })
+        })
+        .collect()
+}
+
+fn rule_file_problem(file: &RuleFile) -> Option<String> {
+    let name = rule_file_name(file);
+    match file.state {
+        RuleFileState::Missing => Some(format!("{name} does not exist")),
+        RuleFileState::NoRules => Some(format!("{name} contains no rules")),
+        _ => None,
+    }
+}
+
+fn rule_file_name(file: &RuleFile) -> String {
+    file.path
+        .as_ref()
+        .map_or_else(|| file.entry.clone(), |path| path.display().to_string())
+}
+
+fn suricata_errors(stderr: &str) -> String {
+    stderr
+        .lines()
+        .map(|line| line.strip_prefix("Error: ").unwrap_or(line))
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+fn print_suricata_config(
+    config: &Setting<AbsolutePath>,
+    dump: &Result<SuricataConfig, SuricataError>,
+    rule_files: &[RuleFile],
+) {
+    let result = match dump {
+        Ok(_) => "ok",
+        Err(SuricataError::Failed { .. }) => "error",
+        Err(_) => "unknown",
+    };
+    println!("{:<40} {:<12} {}", "SURICATA CONFIG", "SOURCE", "RESULT");
+    println!(
+        "{:<40} {:<12} {result}",
+        config.value.to_string(),
+        config.source.to_string()
+    );
+    for file in rule_files {
+        let result = match file.state {
+            RuleFileState::HasRules => "ok",
+            RuleFileState::NoRules => "no rules",
+            RuleFileState::Missing => "missing",
+            RuleFileState::Unreadable(_) => "unreadable",
+            RuleFileState::Wildcard | RuleFileState::NoRulePath => "not checked",
+        };
+        println!("{:<40} {:<12} {result}", rule_file_name(file), "rule-files");
+    }
+}
+
+struct AccessRow {
+    path: PathBuf,
+    used_as: &'static str,
+    writers: io::Result<Vec<(Writable, Option<String>)>>,
+}
+
+fn check_access(config: &Config) -> Vec<Finding> {
+    let mut files: Vec<(&Path, &'static str)> = Vec::new();
+    if let Some(file) = &config.file {
+        files.push((file, "wnc-gw config file"));
+    }
+    files.push((config.nftables.path.value.as_path(), "nft command"));
+    files.push((config.suricata.path.value.as_path(), "suricata command"));
+    files.push((config.suricata.config.value.as_path(), "suricata config file"));
+    let rows: Vec<AccessRow> = files
+        .into_iter()
+        .map(|(path, used_as)| AccessRow {
+            path: path.to_path_buf(),
+            used_as,
+            writers: access::non_root_writers(path).map(|writers| {
+                writers
+                    .into_iter()
+                    .map(|writable| {
+                        let name = match writable.writer {
+                            Writer::User(uid) => access::user_name(uid),
+                            Writer::Group(gid) => access::group_name(gid),
+                            Writer::Everyone => None,
+                        };
+                        (writable, name)
+                    })
+                    .collect()
+            }),
+        })
+        .collect();
+    print_access(&rows);
+    access_findings(&rows)
+}
+
+fn access_findings(rows: &[AccessRow]) -> Vec<Finding> {
+    rows.iter()
+        .filter_map(|row| {
+            let path = row.path.display();
+            let message = match &row.writers {
+                Ok(writers) if writers.is_empty() => return None,
+                Ok(writers) => format!(
+                    "{} {path} can be modified without root ({}), so those accounts could make the gateway run \
+                     code with its privileges",
+                    row.used_as,
+                    describe_writers(writers)
+                ),
+                Err(e) if e.kind() == io::ErrorKind::NotFound => return None,
+                Err(e) => format!("could not check who can modify {path}: {e}"),
+            };
+            Some(Finding {
+                severity: Severity::Warning,
+                message,
+            })
+        })
+        .collect()
+}
+
+fn describe_writers(writers: &[(Writable, Option<String>)]) -> String {
+    let mut groups: Vec<(Writer, &Option<String>, Vec<String>)> = Vec::new();
+    for (writable, name) in writers {
+        let path = writable.path.display().to_string();
+        match groups.iter_mut().find(|(writer, _, _)| *writer == writable.writer) {
+            Some((_, _, paths)) => paths.push(path),
+            None => groups.push((writable.writer, name, vec![path])),
+        }
+    }
+    groups
+        .into_iter()
+        .map(|(writer, name, paths)| {
+            let paths = paths.join(", ");
+            match writer {
+                Writer::User(uid) => format!("user {} owns {paths}", name.clone().unwrap_or(uid.to_string())),
+                Writer::Group(gid) => format!("group {} can write to {paths}", name.clone().unwrap_or(gid.to_string())),
+                Writer::Everyone => format!("everyone can write to {paths}"),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+fn print_access(rows: &[AccessRow]) {
+    println!("{:<40} {:<22} {}", "FILE", "USED AS", "MODIFIABLE BY NON-ROOT");
+    for row in rows {
+        let result = match &row.writers {
+            Ok(writers) if writers.is_empty() => "no",
+            Ok(_) => "yes",
+            Err(e) if e.kind() == io::ErrorKind::NotFound => "not found",
+            Err(_) => "unknown",
+        };
+        println!("{:<40} {:<22} {result}", row.path.display().to_string(), row.used_as);
+    }
 }
 
 async fn load_interfaces() -> Result<Vec<Interface>, NetifError> {

@@ -167,6 +167,9 @@ fn example_sets_nothing_by_default() {
     assert_eq!(config.xdp, None);
     assert_eq!(config.ports.lan, None);
     assert_eq!(config.ports.wan, None);
+    assert_eq!(config.nftables.path, None);
+    assert_eq!(config.suricata.path, None);
+    assert_eq!(config.suricata.config, None);
 }
 
 #[test]
@@ -190,4 +193,70 @@ fn example_values_are_valid() {
     assert!(config.xdp.is_some());
     assert!(config.ports.lan.is_some());
     assert!(config.ports.wan.is_some());
+    assert!(config.nftables.path.is_some());
+    assert!(config.suricata.path.is_some());
+    assert!(config.suricata.config.is_some());
+}
+
+fn path(s: &str) -> AbsolutePath {
+    s.parse().unwrap()
+}
+
+#[test]
+fn absolute_path_round_trips() {
+    assert_eq!(path("/usr/bin/suricata").to_string(), "/usr/bin/suricata");
+    assert_eq!(path("/usr/bin/suricata").as_path(), Path::new("/usr/bin/suricata"));
+}
+
+#[test]
+fn relative_path_is_rejected() {
+    for s in ["suricata", "bin/suricata", "./suricata", ""] {
+        assert_eq!(
+            s.parse::<AbsolutePath>().unwrap_err().to_string(),
+            format!("invalid path {s:?} (expected an absolute path)")
+        );
+    }
+}
+
+#[test]
+fn parse_rejects_relative_path() {
+    let err = parse("[suricata]\npath = \"suricata\"\n").unwrap_err();
+    assert!(err.contains("expected an absolute path"), "{err}");
+}
+
+#[test]
+fn paths_default_when_not_set() {
+    let file_config = parse("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n").unwrap();
+    let config = merge(None, file_config, Overrides::default()).unwrap();
+    assert_eq!(config.nftables.path, Setting { value: path("/usr/sbin/nft"), source: Source::Default });
+    assert_eq!(config.suricata.path, Setting { value: path("/usr/bin/suricata"), source: Source::Default });
+    assert_eq!(
+        config.suricata.config,
+        Setting { value: path("/etc/suricata/suricata.yaml"), source: Source::Default }
+    );
+}
+
+#[test]
+fn paths_from_file() {
+    let file_config = parse(
+        "[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n\
+         [nftables]\npath = \"/opt/nft/sbin/nft\"\n\
+         [suricata]\npath = \"/opt/suricata-8/bin/suricata\"\nconfig = \"/opt/suricata-8/etc/suricata.yaml\"\n",
+    )
+    .unwrap();
+    let config = merge(None, file_config, Overrides::default()).unwrap();
+    assert_eq!(config.nftables.path, Setting { value: path("/opt/nft/sbin/nft"), source: Source::File });
+    assert_eq!(
+        config.suricata.path,
+        Setting { value: path("/opt/suricata-8/bin/suricata"), source: Source::File }
+    );
+    assert_eq!(
+        config.suricata.config,
+        Setting { value: path("/opt/suricata-8/etc/suricata.yaml"), source: Source::File }
+    );
+}
+
+#[test]
+fn parse_rejects_unknown_path_field() {
+    assert!(parse("[suricata]\nbinary = \"/usr/bin/suricata\"\n").is_err());
 }

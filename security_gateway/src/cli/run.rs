@@ -4,6 +4,7 @@ use std::process::ExitCode;
 use clap::Args;
 use security_gateway::config::{self, Overrides};
 use security_gateway::firewall::{self, FAMILY, TABLE};
+use security_gateway::kernel::nft::Nft;
 use tokio::signal::unix::{SignalKind, signal};
 
 use super::doctor;
@@ -33,7 +34,8 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: RunArg
         }
     };
 
-    if let Err(e) = firewall::install().await {
+    let nft = Nft::new(config.nftables.path.value.as_path());
+    if let Err(e) = firewall::install(&nft).await {
         eprintln!("error: failed to install table {FAMILY} {TABLE}: {e}");
         return ExitCode::FAILURE;
     }
@@ -44,7 +46,7 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: RunArg
         _ = terminate.recv() => {}
     }
 
-    match firewall::remove().await {
+    match firewall::remove(&nft).await {
         Ok(()) => {
             println!("table {FAMILY} {TABLE} removed");
             ExitCode::SUCCESS

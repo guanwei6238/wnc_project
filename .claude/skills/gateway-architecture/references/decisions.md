@@ -184,3 +184,21 @@
 - 影響：
   - O1 原本是「雲端 connector 上線時才拆 process」，這個時機跟著提前了，做雲端迴路之前要再決定一次。
   - D6 的選項 (a) 不成立。
+
+### O14. Suricata 怎麼啟動、queue 編號、Suricata 沒在運作時怎麼辦
+
+背景：7.0.10 和 8.0.7 都會在 NFQ 初始化時收到封包就 segfault，所以 Suricata 送出 `READY=1` 之後才能裝 queue 規則，重啟前也要先拆掉（專案記憶 `suricata-nfq-startup-crash`）。
+
+| 子題 | 選項 | 取捨 |
+|---|---|---|
+| 誰啟動 Suricata | (a) systemd 管，用 `ExecStartPost`、`ExecStopPost` 通知 wnc-gw；(b) wnc-gw 自己啟動，設 `NOTIFY_SOCKET` 收 `READY=1` | (a) Suricata 可以有自己的帳號和沙箱，但協調跨兩個 process，Docker testbed 沒有 systemd 測不了。(b) 順序最好推理、能在 Docker 驗證、OpenWrt 也能用，但 Suricata 和 wnc-gw 共用帳號（換帳號要 `CAP_SETUID`，幾乎等於 root） |
+| queue 編號 | 設定檔指定；或由 wnc-gw 自動找沒人用的 | 自動找：wnc-gw 非 root 讀不到 `/proc/net/netfilter/nfnetlink_queue`；用 Suricata 試綁，每次失敗都要重新載入規則；「沒人綁定」不等於沒有別人的規則在用；號碼不固定，log 難對照 |
+| Suricata 沒在運作時 | 放行（fail-open）或丟掉（fail-closed） | 三種情況要一致：還沒就緒（不裝 queue／裝 drop）、當掉（queue 加或不加 `bypass`）、跟不上（`nfq.fail-open`）。我們的 table 只掛 forward，連到 gateway 本身的 SSH 不受影響 |
+
+**[已決定] 2026-10-26：**
+
+- **先做 (b)，之後加上 (a)，(b) 也保留。** 兩者實作同一個「Suricata 生命週期」介面，對外只有「已就緒」「已停止」兩種事件，裝拆 queue 的程式不用改。用 (b) 時 doctor 和啟動時都給 warning（Suricata 和 wnc-gw 共用帳號）。wnc-gw 本身照原本的設計，以非 root 帳號加 capability 執行，由安裝時設定。
+- **queue 編號由設定檔指定，預設 0**，型別是範圍（`0` 或 `"0-3"`，多個 queue 時用 hash 分流，不用 `fanout`）。被佔用時 Suricata 會在 `READY=1` 之前退出，wnc-gw 報錯並寫進 log，不自動換號碼。之後真的需要再加 `"auto"`。
+- **可以設定，預設放行。** 條件：一定要記 log，標出 Suricata 什麼時候掛掉、哪一段時間的流量沒有經過檢查。log 用 `tracing`，在 wnc-gw 開始管 Suricata 之前先做。
+- **執行檔和設定檔的路徑可以設定**（`[nftables] path`、`[suricata] path`、`[suricata] config`），必須是絕對路徑。doctor 檢查非 root 帳號能不能改這些檔案或它們所在的目錄，可以的話給 warning（不擋）。
+- 步驟：2b-1 路徑與設定檢查 → 2b-1.5 log 基礎 → 2b-2 wnc-gw 啟動和停止 Suricata → 2b-3 queue 規則與放行或丟掉 → 2b-4 檢查其他 Suricata。

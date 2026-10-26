@@ -268,13 +268,13 @@ fn nft_info(json: Option<bool>) -> Result<NftInfo, NftError> {
 
 #[test]
 fn nft_with_json_has_no_finding() {
-    assert_eq!(nft_finding(&nft_info(Some(true))), None);
+    assert_eq!(nft_finding(Path::new("/usr/sbin/nft"), &nft_info(Some(true))), None);
 }
 
 #[test]
 fn nft_without_json_is_an_error() {
     assert_eq!(
-        nft_finding(&nft_info(Some(false))),
+        nft_finding(Path::new("/usr/sbin/nft"), &nft_info(Some(false))),
         Some(Finding {
             severity: Severity::Error,
             message: "/usr/sbin/nft is built without JSON support (needed for installing the gateway's nftables \
@@ -287,7 +287,7 @@ fn nft_without_json_is_an_error() {
 #[test]
 fn unreported_json_support_is_a_warning() {
     assert_eq!(
-        nft_finding(&nft_info(None)),
+        nft_finding(Path::new("/usr/sbin/nft"), &nft_info(None)),
         Some(Finding {
             severity: Severity::Warning,
             message: "cannot verify JSON support of /usr/sbin/nft: nft -V does not report it".into(),
@@ -298,7 +298,7 @@ fn unreported_json_support_is_a_warning() {
 #[test]
 fn missing_nft_is_an_error() {
     assert_eq!(
-        nft_finding(&Err(NftError::NotFound)),
+        nft_finding(Path::new("/usr/sbin/nft"), &Err(NftError::NotFound { path: "/usr/sbin/nft".into() })),
         Some(Finding {
             severity: Severity::Error,
             message: "/usr/sbin/nft not found (needed for installing the gateway's nftables rules); install nftables"
@@ -310,7 +310,7 @@ fn missing_nft_is_an_error() {
 #[test]
 fn nft_probe_failure_is_a_warning() {
     assert_eq!(
-        nft_finding(&Err(NftError::Timeout)),
+        nft_finding(Path::new("/usr/sbin/nft"), &Err(NftError::Timeout { path: "/usr/sbin/nft".into() })),
         Some(Finding {
             severity: Severity::Warning,
             message: "could not check nft: /usr/sbin/nft did not finish within 5 seconds".into(),
@@ -328,13 +328,16 @@ fn suricata_info(nfqueue: Option<bool>, ready_notify: Option<bool>) -> Result<Su
 
 #[test]
 fn suricata_with_nfqueue_and_notify_has_no_finding() {
-    assert_eq!(suricata_findings(&suricata_info(Some(true), Some(true))), vec![]);
+    assert_eq!(
+        suricata_findings(Path::new("/usr/bin/suricata"), &suricata_info(Some(true), Some(true))),
+        vec![]
+    );
 }
 
 #[test]
 fn suricata_without_nfqueue_is_an_error() {
     assert_eq!(
-        suricata_findings(&suricata_info(Some(false), Some(true))),
+        suricata_findings(Path::new("/usr/bin/suricata"), &suricata_info(Some(false), Some(true))),
         vec![Finding {
             severity: Severity::Error,
             message: "/usr/bin/suricata is built without NFQueue support (needed for receiving the packets the \
@@ -347,7 +350,7 @@ fn suricata_without_nfqueue_is_an_error() {
 #[test]
 fn suricata_without_systemd_support_is_an_error() {
     assert_eq!(
-        suricata_findings(&suricata_info(Some(true), Some(false))),
+        suricata_findings(Path::new("/usr/bin/suricata"), &suricata_info(Some(true), Some(false))),
         vec![Finding {
             severity: Severity::Error,
             message: "/usr/bin/suricata is built without systemd support (needed for the readiness notification the \
@@ -360,7 +363,7 @@ fn suricata_without_systemd_support_is_an_error() {
 #[test]
 fn unreported_suricata_capabilities_are_warnings() {
     assert_eq!(
-        suricata_findings(&suricata_info(None, None)),
+        suricata_findings(Path::new("/usr/bin/suricata"), &suricata_info(None, None)),
         vec![
             Finding {
                 severity: Severity::Warning,
@@ -379,7 +382,10 @@ fn unreported_suricata_capabilities_are_warnings() {
 #[test]
 fn missing_suricata_is_an_error() {
     assert_eq!(
-        suricata_findings(&Err(SuricataError::NotFound)),
+        suricata_findings(
+            Path::new("/usr/bin/suricata"),
+            &Err(SuricataError::NotFound { path: "/usr/bin/suricata".into() })
+        ),
         vec![Finding {
             severity: Severity::Error,
             message: "/usr/bin/suricata not found (needed for inspecting traffic); install suricata".into(),
@@ -390,10 +396,225 @@ fn missing_suricata_is_an_error() {
 #[test]
 fn suricata_probe_failure_is_a_warning() {
     assert_eq!(
-        suricata_findings(&Err(SuricataError::Timeout)),
+        suricata_findings(
+            Path::new("/usr/bin/suricata"),
+            &Err(SuricataError::Timeout { path: "/usr/bin/suricata".into() })
+        ),
         vec![Finding {
             severity: Severity::Warning,
             message: "could not check suricata: /usr/bin/suricata did not finish within 5 seconds".into(),
+        }]
+    );
+}
+
+const YAML: &str = "/etc/suricata/suricata.yaml";
+const FIX: &str = "download rules (for example with suricata-update) or set rule-files in /etc/suricata/suricata.yaml";
+
+fn dump() -> Result<SuricataConfig, SuricataError> {
+    Ok(SuricataConfig {
+        default_rule_path: Some("/var/lib/suricata/rules".into()),
+        rule_files: vec![],
+    })
+}
+
+fn rule_file(entry: &str, state: RuleFileState) -> RuleFile {
+    let path = match state {
+        RuleFileState::Wildcard | RuleFileState::NoRulePath => None,
+        _ => Some(Path::new("/var/lib/suricata/rules").join(entry)),
+    };
+    RuleFile {
+        entry: entry.into(),
+        path,
+        state,
+    }
+}
+
+fn config_findings(dump: Result<SuricataConfig, SuricataError>, files: &[RuleFile]) -> Vec<Finding> {
+    suricata_config_findings(Path::new(YAML), &dump, files)
+}
+
+#[test]
+fn rule_file_with_rules_has_no_finding() {
+    assert_eq!(config_findings(dump(), &[rule_file("suricata.rules", RuleFileState::HasRules)]), vec![]);
+}
+
+#[test]
+fn unloadable_config_is_an_error() {
+    let failed = Err(SuricataError::Failed {
+        path: "/usr/bin/suricata".into(),
+        status: std::os::unix::process::ExitStatusExt::from_raw(256),
+        stderr: "Error: conf-yaml-loader: failed to open file: /etc/suricata/suricata.yaml: Permission denied\n\
+                 Error: suricata: oops"
+            .into(),
+    });
+    assert_eq!(
+        config_findings(failed, &[]),
+        vec![Finding {
+            severity: Severity::Error,
+            message: "suricata cannot load /etc/suricata/suricata.yaml: conf-yaml-loader: failed to open file: \
+                      /etc/suricata/suricata.yaml: Permission denied; suricata: oops"
+                .into(),
+        }]
+    );
+}
+
+#[test]
+fn config_probe_failure_is_a_warning() {
+    let timeout = Err(SuricataError::Timeout {
+        path: "/usr/bin/suricata".into(),
+    });
+    assert_eq!(
+        config_findings(timeout, &[]),
+        vec![Finding {
+            severity: Severity::Warning,
+            message: "could not check /etc/suricata/suricata.yaml: /usr/bin/suricata did not finish within 5 seconds"
+                .into(),
+        }]
+    );
+}
+
+#[test]
+fn no_rule_files_is_an_error() {
+    assert_eq!(
+        config_findings(dump(), &[]),
+        vec![Finding {
+            severity: Severity::Error,
+            message: format!("suricata has no rules to load: rule-files is empty; {FIX}"),
+        }]
+    );
+}
+
+#[test]
+fn no_usable_rule_file_is_one_error() {
+    let files = [
+        rule_file("suricata.rules", RuleFileState::Missing),
+        rule_file("local.rules", RuleFileState::NoRules),
+    ];
+    assert_eq!(
+        config_findings(dump(), &files),
+        vec![Finding {
+            severity: Severity::Error,
+            message: format!(
+                "suricata has no rules to load: /var/lib/suricata/rules/suricata.rules does not exist, \
+                 /var/lib/suricata/rules/local.rules contains no rules; {FIX}"
+            ),
+        }]
+    );
+}
+
+#[test]
+fn problems_beside_a_usable_rule_file_are_warnings() {
+    let files = [
+        rule_file("suricata.rules", RuleFileState::HasRules),
+        rule_file("local.rules", RuleFileState::Missing),
+        rule_file("empty.rules", RuleFileState::NoRules),
+    ];
+    let findings = config_findings(dump(), &files);
+    assert_eq!(
+        findings,
+        vec![
+            Finding {
+                severity: Severity::Warning,
+                message: "rule file /var/lib/suricata/rules/local.rules does not exist".into(),
+            },
+            Finding {
+                severity: Severity::Warning,
+                message: "rule file /var/lib/suricata/rules/empty.rules contains no rules".into(),
+            },
+        ]
+    );
+}
+
+#[test]
+fn unverifiable_rule_files_are_warnings_not_an_error() {
+    let files = [
+        rule_file("suricata.rules", RuleFileState::Missing),
+        rule_file("*.rules", RuleFileState::Wildcard),
+        rule_file(
+            "x.rules",
+            RuleFileState::Unreadable(io::Error::from(io::ErrorKind::PermissionDenied)),
+        ),
+    ];
+    let findings = config_findings(dump(), &files);
+    assert!(findings.iter().all(|f| f.severity == Severity::Warning), "{findings:?}");
+    assert_eq!(
+        findings.iter().map(|f| f.message.as_str()).collect::<Vec<_>>(),
+        vec![
+            "rule file /var/lib/suricata/rules/suricata.rules does not exist",
+            "cannot verify rule files *.rules: wildcard patterns are not checked",
+            "cannot read rule file /var/lib/suricata/rules/x.rules: permission denied",
+        ]
+    );
+}
+
+#[test]
+fn rule_file_without_rule_path_is_a_warning() {
+    let findings = config_findings(dump(), &[rule_file("suricata.rules", RuleFileState::NoRulePath)]);
+    assert_eq!(
+        findings,
+        vec![Finding {
+            severity: Severity::Warning,
+            message: "cannot verify rule file suricata.rules: default-rule-path is not set in \
+                      /etc/suricata/suricata.yaml"
+                .into(),
+        }]
+    );
+}
+
+fn access_row(writers: io::Result<Vec<(Writable, Option<String>)>>) -> AccessRow {
+    AccessRow {
+        path: "/opt/suricata/bin/suricata".into(),
+        used_as: "suricata command",
+        writers,
+    }
+}
+
+fn writable(path: &str, writer: Writer) -> Writable {
+    Writable {
+        path: path.into(),
+        writer,
+    }
+}
+
+#[test]
+fn root_only_files_have_no_finding() {
+    assert_eq!(access_findings(&[access_row(Ok(vec![]))]), vec![]);
+}
+
+#[test]
+fn non_root_writers_are_a_warning() {
+    let row = access_row(Ok(vec![
+        (writable("/opt/suricata/bin/suricata", Writer::User(1000)), Some("wnc".into())),
+        (writable("/opt/suricata/bin", Writer::User(1000)), Some("wnc".into())),
+        (writable("/opt/suricata", Writer::Group(50)), None),
+        (writable("/opt", Writer::Everyone), None),
+    ]));
+    assert_eq!(
+        access_findings(&[row]),
+        vec![Finding {
+            severity: Severity::Warning,
+            message: "suricata command /opt/suricata/bin/suricata can be modified without root (user wnc owns \
+                      /opt/suricata/bin/suricata, /opt/suricata/bin; group 50 can write to /opt/suricata; everyone \
+                      can write to /opt), so those accounts could make the gateway run code with its privileges"
+                .into(),
+        }]
+    );
+}
+
+#[test]
+fn missing_file_is_left_to_its_own_check() {
+    let row = access_row(Err(io::Error::from(io::ErrorKind::NotFound)));
+    assert_eq!(access_findings(&[row]), vec![]);
+}
+
+#[test]
+fn access_probe_failure_is_a_warning() {
+    let row = access_row(Err(io::Error::from(io::ErrorKind::PermissionDenied)));
+    assert_eq!(
+        access_findings(&[row]),
+        vec![Finding {
+            severity: Severity::Warning,
+            message: "could not check who can modify /opt/suricata/bin/suricata: permission denied".into(),
         }]
     );
 }

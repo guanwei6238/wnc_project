@@ -94,3 +94,11 @@ fn replace_deletes_then_recreates_in_one_batch() {
 fn family_display() {
     assert_eq!(Family::Inet.to_string(), "inet");
 }
+
+#[tokio::test(flavor = "current_thread")]
+async fn runs_the_configured_path() {
+    let nft = Nft::new("/nonexistent/nft");
+    let err = nft.info().await.unwrap_err();
+    assert!(matches!(&err, NftError::NotFound { path } if path == Path::new("/nonexistent/nft")));
+    assert_eq!(err.to_string(), "/nonexistent/nft not found");
+}

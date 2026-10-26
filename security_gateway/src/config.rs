@@ -1,11 +1,14 @@
 use std::fmt;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use serde::Deserialize;
 
 use crate::datapath::XdpPolicy;
 use crate::forwarding::Mode;
+use crate::ids::suricata;
+use crate::kernel::nft;
 use crate::ports::{PortSelector, PortSpec, Role};
 
 pub const DEFAULT_PATH: &str = "/etc/wnc-gw/setting.toml";
@@ -40,12 +43,63 @@ pub struct Setting<T> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AbsolutePath(PathBuf);
+
+impl AbsolutePath {
+    pub fn as_path(&self) -> &Path {
+        &self.0
+    }
+}
+
+impl fmt::Display for AbsolutePath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.display().fmt(f)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("invalid path {0:?} (expected an absolute path)")]
+pub struct ParseAbsolutePathError(String);
+
+impl FromStr for AbsolutePath {
+    type Err = ParseAbsolutePathError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.starts_with('/') {
+            Ok(Self(PathBuf::from(s)))
+        } else {
+            Err(ParseAbsolutePathError(s.to_owned()))
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for AbsolutePath {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        s.parse().map_err(serde::de::Error::custom)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Config {
     pub file: Option<PathBuf>,
     pub mode: Setting<Mode>,
     pub xdp: Setting<XdpPolicy>,
     pub lan: Setting<PortSelector>,
     pub wan: Setting<PortSelector>,
+    pub nftables: NftablesSettings,
+    pub suricata: SuricataSettings,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NftablesSettings {
+    pub path: Setting<AbsolutePath>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SuricataSettings {
+    pub path: Setting<AbsolutePath>,
+    pub config: Setting<AbsolutePath>,
 }
 
 impl Config {
@@ -88,6 +142,10 @@ struct FileConfig {
     xdp: Option<XdpPolicy>,
     #[serde(default)]
     ports: FilePorts,
+    #[serde(default)]
+    nftables: FileNftables,
+    #[serde(default)]
+    suricata: FileSuricata,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -95,6 +153,19 @@ struct FileConfig {
 struct FilePorts {
     lan: Option<PortSelector>,
     wan: Option<PortSelector>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FileNftables {
+    path: Option<AbsolutePath>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FileSuricata {
+    path: Option<AbsolutePath>,
+    config: Option<AbsolutePath>,
 }
 
 pub fn load(path: Option<&Path>, overrides: Overrides) -> Result<Config, ConfigError> {
@@ -143,6 +214,13 @@ fn merge(file: Option<PathBuf>, file_config: FileConfig, overrides: Overrides) -
         xdp: file_or_default(file_config.xdp),
         lan: pick(Role::Lan, overrides.lan, file_config.ports.lan)?,
         wan: pick(Role::Wan, overrides.wan, file_config.ports.wan)?,
+        nftables: NftablesSettings {
+            path: file_or_path(file_config.nftables.path, nft::DEFAULT_PATH),
+        },
+        suricata: SuricataSettings {
+            path: file_or_path(file_config.suricata.path, suricata::DEFAULT_PATH),
+            config: file_or_path(file_config.suricata.config, suricata::DEFAULT_CONFIG),
+        },
         file,
     })
 }
@@ -155,6 +233,19 @@ fn file_or_default<T: Default>(from_file: Option<T>) -> Setting<T> {
         },
         None => Setting {
             value: T::default(),
+            source: Source::Default,
+        },
+    }
+}
+
+fn file_or_path(from_file: Option<AbsolutePath>, default: &str) -> Setting<AbsolutePath> {
+    match from_file {
+        Some(value) => Setting {
+            value,
+            source: Source::File,
+        },
+        None => Setting {
+            value: AbsolutePath(PathBuf::from(default)),
             source: Source::Default,
         },
     }
