@@ -2,10 +2,13 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use clap::Args;
-use security_gateway::config::{self, Overrides};
+use security_gateway::config::{self, Config, Overrides};
 use security_gateway::firewall::{self, FAMILY, TABLE};
+use security_gateway::ids::lifecycle::Lifecycle;
+use security_gateway::ids::spawned::{Options, SpawnedSuricata};
 use security_gateway::kernel::nft::Nft;
-use tokio::signal::unix::{SignalKind, signal};
+use security_gateway::platform::{Current, Dirs};
+use tokio::signal::unix::{Signal, SignalKind, signal};
 use tracing::{error, info};
 
 use super::{doctor, logging};
@@ -45,20 +48,55 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: RunArg
     }
     info!(table = table.as_str(), "table installed; waiting for SIGINT or SIGTERM");
 
-    let signal = tokio::select! {
-        _ = interrupt.recv() => "SIGINT",
-        _ = terminate.recv() => "SIGTERM",
-    };
-    info!(signal, "stopping");
+    let mut code = serve(&config, &mut interrupt, &mut terminate).await;
 
     match firewall::remove(&nft).await {
-        Ok(()) => {
-            info!(table = table.as_str(), "table removed");
-            ExitCode::SUCCESS
-        }
+        Ok(()) => info!(table = table.as_str(), "table removed"),
         Err(e) => {
             error!(table = table.as_str(), error = %e, "failed to remove table");
-            ExitCode::FAILURE
+            code = ExitCode::FAILURE;
         }
+    }
+    code
+}
+
+async fn serve(config: &Config, interrupt: &mut Signal, terminate: &mut Signal) -> ExitCode {
+    let mut suricata = match SpawnedSuricata::start(suricata_options(config)) {
+        Ok(suricata) => suricata,
+        Err(e) => {
+            error!(error = %e, "failed to start suricata");
+            return ExitCode::FAILURE;
+        }
+    };
+    let code = loop {
+        tokio::select! {
+            _ = interrupt.recv() => {
+                info!(signal = "SIGINT", "stopping");
+                break ExitCode::SUCCESS;
+            }
+            _ = terminate.recv() => {
+                info!(signal = "SIGTERM", "stopping");
+                break ExitCode::SUCCESS;
+            }
+            event = suricata.next_event() => {
+                if event.is_none() {
+                    error!("suricata supervision ended unexpectedly");
+                    break ExitCode::FAILURE;
+                }
+            }
+        }
+    };
+    suricata.stop().await;
+    code
+}
+
+fn suricata_options(config: &Config) -> Options {
+    Options {
+        path: config.suricata.path.value.as_path().to_path_buf(),
+        config: config.suricata.config.value.as_path().to_path_buf(),
+        queue: config.suricata.queue.value,
+        ready_timeout: config.suricata.ready_timeout.value,
+        runtime_dir: Current.runtime_dir().to_path_buf(),
+        log_dir: Current.log_dir().join("suricata"),
     }
 }

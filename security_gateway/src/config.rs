@@ -1,13 +1,16 @@
 use std::fmt;
 use std::io;
+use std::num::NonZeroU64;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::time::Duration;
 
 use serde::Deserialize;
 
 use crate::datapath::XdpPolicy;
 use crate::forwarding::Mode;
-use crate::ids::suricata;
+use crate::ids::{lifecycle, suricata};
+use crate::kernel::nfqueue::QueueRange;
 use crate::kernel::nft;
 use crate::ports::{PortSelector, PortSpec, Role};
 
@@ -100,6 +103,8 @@ pub struct NftablesSettings {
 pub struct SuricataSettings {
     pub path: Setting<AbsolutePath>,
     pub config: Setting<AbsolutePath>,
+    pub queue: Setting<QueueRange>,
+    pub ready_timeout: Setting<Duration>,
 }
 
 impl Config {
@@ -166,6 +171,8 @@ struct FileNftables {
 struct FileSuricata {
     path: Option<AbsolutePath>,
     config: Option<AbsolutePath>,
+    queue: Option<QueueRange>,
+    ready_timeout: Option<NonZeroU64>,
 }
 
 pub fn load(path: Option<&Path>, overrides: Overrides) -> Result<Config, ConfigError> {
@@ -220,6 +227,17 @@ fn merge(file: Option<PathBuf>, file_config: FileConfig, overrides: Overrides) -
         suricata: SuricataSettings {
             path: file_or_path(file_config.suricata.path, suricata::DEFAULT_PATH),
             config: file_or_path(file_config.suricata.config, suricata::DEFAULT_CONFIG),
+            queue: file_or_default(file_config.suricata.queue),
+            ready_timeout: match file_config.suricata.ready_timeout {
+                Some(seconds) => Setting {
+                    value: Duration::from_secs(seconds.get()),
+                    source: Source::File,
+                },
+                None => Setting {
+                    value: lifecycle::DEFAULT_READY_TIMEOUT,
+                    source: Source::Default,
+                },
+            },
         },
         file,
     })

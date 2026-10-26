@@ -5,7 +5,7 @@ description: 在 security_gateway/（執行檔 wnc-gw）加功能或改程式時
 
 # wnc-gw 開發指南
 
-這份 skill 描述**現在的程式長什麼樣子，以及要怎麼往上加**。目標架構、插件點與安全底線在 `gateway-architecture`；兩份都適用時一起讀。內容反映 2026-10-26（commit `d29607e` 之後，加上 `tracing` 的 log）的狀態，程式之後若有變動，以實際程式碼為準，並回頭更新這份 skill。
+這份 skill 描述**現在的程式長什麼樣子，以及要怎麼往上加**。目標架構、插件點與安全底線在 `gateway-architecture`；兩份都適用時一起讀。內容反映 2026-10-26（commit `48449a7` 之後，加上 wnc-gw 啟動和停止 Suricata：`ids/lifecycle.rs`、`ids/spawned.rs`、`kernel/nfqueue.rs`、platform 的 `Dirs`）的狀態，程式之後若有變動，以實際程式碼為準，並回頭更新這份 skill。
 
 ## 0. 動手之前
 
@@ -26,7 +26,7 @@ security_gateway/
 │   │   ├── mod.rs          Cli（全域參數 -c/--config、--lan、--wan）、Command、run()
 │   │   ├── doctor.rs       doctor：載入設定 → passes()（各項檢查、印報告，沒有 error 才回傳 true）→ 結束碼
 │   │   ├── logging.rs      init()：tracing 的輸出設定（stderr、UTC 時間、終端機才上色），只有 run 會呼叫
-│   │   ├── run.rs          run：開 log → 載入設定 → doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM → 安裝 table → 等訊號 → 移除 table；過程都記成 log 事件
+│   │   ├── run.rs          run：開 log → 載入設定 → doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM → 安裝 table → 啟動 Suricata（SpawnedSuricata）→ 等訊號 → 停止 Suricata → 移除 table；過程都記成 log 事件
 │   │   └── show/           show 的巢狀子命令（mod.rs 分派，interfaces.rs 列介面）
 │   ├── lib.rs              只宣告功能模組：access、config、datapath、firewall、forwarding、ids、kernel、platform、ports
 │   ├── access.rs           除了 root 之外誰能改某個路徑（檔案本身、每一層目錄、跟著 symlink 之後的實際位置）；/etc/passwd、/etc/group 查名稱
@@ -35,17 +35,20 @@ security_gateway/
 │   │   └── hook.rs         XdpPolicy（xdp 設定）、CoreHook、core_hook() 選擇規則
 │   ├── firewall.rs         我們自己的 nft table（inet wnc_gw）長什麼樣子；install()、remove()
 │   ├── ids/                跟 IDS engine 打交道的薄模組（mod.rs 只放 pub mod）
+│   │   ├── lifecycle.rs    Suricata 生命週期的介面：trait Lifecycle、Event（Ready、Stopped）、Exit；DEFAULT_READY_TIMEOUT
+│   │   ├── spawned.rs      O14 的 (b)：wnc-gw 自己啟動 Suricata（NOTIFY_SOCKET 收 READY=1、輸出轉成 log、退避重啟、ready_timeout、PR_SET_PDEATHSIG）
 │   │   └── suricata.rs     Suricata（路徑由設定決定）：--build-info → SuricataInfo；--dump-config -c → SuricataConfig（規則路徑）；check_rule_files()
 │   ├── ports.rs            Role、PortSelector（名稱或 MAC）、resolve()
 │   ├── forwarding/         轉送模式：Mode、trait Forwarding，bridge.rs（Bridged）、routed.rs（Routed）
 │   ├── platform/           因 OS 而異的部分：每種差異一個 trait，每個 OS 一個 struct
-│   │   ├── mod.rs          trait BootConfig；pub use debian::Debian as Current（編譯時選 OS）
-│   │   └── debian.rs       Debian：/etc/modules-load.d/、/etc/sysctl.d/
+│   │   ├── mod.rs          trait BootConfig、Dirs；pub use debian::Debian as Current（編譯時選 OS）
+│   │   └── debian.rs       Debian：/etc/modules-load.d/、/etc/sysctl.d/；/run/wnc-gw、/var/log/wnc-gw
 │   └── kernel/             跟 Linux kernel 打交道的薄模組
 │       ├── mod.rs
 │       ├── netif.rs        rtnetlink 列介面、sysfs 讀 driver、MacAddr、LinkStatus
 │       ├── modules.rs      /proc/modules + modules.{builtin,dep} → ModuleState；RequiredModule
 │       ├── netdev.rs       netdev genetlink：每個介面的 native XDP 功能（XdpFeatures）
+│       ├── nfqueue.rs      QueueRange（queue 設定：0 或 "0-3"）
 │       ├── nft.rs          Nft（路徑由設定決定）：自己的 Table/BaseChain/Statement 型別 → nftables crate 的 JSON → nft -j -f -（有逾時）；nft -V → NftInfo
 │       └── sysctl.rs       讀 /proc/sys（key 不存在時回傳 None）
 └── tests/unit/             白箱單元測試，路徑鏡像 src/（見 §3.7）
@@ -65,8 +68,8 @@ security_gateway/
 | `firewall.rs` | 我們的 nft table 要長什麼樣子（table 名稱、chain、hook、priority、policy、規則），以及安裝、移除。之後的 NFQUEUE、ct mark、黑名單 set 都加在這裡。只用 `kernel::nft` 自己的型別 | 產生 JSON、執行 nft（`kernel/nft.rs`）；依 bridge/routed 而不同的部分（`forwarding/`）|
 | `access.rs` | 檔案存取權的事實：哪些非 root 的帳號（擁有者、群組、所有人）能改某個路徑，包含每一層目錄和 symlink 的實際位置；sticky 目錄只算擁有者 | 判斷好壞（doctor 決定給 warning）；要檢查哪些檔案（doctor 決定） |
 | `kernel/` | 在 user space 跟 kernel 溝通：netlink、sysfs、procfs；之後的 nft、conntrack、bpf 載入、sysctl | 判斷好壞或嚴重程度；LAN/WAN 等 gateway 概念；讀設定檔 |
-| `ids/` | 跟 IDS engine 打交道：執行 Suricata、解析它的輸出，之後的 EVE、unix socket 也放這裡。整合方式是 A（2026-10-25 決定）：Suricata 是獨立的 process，不內嵌 libsuricata。一個 engine 一個檔案，目前只有 `suricata.rs`（`--build-info`、`--dump-config` 和規則檔的探測，給 doctor 用） | 判斷好壞或嚴重程度（由 doctor 決定）；把封包導進 queue 的 nft 規則（`firewall.rs`） |
-| `platform/` | 真正因 OS 而異的東西：設定怎麼在開機後保留、服務管理（systemd 對 procd）、設定來源（檔案對 UCI）。每種差異定一個 trait，每個 OS 一個 struct 實作全部 trait；`Current` 在編譯時指向目前的 OS。目前只有 `BootConfig`（kernel 模組和 sysctl 寫在哪裡才會在開機後保留，給 doctor 的修法提示用）和 `Debian`。每個 OS 的實作一律編譯（`pub mod`），只有 `Current` 依 feature 選，所以每次建置都會測到所有 OS。新增 OS：加 `<os>.rs`、`tests/unit/platform/<os>.rs`、一個 cargo feature，再讓 `Current` 依 feature 選 | netlink、nft、eBPF、`modprobe`、`sysctl -w`、`ip link` 這類 kernel 介面和立即生效的指令：在每個 OS 上都一樣，屬於 `kernel/` 或直接寫在呼叫端；不是由 OS 決定的選擇（fast path 後端依 probe、IDS engine 依 O6）也不放這裡 |
+| `ids/` | 跟 IDS engine 打交道：執行 Suricata、解析它的輸出，之後的 EVE、unix socket 也放這裡。整合方式是 A（2026-10-25 決定）：Suricata 是獨立的 process，不內嵌 libsuricata。`suricata.rs` 是探測（`--build-info`、`--dump-config`、規則檔，給 doctor 用）。`lifecycle.rs` 是 O14 的生命週期介面，對外只有「已就緒」「已停止」兩種事件；`spawned.rs` 是 wnc-gw 自己啟動 Suricata 的實作，之後 systemd 管理的實作也實作同一個 trait。實作自己記 log（啟動、就緒、結束、退避），用介面的一方（`run`、之後的 queue 管理）只依事件行動，不重複記錄 | 判斷好壞或嚴重程度（由 doctor 決定）；把封包導進 queue 的 nft 規則（`firewall.rs`） |
+| `platform/` | 真正因 OS 而異的東西：設定怎麼在開機後保留、服務管理（systemd 對 procd）、設定來源（檔案對 UCI）。每種差異定一個 trait，每個 OS 一個 struct 實作全部 trait；`Current` 在編譯時指向目前的 OS。目前有 `BootConfig`（kernel 模組和 sysctl 寫在哪裡才會在開機後保留，給 doctor 的修法提示用）、`Dirs`（wnc-gw 自己的執行期目錄和 log 目錄：使用者不能改，但不同 OS 不同，例如 OpenWrt 的 `/var` 在記憶體裡）和 `Debian`。每個 OS 的實作一律編譯（`pub mod`），只有 `Current` 依 feature 選，所以每次建置都會測到所有 OS。新增 OS：加 `<os>.rs`、`tests/unit/platform/<os>.rs`、一個 cargo feature，再讓 `Current` 依 feature 選 | netlink、nft、eBPF、`modprobe`、`sysctl -w`、`ip link` 這類 kernel 介面和立即生效的指令：在每個 OS 上都一樣，屬於 `kernel/` 或直接寫在呼叫端；不是由 OS 決定的選擇（fast path 後端依 probe、IDS engine 依 O6）也不放這裡 |
 
 規則：
 
@@ -109,7 +112,8 @@ security_gateway/
 
 ### 3.4 相依套件與執行環境
 
-- async 用 tokio，單執行緒 runtime；feature 只開用得到的（目前是 `rt`、`macros`、`process`、`time`、`io-util`、`signal`）。
+- async 用 tokio，單執行緒 runtime；feature 只開用得到的（目前是 `rt`、`macros`、`process`、`time`、`io-util`、`signal`、`sync`、`net`）。**`ids/spawned.rs` 依賴單執行緒 runtime**：`PR_SET_PDEATHSIG` 是在 fork 子程序的那個執行緒結束時觸發，改成多執行緒 runtime 時要重新檢查。
+- `unsafe` 只用在沒有安全 API 的系統呼叫，目前只有 `ids/spawned.rs` 的兩處：`pre_exec` 裡的 `prctl(PR_SET_PDEATHSIG)`（fork 之後不能配置記憶體，錯誤只用 errno），以及送 SIGTERM 的 `kill`（送之前先 `try_wait`，避免 pid 已被回收再被別的程序使用）。透過 `libc` crate 呼叫。新增 `unsafe` 前先跟開發者確認。
 - netlink 用 rust-netlink 系列（`rtnetlink` 等）。這一系列的版本必須彼此對齊（共用同一個 `netlink-packet-core`），升級時整組一起升，並用 `Cargo.lock` 鎖住。netdev family 用 `genetlink` + `netlink-packet-generic` 自己實作在 `kernel/netdev.rs`。**netdev 這類新 family 不要用 dump**：kernel 的 dump 回應不帶 `NLM_F_MULTI`，netlink-proto 收到第一則就認定請求結束，其他裝置會被默默漏掉；改成每個介面各送一次帶 ifindex 的請求。其他缺口：`ethtool` crate 只能讀 feature；ctnetlink 只有封包型別。
 - 呼叫外部程式用 `Command::new().arg()`，不組 shell 字串，並加逾時。用 tokio 的 `Command`，設 `kill_on_drop(true)`，再用 `tokio::time::timeout` 包住，逾時時子行程才會被砍掉（`kernel/nft.rs` 和 `ids/suricata.rs` 的 `run()`）。每個呼叫外部程式的模組各有一個私有的 `run()`，錯誤型別帶執行檔的路徑；目前只有兩份，沒有抽成共用模組，因為抽出來就要改動既有的 `kernel/nft.rs`。執行檔用絕對路徑，不從 PATH 找：之後由有權限的 process 執行時，PATH 可能被換掉，而且 Pi 上一般帳號的 PATH 沒有 `/usr/sbin`。
 - 新增 crate 前，用全域需求評估（之後是否還會用到、是否純 Rust、能否編 musl/aarch64、維護狀態、授權）。

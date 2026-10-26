@@ -170,6 +170,8 @@ fn example_sets_nothing_by_default() {
     assert_eq!(config.nftables.path, None);
     assert_eq!(config.suricata.path, None);
     assert_eq!(config.suricata.config, None);
+    assert_eq!(config.suricata.queue, None);
+    assert_eq!(config.suricata.ready_timeout, None);
 }
 
 #[test]
@@ -196,6 +198,8 @@ fn example_values_are_valid() {
     assert!(config.nftables.path.is_some());
     assert!(config.suricata.path.is_some());
     assert!(config.suricata.config.is_some());
+    assert!(config.suricata.queue.is_some());
+    assert!(config.suricata.ready_timeout.is_some());
 }
 
 fn path(s: &str) -> AbsolutePath {
@@ -259,4 +263,33 @@ fn paths_from_file() {
 #[test]
 fn parse_rejects_unknown_path_field() {
     assert!(parse("[suricata]\nbinary = \"/usr/bin/suricata\"\n").is_err());
+}
+
+#[test]
+fn suricata_queue_and_ready_timeout_default() {
+    let file_config = parse("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n").unwrap();
+    let config = merge(None, file_config, Overrides::default()).unwrap();
+    assert_eq!(config.suricata.queue, Setting { value: QueueRange::default(), source: Source::Default });
+    assert_eq!(
+        config.suricata.ready_timeout,
+        Setting { value: std::time::Duration::from_secs(300), source: Source::Default }
+    );
+}
+
+#[test]
+fn suricata_queue_and_ready_timeout_from_file() {
+    let file_config =
+        parse("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n[suricata]\nqueue = \"2-5\"\nready_timeout = 30\n").unwrap();
+    let config = merge(None, file_config, Overrides::default()).unwrap();
+    assert_eq!(config.suricata.queue, Setting { value: "2-5".parse().unwrap(), source: Source::File });
+    assert_eq!(
+        config.suricata.ready_timeout,
+        Setting { value: std::time::Duration::from_secs(30), source: Source::File }
+    );
+}
+
+#[test]
+fn parse_rejects_zero_ready_timeout() {
+    assert!(parse("[suricata]\nready_timeout = 0\n").is_err());
+    assert!(parse("[suricata]\nready_timeout = -1\n").is_err());
 }

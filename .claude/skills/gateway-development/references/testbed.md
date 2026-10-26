@@ -73,6 +73,11 @@ docker exec wnc-cli ping -c1 -W2 10.0.2.2                   # 確認轉送沒有
 | `wnc-gw run` 的安裝與移除 | gw 裡先放一張假的系統 table（`table inet fake_os`，forward chain、policy accept），在背景跑 `sh -c '/opt/sg/wnc-gw run > /tmp/run.log 2>&1 & p=$!; echo $p > /tmp/run.pid; wait $p; echo exit=$? >> /tmp/run.log' &`，ping 之後看 counter，再 `kill -INT`（或 `-TERM`）。上次留下舊 table 的情況：先手動建一張內容不同的 `inet wnc_gw` 再跑 | 執行中 `nft list tables` 多一張 `inet wnc_gw`；結束後和開始前的清單相同、`exit=0`；舊 table 被整張換掉。容器的 PID 1 是 `sleep infinity`，不會回收子程序，所以用 `kill -0` 判斷會誤以為還在跑（zombie），結束碼要靠外層的 `sh` 記錄 |
 | `run` 拒絕啟動 | `docker exec wnc-gw /opt/sg/wnc-gw --lan eth9 run` | 先印 doctor 報告，最後 `error: not starting because the checks above found errors`，結束碼 1，沒有 `inet wnc_gw` |
 | doctor 通過、但 nft 失敗 | `run` 會先跑 doctor，所以要先讓 doctor 通過：臨時容器加 `--cap-add NET_ADMIN --sysctl net.ipv4.ip_forward=1`，建兩張 dummy 網卡，用 `mode = "routed"` 的設定加 `--lan d1 --wan d2`。再分別把 `/usr/sbin/nft` 換成 `exec sleep 30` 的腳本，或先 `sleep 2` 再執行真的 nft 的腳本（啟動 2.5 秒後送 SIGINT，這時正在安裝）。沒有權限：`docker exec --user 65534 wnc-gw /opt/sg/wnc-gw run` | 卡住：doctor 是 warning，安裝逾時，`error: failed to install table inet wnc_gw: …`，結束碼 1。安裝中收到 Ctrl-C：會等安裝完再移除，結束碼 0、不留 table。沒有權限：`Operation not permitted`，結束碼 1。刪掉 nft 時 doctor 就會報 error，不會啟動 |
+| `run` 帶起 Suricata、Ctrl-C | 在 gw 裡背景跑 `run`，stderr 導到檔案，3 秒後 `kill -INT` | 事件依序是 suricata started → suricata is ready（startup_ms）→ stopping → suricata stopped → table removed；Suricata 自己的輸出帶 `source="suricata"`；`/run/wnc-gw` 有 `notify.sock` 和 `suricata.sock`，`/var/log/wnc-gw/suricata` 有 eve.json 等四個檔案；結束後沒有 `Suricata-Main` |
+| Suricata 當掉 | `kill -SEGV $(pgrep -x Suricata-Main)` | WARN `exit="SIGSEGV"`，1 秒後重啟並再次 ready |
+| queue 被佔用、退避 | 先在 gw 裡自己跑一個 `suricata -q 0 -l /tmp/other --set unix-command.enabled=no`，再跑 `run` | 每次都 ERROR「suricata cannot bind the queue」，重啟間隔 1、2、4、8、16 秒（看時間戳記）；退避等待中送 SIGINT 會馬上結束 |
+| 等不到就緒 | 假的 `/tmp/fake/suricata`：遇到 `--build-info`、`--dump-config` 就交給真的 suricata（doctor 才會過），其他情況 `exec sleep 30`；設定 `[suricata] path` 和 `ready_timeout = 2` | 每 2 秒 WARN「did not become ready in time」，接著 `exit="SIGTERM"` 並重啟 |
+| wnc-gw 被強制結束 | `kill -9` wnc-gw | Suricata 收到 PDEATHSIG 而結束。容器的 PID 1 是 `sleep infinity`，不會回收，所以狀態顯示 `Z`；table 會留下來，要手動 `nft delete table inet wnc_gw` |
 | 改 sysctl（例如 `bridge-nf-call-iptables=0`） | testbed 容器改不了（見 §5），改用臨時容器：`docker run --rm --network none --cap-add NET_ADMIN --security-opt apparmor=unconfined --security-opt systempaths=unconfined …` | 對應的 error |
 | 沒有規則、規則只有註解 | 用 `wnc-lab-gw:latest` 開臨時容器（沒有掛載規則目錄），跑 `--lan lo --wan lo doctor`；再寫一個只有 `#` 開頭的 `suricata.rules` | `missing` 或 `no rules`，error「suricata has no rules to load」 |
 | 規則用萬用字元、規則檔不存在 | 把 suricata.yaml 複製到 `/tmp`，用 `sed` 把 `rule-files` 改成 `"*.rules"` 加一個不存在的絕對路徑，再用 `-c` 指定 `[suricata] config` | `not checked` 和 `missing`，兩個 warning，沒有 error |
@@ -96,6 +101,7 @@ docker exec wnc-cli ping -c1 -W2 10.0.2.2                   # 確認轉送沒有
 | 容器裡改不了 sysctl | Docker 把 `/proc/sys` 掛成唯讀，預設的 AppArmor profile 也禁止寫入 | 需要改 sysctl 的情境用臨時容器加 `--security-opt apparmor=unconfined --security-opt systempaths=unconfined`；netns 還要加 `--cap-add SYS_ADMIN` |
 | 主機的模組會影響 testbed | 模組是整台筆電共用的。筆電載入 `br_netfilter` 時，主機 bridge 上的封包也會經過 Docker 的防火牆規則，`internal` 網路的隔離規則會丟掉跨網段的封包，cli→srv 就不通了（2026-10-24 確認） | 不要在筆電上載入 `br_netfilter`；需要它的測試放到 Pi 上做。卸載模組一律用 `rmmod <模組>`，**不要用 `modprobe -r`**：它會連帶卸載 `bridge`，刪掉筆電上所有的 bridge（包括其他專案的 Docker 網路），只能重啟 dockerd 恢復 |
 | 設定檔看起來可以被非 root 修改 | `/etc/wnc-gw` 是從筆電掛載進去的，擁有者是筆電上的 uid 1000，目錄和檔案也是 group 可寫 | testbed 的 doctor 會一直有這條 warning，這是正確的（筆電上的帳號確實能改它）。Pi 上照正式部署的方式放在 root 擁有的 `/etc/wnc-gw` 就不會出現 |
+| 腳本傳不進容器 | `docker exec` 沒有 `-i` 時不會把 stdin 傳進去，`docker exec wnc-gw sh -c 'cat > /tmp/x.sh' < x.sh` 會得到空檔案 | 用 `docker exec -i` |
 | 輸出順序亂掉 | `docker exec` 把 stdout 和 stderr 分開傳回 | doctor 的報告全部印在 stdout |
 | 實體網卡的行為 | veth 沒有 driver、沒有出廠 MAC、不會被拔插 | driver、出廠 MAC 在筆電主機上用唯讀的方式驗證；USB 網卡拔插要到 Pi 上測 |
 

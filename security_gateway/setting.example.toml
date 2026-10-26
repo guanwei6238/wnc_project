@@ -53,5 +53,15 @@
 # Suricata's own config file (default: "/etc/suricata/suricata.yaml").
 # config = "/etc/suricata/suricata.yaml"
 
+# NFQUEUE number Suricata receives packets from (default: 0), or a range such
+# as "0-3" to spread the traffic over several queues. Suricata fails to start
+# if another program already uses one of them.
+# queue = 0
+
+# Seconds to wait for Suricata to report that it is ready (default: 300).
+# Loading a large rule set can take minutes on slow hardware. If Suricata is
+# not ready in time, it is stopped and started again.
+# ready_timeout = 300
+
 # The gateway runs these programs with its own privileges. `wnc-gw doctor`
 # warns when a non-root account can modify them or the directories they are in.

@@ -202,6 +202,12 @@
 - **可以設定，預設放行。** 條件：一定要記 log，標出 Suricata 什麼時候掛掉、哪一段時間的流量沒有經過檢查。log 用 `tracing`，在 wnc-gw 開始管 Suricata 之前先做。
 - **執行檔和設定檔的路徑可以設定**（`[nftables] path`、`[suricata] path`、`[suricata] config`），必須是絕對路徑。doctor 檢查非 root 帳號能不能改這些檔案或它們所在的目錄，可以的話給 warning（不擋）。
 - 步驟：2b-1 路徑與設定檢查 → 2b-1.5 log 基礎 → 2b-2 wnc-gw 啟動和停止 Suricata → 2b-3 queue 規則與放行或丟掉 → 2b-4 檢查其他 Suricata。
+- 2b-2 的細節（2026-10-26 決定）：
+  - `queue` 設定提前到 2b-2：NFQ 模式一定要綁定 queue，Suricata 才能啟動。
+  - `/run/wnc-gw`（通知用和 Suricata 控制用的 socket）和 `/var/log/wnc-gw/suricata`（Suricata 的 `-l`）不讓使用者改，但因 OS 而異，放在 platform 層的 `Dirs`。
+  - Suricata 的 stdout、stderr 收進 wnc-gw 的 log，每行帶 `source="suricata"` 和 pid，依 `E:`、`W:` 對應等級。這是 supervisor 常見的做法：同一條時間線，又分得出是誰說的。
+  - 退避從 1 秒加倍到 60 秒，就緒後穩定 5 分鐘就重算，不放棄。`[suricata] ready_timeout` 預設 300 秒。
+  - 用 `PR_SET_PDEATHSIG`：wnc-gw 被強制結束（`kill -9`、OOM、SSH 斷線的 SIGHUP）時 Suricata 也會結束，不會留下佔著 queue 的孤兒。正式部署時 systemd 的 cgroup 也會清掉，這主要是給沒有 systemd 的情況。
 
 ### O15. log 存在哪裡
 

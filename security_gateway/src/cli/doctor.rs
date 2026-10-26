@@ -433,6 +433,7 @@ async fn check_suricata(settings: &SuricataSettings) -> Vec<Finding> {
     print_suricata(&settings.path, &info);
     let mut findings = suricata_findings(suricata.path(), &info);
     if info.is_ok() {
+        findings.push(spawned_finding());
         println!();
         let config = settings.config.value.as_path();
         let dump = suricata.dump_config(config).await;
@@ -493,6 +494,15 @@ fn suricata_findings(path: &Path, info: &Result<SuricataInfo, SuricataError>) ->
         }),
     }
     findings
+}
+
+fn spawned_finding() -> Finding {
+    Finding {
+        severity: Severity::Warning,
+        message: "suricata is started by wnc-gw and shares its account and privileges, so a compromised suricata \
+                  can do whatever the gateway can"
+            .to_owned(),
+    }
 }
 
 fn print_suricata(path: &Setting<AbsolutePath>, info: &Result<SuricataInfo, SuricataError>) {

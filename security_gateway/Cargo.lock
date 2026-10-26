@@ -515,6 +515,7 @@ dependencies = [
  "clap",
  "futures",
  "genetlink",
+ "libc",
  "netlink-packet-core",
  "netlink-packet-generic",
  "nftables",

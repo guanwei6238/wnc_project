@@ -618,3 +618,16 @@ fn access_probe_failure_is_a_warning() {
         }]
     );
 }
+
+#[test]
+fn spawned_suricata_is_a_warning() {
+    assert_eq!(
+        spawned_finding(),
+        Finding {
+            severity: Severity::Warning,
+            message: "suricata is started by wnc-gw and shares its account and privileges, so a compromised \
+                      suricata can do whatever the gateway can"
+                .into(),
+        }
+    );
+}
