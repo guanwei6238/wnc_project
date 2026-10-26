@@ -61,6 +61,7 @@ warning: …
 | port 的 link 狀態 | `Interface::link_status()` → `LinkStatus` | `link_finding()` |
 | kernel 模組 | `ModuleIndex::load()`、`state()` → `ModuleState` | `module_findings()` |
 | `nft` 執行檔 | `kernel::nft::info()` 執行 `nft -V`（有逾時）→ `NftInfo` | `nft_finding()` |
+| Suricata | `ids::suricata::info()` 執行 `suricata --build-info`（有逾時）→ `SuricataInfo` | `suricata_findings()`：找不到、`NFQueue support: no`、`Systemd support: no` 是 error（沒有就緒通知就沒辦法安全地裝 queue）；輸出裡沒有那一行是 warning（7.0 不印 `Systemd support`，但實際上會送 `READY=1`）；版本只顯示 |
 
 ## 4. 加一個檢查的步驟
 
@@ -108,7 +109,7 @@ RequiredModule {
 
 | 檢查 | 等哪個決定 | 決定之後要做的 |
 |---|---|---|
-| Suricata | 整合方式 A/B/C（`suricata-integration.md` §9） | A：找到執行檔，並確認 `--build-info` 有 `NFQueue support: yes`，版本只顯示不判斷。B：plugin 必須和 Suricata 的 major.minor 一致，要檢查版本。C：檢查我們連結的 libsuricata 和規則目錄。新的探測放在 `ids/suricata.rs`；呼叫外部程式要加逾時，寫法參考 `kernel/nft.rs` 的 `run()` |
+| Suricata 的 unix socket | 規則管線（架構 §7 第 4 步）開始用 unix socket 時 | `--build-info` 的 `Unix socket enabled`，探測加在 `SuricataInfo` |
 | `nf_conntrack_netlink` 模組 | N5：改 ct mark 用 ctnetlink 還是 nft set | 用 ctnetlink 才加進 `REQUIRED_MODULES` |
 | TCX 可用性（kernel ≥ 6.6、bpffs、JIT） | 階段 2 開始時 | 探測放在 `kernel/` |
 

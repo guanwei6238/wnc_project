@@ -25,7 +25,6 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: RunArg
     }
     println!();
 
-    // 先註冊訊號：安裝期間收到 Ctrl-C 也會等安裝完再移除，不會留下 table
     let (mut interrupt, mut terminate) = match (signal(SignalKind::interrupt()), signal(SignalKind::terminate())) {
         (Ok(interrupt), Ok(terminate)) => (interrupt, terminate),
         (Err(e), _) | (_, Err(e)) => {

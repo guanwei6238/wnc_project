@@ -317,3 +317,83 @@ fn nft_probe_failure_is_a_warning() {
         })
     );
 }
+
+fn suricata_info(nfqueue: Option<bool>, ready_notify: Option<bool>) -> Result<SuricataInfo, SuricataError> {
+    Ok(SuricataInfo {
+        version: Some("8.0.7".into()),
+        nfqueue,
+        ready_notify,
+    })
+}
+
+#[test]
+fn suricata_with_nfqueue_and_notify_has_no_finding() {
+    assert_eq!(suricata_findings(&suricata_info(Some(true), Some(true))), vec![]);
+}
+
+#[test]
+fn suricata_without_nfqueue_is_an_error() {
+    assert_eq!(
+        suricata_findings(&suricata_info(Some(false), Some(true))),
+        vec![Finding {
+            severity: Severity::Error,
+            message: "/usr/bin/suricata is built without NFQueue support (needed for receiving the packets the \
+                      gateway queues); install a suricata build with NFQueue support"
+                .into(),
+        }]
+    );
+}
+
+#[test]
+fn suricata_without_systemd_support_is_an_error() {
+    assert_eq!(
+        suricata_findings(&suricata_info(Some(true), Some(false))),
+        vec![Finding {
+            severity: Severity::Error,
+            message: "/usr/bin/suricata is built without systemd support (needed for the readiness notification the \
+                      gateway waits for before queueing packets); install a suricata build with systemd support"
+                .into(),
+        }]
+    );
+}
+
+#[test]
+fn unreported_suricata_capabilities_are_warnings() {
+    assert_eq!(
+        suricata_findings(&suricata_info(None, None)),
+        vec![
+            Finding {
+                severity: Severity::Warning,
+                message: "cannot verify NFQueue support of /usr/bin/suricata: --build-info does not report it".into(),
+            },
+            Finding {
+                severity: Severity::Warning,
+                message: "cannot verify systemd support of /usr/bin/suricata (needed for the readiness notification): \
+                          --build-info does not report it (Suricata 8.0 and later do)"
+                    .into(),
+            },
+        ]
+    );
+}
+
+#[test]
+fn missing_suricata_is_an_error() {
+    assert_eq!(
+        suricata_findings(&Err(SuricataError::NotFound)),
+        vec![Finding {
+            severity: Severity::Error,
+            message: "/usr/bin/suricata not found (needed for inspecting traffic); install suricata".into(),
+        }]
+    );
+}
+
+#[test]
+fn suricata_probe_failure_is_a_warning() {
+    assert_eq!(
+        suricata_findings(&Err(SuricataError::Timeout)),
+        vec![Finding {
+            severity: Severity::Warning,
+            message: "could not check suricata: /usr/bin/suricata did not finish within 5 seconds".into(),
+        }]
+    );
+}

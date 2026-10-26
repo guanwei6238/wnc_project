@@ -5,6 +5,7 @@ use clap::Args;
 use security_gateway::config::{self, Config, Overrides};
 use security_gateway::datapath::{CoreHook, XdpPolicy, core_hook};
 use security_gateway::forwarding::{self, EnvCheck, EnvState, Forwarding, Level, Mode};
+use security_gateway::ids::suricata::{self, SURICATA, SuricataError, SuricataInfo};
 use security_gateway::kernel::modules::{ModuleIndex, ModuleState, RequiredModule};
 use security_gateway::kernel::netdev::{Netdev, XdpFeatures};
 use security_gateway::kernel::netif::{Interface, LinkStatus, NetifError, Netlink, XdpAttachment, XdpMode};
@@ -92,6 +93,9 @@ pub async fn passes(config: &Config) -> bool {
     println!();
 
     findings.extend(check_nft().await);
+    println!();
+
+    findings.extend(check_suricata().await);
 
     if !findings.is_empty() {
         println!();
@@ -410,6 +414,82 @@ fn print_nft(info: &Result<NftInfo, NftError>) {
     };
     println!("{:<16} {:<10} {}", "COMMAND", "VERSION", "JSON");
     println!("{NFT:<16} {version:<10} {json}");
+}
+
+async fn check_suricata() -> Vec<Finding> {
+    let info = suricata::info().await;
+    print_suricata(&info);
+    suricata_findings(&info)
+}
+
+fn suricata_findings(info: &Result<SuricataInfo, SuricataError>) -> Vec<Finding> {
+    let info = match info {
+        Ok(info) => info,
+        Err(SuricataError::NotFound) => {
+            return vec![Finding {
+                severity: Severity::Error,
+                message: format!("{SURICATA} not found (needed for inspecting traffic); install suricata"),
+            }];
+        }
+        Err(e) => {
+            return vec![Finding {
+                severity: Severity::Warning,
+                message: format!("could not check suricata: {e}"),
+            }];
+        }
+    };
+    let mut findings = Vec::new();
+    match info.nfqueue {
+        Some(true) => {}
+        Some(false) => findings.push(Finding {
+            severity: Severity::Error,
+            message: format!(
+                "{SURICATA} is built without NFQueue support (needed for receiving the packets the gateway queues); \
+                 install a suricata build with NFQueue support"
+            ),
+        }),
+        None => findings.push(Finding {
+            severity: Severity::Warning,
+            message: format!("cannot verify NFQueue support of {SURICATA}: --build-info does not report it"),
+        }),
+    }
+    match info.ready_notify {
+        Some(true) => {}
+        Some(false) => findings.push(Finding {
+            severity: Severity::Error,
+            message: format!(
+                "{SURICATA} is built without systemd support (needed for the readiness notification the gateway \
+                 waits for before queueing packets); install a suricata build with systemd support"
+            ),
+        }),
+        None => findings.push(Finding {
+            severity: Severity::Warning,
+            message: format!(
+                "cannot verify systemd support of {SURICATA} (needed for the readiness notification): \
+                 --build-info does not report it (Suricata 8.0 and later do)"
+            ),
+        }),
+    }
+    findings
+}
+
+fn print_suricata(info: &Result<SuricataInfo, SuricataError>) {
+    let yes_no = |value: Option<bool>| match value {
+        Some(true) => "yes",
+        Some(false) => "no",
+        None => "unknown",
+    };
+    let (version, nfqueue, ready_notify) = match info {
+        Ok(info) => (
+            info.version.as_deref().unwrap_or("unknown"),
+            yes_no(info.nfqueue),
+            yes_no(info.ready_notify),
+        ),
+        Err(SuricataError::NotFound) => ("not found", "-", "-"),
+        Err(_) => ("unknown", "unknown", "unknown"),
+    };
+    println!("{:<18} {:<10} {:<8} {}", "COMMAND", "VERSION", "NFQUEUE", "READY NOTIFY");
+    println!("{SURICATA:<18} {version:<10} {nfqueue:<8} {ready_notify}");
 }
 
 async fn load_interfaces() -> Result<Vec<Interface>, NetifError> {

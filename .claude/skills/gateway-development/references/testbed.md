@@ -40,7 +40,7 @@ cli 10.0.1.2 ── lan 10.0.1.0/24 ── eth0 [gw] eth1 ── wan 10.0.2.0/24
 - gw 有 `NET_ADMIN`、`NET_RAW`，並開了 `ip_forward=1`。
 - MAC 在 compose 裡固定，否則每次重建容器都會變，設定檔就對不上。
 - `docker/wnc-gw/setting.toml` 用 MAC 指定 LAN、WAN。veth 沒有出廠 MAC，所以實際上走的是「目前 MAC」這條路。
-- image 是 Debian trixie，和 Pi OS 同一代，內含 iproute2、nftables、conntrack、tcpdump、iperf3、ethtool。**還沒有安裝 Suricata**，等整合方式決定後再加。
+- image 是 Debian trixie，和 Pi OS 同一代。`docker/Dockerfile` 分成兩個 stage：`base`（`wnc-lab:latest`，cli、srv 用）內含 iproute2、nftables、conntrack、tcpdump、iperf3、ethtool；`gw`（`wnc-lab-gw:latest`）在 `base` 上加裝 trixie-backports 的 Suricata 8.0.7。容器裡沒有 systemd，Suricata 不會自己啟動。改了 Dockerfile 要重建：`./down.sh && ./up.sh`。
 
 ## 3. 常用指令
 
@@ -73,6 +73,9 @@ docker exec wnc-cli ping -c1 -W2 10.0.2.2                   # 確認轉送沒有
 | `run` 拒絕啟動 | `docker exec wnc-gw /opt/sg/wnc-gw --lan eth9 run` | 先印 doctor 報告，最後 `error: not starting because the checks above found errors`，結束碼 1，沒有 `inet wnc_gw` |
 | doctor 通過、但 nft 失敗 | `run` 會先跑 doctor，所以要先讓 doctor 通過：臨時容器加 `--cap-add NET_ADMIN --sysctl net.ipv4.ip_forward=1`，建兩張 dummy 網卡，用 `mode = "routed"` 的設定加 `--lan d1 --wan d2`。再分別把 `/usr/sbin/nft` 換成 `exec sleep 30` 的腳本，或先 `sleep 2` 再執行真的 nft 的腳本（啟動 2.5 秒後送 SIGINT，這時正在安裝）。沒有權限：`docker exec --user 65534 wnc-gw /opt/sg/wnc-gw run` | 卡住：doctor 是 warning，安裝逾時，`error: failed to install table inet wnc_gw: …`，結束碼 1。安裝中收到 Ctrl-C：會等安裝完再移除，結束碼 0、不留 table。沒有權限：`Operation not permitted`，結束碼 1。刪掉 nft 時 doctor 就會報 error，不會啟動 |
 | 改 sysctl（例如 `bridge-nf-call-iptables=0`） | testbed 容器改不了（見 §5），改用臨時容器：`docker run --rm --network none --cap-add NET_ADMIN --security-opt apparmor=unconfined --security-opt systempaths=unconfined …` | 對應的 error |
+| 找不到 Suricata | testbed 的 gw 裡暫時改名：`mv /usr/bin/suricata /usr/bin/suricata.off`（用完改回來）；或用沒有 Suricata 的 `wnc-lab:latest` 開臨時容器 | doctor 報 error，`run` 拒絕啟動 |
+| Suricata 7.0 | 用 `wnc-lab:latest` 開臨時容器，裝 trixie 的 `suricata`（7.0.10），掛上 `/opt/sg`，跑 `--lan lo --wan lo doctor` | READY NOTIFY 是 `unknown`，給 warning |
+| Suricata 的能力是 no、逾時、執行失敗 | 用 `wnc-lab-gw:latest` 開臨時容器，把 `/usr/bin/suricata` 換成假腳本：用 `sed` 把真的 `--build-info` 輸出改成 `no` 或刪掉那一行、`exec sleep 30`、`exit 1`、拿掉執行權限 | no 是 error；沒有那一行是 warning；逾時（5 秒，子程序會被砍掉）和執行失敗都是 warning |
 
 ## 5. Docker 會掩蓋的問題
 
@@ -103,4 +106,5 @@ docker exec wnc-cli ping -c1 -W2 10.0.2.2                   # 確認轉送沒有
 - **到 Pi 上要確認的事**：
   - USB 網卡重插後 ifindex 會變。
   - 已確認（2026-10-24，doctor 在 Pi 上跑過）：兩張網卡都用出廠 MAC 對應成功；eth1 的 driver 是 `cdc_ncm`；階段 1 和 bridge 模式需要的模組都是 loadable，`nf_conntrack_bridge` 沒有。
+  - Pi 上的 Suricata 是 7.0.10，`--build-info` 沒有 `Systemd support` 那一行，doctor 會給一個 warning（2026-10-25 確認）。Docker 的 gw 是 8.0.7。
 - **Pi 的固定設定**（時脈、校時、Suricata 服務）、關機順序：見專案記憶 `pi-experiment-delegation`，以及 `scripts/README.md`。系統的 Suricata 服務目前是 enabled（開機就以 af-packet 模式跑），做量測前要先停掉，量完再啟動。

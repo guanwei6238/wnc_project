@@ -42,7 +42,7 @@ description: 這個專案（Rust 實作的 security gateway：Suricata 8 + nftab
 | 雲端 API 的格式（O12） | request 由設定檔描述：endpoint、path、上傳欄位（型別加 CEL 計算式，輸入可以是使用者 eBPF 的輸出、EVE、conntrack）。回應先做可設定的對應（R2），動作固定只有 trust/block/observe；之後可能改成固定格式（R1） | [已決定] 10-25 |
 | 雲端迴路的時機（O13） | 階段 1 的地端執行點做完後，先接最小的雲端迴路，排在階段 2 前面；模擬的雲端由我們自己做 | [已決定] 10-25 |
 | 分三階段做 | 1 nftables + NFQUEUE + ct mark → 2 tc eBPF 算特徵 → 3 tc eBPF 轉送信任 flow | [建議]（SYNTHESIS §4.4） |
-| 和 Suricata 的整合方式 | 方案 A：原版套件 + EVE + unix socket + ct mark | [建議]（`suricata-integration.md` §9） |
+| 和 Suricata 的整合方式 | 方案 A：Suricata 是獨立的 process（原版套件），封包經 NFQUEUE 送給它，結果經 EVE 回來，控制走 unix socket；不內嵌 libsuricata、不寫 plugin（B、C 都會讓 wnc-gw 變 GPL）。Suricata 送出就緒通知（`READY=1`）之後才能裝 queue 規則，否則 7.0 和 8.0.7 都會在 NFQ 初始化時 segfault | [已決定] 10-25（`suricata-integration.md` §9） |
 
 ## 2. 封包怎麼走
 

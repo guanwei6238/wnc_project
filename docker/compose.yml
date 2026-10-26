@@ -22,7 +22,9 @@ networks:
 
 services:
   cli:
-    build: .
+    build:
+      context: .
+      target: base
     image: wnc-lab:latest
     container_name: wnc-cli
     hostname: cli
@@ -34,8 +36,10 @@ services:
         ipv4_address: 10.0.1.2
 
   gw:
-    build: .
-    image: wnc-lab:latest
+    build:
+      context: .
+      target: gw
+    image: wnc-lab-gw:latest
     container_name: wnc-gw
     hostname: gw
     environment:
@@ -57,7 +61,9 @@ services:
         mac_address: 02:00:00:00:02:01
 
   srv:
-    build: .
+    build:
+      context: .
+      target: base
     image: wnc-lab:latest
     container_name: wnc-srv
     hostname: srv
