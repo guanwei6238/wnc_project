@@ -106,6 +106,7 @@ pub struct SuricataSettings {
     pub config: Setting<AbsolutePath>,
     pub queue: Setting<QueueRange>,
     pub ready_timeout: Setting<Duration>,
+    pub stop_timeout: Setting<Duration>,
     pub when_unavailable: Setting<WhenUnavailable>,
 }
 
@@ -175,6 +176,7 @@ struct FileSuricata {
     config: Option<AbsolutePath>,
     queue: Option<QueueRange>,
     ready_timeout: Option<NonZeroU64>,
+    stop_timeout: Option<NonZeroU64>,
     when_unavailable: Option<WhenUnavailable>,
 }
 
@@ -231,20 +233,25 @@ fn merge(file: Option<PathBuf>, file_config: FileConfig, overrides: Overrides) -
             path: file_or_path(file_config.suricata.path, suricata::DEFAULT_PATH),
             config: file_or_path(file_config.suricata.config, suricata::DEFAULT_CONFIG),
             queue: file_or_default(file_config.suricata.queue),
-            ready_timeout: match file_config.suricata.ready_timeout {
-                Some(seconds) => Setting {
-                    value: Duration::from_secs(seconds.get()),
-                    source: Source::File,
-                },
-                None => Setting {
-                    value: lifecycle::DEFAULT_READY_TIMEOUT,
-                    source: Source::Default,
-                },
-            },
+            ready_timeout: file_or_seconds(file_config.suricata.ready_timeout, lifecycle::DEFAULT_READY_TIMEOUT),
+            stop_timeout: file_or_seconds(file_config.suricata.stop_timeout, lifecycle::DEFAULT_STOP_TIMEOUT),
             when_unavailable: file_or_default(file_config.suricata.when_unavailable),
         },
         file,
     })
+}
+
+fn file_or_seconds(from_file: Option<NonZeroU64>, default: Duration) -> Setting<Duration> {
+    match from_file {
+        Some(seconds) => Setting {
+            value: Duration::from_secs(seconds.get()),
+            source: Source::File,
+        },
+        None => Setting {
+            value: default,
+            source: Source::Default,
+        },
+    }
 }
 
 fn file_or_default<T: Default>(from_file: Option<T>) -> Setting<T> {

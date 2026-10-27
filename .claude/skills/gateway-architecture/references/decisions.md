@@ -218,6 +218,17 @@
     - Suricata 跟不上、kernel 因 fail-open 直接放行的封包，kernel 不計數（`/proc/net/netfilter/nfnetlink_queue` 的 `queue_dropped` 只算丟掉的），要比對 `ids` 的 counter 和 Suricata 自己的統計，留給之後的監控步驟，和「記下沒檢查的封包數」一起做。
     - `drop` 在 wnc-gw 結束、table 被移除後就不成立，和 O9「停止時 table 要移除還是保留」一起決定。
     - Suricata 當掉時還在 queue 裡等判決的封包會被 kernel 丟掉，`bypass` 只管之後進來的封包（Docker 實測：每秒 20 個 ping 掉 2 個）。
+- 2b-3 之後在 Pi 上發現、2026-10-26 決定補上的三項：
+  - **強制 `--set detect.delayed-detect=no`**：設成 yes 時 Suricata 先送 `READY=1` 才載入規則（Docker 實測），wnc-gw 會在沒有規則的期間記成「已檢查」。
+  - **強制 `--set coredump.max-dump=0`，Suricata 的工作目錄設成它的 log 目錄**：Suricata 預設會把 core 上限放寬成 unlimited，core 寫在繼承來的工作目錄。Pi 上每次當機寫 154 MB（載入完整規則時約等於 RSS，1 GB 以上），寫檔期間 Suricata 卡在 D 狀態幾十秒、重啟跟著延後，反覆當機還可能寫滿 SD 卡。之後要用 core 除錯時再加設定。
+  - **同一台機器只跑一個 wnc-gw**：`run` 載入設定後先 flock `/run/wnc-gw/wnc-gw.lock`，拿不到就報 `another wnc-gw is running (pid N)` 並結束。兩個同時跑時，一個收尾會刪掉另一個的 table，`notify.sock` 也會被搶。flock 在 process 結束時由 kernel 釋放，`kill -9` 不會留下過期的 lock；`/run` 是整台機器共用，不同 netns 也只能跑一個。
+- **`[suricata] stop_timeout`（2026-10-27 決定）**：wnc-gw 主動停止 Suricata 時（wnc-gw 結束、ready_timeout），送 SIGTERM 後最多等多久才 SIGKILL，預設 90 秒（和 systemd 的預設一樣），原本寫死 10 秒。Suricata 結束前會把每條還開著的 flow 寫進 eve.json，Pi 上 `full` 處理過 18 萬條 flow 要 11–13 秒，10 秒會被 SIGKILL，flow 紀錄和最後的統計都會遺失。代價：Suricata 卡死、不理 SIGTERM 時，要等滿 stop_timeout 才重啟。之後換規則要用 `reload-rules` 熱更新，不靠重啟。
+- **多個 queue 的分流方式（2026-10-27 決定）：改用 symhash，和階段 1 的 ct mark 一起實作。** 原本的 `queue num 0-(N-1)` 由 kernel 只依兩端位址加協定做 hash，同一對主機的所有連線都擠進同一個 queue。
+  - 量測（Pi 4、1000 MHz、`full`、全速，Suricata 直接跑 NFQ、綁 CPU 0、2、3）：42-1 用 3 個 queue，位址 hash 分到 5／7／88%、12.9 kpps；`queue to symhash mod 3`（含 port、對稱）分到 37／33／30%、26.4 kpps、0 丟失。其他 scenario 兩種 hash 相同；symhash 讓 kernel 每個封包多約 0.7–1.8 µs。單一連線佔大部分流量的（60-1 98%、Honeypot-7-1 96%）不管哪種 hash 都只有一個 worker 在忙，要靠信任機制解決。
+  - 分片：symhash 對分片只用位址計算（kernel 不讀第一片的 port），沒有 conntrack 時，同一條連線的分片和其他封包會落在不同 queue（Pi bridge 實測 18/24）。table 用到 conntrack 時，kernel 會在進 queue 前組回分片（0/24），所以和 ct mark 一起做。這相當於 Suricata 在 af-packet 模式預設的 `defrag: yes`。
+  - 實作時要做：queue 範圍用 `queue to symhash mod N offset <first>`（offset 的語法還沒驗證）；開了多個 queue 時，doctor 和啟動要確認 conntrack 已啟用，否則報錯或給 warning；IPv6 的分片要另外驗證。
+  - 如果 ct mark 之前就需要多個 queue：加一條永遠不比對成功的 `tproxy` 規則，也會讓 kernel 組回分片（實測 0/24，每個封包約 +0.5–0.7 µs；`socket` 運算式沒有這個效果）。它靠的是副作用，只當暫時的做法。
+  - conntrack 本身的成本要在加 ct mark 時重新評估：Pi 實測每個封包 +3.7 µs（單一連線）到 +10.6 µs（掃描，連線表到 65,536 上限，靠 early drop 才沒有丟封包）。
 
 ### O15. log 存在哪裡
 
@@ -230,3 +241,16 @@ wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 std
 | (c) wnc-gw 用自己的 journald namespace（`LogNamespace=wnc-gw`） | 只有 wnc-gw 的 log 持久保存，可以單獨設大小上限 | 只能用在 systemd；OpenWrt（procd、logd 只在記憶體）要另外處理 |
 
 **[已決定] 2026-10-26：Debian 用 (c)。** 在寫 systemd unit 和安裝程序時實作；OpenWrt 的做法放在 platform 層，到時再決定。開發時直接跑 `run`，就自己把 stderr 導到檔案。
+
+### O16. Suricata 在 IPS 模式遇到「從中間開始」的連線怎麼辦
+
+背景：Debian 的 suricata.yaml 是 `exception-policy: auto`，在 IPS（NFQ）模式等於 drop-flow；`stream.midstream` 預設關。2026-10-26 在 Pi 量測時，連 `empty` rule set 都丟掉 S_m39 26% 的封包：29 條 flow 從中間開始（midstream）、14 次 stream error，之後這些 flow 的封包全部被丟（`ips.drop_reason.flow_drop` 15,730）。
+
+我們的設計會經常產生這種連線：
+- AUDIT（SYNTHESIS §4.2）：已信任的 flow 在稽核窗內回到 slow path，Suricata 沒看過前面那段。
+- Suricata 重啟（當掉、換規則）之後，所有既有的連線對新的 Suricata 都是從中間開始。
+
+**[已決定] 2026-10-27：wnc-gw 強制讓從中間開始的連線照常放行並檢查**，像 `nfq.fail-open` 一樣用 `--set` 蓋過 suricata.yaml：midstream 不觸發丟包（midstream 的 exception policy 設 `ignore`），並開啟 `stream.midstream`，讓 Suricata 從中間接手 TCP 連線、照常重組和比對。
+- 實作時先在 Docker 驗證：設定後 midstream 的 flow 不再被丟；從中間接手的連線仍然會命中規則；只開 `stream.midstream` 是否就夠（Suricata 7 的 midstream policy 可能只在 `stream.midstream` 關閉時才有作用）。
+- 還沒決定：其他 exception policy（memcap 用完、app-layer 解析錯誤等，也就是 Suricata 檢查不了某條 flow 的情況）。傾向跟 `when_unavailable` 一致：`accept` 對應 `ignore`，`drop` 對應 drop-flow。
+

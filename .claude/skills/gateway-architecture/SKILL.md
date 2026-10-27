@@ -42,7 +42,9 @@ description: 這個專案（Rust 實作的 security gateway：Suricata 8 + nftab
 | 雲端 API 的格式（O12） | request 由設定檔描述：endpoint、path、上傳欄位（型別加 CEL 計算式，輸入可以是使用者 eBPF 的輸出、EVE、conntrack）。回應先做可設定的對應（R2），動作固定只有 trust/block/observe；之後可能改成固定格式（R1） | [已決定] 10-25 |
 | 雲端迴路的時機（O13） | 階段 1 的地端執行點做完後，先接最小的雲端迴路，排在階段 2 前面；模擬的雲端由我們自己做 | [已決定] 10-25 |
 | Suricata 怎麼啟動（O14） | 先由 wnc-gw 自己啟動（設 `NOTIFY_SOCKET` 收 `READY=1`），之後加上 systemd 管理，兩者實作同一個生命週期介面；wnc-gw 啟動時 doctor 和啟動訊息給 warning（共用帳號）。queue 編號由設定指定、預設 0、型別是範圍。Suricata 沒在運作時可設定，預設放行，而且一定要記 log。執行檔和設定檔路徑可設定，doctor 警告非 root 可改 | [已決定] 10-26 |
+| 多個 queue 的分流（O14） | 改用 `queue to symhash mod N`（含 port、對稱），和階段 1 的 ct mark 一起實作：沒有 conntrack 時 kernel 不會先組回分片，symhash 會把分片分到別的 worker。開多個 queue 時 doctor 和啟動要確認 conntrack 已啟用 | [已決定] 10-27 |
 | log 存在哪裡（O15） | wnc-gw 只印到 stderr。Debian 上用 systemd 的 `LogNamespace=wnc-gw`，只有 wnc-gw 的 log 持久保存（Pi OS 預設 journald 只存在記憶體）；OpenWrt 另外決定 | [已決定] 10-26 |
+| 從中間開始的連線（O16） | wnc-gw 用 `--set` 強制 midstream 不丟包並開啟 `stream.midstream`。Debian 預設的 `exception-policy: auto` 在 NFQ 模式等於 drop-flow，AUDIT 稽核窗和 Suricata 重啟產生的 midstream flow 會被丟掉。其他 exception policy 未定 | [已決定] 10-27 |
 | 分三階段做 | 1 nftables + NFQUEUE + ct mark → 2 tc eBPF 算特徵 → 3 tc eBPF 轉送信任 flow | [建議]（SYNTHESIS §4.4） |
 | 和 Suricata 的整合方式 | 方案 A：Suricata 是獨立的 process（原版套件），封包經 NFQUEUE 送給它，結果經 EVE 回來，控制走 unix socket；不內嵌 libsuricata、不寫 plugin（B、C 都會讓 wnc-gw 變 GPL）。Suricata 送出就緒通知（`READY=1`）之後才能裝 queue 規則，否則 7.0 和 8.0.7 都會在 NFQ 初始化時 segfault | [已決定] 10-25（`suricata-integration.md` §9） |
 

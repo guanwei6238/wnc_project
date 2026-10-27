@@ -4,6 +4,7 @@ use std::process::ExitStatus;
 use std::time::Duration;
 
 pub const DEFAULT_READY_TIMEOUT: Duration = Duration::from_secs(300);
+pub const DEFAULT_STOP_TIMEOUT: Duration = Duration::from_secs(90);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Exit {

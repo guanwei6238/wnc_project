@@ -18,7 +18,7 @@ use crate::kernel::nfqueue::QueueRange;
 
 const NOTIFY_SOCKET: &str = "notify.sock";
 const CONTROL_SOCKET: &str = "suricata.sock";
-const STOP_GRACE: Duration = Duration::from_secs(10);
+const STILL_STOPPING_EVERY: Duration = Duration::from_secs(10);
 const FIRST_DELAY: Duration = Duration::from_secs(1);
 const MAX_DELAY: Duration = Duration::from_secs(60);
 const STABLE_AFTER: Duration = Duration::from_secs(300);
@@ -29,6 +29,7 @@ pub struct Options {
     pub config: PathBuf,
     pub queue: QueueRange,
     pub ready_timeout: Duration,
+    pub stop_timeout: Duration,
     pub fail_open: bool,
     pub runtime_dir: PathBuf,
     pub log_dir: PathBuf,
@@ -99,7 +100,7 @@ async fn supervise(
                 let pid = child.id().unwrap_or_default();
                 info!(pid, queue = %options.queue, "suricata started");
                 forward_output(&mut child, pid, options.queue);
-                let run = watch(&mut child, pid, started, &notify, &events, &mut stop, options.ready_timeout).await;
+                let run = watch(&mut child, pid, started, &notify, &events, &mut stop, &options).await;
                 let exit = run.status.ok().and_then(Exit::from_status);
                 let exit_text = exit.map_or_else(|| "unknown".to_owned(), |exit| exit.to_string());
                 let uptime = started.elapsed();
@@ -146,8 +147,9 @@ async fn watch(
     notify: &UnixDatagram,
     events: &mpsc::UnboundedSender<Event>,
     stop: &mut oneshot::Receiver<()>,
-    ready_timeout: Duration,
+    options: &Options,
 ) -> Run {
+    let ready_timeout = options.ready_timeout;
     let mut ready_at = None;
     let mut buf = [0u8; 4096];
     let deadline = tokio::time::sleep(ready_timeout);
@@ -165,12 +167,12 @@ async fn watch(
             }
             _ = &mut deadline, if ready_at.is_none() => {
                 warn!(pid, ready_timeout_s = ready_timeout.as_secs(), "suricata did not become ready in time; stopping it");
-                let status = terminate(child, pid).await;
+                let status = terminate(child, pid, options.stop_timeout).await;
                 return Run { status, ready_at, stopped: false };
             }
             _ = &mut *stop => {
                 info!(pid, "stopping suricata");
-                let status = terminate(child, pid).await;
+                let status = terminate(child, pid, options.stop_timeout).await;
                 return Run { status, ready_at, stopped: true };
             }
         }
@@ -183,6 +185,7 @@ fn spawn(options: &Options) -> io::Result<Child> {
     command
         .args(suricata_args(options))
         .env("NOTIFY_SOCKET", options.runtime_dir.join(NOTIFY_SOCKET))
+        .current_dir(&options.log_dir)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -220,22 +223,35 @@ fn suricata_args(options: &Options) -> Vec<OsString> {
         control,
         "--set".into(),
         fail_open.into(),
+        "--set".into(),
+        "detect.delayed-detect=no".into(),
+        "--set".into(),
+        "coredump.max-dump=0".into(),
     ]
 }
 
-async fn terminate(child: &mut Child, pid: u32) -> io::Result<ExitStatus> {
+async fn terminate(child: &mut Child, pid: u32, stop_timeout: Duration) -> io::Result<ExitStatus> {
     if let Some(status) = child.try_wait()? {
         return Ok(status);
     }
     unsafe {
         libc::kill(pid as libc::pid_t, libc::SIGTERM);
     }
-    match tokio::time::timeout(STOP_GRACE, child.wait()).await {
-        Ok(status) => status,
-        Err(_) => {
-            warn!(pid, grace_s = STOP_GRACE.as_secs(), "suricata did not stop in time; killing it");
-            child.start_kill()?;
-            child.wait().await
+    let asked = Instant::now();
+    let deadline = tokio::time::sleep(stop_timeout);
+    tokio::pin!(deadline);
+    let mut still = tokio::time::interval_at(tokio::time::Instant::now() + STILL_STOPPING_EVERY, STILL_STOPPING_EVERY);
+    loop {
+        tokio::select! {
+            status = child.wait() => return status,
+            _ = still.tick() => {
+                info!(pid, waited_s = asked.elapsed().as_secs(), stop_timeout_s = stop_timeout.as_secs(), "suricata is still stopping");
+            }
+            _ = &mut deadline => {
+                warn!(pid, stop_timeout_s = stop_timeout.as_secs(), "suricata did not stop in time; killing it");
+                child.start_kill()?;
+                return child.wait().await;
+            }
         }
     }
 }

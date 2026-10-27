@@ -4,6 +4,7 @@ pub mod datapath;
 pub mod firewall;
 pub mod forwarding;
 pub mod ids;
+pub mod instance;
 pub mod kernel;
 pub mod platform;
 pub mod ports;

@@ -9,6 +9,7 @@ fn options(dir: &Path, path: PathBuf, ready_timeout: Duration) -> Options {
         config: "/etc/suricata/suricata.yaml".into(),
         queue: QueueRange::default(),
         ready_timeout,
+        stop_timeout: Duration::from_secs(5),
         fail_open: true,
         runtime_dir: dir.join("run"),
         log_dir: dir.join("log"),
@@ -31,6 +32,10 @@ fn passes_config_queue_and_own_directories() {
             "unix-command.filename=/x/run/suricata.sock",
             "--set",
             "nfq.fail-open=yes",
+            "--set",
+            "detect.delayed-detect=no",
+            "--set",
+            "coredump.max-dump=0",
         ]
         .map(OsString::from)
     );
@@ -106,7 +111,10 @@ async fn next(suricata: &mut SpawnedSuricata) -> Event {
 async fn runs_the_command_with_notify_socket() {
     let scratch = Scratch::new("args");
     let out = scratch.0.join("out");
-    let script = scratch.script(&format!("echo \"$@\" > {0}; echo \"$NOTIFY_SOCKET\" >> {0}; exit 3", out.display()));
+    let script = scratch.script(&format!(
+        "echo \"$@\" > {0}; echo \"$NOTIFY_SOCKET\" >> {0}; pwd >> {0}; exit 3",
+        out.display()
+    ));
     let mut suricata = SpawnedSuricata::start(options(&scratch.0, script, Duration::from_secs(10))).unwrap();
     let event = next(&mut suricata).await;
     suricata.stop().await;
@@ -115,7 +123,8 @@ async fn runs_the_command_with_notify_socket() {
     assert_eq!(
         std::fs::read_to_string(&out).unwrap(),
         format!(
-            "-c /etc/suricata/suricata.yaml -q 0 -l {} --set unix-command.filename={} --set nfq.fail-open=yes\n{}\n",
+            "-c /etc/suricata/suricata.yaml -q 0 -l {0} --set unix-command.filename={1} --set nfq.fail-open=yes \
+             --set detect.delayed-detect=no --set coredump.max-dump=0\n{2}\n{0}\n",
             scratch.0.join("log").display(),
             run.join("suricata.sock").display(),
             run.join("notify.sock").display()
@@ -175,6 +184,39 @@ async fn stops_a_start_that_never_becomes_ready() {
         matches!(event, Event::Stopped { exit: Some(Exit::Signal(libc::SIGTERM)), was_ready: false, .. }),
         "{event:?}"
     );
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn waits_for_suricata_to_finish_stopping() {
+    let scratch = Scratch::new("graceful");
+    let mark = scratch.0.join("graceful");
+    let script = scratch.script(&format!(
+        "trap 'sleep 1; echo done > {}; exit 0' TERM; while :; do sleep 0.1; done",
+        mark.display()
+    ));
+    let suricata = SpawnedSuricata::start(options(&scratch.0, script, Duration::from_secs(10))).unwrap();
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    let started = Instant::now();
+    suricata.stop().await;
+    let took = started.elapsed();
+    assert!(mark.exists(), "suricata was killed before it finished stopping");
+    assert!(took >= Duration::from_secs(1) && took < Duration::from_secs(5), "stopping took {took:?}");
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn kills_suricata_after_stop_timeout() {
+    let scratch = Scratch::new("kill");
+    let script = scratch.script("trap '' TERM; echo $$ > pid; while :; do sleep 0.1; done");
+    let mut options = options(&scratch.0, script, Duration::from_secs(10));
+    options.stop_timeout = Duration::from_secs(1);
+    let suricata = SpawnedSuricata::start(options).unwrap();
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    let started = Instant::now();
+    suricata.stop().await;
+    let took = started.elapsed();
+    assert!(took >= Duration::from_secs(1) && took < Duration::from_secs(3), "stopping took {took:?}");
+    let pid = std::fs::read_to_string(scratch.0.join("log/pid")).unwrap();
+    assert!(!Path::new(&format!("/proc/{}", pid.trim())).exists(), "process {} is still running", pid.trim());
 }
 
 #[tokio::test(flavor = "current_thread")]

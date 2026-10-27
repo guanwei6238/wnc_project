@@ -7,6 +7,7 @@ use security_gateway::config::{self, Config, Overrides};
 use security_gateway::firewall::{self, FAMILY, Inspection, TABLE, WhenUnavailable};
 use security_gateway::ids::lifecycle::{Event, Lifecycle};
 use security_gateway::ids::spawned::{Options, SpawnedSuricata};
+use security_gateway::instance;
 use security_gateway::kernel::nft::Nft;
 use security_gateway::platform::{Current, Dirs};
 use tokio::signal::unix::{Signal, SignalKind, signal};
@@ -24,6 +25,13 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: RunArg
         Ok(config) => config,
         Err(e) => {
             error!(error = %e, "cannot load the config file");
+            return ExitCode::FAILURE;
+        }
+    };
+    let _lock = match instance::lock(Current.runtime_dir()) {
+        Ok(lock) => lock,
+        Err(e) => {
+            error!(error = %e, "not starting");
             return ExitCode::FAILURE;
         }
     };
@@ -145,6 +153,7 @@ fn suricata_options(config: &Config) -> Options {
         config: config.suricata.config.value.as_path().to_path_buf(),
         queue: config.suricata.queue.value,
         ready_timeout: config.suricata.ready_timeout.value,
+        stop_timeout: config.suricata.stop_timeout.value,
         fail_open: config.suricata.when_unavailable.value == WhenUnavailable::Accept,
         runtime_dir: Current.runtime_dir().to_path_buf(),
         log_dir: Current.log_dir().join("suricata"),

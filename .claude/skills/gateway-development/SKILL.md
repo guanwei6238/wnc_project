@@ -5,7 +5,7 @@ description: 在 security_gateway/（執行檔 wnc-gw）加功能或改程式時
 
 # wnc-gw 開發指南
 
-這份 skill 描述**現在的程式長什麼樣子，以及要怎麼往上加**。目標架構、插件點與安全底線在 `gateway-architecture`；兩份都適用時一起讀。內容反映 2026-10-26（commit `f0c4687` 之後，加上 2b-3：`firewall.rs` 的 `ids` chain 在 Suricata 就緒後才把流量送進 queue、`[suricata] when_unavailable`、`Lifecycle::allow_restart()`）的狀態，程式之後若有變動，以實際程式碼為準，並回頭更新這份 skill。
+這份 skill 描述**現在的程式長什麼樣子，以及要怎麼往上加**。目標架構、插件點與安全底線在 `gateway-architecture`；兩份都適用時一起讀。內容反映 2026-10-27（commit `28c2ec9` 之後，加上 `instance.rs` 的單一執行 lock、Suricata 強制關掉 delayed-detect 和 core dump，以及 `[suricata] stop_timeout`）的狀態，程式之後若有變動，以實際程式碼為準，並回頭更新這份 skill。
 
 ## 0. 動手之前
 
@@ -26,9 +26,9 @@ security_gateway/
 │   │   ├── mod.rs          Cli（全域參數 -c/--config、--lan、--wan）、Command、run()
 │   │   ├── doctor.rs       doctor：載入設定 → passes()（各項檢查、印報告，沒有 error 才回傳 true）→ 結束碼
 │   │   ├── logging.rs      init()：tracing 的輸出設定（stderr、UTC 時間、終端機才上色），只有 run 會呼叫
-│   │   ├── run.rs          run：開 log → 載入設定 → doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM → 安裝 table（ids chain 是沒就緒狀態）→ 啟動 Suricata（SpawnedSuricata）→ Ready 時 start_inspection、Stopped 時 stop_inspection 再 allow_restart → 收到訊號：stop_inspection → 停止 Suricata → 移除 table；沒檢查的時段都記成 log 事件
+│   │   ├── run.rs          run：開 log → 載入設定 → instance::lock()（已有 wnc-gw 在跑就不啟動）→ doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM → 安裝 table（ids chain 是沒就緒狀態）→ 啟動 Suricata（SpawnedSuricata）→ Ready 時 start_inspection、Stopped 時 stop_inspection 再 allow_restart → 收到訊號：stop_inspection → 停止 Suricata → 移除 table；沒檢查的時段都記成 log 事件
 │   │   └── show/           show 的巢狀子命令（mod.rs 分派，interfaces.rs 列介面）
-│   ├── lib.rs              只宣告功能模組：access、config、datapath、firewall、forwarding、ids、kernel、platform、ports
+│   ├── lib.rs              只宣告功能模組：access、config、datapath、firewall、forwarding、ids、instance、kernel、platform、ports
 │   ├── access.rs           除了 root 之外誰能改某個路徑（檔案本身、每一層目錄、跟著 symlink 之後的實際位置）；/etc/passwd、/etc/group 查名稱
 │   ├── config.rs           setting.toml + CLI 覆寫 → Config（每個值帶 Source）；AbsolutePath（路徑設定必須是絕對路徑）
 │   ├── datapath/           核心 eBPF 程式在每個 port 掛在哪、怎麼掛（mod.rs 只放 pub mod / pub use）
@@ -36,8 +36,9 @@ security_gateway/
 │   ├── firewall.rs         我們自己的 nft table（inet wnc_gw）：forward chain 最後 jump 到 ids chain；ids 依 Suricata 狀態換成 queue 或沒就緒的規則（WhenUnavailable、Inspection）；install()、start_inspection()、stop_inspection()、remove()
 │   ├── ids/                跟 IDS engine 打交道的薄模組（mod.rs 只放 pub mod）
 │   │   ├── lifecycle.rs    Suricata 生命週期的介面：trait Lifecycle（next_event、allow_restart、stop）、Event（Ready、Stopped）、Exit；DEFAULT_READY_TIMEOUT
-│   │   ├── spawned.rs      O14 的 (b)：wnc-gw 自己啟動 Suricata（NOTIFY_SOCKET 收 READY=1、輸出轉成 log、Stopped 之後等 allow_restart 再退避重啟、ready_timeout、PR_SET_PDEATHSIG、--set nfq.fail-open）
+│   │   ├── spawned.rs      O14 的 (b)：wnc-gw 自己啟動 Suricata（NOTIFY_SOCKET 收 READY=1、輸出轉成 log、Stopped 之後等 allow_restart 再退避重啟、ready_timeout、stop_timeout（SIGTERM 後等多久才 SIGKILL，每 10 秒記一次 still stopping）、PR_SET_PDEATHSIG；--set 強制 nfq.fail-open、detect.delayed-detect=no、coredump.max-dump=0；工作目錄是 log 目錄）
 │   │   └── suricata.rs     Suricata（路徑由設定決定）：--build-info → SuricataInfo；--dump-config -c → SuricataConfig（規則路徑）；check_rule_files()
+│   ├── instance.rs         同一台機器只跑一個 wnc-gw：flock <runtime_dir>/wnc-gw.lock 並寫入 pid；InstanceError::AlreadyRunning 帶持有者的 pid
 │   ├── ports.rs            Role、PortSelector（名稱或 MAC）、resolve()
 │   ├── forwarding/         轉送模式：Mode、trait Forwarding，bridge.rs（Bridged）、routed.rs（Routed）
 │   ├── platform/           因 OS 而異的部分：每種差異一個 trait，每個 OS 一個 struct

@@ -63,6 +63,12 @@
 # not ready in time, it is stopped and started again.
 # ready_timeout = 300
 
+# Seconds to wait for Suricata to exit after asking it to stop (default: 90).
+# Before exiting, Suricata writes a record of every open flow to its log, which
+# can take tens of seconds when there are many flows. If it is still running
+# after this, it is killed and those records are lost.
+# stop_timeout = 90
+
 # What happens to forwarded traffic while Suricata cannot inspect it: while it
 # starts or restarts, and when it falls behind (default: "accept").
 #   "accept"  pass it without inspection (`wnc-gw doctor` warns about this)
