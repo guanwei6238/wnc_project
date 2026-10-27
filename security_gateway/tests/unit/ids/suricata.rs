@@ -180,3 +180,97 @@ fn checks_rule_files_on_disk() {
     assert!(matches!(states[2], ("c.rules", Some(_), RuleFileState::Missing)));
     assert!(matches!(states[3], ("*.rules", None, RuleFileState::Wildcard)));
 }
+
+fn args(line: &str) -> Vec<String> {
+    line.split_whitespace().map(str::to_owned).collect()
+}
+
+fn q(s: &str) -> QueueRange {
+    s.parse().unwrap()
+}
+
+#[test]
+fn capture_of_the_debian_service() {
+    assert_eq!(
+        capture(&args("/usr/bin/suricata -D --af-packet -c /etc/suricata/suricata.yaml --pidfile /run/suricata.pid")),
+        Capture::Live("af-packet")
+    );
+}
+
+#[test]
+fn capture_of_nfq() {
+    assert_eq!(capture(&args("suricata -c x.yaml -q 0 -l /var/log")), Capture::Nfq(vec![q("0")]));
+    assert_eq!(capture(&args("suricata -q 0:3")), Capture::Nfq(vec![q("0-3")]));
+    assert_eq!(capture(&args("suricata -q 1 -q 5")), Capture::Nfq(vec![q("1"), q("5")]));
+    assert_eq!(capture(&args("suricata -q2")), Capture::Nfq(vec![q("2")]));
+}
+
+#[test]
+fn capture_of_other_modes() {
+    assert_eq!(capture(&args("suricata --af-packet=eth0")), Capture::Live("af-packet"));
+    assert_eq!(capture(&args("suricata -i eth0")), Capture::Live("-i"));
+    assert_eq!(capture(&args("suricata --pcap=eth0")), Capture::Live("pcap"));
+    assert_eq!(capture(&args("suricata -r /tmp/x.pcap")), Capture::File);
+    assert_eq!(capture(&args("suricata --unix-socket")), Capture::File);
+    assert_eq!(capture(&args("suricata -c x.yaml")), Capture::Unknown);
+    assert_eq!(capture(&[]), Capture::Unknown);
+}
+
+#[test]
+fn values_of_other_options_are_not_options() {
+    assert_eq!(capture(&args("suricata -c -q -r x.pcap")), Capture::File);
+    assert_eq!(capture(&args("suricata -q not-a-queue -i eth0")), Capture::Live("-i"));
+}
+
+const MARKER: &str = "unix-command.filename=/run/wnc-gw/suricata.sock";
+
+fn process(cmdline: &str, net_ns: Option<u64>) -> Process {
+    Process {
+        pid: 42,
+        state: Some('S'),
+        ppid: Some(7),
+        comm: "Suricata-Main".into(),
+        cmdline: args(cmdline),
+        rss_kb: Some(2048),
+        cgroup: Some("/".into()),
+        net_ns,
+    }
+}
+
+#[test]
+fn owner_is_decided_by_the_control_socket_in_the_cmdline() {
+    let ours = process("/usr/bin/suricata -c x.yaml -q 0 --set unix-command.filename=/run/wnc-gw/suricata.sock", None);
+    assert_eq!(RunningSuricata::from_process(&ours, MARKER, Some("wnc-gw"), None).owner, Owner::WncGw);
+    assert_eq!(RunningSuricata::from_process(&ours, MARKER, Some("systemd"), None).owner, Owner::LeftByWncGw);
+    assert_eq!(RunningSuricata::from_process(&ours, MARKER, None, None).owner, Owner::LeftByWncGw);
+    let other = process("/usr/bin/suricata -c x.yaml -q 0", None);
+    assert_eq!(RunningSuricata::from_process(&other, MARKER, Some("wnc-gw"), None).owner, Owner::Other);
+}
+
+#[test]
+fn compares_network_namespaces_when_both_are_known() {
+    let p = |ns| process("/usr/bin/suricata -q 0", ns);
+    assert_eq!(RunningSuricata::from_process(&p(Some(5)), MARKER, None, Some(5)).same_net_ns, Some(true));
+    assert_eq!(RunningSuricata::from_process(&p(Some(6)), MARKER, None, Some(5)).same_net_ns, Some(false));
+    assert_eq!(RunningSuricata::from_process(&p(None), MARKER, None, Some(5)).same_net_ns, None);
+}
+
+#[test]
+fn capture_of_combined_short_options_and_more_methods() {
+    assert_eq!(capture(&args("suricata -Dq0")), Capture::Nfq(vec![q("0")]));
+    assert_eq!(capture(&args("suricata -vDq 1:2")), Capture::Nfq(vec![q("1-2")]));
+    assert_eq!(capture(&args("suricata -ceth.yaml -ieth0")), Capture::Live("-i"));
+    assert_eq!(capture(&args("suricata --af-xdp=eth0")), Capture::Live("af-xdp"));
+    assert_eq!(capture(&args("suricata --dpdk")), Capture::Live("dpdk"));
+    assert_eq!(capture(&args("suricata --set stream.midstream=true -q 3")), Capture::Nfq(vec![q("3")]));
+}
+
+#[test]
+fn test_runs_are_not_capturing() {
+    assert_eq!(
+        capture(&args("/usr/bin/suricata -T -c /etc/suricata/suricata.yaml -S /var/lib/suricata/rules/suricata.rules")),
+        Capture::Test
+    );
+    assert_eq!(capture(&args("suricata --dump-config -c x.yaml")), Capture::Test);
+    assert_eq!(capture(&args("suricata --build-info")), Capture::Test);
+}

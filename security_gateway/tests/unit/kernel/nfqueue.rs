@@ -60,3 +60,11 @@ fn rejects_invalid_toml_values() {
     assert!(from_toml("queue = 1.5").is_err());
     assert!(from_toml("queue = \"3-1\"").is_err());
 }
+
+#[test]
+fn overlapping_ranges() {
+    assert!(queue("0").overlaps(&queue("0-3")));
+    assert!(queue("2-5").overlaps(&queue("5-7")));
+    assert!(!queue("0-1").overlaps(&queue("2-3")));
+    assert!(!queue("4").overlaps(&queue("0-3")));
+}

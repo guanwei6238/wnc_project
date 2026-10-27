@@ -2,7 +2,7 @@ use std::ffi::OsString;
 use std::fs::DirBuilder;
 use std::io;
 use std::os::unix::fs::DirBuilderExt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Stdio};
 use std::time::{Duration, Instant};
 
@@ -18,6 +18,12 @@ use crate::kernel::nfqueue::QueueRange;
 
 const NOTIFY_SOCKET: &str = "notify.sock";
 const CONTROL_SOCKET: &str = "suricata.sock";
+pub const FORCED_SETTINGS: [&str; 4] = [
+    "detect.delayed-detect=no",
+    "coredump.max-dump=0",
+    "stream.midstream=true",
+    "stream.midstream-policy=ignore",
+];
 const STILL_STOPPING_EVERY: Duration = Duration::from_secs(10);
 const FIRST_DELAY: Duration = Duration::from_secs(1);
 const MAX_DELAY: Duration = Duration::from_secs(60);
@@ -204,15 +210,19 @@ fn spawn(options: &Options) -> io::Result<Child> {
     command.spawn()
 }
 
+pub fn control_socket(runtime_dir: &Path) -> PathBuf {
+    runtime_dir.join(CONTROL_SOCKET)
+}
+
 fn suricata_args(options: &Options) -> Vec<OsString> {
     let queue = match (options.queue.first(), options.queue.last()) {
         (first, last) if first == last => first.to_string(),
         (first, last) => format!("{first}:{last}"),
     };
     let mut control = OsString::from("unix-command.filename=");
-    control.push(options.runtime_dir.join(CONTROL_SOCKET));
+    control.push(control_socket(&options.runtime_dir));
     let fail_open = if options.fail_open { "nfq.fail-open=yes" } else { "nfq.fail-open=no" };
-    vec![
+    let mut args: Vec<OsString> = vec![
         "-c".into(),
         options.config.clone().into(),
         "-q".into(),
@@ -223,11 +233,12 @@ fn suricata_args(options: &Options) -> Vec<OsString> {
         control,
         "--set".into(),
         fail_open.into(),
-        "--set".into(),
-        "detect.delayed-detect=no".into(),
-        "--set".into(),
-        "coredump.max-dump=0".into(),
-    ]
+    ];
+    for setting in FORCED_SETTINGS {
+        args.push("--set".into());
+        args.push(setting.into());
+    }
+    args
 }
 
 async fn terminate(child: &mut Child, pid: u32, stop_timeout: Duration) -> io::Result<ExitStatus> {

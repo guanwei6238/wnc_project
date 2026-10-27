@@ -645,3 +645,229 @@ fn spawned_suricata_is_a_warning() {
         }
     );
 }
+
+const SERVICE: &str = "suricata.service";
+
+fn other(pid: u32, capture: Capture, cgroup: &str) -> RunningSuricata {
+    RunningSuricata {
+        pid,
+        capture,
+        rss_kb: Some(72328),
+        cgroup: Some(cgroup.into()),
+        owner: Owner::Other,
+        same_net_ns: Some(true),
+    }
+}
+
+fn scan(running: Vec<RunningSuricata>) -> io::Result<SuricataScan> {
+    Ok(SuricataScan {
+        running,
+        others_hidden: false,
+    })
+}
+
+fn q(s: &str) -> QueueRange {
+    s.parse().unwrap()
+}
+
+fn warning(message: impl Into<String>) -> Finding {
+    Finding {
+        severity: Severity::Warning,
+        message: message.into(),
+    }
+}
+
+#[test]
+fn system_service_capturing_is_a_warning() {
+    let running = scan(vec![other(842, Capture::Live("af-packet"), "/system.slice/suricata.service")]);
+    let stop = Current.stop_service_hint(SERVICE);
+    assert_eq!(
+        other_suricata_findings(q("0"), &running, SERVICE, Some(&BootState::Enabled)),
+        [warning(format!(
+            "another suricata (pid 842, suricata.service) is capturing traffic (af-packet) and inspects it \
+             separately from wnc-gw; it competes for CPU and uses 71 MB of memory; stop it with: {stop}"
+        ))]
+    );
+}
+
+#[test]
+fn another_suricata_on_our_queue_is_a_warning_not_an_error() {
+    let running = scan(vec![other(9, Capture::Nfq(vec![q("0-3")]), "/")]);
+    assert_eq!(
+        other_suricata_findings(q("2"), &running, SERVICE, Some(&BootState::Disabled)),
+        [warning(
+            "another suricata (pid 9) is running inline on NFQUEUE 0-3, which wnc-gw is configured to use; wnc-gw's \
+             suricata cannot bind it until that one stops (wnc-gw keeps retrying); stop it with: kill 9"
+        )]
+    );
+}
+
+#[test]
+fn queue_in_an_unknown_network_namespace_says_so() {
+    let mut s = other(9, Capture::Nfq(vec![q("0")]), "/");
+    s.same_net_ns = None;
+    assert_eq!(
+        other_suricata_findings(q("0"), &scan(vec![s]), SERVICE, Some(&BootState::Disabled)),
+        [warning(
+            "another suricata (pid 9) is running inline on NFQUEUE 0, which wnc-gw is configured to use; if it is in \
+             wnc-gw's network namespace (could not tell), wnc-gw's suricata cannot bind it until that one stops; \
+             stop it with: kill 9"
+        )]
+    );
+}
+
+#[test]
+fn queue_in_another_network_namespace_does_not_conflict() {
+    let mut s = other(9, Capture::Nfq(vec![q("0")]), "/");
+    s.same_net_ns = Some(false);
+    assert_eq!(
+        other_suricata_findings(q("0"), &scan(vec![s]), SERVICE, Some(&BootState::Disabled)),
+        [warning(
+            "another suricata (pid 9) is running inline on NFQUEUE 0 in another network namespace; it competes with \
+             wnc-gw's suricata for CPU and uses 71 MB of memory; stop it with: kill 9"
+        )]
+    );
+}
+
+#[test]
+fn another_suricata_on_other_queues_is_a_warning() {
+    let running = scan(vec![other(9, Capture::Nfq(vec![q("4"), q("6-7")]), "/")]);
+    assert_eq!(
+        other_suricata_findings(q("0"), &running, SERVICE, Some(&BootState::Disabled)),
+        [warning(
+            "another suricata (pid 9) is running inline on NFQUEUE 4, 6-7; it competes with wnc-gw's suricata for CPU \
+             and uses 71 MB of memory; stop it with: kill 9"
+        )]
+    );
+}
+
+#[test]
+fn only_the_suricata_service_gets_a_systemctl_hint() {
+    let running = scan(vec![other(9, Capture::Live("af-packet"), "/system.slice/cron.service")]);
+    assert_eq!(
+        other_suricata_findings(q("0"), &running, SERVICE, Some(&BootState::Disabled)),
+        [warning(
+            "another suricata (pid 9, under cron.service) is capturing traffic (af-packet) and inspects it separately \
+             from wnc-gw; it competes for CPU and uses 71 MB of memory; stop it with: kill 9"
+        )]
+    );
+}
+
+#[test]
+fn suricata_left_by_a_previous_wnc_gw() {
+    let mut holding = other(5, Capture::Nfq(vec![q("0")]), "/system.slice/wnc-gw.service");
+    holding.owner = Owner::LeftByWncGw;
+    let mut elsewhere = holding.clone();
+    elsewhere.pid = 6;
+    elsewhere.same_net_ns = Some(false);
+    assert_eq!(
+        other_suricata_findings(q("0"), &scan(vec![holding, elsewhere]), SERVICE, Some(&BootState::Disabled)),
+        [
+            warning(
+                "a suricata left by a previous wnc-gw (pid 5) is still running and holds NFQUEUE 0, so wnc-gw's \
+                 suricata cannot bind it until it exits; it should exit by itself shortly, otherwise stop it with: \
+                 kill 5"
+            ),
+            warning(
+                "a suricata left by a previous wnc-gw (pid 6) is still running; it should exit by itself shortly, \
+                 otherwise stop it with: kill 6"
+            ),
+        ]
+    );
+}
+
+#[test]
+fn suricata_started_by_wnc_gw_is_not_a_finding() {
+    let mut ours = other(5, Capture::Nfq(vec![q("0")]), "/");
+    ours.owner = Owner::WncGw;
+    assert_eq!(
+        other_suricata_findings(q("0"), &scan(vec![ours]), SERVICE, Some(&BootState::Disabled)),
+        []
+    );
+}
+
+#[test]
+fn transient_runs_are_notes_and_do_not_hide_the_boot_warning() {
+    let running = scan(vec![
+        other(9, Capture::File, "/system.slice/suricata.service"),
+        other(10, Capture::Test, "/user.slice/user-1000.slice/session-3.scope"),
+    ]);
+    let disable = Current.disable_service_hint(SERVICE);
+    assert_eq!(
+        other_suricata_findings(q("0"), &running, SERVICE, Some(&BootState::Enabled)),
+        [
+            Finding {
+                severity: Severity::Note,
+                message: "another suricata (pid 9, suricata.service) is reading pcap files; it competes for CPU while \
+                          it runs"
+                    .into(),
+            },
+            Finding {
+                severity: Severity::Note,
+                message: "another suricata (pid 10) is testing its configuration (suricata-update runs suricata -T); \
+                          it exits by itself"
+                    .into(),
+            },
+            warning(format!(
+                "suricata.service is enabled, so another suricata starts at boot; disable it with: {disable}"
+            )),
+        ]
+    );
+}
+
+#[test]
+fn unknown_capture_is_a_warning() {
+    let mut s = other(10, Capture::Unknown, "/");
+    s.rss_kb = None;
+    assert_eq!(
+        other_suricata_findings(q("0"), &scan(vec![s]), SERVICE, Some(&BootState::NotInstalled)),
+        [warning(
+            "another suricata (pid 10) is running, but its command line does not show how it gets packets; it may \
+             compete with wnc-gw's suricata; stop it with: kill 10"
+        )]
+    );
+}
+
+#[test]
+fn enabled_service_that_is_not_running_is_a_warning() {
+    let disable = Current.disable_service_hint(SERVICE);
+    assert_eq!(
+        other_suricata_findings(q("0"), &scan(vec![]), SERVICE, Some(&BootState::Enabled)),
+        [warning(format!(
+            "suricata.service is enabled, so another suricata starts at boot; disable it with: {disable}"
+        ))]
+    );
+}
+
+#[test]
+fn boot_is_not_checked_when_starting() {
+    assert_eq!(other_suricata_findings(q("0"), &scan(vec![]), SERVICE, None), []);
+}
+
+#[test]
+fn hidden_processes_unknown_boot_state_and_probe_failure_are_warnings() {
+    let hidden = Ok(SuricataScan {
+        running: vec![],
+        others_hidden: true,
+    });
+    assert_eq!(
+        other_suricata_findings(q("0"), &hidden, SERVICE, Some(&BootState::Disabled)),
+        [warning(
+            "could not see other users' processes (/proc is mounted with hidepid), so other suricata processes may \
+             be missing"
+        )]
+    );
+    let failed = Err(io::Error::from(io::ErrorKind::PermissionDenied));
+    assert_eq!(
+        other_suricata_findings(
+            q("0"),
+            &failed,
+            SERVICE,
+            Some(&BootState::Unknown("/usr/bin/systemctl not found".into()))
+        ),
+        [
+            warning("could not check for other suricata processes: permission denied"),
+            warning("could not check whether suricata.service starts at boot: /usr/bin/systemctl not found"),
+        ]
+    );
+}

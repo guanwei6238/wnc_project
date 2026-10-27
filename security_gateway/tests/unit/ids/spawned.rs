@@ -36,6 +36,10 @@ fn passes_config_queue_and_own_directories() {
             "detect.delayed-detect=no",
             "--set",
             "coredump.max-dump=0",
+            "--set",
+            "stream.midstream=true",
+            "--set",
+            "stream.midstream-policy=ignore",
         ]
         .map(OsString::from)
     );
@@ -124,7 +128,8 @@ async fn runs_the_command_with_notify_socket() {
         std::fs::read_to_string(&out).unwrap(),
         format!(
             "-c /etc/suricata/suricata.yaml -q 0 -l {0} --set unix-command.filename={1} --set nfq.fail-open=yes \
-             --set detect.delayed-detect=no --set coredump.max-dump=0\n{2}\n{0}\n",
+             --set detect.delayed-detect=no --set coredump.max-dump=0 --set stream.midstream=true \
+             --set stream.midstream-policy=ignore\n{2}\n{0}\n",
             scratch.0.join("log").display(),
             run.join("suricata.sock").display(),
             run.join("notify.sock").display()

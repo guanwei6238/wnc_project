@@ -62,7 +62,8 @@ warning: …
 | kernel 模組 | `ModuleIndex::load()`、`state()` → `ModuleState` | `module_findings()` |
 | `nft` 執行檔 | `Nft::info()` 執行 `nft -V`（有逾時）→ `NftInfo` | `nft_finding()` |
 | Suricata | `Suricata::info()` 執行 `suricata --build-info`（有逾時）→ `SuricataInfo` | `suricata_findings()`：找不到、`NFQueue support: no`、`Systemd support: no` 是 error（沒有就緒通知就沒辦法安全地裝 queue）；輸出裡沒有那一行是 warning（7.0 不印 `Systemd support`，但實際上會送 `READY=1`）；版本只顯示 |
-| Suricata 設定檔與規則檔 | `Suricata::dump_config()` 執行 `suricata --dump-config -c <config>`（約 12 ms，不需要權限，不載入規則）→ `SuricataConfig`；`check_rule_files()` 依 `default-rule-path` 和 `rule-files` 找檔案，讀到第一條不是註解的行就停 → `RuleFileState` | `suricata_config_findings()`：設定檔載入失敗是 error（附 Suricata 自己的錯誤）；沒有任何一個檔案有規則是一個 error（剛裝好的 Debian 就是這樣）；有規則的檔案之外的問題、讀不到、萬用字元、沒設 `default-rule-path` 都是 warning。語法不檢查（要跑 `-T` 載入全部規則，太慢），留給規則管線 |
+| Suricata 設定檔與規則檔 | `Suricata::dump_config()` 執行 `suricata --dump-config -c <config>`，帶上 wnc-gw 強制的 `--set`（`spawned::FORCED_SETTINGS`），看到的就是 Suricata 實際執行時的設定（約 12 ms，不需要權限，不載入規則）→ `SuricataConfig`；`check_rule_files()` 依 `default-rule-path` 和 `rule-files` 找檔案，讀到第一條不是註解的行就停 → `RuleFileState` | `suricata_config_findings()`：設定檔載入失敗是 error（附 Suricata 自己的錯誤）；沒有任何一個檔案有規則是一個 error（剛裝好的 Debian 就是這樣）；有規則的檔案之外的問題、讀不到、萬用字元、沒設 `default-rule-path` 都是 warning。語法不檢查（要跑 `-T` 載入全部規則，太慢），留給規則管線 |
+| 其他 Suricata | `ids::suricata::scan()`：`kernel::procs::find()` 讀 `/proc/<pid>/` 的 comm（`Suricata-Main` 或啟動中的 `suricata`）、State（跳過 zombie；讀不到 status 就當成已經結束）、cmdline、PPid、VmRSS、cgroup、`ns/net`，不需要權限（`ns/net` 只有 root 讀得到別人的，讀不到就是「不知道」）；`/proc` 有 hidepid 又不是 root 時回報看不到別人的程序。cmdline 照 getopt 解析抓封包的方式（`-q`、合併的短選項、`--af-packet`／`--af-xdp`／`--pcap`／`--dpdk`／`-i` 等、`-r`、`-T`）。**是不是自己的看 cmdline 有沒有 `unix-command.filename=<runtime_dir>/suricata.sock`**：有、父程序是 wnc-gw → 自己的；有、父程序不是 → 前一個 wnc-gw 留下的。platform 的 `Services`：cgroup 對應到哪個服務、`systemctl is-enabled`、停用的修法 | `other_suricata_findings()`：**全部最多是 warning**——佔了 queue 也是暫時狀態，它停掉之後 wnc-gw 的退避重啟就能綁上，不用重啟 wnc-gw（報 error 會讓 `run` 不裝 table，drop 模式也跟著失效）。訊息依情況：同一個 namespace 佔了 queue、不知道在哪個 namespace（措辭保留）、在別的 namespace 或用其他 queue（只報資源）、af-packet 等、看不出怎麼抓；附 RSS。只有 unit 正好是 platform 的 Suricata 服務才建議 `systemctl disable --now`，其他一律 `kill <pid>`（cron 啟動的會在 `cron.service` 底下）。前一個 wnc-gw 留下的另外說明「應該很快會自己結束」。讀 pcap 檔、`-T` 是 note。服務開機會啟動、而且沒有一個「帶停用修法」的 finding 時是 warning；`enabled-runtime` 不算開機會啟動；問不到也是 warning。**`run` 不問 systemd**（開機會不會啟動和這次啟動無關，也不讓它拉長裝 table 之前的時間），表格顯示 `not checked` |
 | 檔案能不能被非 root 修改 | `access::non_root_writers()`：檔案本身、每一層目錄、跟著 symlink 之後的實際位置；sticky 目錄只算擁有者 | `access_findings()`：可以被改就是 warning（不擋），依帳號分組列出原因。檢查的檔案：wnc-gw 的設定檔、nft、Suricata、Suricata 的設定檔 |
 
 ## 4. 加一個檢查的步驟
@@ -112,7 +113,6 @@ RequiredModule {
 | 檢查 | 等哪個決定 | 決定之後要做的 |
 |---|---|---|
 | Suricata 的 unix socket | 規則管線（架構 §7 第 4 步）開始用 unix socket 時 | `--build-info` 的 `Unix socket enabled`，探測加在 `SuricataInfo` |
-| 其他 Suricata 正在跑 | 2b-4（O14） | 掃 `/proc/*/comm` 找 `Suricata-Main`，讀 cmdline 看抓封包的模式（不需要權限）；系統服務會不會開機啟動要問 systemd，放 platform 層 |
 | queue 被佔用 | 不在 doctor 做（O14） | wnc-gw 非 root 讀不到 `/proc/net/netfilter/nfnetlink_queue`。2b-3 在執行時處理：Suricata 綁定失敗會在 `READY=1` 之前退出，wnc-gw 報錯並記 log |
 | `nf_conntrack_netlink` 模組 | N5：改 ct mark 用 ctnetlink 還是 nft set | 用 ctnetlink 才加進 `REQUIRED_MODULES` |
 | TCX 可用性（kernel ≥ 6.6、bpffs、JIT） | 階段 2 開始時 | 探測放在 `kernel/` |

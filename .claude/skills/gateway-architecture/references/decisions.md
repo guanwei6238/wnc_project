@@ -222,6 +222,7 @@
   - **強制 `--set detect.delayed-detect=no`**：設成 yes 時 Suricata 先送 `READY=1` 才載入規則（Docker 實測），wnc-gw 會在沒有規則的期間記成「已檢查」。
   - **強制 `--set coredump.max-dump=0`，Suricata 的工作目錄設成它的 log 目錄**：Suricata 預設會把 core 上限放寬成 unlimited，core 寫在繼承來的工作目錄。Pi 上每次當機寫 154 MB（載入完整規則時約等於 RSS，1 GB 以上），寫檔期間 Suricata 卡在 D 狀態幾十秒、重啟跟著延後，反覆當機還可能寫滿 SD 卡。之後要用 core 除錯時再加設定。
   - **同一台機器只跑一個 wnc-gw**：`run` 載入設定後先 flock `/run/wnc-gw/wnc-gw.lock`，拿不到就報 `another wnc-gw is running (pid N)` 並結束。兩個同時跑時，一個收尾會刪掉另一個的 table，`notify.sock` 也會被搶。flock 在 process 結束時由 kernel 釋放，`kill -9` 不會留下過期的 lock；`/run` 是整台機器共用，不同 netns 也只能跑一個。
+- 2b-4 完成（2026-10-27）：doctor 檢查其他正在跑的 Suricata（讀 `/proc`，不需要權限）和 `suricata.service` 會不會開機啟動。一律最多是 warning：佔了設定的 queue 也只是暫時狀態，wnc-gw 照常啟動並退避重試（code review 指出報 error 會讓 `run` 不裝 table，drop 模式失效；wnc-gw 當掉後還在收尾的舊 Suricata 也會擋住重啟）。是不是自己的看 cmdline 裡的 control socket 路徑，不看父程序名稱；佔用 queue 只在同一個 network namespace 才算衝突；只有 Suricata 自己的服務才建議 `systemctl disable --now`（Debian：`suricata.service`），其他給 `kill <pid>`。細節見開發 skill 的 `doctor-checks.md`。
 - **`[suricata] stop_timeout`（2026-10-27 決定）**：wnc-gw 主動停止 Suricata 時（wnc-gw 結束、ready_timeout），送 SIGTERM 後最多等多久才 SIGKILL，預設 90 秒（和 systemd 的預設一樣），原本寫死 10 秒。Suricata 結束前會把每條還開著的 flow 寫進 eve.json，Pi 上 `full` 處理過 18 萬條 flow 要 11–13 秒，10 秒會被 SIGKILL，flow 紀錄和最後的統計都會遺失。代價：Suricata 卡死、不理 SIGTERM 時，要等滿 stop_timeout 才重啟。之後換規則要用 `reload-rules` 熱更新，不靠重啟。
 - **多個 queue 的分流方式（2026-10-27 決定）：改用 symhash，和階段 1 的 ct mark 一起實作。** 原本的 `queue num 0-(N-1)` 由 kernel 只依兩端位址加協定做 hash，同一對主機的所有連線都擠進同一個 queue。
   - 量測（Pi 4、1000 MHz、`full`、全速，Suricata 直接跑 NFQ、綁 CPU 0、2、3）：42-1 用 3 個 queue，位址 hash 分到 5／7／88%、12.9 kpps；`queue to symhash mod 3`（含 port、對稱）分到 37／33／30%、26.4 kpps、0 丟失。其他 scenario 兩種 hash 相同；symhash 讓 kernel 每個封包多約 0.7–1.8 µs。單一連線佔大部分流量的（60-1 98%、Honeypot-7-1 96%）不管哪種 hash 都只有一個 worker 在忙，要靠信任機制解決。
@@ -251,6 +252,24 @@ wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 std
 - Suricata 重啟（當掉、換規則）之後，所有既有的連線對新的 Suricata 都是從中間開始。
 
 **[已決定] 2026-10-27：wnc-gw 強制讓從中間開始的連線照常放行並檢查**，像 `nfq.fail-open` 一樣用 `--set` 蓋過 suricata.yaml：midstream 不觸發丟包（midstream 的 exception policy 設 `ignore`），並開啟 `stream.midstream`，讓 Suricata 從中間接手 TCP 連線、照常重組和比對。
-- 實作時先在 Docker 驗證：設定後 midstream 的 flow 不再被丟；從中間接手的連線仍然會命中規則；只開 `stream.midstream` 是否就夠（Suricata 7 的 midstream policy 可能只在 `stream.midstream` 關閉時才有作用）。
+- 2026-10-27 實作：**只強制 `--set stream.midstream=true`**，`exception-policy` 維持 Suricata 的預設。Docker（Suricata 8.0.7）驗證：cli→srv 持續送 100 行的 TCP 連線，中途讓 Suricata segfault 重啟：
+
+  | 設定 | 連線 | 重啟後的 alert | Suricata 丟的封包 |
+  |---|---|---|---|
+  | 預設 | 斷（只收到 27 行） | 沒有 | 整條連線（`exception_policy.tcp.midstream.drop_flow`） |
+  | 只開 `stream.midstream` | 100 行都收到 | 有（`tcp.midstream_pickups 1`） | 0 |
+  | 只改 `exception-policy: ignore` | 100 行都收到 | 有 | 5（`stream_error`，靠 TCP 重傳才沒斷） |
+  | 兩個都改 | 100 行都收到 | 有 | 0 |
+- 2026-10-27 code review 後補強：**另外強制 `--set stream.midstream-policy=ignore`**（全域的 `exception-policy` 仍維持預設）。原因：使用者的 yaml 若設了 midstream 專用的 policy，只開 `stream.midstream` 擋不住。Docker（8.0.7、已開 `stream.midstream`）實測 yaml 的 `stream.midstream-policy`：
+
+  | yaml 的值 | Suricata 的反應 | 重啟後的連線 |
+  |---|---|---|
+  | `ignore`、`auto` | 沒有訊息 | 不斷，照常 alert |
+  | `pass-flow` | 沒有訊息 | 不斷，但接手後**不再檢查**（alert 停了） |
+  | `drop-flow`、`drop-packet`、`pass-packet`、`bypass`、`reject` | warning「not a valid exception policy when midstream is enabled」後照常啟動 | `drop-flow`：**被丟**（`ips.drop_reason.stream_midstream`），訊息說不合法，實際仍然丟 |
+  | 上一列再加 `engine.init-failure-fatal: yes` | 同一句變成 `E:`，結束碼 1 | Suricata 起不來，wnc-gw 一直退避重試 |
+
+  強制 `ignore` 之後，上面每一種 yaml 都是「連線不斷、照常 alert」，加了 `init-failure-fatal` 也能啟動（`--set` 蓋過 yaml）。doctor 原本加的 midstream-policy 檢查因此拿掉。
+- 還沒處理的同類問題：`engine.init-failure-fatal` 會讓 yaml 裡**任何**一個 warning 都變成 Suricata 起不來，而 doctor 的 `--dump-config` 不做完整驗證（完整驗證要 `suricata -T`，Pi 上 `full` 要 30 秒以上）。可能的做法：執行時偵測「連續 N 次在就緒前結束」記 ERROR，或提供選擇性的完整檢查。
 - 還沒決定：其他 exception policy（memcap 用完、app-layer 解析錯誤等，也就是 Suricata 檢查不了某條 flow 的情況）。傾向跟 `when_unavailable` 一致：`accept` 對應 `ignore`，`drop` 對應 drop-flow。
 

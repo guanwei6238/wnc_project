@@ -1,22 +1,17 @@
 use std::collections::HashSet;
+use std::ffi::OsStr;
 use std::fmt;
-use std::io;
 use std::path::{Path, PathBuf};
-use std::process::{ExitStatus, Stdio};
-use std::time::Duration;
 
 use nftables::batch::Batch;
 use nftables::expr::{Expression, Range};
 use nftables::schema::{self, FlushObject, NfCmd, NfListObject};
 use nftables::stmt::{self, Counter, JumpTarget, QueueFlag};
 use nftables::types::{NfChainPolicy, NfChainType, NfFamily, NfHook};
-use tokio::io::AsyncWriteExt;
-use tokio::process::Command;
-
 use super::nfqueue::QueueRange;
+use crate::command::{self, CommandError};
 
 pub const DEFAULT_PATH: &str = "/usr/sbin/nft";
-const TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Nft {
@@ -83,21 +78,7 @@ pub struct RegularChain {
     pub rules: Vec<Vec<Statement>>,
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum NftError {
-    #[error("{} not found", .path.display())]
-    NotFound { path: PathBuf },
-    #[error("failed to run {}: {source}", .path.display())]
-    Spawn { path: PathBuf, source: io::Error },
-    #[error("{} did not finish within {} seconds", .path.display(), TIMEOUT.as_secs())]
-    Timeout { path: PathBuf },
-    #[error("{} failed ({status}): {stderr}", .path.display())]
-    Failed {
-        path: PathBuf,
-        status: ExitStatus,
-        stderr: String,
-    },
-}
+pub type NftError = CommandError;
 
 impl Nft {
     pub fn new(path: impl Into<PathBuf>) -> Self {
@@ -137,40 +118,8 @@ impl Nft {
     }
 
     async fn run(&self, args: &[&str], input: &[u8]) -> Result<Vec<u8>, NftError> {
-        let path = || self.path.clone();
-        let mut child = match Command::new(&self.path)
-            .args(args)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .kill_on_drop(true)
-            .spawn()
-        {
-            Ok(child) => child,
-            Err(e) if e.kind() == io::ErrorKind::NotFound => return Err(NftError::NotFound { path: path() }),
-            Err(source) => return Err(NftError::Spawn { path: path(), source }),
-        };
-        let mut stdin = child.stdin.take().expect("stdin is piped");
-        let output = async move {
-            match stdin.write_all(input).await {
-                Err(e) if e.kind() != io::ErrorKind::BrokenPipe => return Err(e),
-                _ => drop(stdin),
-            }
-            child.wait_with_output().await
-        };
-        let output = match tokio::time::timeout(TIMEOUT, output).await {
-            Err(_) => return Err(NftError::Timeout { path: path() }),
-            Ok(Err(source)) => return Err(NftError::Spawn { path: path(), source }),
-            Ok(Ok(output)) => output,
-        };
-        if !output.status.success() {
-            return Err(NftError::Failed {
-                path: path(),
-                status: output.status,
-                stderr: String::from_utf8_lossy(&output.stderr).trim().to_owned(),
-            });
-        }
-        Ok(output.stdout)
+        let args: Vec<&OsStr> = args.iter().map(OsStr::new).collect();
+        command::run(&self.path, &args, input).await
     }
 }
 

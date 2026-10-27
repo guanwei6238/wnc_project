@@ -2,15 +2,14 @@ use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::{ExitStatus, Stdio};
 use std::str::Lines;
-use std::time::Duration;
 
-use tokio::process::Command;
+use crate::command::{self, CommandError};
+use crate::kernel::nfqueue::QueueRange;
+use crate::kernel::procs::{self, Process};
 
 pub const DEFAULT_PATH: &str = "/usr/bin/suricata";
 pub const DEFAULT_CONFIG: &str = "/etc/suricata/suricata.yaml";
-const TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Suricata {
@@ -47,21 +46,7 @@ pub enum RuleFileState {
     NoRulePath,
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum SuricataError {
-    #[error("{} not found", .path.display())]
-    NotFound { path: PathBuf },
-    #[error("failed to run {}: {source}", .path.display())]
-    Spawn { path: PathBuf, source: io::Error },
-    #[error("{} did not finish within {} seconds", .path.display(), TIMEOUT.as_secs())]
-    Timeout { path: PathBuf },
-    #[error("{} failed ({status}): {stderr}", .path.display())]
-    Failed {
-        path: PathBuf,
-        status: ExitStatus,
-        stderr: String,
-    },
-}
+pub type SuricataError = CommandError;
 
 impl Suricata {
     pub fn new(path: impl Into<PathBuf>) -> Self {
@@ -77,40 +62,17 @@ impl Suricata {
         Ok(SuricataInfo::parse(&String::from_utf8_lossy(&stdout)))
     }
 
-    pub async fn dump_config(&self, config: &Path) -> Result<SuricataConfig, SuricataError> {
-        let stdout = self
-            .run(&[OsStr::new("--dump-config"), OsStr::new("-c"), config.as_os_str()])
-            .await?;
+    pub async fn dump_config(&self, config: &Path, settings: &[&str]) -> Result<SuricataConfig, SuricataError> {
+        let mut args = vec![OsStr::new("--dump-config"), OsStr::new("-c"), config.as_os_str()];
+        for setting in settings {
+            args.extend([OsStr::new("--set"), OsStr::new(setting)]);
+        }
+        let stdout = self.run(&args).await?;
         Ok(SuricataConfig::parse(&String::from_utf8_lossy(&stdout)))
     }
 
     async fn run(&self, args: &[&OsStr]) -> Result<Vec<u8>, SuricataError> {
-        let path = || self.path.clone();
-        let child = match Command::new(&self.path)
-            .args(args)
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .kill_on_drop(true)
-            .spawn()
-        {
-            Ok(child) => child,
-            Err(e) if e.kind() == io::ErrorKind::NotFound => return Err(SuricataError::NotFound { path: path() }),
-            Err(source) => return Err(SuricataError::Spawn { path: path(), source }),
-        };
-        let output = match tokio::time::timeout(TIMEOUT, child.wait_with_output()).await {
-            Err(_) => return Err(SuricataError::Timeout { path: path() }),
-            Ok(Err(source)) => return Err(SuricataError::Spawn { path: path(), source }),
-            Ok(Ok(output)) => output,
-        };
-        if !output.status.success() {
-            return Err(SuricataError::Failed {
-                path: path(),
-                status: output.status,
-                stderr: String::from_utf8_lossy(&output.stderr).trim().to_owned(),
-            });
-        }
-        Ok(output.stdout)
+        command::run(&self.path, args, b"").await
     }
 }
 
@@ -210,6 +172,149 @@ fn has_rule(reader: impl BufRead) -> io::Result<bool> {
         }
     }
     Ok(false)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Capture {
+    Nfq(Vec<QueueRange>),
+    Live(&'static str),
+    File,
+    Test,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Owner {
+    WncGw,
+    LeftByWncGw,
+    Other,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RunningSuricata {
+    pub pid: u32,
+    pub capture: Capture,
+    pub rss_kb: Option<u64>,
+    pub cgroup: Option<String>,
+    pub owner: Owner,
+    pub same_net_ns: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SuricataScan {
+    pub running: Vec<RunningSuricata>,
+    pub others_hidden: bool,
+}
+
+const COMM: [&str; 2] = ["Suricata-Main", "suricata"];
+const WNC_GW_COMM: &str = "wnc-gw";
+const SHORT_WITH_VALUE: &str = "cdFiklqrSsU";
+const LONG_WITH_VALUE: [&str; 8] = [
+    "set",
+    "pidfile",
+    "user",
+    "group",
+    "runmode",
+    "include",
+    "capture-plugin",
+    "capture-plugin-args",
+];
+
+pub fn scan(control_socket: &Path) -> io::Result<SuricataScan> {
+    let marker = format!("unix-command.filename={}", control_socket.display());
+    let own_net_ns = procs::own_net_ns();
+    let running = procs::find(|comm| COMM.contains(&comm))?
+        .iter()
+        .filter(|p| p.state != Some('Z'))
+        .map(|p| RunningSuricata::from_process(p, &marker, p.ppid.and_then(procs::comm).as_deref(), own_net_ns))
+        .collect();
+    Ok(SuricataScan {
+        running,
+        others_hidden: procs::others_hidden()?,
+    })
+}
+
+impl RunningSuricata {
+    fn from_process(process: &Process, marker: &str, parent_comm: Option<&str>, own_net_ns: Option<u64>) -> Self {
+        let owner = if !process.cmdline.iter().any(|arg| arg == marker) {
+            Owner::Other
+        } else if parent_comm == Some(WNC_GW_COMM) {
+            Owner::WncGw
+        } else {
+            Owner::LeftByWncGw
+        };
+        Self {
+            pid: process.pid,
+            capture: capture(&process.cmdline),
+            rss_kb: process.rss_kb,
+            cgroup: process.cgroup.clone(),
+            owner,
+            same_net_ns: process.net_ns.zip(own_net_ns).map(|(theirs, ours)| theirs == ours),
+        }
+    }
+}
+
+fn capture(cmdline: &[String]) -> Capture {
+    let mut queues = Vec::new();
+    let mut live = None;
+    let mut file = false;
+    let mut test = false;
+    let mut args = cmdline.iter().skip(1).map(String::as_str);
+    while let Some(arg) = args.next() {
+        if let Some(long) = arg.strip_prefix("--") {
+            let (name, has_value) = long.split_once('=').map_or((long, false), |(name, _)| (name, true));
+            match name {
+                "af-packet" => live = Some("af-packet"),
+                "af-xdp" => live = Some("af-xdp"),
+                "pcap" => live = Some("pcap"),
+                "netmap" => live = Some("netmap"),
+                "dpdk" => live = Some("dpdk"),
+                "nflog" => live = Some("nflog"),
+                _ if name.starts_with("pfring") => live = Some("pf_ring"),
+                "unix-socket" => file = true,
+                "engine-analysis" | "dump-config" | "build-info" => test = true,
+                _ if LONG_WITH_VALUE.contains(&name) && !has_value => {
+                    args.next();
+                }
+                _ => {}
+            }
+            continue;
+        }
+        let Some(cluster) = arg.strip_prefix('-').filter(|c| !c.is_empty()) else {
+            continue;
+        };
+        for (i, c) in cluster.char_indices() {
+            if SHORT_WITH_VALUE.contains(c) {
+                let rest = &cluster[i + c.len_utf8()..];
+                let value = if rest.is_empty() { args.next() } else { Some(rest) };
+                match c {
+                    'q' => queues.extend(value.and_then(queue)),
+                    'i' => live = Some("-i"),
+                    'r' => file = true,
+                    _ => {}
+                }
+                break;
+            }
+            if matches!(c, 'T' | 'V' | 'h') {
+                test = true;
+            }
+        }
+    }
+    if test {
+        Capture::Test
+    } else if !queues.is_empty() {
+        Capture::Nfq(queues)
+    } else if let Some(method) = live {
+        Capture::Live(method)
+    } else if file {
+        Capture::File
+    } else {
+        Capture::Unknown
+    }
+}
+
+fn queue(value: &str) -> Option<QueueRange> {
+    value.replace(':', "-").parse().ok()
 }
 
 #[cfg(test)]

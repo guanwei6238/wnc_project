@@ -15,6 +15,10 @@ impl QueueRange {
     pub fn last(&self) -> u16 {
         self.last
     }
+
+    pub fn overlaps(&self, other: &QueueRange) -> bool {
+        self.first <= other.last && other.first <= self.last
+    }
 }
 
 impl fmt::Display for QueueRange {

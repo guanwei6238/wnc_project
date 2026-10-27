@@ -35,7 +35,7 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: RunArg
             return ExitCode::FAILURE;
         }
     };
-    if !doctor::passes(&config).await {
+    if !doctor::passes(&config, true).await {
         error!("not starting because the checks above found errors");
         return ExitCode::FAILURE;
     }

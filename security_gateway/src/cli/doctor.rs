@@ -8,12 +8,17 @@ use security_gateway::config::{self, AbsolutePath, Config, Overrides, Setting, S
 use security_gateway::datapath::{CoreHook, XdpPolicy, core_hook};
 use security_gateway::firewall::WhenUnavailable;
 use security_gateway::forwarding::{self, EnvCheck, EnvState, Forwarding, Level, Mode};
-use security_gateway::ids::suricata::{RuleFile, RuleFileState, Suricata, SuricataConfig, SuricataError, SuricataInfo};
+use security_gateway::ids::spawned;
+use security_gateway::ids::suricata::{
+    self, Capture, Owner, RuleFile, RuleFileState, RunningSuricata, Suricata, SuricataConfig, SuricataError,
+    SuricataInfo, SuricataScan,
+};
 use security_gateway::kernel::modules::{ModuleIndex, ModuleState, RequiredModule};
 use security_gateway::kernel::netdev::{Netdev, XdpFeatures};
 use security_gateway::kernel::netif::{Interface, LinkStatus, NetifError, Netlink, XdpAttachment, XdpMode};
+use security_gateway::kernel::nfqueue::QueueRange;
 use security_gateway::kernel::nft::{Nft, NftError, NftInfo};
-use security_gateway::platform::{BootConfig, Current};
+use security_gateway::platform::{BootConfig, BootState, Current, Dirs, Services};
 use security_gateway::ports::{self, Port, ResolveError};
 
 #[derive(Debug, Args)]
@@ -55,14 +60,14 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: Doctor
             return ExitCode::FAILURE;
         }
     };
-    if passes(&config).await {
+    if passes(&config, false).await {
         ExitCode::SUCCESS
     } else {
         ExitCode::FAILURE
     }
 }
 
-pub async fn passes(config: &Config) -> bool {
+pub async fn passes(config: &Config, starting: bool) -> bool {
     match &config.file {
         Some(path) => println!("config: {}", path.display()),
         None => println!("config: none ({} not found)", config::DEFAULT_PATH),
@@ -99,6 +104,9 @@ pub async fn passes(config: &Config) -> bool {
     println!();
 
     findings.extend(check_suricata(&config.suricata).await);
+    println!();
+
+    findings.extend(check_other_suricata(config.suricata.queue.value, !starting).await);
     println!();
 
     findings.extend(check_access(config));
@@ -438,12 +446,209 @@ async fn check_suricata(settings: &SuricataSettings) -> Vec<Finding> {
         findings.push(spawned_finding());
         println!();
         let config = settings.config.value.as_path();
-        let dump = suricata.dump_config(config).await;
+        let dump = suricata.dump_config(config, &spawned::FORCED_SETTINGS).await;
         let rule_files = dump.as_ref().map(SuricataConfig::check_rule_files).unwrap_or_default();
         print_suricata_config(&settings.config, &dump, &rule_files);
         findings.extend(suricata_config_findings(config, &dump, &rule_files));
     }
     findings
+}
+
+async fn check_other_suricata(queue: QueueRange, check_boot: bool) -> Vec<Finding> {
+    let scan = suricata::scan(&spawned::control_socket(Current.runtime_dir()));
+    let service = Current.suricata_service();
+    let boot = if check_boot {
+        Some(Current.starts_at_boot(service).await)
+    } else {
+        None
+    };
+    print_other_suricata(&scan, service, boot.as_ref());
+    other_suricata_findings(queue, &scan, service, boot.as_ref())
+}
+
+fn other_suricata_findings(
+    queue: QueueRange,
+    scan: &io::Result<SuricataScan>,
+    service: &str,
+    boot: Option<&BootState>,
+) -> Vec<Finding> {
+    let warning = |message: String| Finding {
+        severity: Severity::Warning,
+        message,
+    };
+    let mut findings = Vec::new();
+    let running = match scan {
+        Ok(scan) => {
+            if scan.others_hidden {
+                findings.push(warning(
+                    "could not see other users' processes (/proc is mounted with hidepid), so other suricata \
+                     processes may be missing"
+                        .to_owned(),
+                ));
+            }
+            scan.running.as_slice()
+        }
+        Err(e) => {
+            findings.push(warning(format!("could not check for other suricata processes: {e}")));
+            &[]
+        }
+    };
+    let mut service_running = false;
+    for other in running {
+        let held = match &other.capture {
+            Capture::Nfq(queues) if queues.iter().any(|q| q.overlaps(&queue)) => Some(queue_list(queues)),
+            _ => None,
+        };
+        match other.owner {
+            Owner::WncGw => continue,
+            Owner::LeftByWncGw => {
+                let held = match &held {
+                    Some(queues) if other.same_net_ns != Some(false) => {
+                        format!(" and holds NFQUEUE {queues}, so wnc-gw's suricata cannot bind it until it exits")
+                    }
+                    _ => String::new(),
+                };
+                findings.push(warning(format!(
+                    "a suricata left by a previous wnc-gw (pid {pid}) is still running{held}; it should exit by itself \
+                     shortly, otherwise stop it with: kill {pid}",
+                    pid = other.pid
+                )));
+                continue;
+            }
+            Owner::Other => {}
+        }
+        let unit = service_unit(other);
+        let is_service = unit.as_deref() == Some(service);
+        let who = match &unit {
+            Some(unit) if is_service => format!("another suricata (pid {}, {unit})", other.pid),
+            Some(unit) => format!("another suricata (pid {}, under {unit})", other.pid),
+            None => format!("another suricata (pid {})", other.pid),
+        };
+        let stop = if is_service {
+            Current.stop_service_hint(service)
+        } else {
+            format!("kill {}", other.pid)
+        };
+        let memory = other
+            .rss_kb
+            .map_or_else(|| "memory".to_owned(), |kb| format!("{} MB of memory", megabytes(kb)));
+        let (severity, message) = match (&other.capture, &held, other.same_net_ns) {
+            (Capture::Nfq(_), Some(queues), Some(true)) => (
+                Severity::Warning,
+                format!(
+                    "{who} is running inline on NFQUEUE {queues}, which wnc-gw is configured to use; wnc-gw's \
+                     suricata cannot bind it until that one stops (wnc-gw keeps retrying); stop it with: {stop}"
+                ),
+            ),
+            (Capture::Nfq(_), Some(queues), None) => (
+                Severity::Warning,
+                format!(
+                    "{who} is running inline on NFQUEUE {queues}, which wnc-gw is configured to use; if it is in \
+                     wnc-gw's network namespace (could not tell), wnc-gw's suricata cannot bind it until that one \
+                     stops; stop it with: {stop}"
+                ),
+            ),
+            (Capture::Nfq(queues), _, same_net_ns) => (
+                Severity::Warning,
+                format!(
+                    "{who} is running inline on NFQUEUE {}{}; it competes with wnc-gw's suricata for CPU and uses \
+                     {memory}; stop it with: {stop}",
+                    queue_list(queues),
+                    if same_net_ns == Some(false) { " in another network namespace" } else { "" }
+                ),
+            ),
+            (Capture::Live(method), _, _) => (
+                Severity::Warning,
+                format!(
+                    "{who} is capturing traffic ({method}) and inspects it separately from wnc-gw; it competes \
+                     for CPU and uses {memory}; stop it with: {stop}"
+                ),
+            ),
+            (Capture::File, _, _) => (
+                Severity::Note,
+                format!("{who} is reading pcap files; it competes for CPU while it runs"),
+            ),
+            (Capture::Test, _, _) => (
+                Severity::Note,
+                format!("{who} is testing its configuration (suricata-update runs suricata -T); it exits by itself"),
+            ),
+            (Capture::Unknown, _, _) => (
+                Severity::Warning,
+                format!(
+                    "{who} is running, but its command line does not show how it gets packets; it may compete \
+                     with wnc-gw's suricata; stop it with: {stop}"
+                ),
+            ),
+        };
+        service_running |= is_service && !matches!(other.capture, Capture::File | Capture::Test);
+        findings.push(Finding { severity, message });
+    }
+    match boot {
+        Some(BootState::Enabled) if !service_running => findings.push(warning(format!(
+            "{service} is enabled, so another suricata starts at boot; disable it with: {}",
+            Current.disable_service_hint(service)
+        ))),
+        Some(BootState::Unknown(reason)) => {
+            findings.push(warning(format!("could not check whether {service} starts at boot: {reason}")))
+        }
+        _ => {}
+    }
+    findings
+}
+
+fn service_unit(other: &RunningSuricata) -> Option<String> {
+    other.cgroup.as_deref().and_then(|cgroup| Current.service_of(cgroup))
+}
+
+fn megabytes(kb: u64) -> u64 {
+    (kb + 512) / 1024
+}
+
+fn queue_list(queues: &[QueueRange]) -> String {
+    queues.iter().map(QueueRange::to_string).collect::<Vec<_>>().join(", ")
+}
+
+fn print_other_suricata(scan: &io::Result<SuricataScan>, service: &str, boot: Option<&BootState>) {
+    println!(
+        "{:<18} {:<14} {:<9} {:<8} {}",
+        "RUNNING SURICATA", "CAPTURE", "RSS", "NETNS", "STARTED BY"
+    );
+    match scan {
+        Ok(scan) if scan.running.is_empty() => println!("none"),
+        Ok(scan) => {
+            for s in &scan.running {
+                let capture = match &s.capture {
+                    Capture::Nfq(queues) => format!("nfq {}", queue_list(queues)),
+                    Capture::Live(method) => (*method).to_owned(),
+                    Capture::File => "pcap file".to_owned(),
+                    Capture::Test => "test".to_owned(),
+                    Capture::Unknown => "unknown".to_owned(),
+                };
+                let rss = s.rss_kb.map_or_else(|| "-".to_owned(), |kb| format!("{} MB", megabytes(kb)));
+                let net_ns = match s.same_net_ns {
+                    Some(true) => "same",
+                    Some(false) => "other",
+                    None => "unknown",
+                };
+                let started_by = match s.owner {
+                    Owner::WncGw => "wnc-gw".to_owned(),
+                    Owner::LeftByWncGw => "previous wnc-gw".to_owned(),
+                    Owner::Other => service_unit(s).unwrap_or_else(|| "-".to_owned()),
+                };
+                println!("{:<18} {capture:<14} {rss:<9} {net_ns:<8} {started_by}", s.pid);
+            }
+        }
+        Err(_) => println!("unknown"),
+    }
+    let at_boot = match boot {
+        None => "not checked",
+        Some(BootState::Enabled) => "enabled",
+        Some(BootState::Disabled) => "disabled",
+        Some(BootState::NotInstalled) => "not installed",
+        Some(BootState::Unknown(_)) => "unknown",
+    };
+    println!("{:<18} {}", "SURICATA SERVICE", "AT BOOT");
+    println!("{service:<18} {at_boot}");
 }
 
 fn suricata_findings(path: &Path, info: &Result<SuricataInfo, SuricataError>) -> Vec<Finding> {
