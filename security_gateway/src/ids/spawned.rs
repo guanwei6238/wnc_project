@@ -18,11 +18,12 @@ use crate::kernel::nfqueue::QueueRange;
 
 const NOTIFY_SOCKET: &str = "notify.sock";
 const CONTROL_SOCKET: &str = "suricata.sock";
-pub const FORCED_SETTINGS: [&str; 4] = [
+pub const FORCED_SETTINGS: [&str; 5] = [
     "detect.delayed-detect=no",
     "coredump.max-dump=0",
     "stream.midstream=true",
     "stream.midstream-policy=ignore",
+    "engine.init-failure-fatal=no",
 ];
 const STILL_STOPPING_EVERY: Duration = Duration::from_secs(10);
 const FIRST_DELAY: Duration = Duration::from_secs(1);
@@ -222,7 +223,9 @@ fn suricata_args(options: &Options) -> Vec<OsString> {
     let mut control = OsString::from("unix-command.filename=");
     control.push(control_socket(&options.runtime_dir));
     let fail_open = if options.fail_open { "nfq.fail-open=yes" } else { "nfq.fail-open=no" };
+    // -v：「N rules failed」和實際生效的 exception policy 是 Info，console 預設不印
     let mut args: Vec<OsString> = vec![
+        "-v".into(),
         "-c".into(),
         options.config.clone().into(),
         "-q".into(),
@@ -234,11 +237,34 @@ fn suricata_args(options: &Options) -> Vec<OsString> {
         "--set".into(),
         fail_open.into(),
     ];
-    for setting in FORCED_SETTINGS {
+    for setting in FORCED_SETTINGS.into_iter().chain(exception_policies(options.fail_open)) {
         args.push("--set".into());
         args.push(setting.into());
     }
     args
+}
+
+// Suricata 檢查不了某條 flow（記憶體用完、解析錯誤）時跟著 when_unavailable；flow 和 defrag 不支援 drop-flow
+fn exception_policies(fail_open: bool) -> [&'static str; 6] {
+    if fail_open {
+        [
+            "exception-policy=ignore",
+            "stream.memcap-policy=ignore",
+            "stream.reassembly.memcap-policy=ignore",
+            "flow.memcap-policy=ignore",
+            "defrag.memcap-policy=ignore",
+            "app-layer.error-policy=ignore",
+        ]
+    } else {
+        [
+            "exception-policy=drop-flow",
+            "stream.memcap-policy=drop-flow",
+            "stream.reassembly.memcap-policy=drop-flow",
+            "flow.memcap-policy=drop-packet",
+            "defrag.memcap-policy=drop-packet",
+            "app-layer.error-policy=drop-flow",
+        ]
+    }
 }
 
 async fn terminate(child: &mut Child, pid: u32, stop_timeout: Duration) -> io::Result<ExitStatus> {
@@ -298,7 +324,16 @@ async fn forward(stream: impl AsyncRead + Unpin, pid: u32, queue: QueueRange) {
         if text.contains("nfq_create_queue failed") {
             error!(pid, queue = %queue, "suricata cannot bind the queue; another program is using it");
         }
+        if let Some(failed) = failed_rules(text).filter(|&n| n > 0) {
+            warn!(pid, failed, "suricata could not load some rules; they are not used for detection");
+        }
     }
+}
+
+// 規則載完時的那一行：「1 rule files processed. 1 rules successfully loaded, 0 rules failed, 0 rules skipped」
+fn failed_rules(text: &str) -> Option<u64> {
+    let (before, _) = text.split_once(" rules failed")?;
+    before.rsplit(' ').next()?.parse().ok()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -314,6 +349,11 @@ fn classify(line: &str) -> (Level, &str) {
         ("Error: ", Level::Error),
         ("W: ", Level::Warn),
         ("Warning: ", Level::Warn),
+        ("Notice: ", Level::Info),
+        ("Info: ", Level::Info),
+        ("Config: ", Level::Info),
+        ("Perf: ", Level::Info),
+        ("Debug: ", Level::Info),
     ] {
         if let Some(rest) = line.strip_prefix(prefix) {
             return (level, rest);

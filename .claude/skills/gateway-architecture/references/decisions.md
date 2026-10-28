@@ -274,8 +274,17 @@ wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 std
 
   強制 `ignore` 之後，上面每一種 yaml 都是「連線不斷、照常 alert」，加了 `init-failure-fatal` 也能啟動（`--set` 蓋過 yaml）。doctor 原本加的 midstream-policy 檢查因此拿掉。
 - 還沒處理的同類問題：`engine.init-failure-fatal` 會讓 yaml 裡**任何**一個 warning 都變成 Suricata 起不來，而 doctor 的 `--dump-config` 不做完整驗證（完整驗證要 `suricata -T`，Pi 上 `full` 要 30 秒以上）。可能的做法：執行時偵測「連續 N 次在就緒前結束」記 ERROR，或提供選擇性的完整檢查。
-  **[已決定] 2026-10-28：wnc-gw 用 `--set engine.init-failure-fatal=no` 強制關掉**（壞掉一條規則不該讓整個網路失去檢查），並在 Suricata 回報「rules failed」大於 0 時記 WARN，讓偵測範圍變小看得到。完整的規則驗證放在規則管線（架構 §7 第 4 步，沙盒裡 `suricata -T` 通過才套用）。還沒實作。
-- **[已決定] 2026-10-28：其他 exception policy 跟著 `when_unavailable`**（memcap 用完、app-layer 解析錯誤等，也就是 Suricata 檢查不了某條 flow 的情況）：`accept` 對應 `ignore`，`drop` 對應 `drop-flow`，wnc-gw 用 `--set` 強制。理由：Suricata 在路徑上但只告警，記憶體不夠不該變成丟正常流量（Debian 的 `exception-policy: auto` 在 NFQ 模式等於 drop）；這和 `when_unavailable` 是同一個問題，只是範圍是一條 flow。還沒實作、還沒測 memcap 用完時的實際行為。
+  **[已決定] 2026-10-28：wnc-gw 用 `--set engine.init-failure-fatal=no` 強制關掉**（壞掉一條規則不該讓整個網路失去檢查），並在 Suricata 回報「rules failed」大於 0 時記 WARN，讓偵測範圍變小看得到。完整的規則驗證放在規則管線（架構 §7 第 4 步，沙盒裡 `suricata -T` 通過才套用）。
+  實作（2026-10-28）：`FORCED_SETTINGS` 加 `engine.init-failure-fatal=no`；Suricata 加 `-v`，因為「N rules failed」和實際生效的 master exception-policy 都是 Info，console 預設只印到 Notice（`-v` 之後等級名稱變成完整的 `Notice:`、`Info:`，`classify` 一起剝掉）。啟動時 Suricata 多約 10 行 log。驗證：一條正常、一條壞掉的規則，yaml 寫 `init-failure-fatal: yes`，直接跑 Suricata exit 1；經過 wnc-gw 照常就緒，log 有 Suricata 自己的 ERROR 加上 WARN `suricata could not load some rules; they are not used for detection failed=1`（Docker 8.0.7、Pi 7.0.10 相同）。
+- **[已決定] 2026-10-28：其他 exception policy 跟著 `when_unavailable`**（memcap 用完、app-layer 解析錯誤等，也就是 Suricata 檢查不了某條 flow 的情況）：`accept` 對應 `ignore`，`drop` 對應 `drop-flow`，wnc-gw 用 `--set` 強制。理由：Suricata 在路徑上但只告警，記憶體不夠不該變成丟正常流量（Debian 的 `exception-policy: auto` 在 NFQ 模式等於 drop）；這和 `when_unavailable` 是同一個問題，只是範圍是一條 flow。
+  實作（2026-10-28）：除了全域的 `exception-policy`，`stream.memcap-policy`、`stream.reassembly.memcap-policy`、`flow.memcap-policy`、`defrag.memcap-policy`、`app-layer.error-policy` 也逐項指定（yaml 個別設了也蓋得過去）；drop 時 flow 和 defrag 用 `drop-packet`（不支援 drop-flow），其他用 `drop-flow`；midstream 照 O16 一律 `ignore`。驗證（`tests/ids_inline/exception_policy_pi.sh`；flow memcap 調到 512 KiB，對 5000 個 port 各送 1 個 UDP）：
+
+  | | Docker（8.0.7） | Pi（7.0.10） |
+  |---|---|---|
+  | `accept`（master exception-policy = ignore） | 5000／5000 送達 | 5000／5000 送達 |
+  | `drop`（master = drop-flow） | 送達 2203，丟 2797（`ips.drop_reason.flow_memcap`） | 送達 2101，丟 2899（同） |
+
+  兩個版本啟動時都沒有 warning（全域 drop-flow 加上 midstream 單獨 ignore 不衝突）。stream、reassembly、defrag、app-layer 這幾項沒有個別觸發過，用的是同一套機制。
 
 ### O17. 信任狀態放在哪裡、怎麼寫進 kernel（N5）
 

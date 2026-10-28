@@ -22,6 +22,7 @@ fn passes_config_queue_and_own_directories() {
     assert_eq!(
         suricata_args(&options),
         [
+            "-v",
             "-c",
             "/etc/suricata/suricata.yaml",
             "-q",
@@ -40,13 +41,54 @@ fn passes_config_queue_and_own_directories() {
             "stream.midstream=true",
             "--set",
             "stream.midstream-policy=ignore",
+            "--set",
+            "engine.init-failure-fatal=no",
+            "--set",
+            "exception-policy=ignore",
+            "--set",
+            "stream.memcap-policy=ignore",
+            "--set",
+            "stream.reassembly.memcap-policy=ignore",
+            "--set",
+            "flow.memcap-policy=ignore",
+            "--set",
+            "defrag.memcap-policy=ignore",
+            "--set",
+            "app-layer.error-policy=ignore",
         ]
         .map(OsString::from)
     );
     options.queue = "0-3".parse().unwrap();
     options.fail_open = false;
     let args = suricata_args(&options);
-    assert_eq!((&args[3], &args[9]), (&OsString::from("0:3"), &OsString::from("nfq.fail-open=no")));
+    assert_eq!((&args[4], &args[10]), (&OsString::from("0:3"), &OsString::from("nfq.fail-open=no")));
+}
+
+#[test]
+fn exception_policies_follow_when_unavailable() {
+    let mut options = options(Path::new("/x"), "/usr/bin/suricata".into(), Duration::from_secs(1));
+    options.fail_open = false;
+    let args: Vec<String> = suricata_args(&options).into_iter().map(|a| a.into_string().unwrap()).collect();
+    for expected in [
+        "exception-policy=drop-flow",
+        "stream.memcap-policy=drop-flow",
+        "stream.reassembly.memcap-policy=drop-flow",
+        "flow.memcap-policy=drop-packet",
+        "defrag.memcap-policy=drop-packet",
+        "app-layer.error-policy=drop-flow",
+        "stream.midstream-policy=ignore",
+        "engine.init-failure-fatal=no",
+    ] {
+        assert!(args.iter().any(|a| a == expected), "missing {expected}: {args:?}");
+    }
+    assert!(!args.iter().any(|a| a.ends_with("=ignore") && a != "stream.midstream-policy=ignore"));
+}
+
+#[test]
+fn reads_how_many_rules_failed_to_load() {
+    assert_eq!(failed_rules("detect: 1 rule files processed. 1 rules successfully loaded, 0 rules failed, 0 rules skipped"), Some(0));
+    assert_eq!(failed_rules("detect: 2 rule files processed. 40011 rules successfully loaded, 3 rules failed, 0 rules skipped"), Some(3));
+    assert_eq!(failed_rules("suricata: Engine started."), None);
 }
 
 #[test]
@@ -67,7 +109,9 @@ fn classifies_suricata_output() {
     );
     assert_eq!(classify("W: detect: No rule files match"), (Level::Warn, "detect: No rule files match"));
     assert_eq!(classify("i: suricata: Engine started."), (Level::Info, "suricata: Engine started."));
-    assert_eq!(classify("Notice: something"), (Level::Info, "Notice: something"));
+    assert_eq!(classify("Notice: threads: Engine started."), (Level::Info, "threads: Engine started."));
+    assert_eq!(classify("Info: detect: 1 rules failed"), (Level::Info, "detect: 1 rules failed"));
+    assert_eq!(classify("Unknown: something"), (Level::Info, "Unknown: something"));
     assert_eq!(classify("plain line"), (Level::Info, "plain line"));
 }
 
@@ -119,20 +163,19 @@ async fn runs_the_command_with_notify_socket() {
         "echo \"$@\" > {0}; echo \"$NOTIFY_SOCKET\" >> {0}; pwd >> {0}; exit 3",
         out.display()
     ));
-    let mut suricata = SpawnedSuricata::start(options(&scratch.0, script, Duration::from_secs(10))).unwrap();
+    let options = options(&scratch.0, script, Duration::from_secs(10));
+    let args: Vec<String> = suricata_args(&options).into_iter().map(|a| a.into_string().unwrap()).collect();
+    let mut suricata = SpawnedSuricata::start(options).unwrap();
     let event = next(&mut suricata).await;
     suricata.stop().await;
     assert!(matches!(event, Event::Stopped { exit: Some(Exit::Code(3)), was_ready: false, .. }), "{event:?}");
-    let run = scratch.0.join("run");
     assert_eq!(
         std::fs::read_to_string(&out).unwrap(),
         format!(
-            "-c /etc/suricata/suricata.yaml -q 0 -l {0} --set unix-command.filename={1} --set nfq.fail-open=yes \
-             --set detect.delayed-detect=no --set coredump.max-dump=0 --set stream.midstream=true \
-             --set stream.midstream-policy=ignore\n{2}\n{0}\n",
-            scratch.0.join("log").display(),
-            run.join("suricata.sock").display(),
-            run.join("notify.sock").display()
+            "{}\n{}\n{}\n",
+            args.join(" "),
+            scratch.0.join("run").join("notify.sock").display(),
+            scratch.0.join("log").display()
         )
     );
 }
