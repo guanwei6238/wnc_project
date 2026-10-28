@@ -2,6 +2,7 @@
 # trust_cost.sh — 3a：信任（ct mark）之後每個封包省多少，以及 L2（SYN/FIN/RST 一律送 Suricata）的成本
 #   C0 只有計數（沒有 conntrack）；C1 ct mark accept + queue（沒有信任 → 全部進 Suricata）
 #   C2 prerouting 幫每條連線設 mark（全部信任）；C3 = C2 + L2
+#   C4 = C3 + 純 SYN 清信任 bit 的規則（放在 L2 前面，同 wnc-gw）；C5 = C3 + K 條同樣的規則（放大，算每條規則的成本）
 #   每次重建 netns（conntrack 表從空的開始）；Suricata 直接跑 NFQ（full、和 wnc-gw 一樣的強制設定），綁 CPU 2,3；tcpreplay 綁 CPU 1
 #   tcpreplay 用 -T nano：預設的 gtod 會忙等，吃滿 CPU 1，kernel 在 CPU 1 上的轉送成本就看不出來
 #   CPU 用 /proc/schedstat 各 CPU 的 rq_cpu_time（ns，切換時精確累計）；/proc/stat 是 tick 取樣，量不到「醒來忙十幾 µs 又睡」的工作
@@ -13,7 +14,7 @@ cd "$(dirname "$0")" || exit 1
 TAG=${TAG:-trust1}; ROUND=${ROUND:-1}; RATE=${RATE:-10000}; RULESET=${RULESET:-full}
 OUT=${OUT:-/home/wnc/ids_inline/results}; M=${M:-/tmp/wncgw/m}; PCAPS=/home/wnc/ids_throughput/data/pcaps
 LOG=/var/log/wnc-gw/suricata
-PCS=${PCS:-"S_h5 S_somfy02 S_m1 S_m44 S_m39"}
+PCS=${PCS:-"S_h5 S_somfy02 S_m1 S_m44 S_m39"}; CFGS=${CFGS:-"C0 C1 C2 C3"}; K=${K:-500}
 mkdir -p "$OUT"
 pgrep -x Suricata-Main > /dev/null && { echo "another suricata is running"; exit 1; }
 for pc in $PCS; do bash trial.sh empty "$pc" cache /tmp/x || exit 1; done
@@ -23,14 +24,18 @@ scpu() { cat /proc/$1/task/*/schedstat 2>/dev/null | awk '{s += $1} END{printf "
 counters() { ip netns exec wgw nft list counters table inet tc | awk '/counter /{n=$2} /packets/{printf "%s=%s ", n, $2}'; }
 nfq_pending() { ip netns exec wgw cat /proc/net/netfilter/nfnetlink_queue 2>/dev/null | awk '{s += $3} END{print s + 0}'; }
 
-table() {  # table <C0|C1|C2|C3>
-  local mark="" l2="" ids='ct mark & 0x1 == 0x1 counter name "trusted" accept
+table() {  # table <C0|C1|C2|C3|C4|C5>
+  local mark="" l2="" clear="" ids='ct mark & 0x1 == 0x1 counter name "trusted" accept
     counter name "queued" queue num 0'
+  local rule='meta l4proto tcp tcp flags & (syn | ack) == syn ct mark & 0x1 == 0x1 counter name "cleared" ct mark set ct mark & 0xfffffffe'
   case $1 in
   C0) ids='counter name "passed" accept' ;;
   C2) mark='chain pre { type filter hook prerouting priority 0; policy accept; ct mark set ct mark | 0x1; }' ;;
   C3) mark='chain pre { type filter hook prerouting priority 0; policy accept; ct mark set ct mark | 0x1; }'
       l2='meta l4proto tcp tcp flags & (fin | syn | rst) != 0 counter name "l2" queue num 0' ;;
+  C4|C5) mark='chain pre { type filter hook prerouting priority 0; policy accept; ct mark set ct mark | 0x1; }'
+      l2='meta l4proto tcp tcp flags & (fin | syn | rst) != 0 counter name "l2" queue num 0'
+      clear=$(for i in $(seq $(cfg_k $1)); do printf '    %s\n' "$rule"; done) ;;
   esac
   ip netns exec wgw nft -f - <<NFT
 table inet tc {
@@ -38,9 +43,11 @@ table inet tc {
   counter trusted {}
   counter queued {}
   counter l2 {}
+  counter cleared {}
   $mark
   chain forward {
     type filter hook forward priority 0; policy accept;
+$clear
     $l2
     $ids
   }
@@ -48,9 +55,11 @@ table inet tc {
 NFT
 }
 
+cfg_k() { case $1 in C4) echo 1 ;; C5) echo $K ;; *) echo 0 ;; esac; }
+
 seq=0
 for pc in $PCS; do
-  for cfg in $(printf 'C0\nC1\nC2\nC3\n' | shuf); do
+  for cfg in $(printf '%s\n' $CFGS | shuf); do
     seq=$((seq + 1)); echo "$(date -u +%T) #$seq $pc $cfg"
     sh env.sh down; sh env.sh up
     rm -f $LOG/*
@@ -68,11 +77,11 @@ for pc in $PCS; do
     kill -TERM $sp; wait $sp 2>/dev/null
     treated=$(grep -o "Treated: Pkts [0-9]*" /tmp/wncgw/tc-suricata.txt | awk '{s += $3} END{print s + 0}')
     sent=$(grep -o "Actual: [0-9]* packets" /tmp/wncgw/tc-replay.txt | cut -d" " -f2)
-    line=$(awk -v tag=$TAG -v round=$ROUND -v seq=$seq -v pc=$pc -v cfg=$cfg -v sent=$sent -v c="$c" -v ct=$ct -v b=$((b1 - b0)) -v sc=$((s1 - s0)) -v tr=$treated -v dt=$((t1 - t0)) 'BEGIN{
+    line=$(awk -v tag=$TAG -v round=$ROUND -v seq=$seq -v pc=$pc -v cfg=$cfg -v k=$(cfg_k $cfg) -v sent=$sent -v c="$c" -v ct=$ct -v b=$((b1 - b0)) -v sc=$((s1 - s0)) -v tr=$treated -v dt=$((t1 - t0)) 'BEGIN{
       n = split(c, kv, " "); for (i = 1; i <= n; i++) { split(kv[i], p, "="); v[p[1]] = p[2] }
       fwd = v["passed"] + v["trusted"] + v["queued"] + v["l2"]; ids = v["queued"] + v["l2"]
-      printf "tag=%s round=%d seq=%d pcap=%s cfg=%s sent=%d forwarded=%d passed=%d trusted=%d queued=%d l2=%d to_ids_pct=%.2f suricata_treated=%d conntrack=%d cpu_s=%.3f suricata_cpu_s=%.3f wall_s=%.2f cpu_us_per_pkt=%.2f suricata_us_per_pkt=%.2f",
-        tag, round, seq, pc, cfg, sent, fwd, v["passed"], v["trusted"], v["queued"], v["l2"], (fwd ? 100 * ids / fwd : 0), tr, ct, b / 1e6, sc / 1e6, dt / 1e6, (fwd ? b / fwd : 0), (fwd ? sc / fwd : 0) }')
+      printf "tag=%s round=%d seq=%d pcap=%s cfg=%s k=%d sent=%d forwarded=%d passed=%d trusted=%d queued=%d l2=%d to_ids_pct=%.2f suricata_treated=%d conntrack=%d cpu_s=%.3f suricata_cpu_s=%.3f wall_s=%.2f cpu_us_per_pkt=%.2f suricata_us_per_pkt=%.2f",
+        tag, round, seq, pc, cfg, k, sent, fwd, v["passed"], v["trusted"], v["queued"], v["l2"], (fwd ? 100 * ids / fwd : 0), tr, ct, b / 1e6, sc / 1e6, dt / 1e6, (fwd ? b / fwd : 0), (fwd ? sc / fwd : 0) }')
     echo "$line" >> "$OUT/$TAG.kvl"; echo "  $(echo "$line" | grep -o -E 'forwarded=[^ ]*|to_ids_pct=[^ ]*|suricata_treated=[^ ]*|cpu_us_per_pkt=[^ ]*|suricata_us_per_pkt=[^ ]*' | tr '\n' ' ')"
   done
 done

@@ -55,7 +55,9 @@ pub enum Statement {
     Drop,
     Accept,
     CtMarkHas(u32),
+    CtMarkClear(u32),
     TcpFlagsAny(Vec<TcpFlag>),
+    TcpFlagsEq { mask: Vec<TcpFlag>, value: Vec<TcpFlag> },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,6 +65,7 @@ pub enum TcpFlag {
     Fin,
     Syn,
     Rst,
+    Ack,
 }
 
 impl TcpFlag {
@@ -71,6 +74,7 @@ impl TcpFlag {
             Self::Fin => "fin",
             Self::Syn => "syn",
             Self::Rst => "rst",
+            Self::Ack => "ack",
         }
     }
 }
@@ -259,25 +263,49 @@ fn statement(statement: &Statement) -> stmt::Statement<'_> {
         Statement::Drop => stmt::Statement::Drop(None),
         Statement::Accept => stmt::Statement::Accept(None),
         Statement::CtMarkHas(bits) => stmt::Statement::Match(stmt::Match {
-            left: Expression::BinaryOperation(Box::new(BinaryOperation::AND(
-                Expression::Named(NamedExpression::CT(CT {
-                    key: "mark".into(),
-                    family: None,
-                    dir: None,
-                })),
-                Expression::Number(*bits),
-            ))),
+            left: Expression::BinaryOperation(Box::new(BinaryOperation::AND(ct_mark(), Expression::Number(*bits)))),
             right: Expression::Number(*bits),
             op: Operator::EQ,
         }),
+        Statement::CtMarkClear(bits) => stmt::Statement::Mangle(stmt::Mangle {
+            key: ct_mark(),
+            value: Expression::BinaryOperation(Box::new(BinaryOperation::AND(ct_mark(), Expression::Number(!*bits)))),
+        }),
         Statement::TcpFlagsAny(flags) => stmt::Statement::Match(stmt::Match {
-            left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField {
-                protocol: "tcp".into(),
-                field: "flags".into(),
-            }))),
+            left: tcp_flags(),
             right: Expression::List(flags.iter().map(|f| Expression::String(f.name().into())).collect()),
             op: Operator::IN,
         }),
+        Statement::TcpFlagsEq { mask, value } => stmt::Statement::Match(stmt::Match {
+            left: Expression::BinaryOperation(Box::new(BinaryOperation::AND(tcp_flags(), flag_set(mask)))),
+            right: flag_set(value),
+            op: Operator::EQ,
+        }),
+    }
+}
+
+fn ct_mark() -> Expression<'static> {
+    Expression::Named(NamedExpression::CT(CT {
+        key: "mark".into(),
+        family: None,
+        dir: None,
+    }))
+}
+
+fn tcp_flags() -> Expression<'static> {
+    Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField {
+        protocol: "tcp".into(),
+        field: "flags".into(),
+    })))
+}
+
+fn flag_set(flags: &[TcpFlag]) -> Expression<'static> {
+    match flags {
+        [] => Expression::Number(0),
+        [flag] => Expression::String(flag.name().into()),
+        flags => Expression::BinaryOperation(Box::new(BinaryOperation::OR(
+            flags.iter().map(|f| Expression::String(f.name().into())).collect(),
+        ))),
     }
 }
 

@@ -6,6 +6,7 @@
   C0 只轉送（沒有 conntrack）；C1 全部進 Suricata；C2 全部信任；C3 全部信任 + L2（SYN/FIN/RST 進 Suricata）
   信任省下 = C1 − C2；L2 成本 = C3 − C2；conntrack + ct mark = C2 − C0
   控制封包 = C3 時走 L2 規則的封包比例
+  有 C4、C5 時另外印「純 SYN 清信任 bit」的成本：C4 是 1 條（同 wnc-gw），C5 是 K 條（放大），每條 = (C5 − C3) ÷ K
 """
 import statistics as st
 import sys
@@ -44,6 +45,20 @@ def main():
         if any(k[0] == pc for k in runs):
             print(f"  {LABEL[pc]}: " + "  ".join(f"{c} {mean(pc, c, 'suricata_us_per_pkt')[0]:.1f}" for c in ["C0", "C1", "C2", "C3"]
                                                  if mean(pc, c, 'suricata_us_per_pkt')[0] is not None))
+
+
+    if any(k[1] in ("C4", "C5") for k in runs):
+        print()
+        print("| scenario | C3 信任 + L2 | C4 + 1 條清 bit | C5 + K 條 | K | C4 − C3 | 每條規則 (C5 − C3) ÷ K |")
+        print("|---|---|---|---|---|---|---|")
+        for pc in ORDER:
+            if not any(k[0] == pc for k in runs):
+                continue
+            c3, c4, c5 = (mean(pc, c)[0] for c in ["C3", "C4", "C5"])
+            k = int(runs[(pc, "C5")][0]["k"]) if runs.get((pc, "C5")) else None
+            d4 = "-" if c3 is None or c4 is None else f"{c4 - c3:+.2f}"
+            per = "-" if c3 is None or c5 is None or not k else f"{(c5 - c3) / k * 1000:.1f} ns"
+            print(f"| {LABEL[pc]} | {cell(pc, 'C3')} | {cell(pc, 'C4')} | {cell(pc, 'C5')} | {k or '-'} | {d4} | {per} |")
 
 
 if __name__ == "__main__":

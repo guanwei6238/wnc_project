@@ -182,3 +182,20 @@ fn ct_mark_bits_and_tcp_flags() {
     );
     assert_eq!(json(Statement::Accept), serde_json::json!({"accept": null}));
 }
+
+#[test]
+fn clearing_a_ct_mark_bit_on_a_bare_syn() {
+    // 期望值是 nft 1.1.3 對 `tcp flags & (syn | ack) == syn … ct mark set ct mark & 0x7fffffff` 的 nft -j 輸出
+    let json = |s: Statement| serde_json::to_value(statement(&s)).unwrap();
+    assert_eq!(
+        json(Statement::TcpFlagsEq {
+            mask: vec![TcpFlag::Syn, TcpFlag::Ack],
+            value: vec![TcpFlag::Syn],
+        }),
+        serde_json::json!({"match": {"op": "==", "left": {"&": [{"payload": {"protocol": "tcp", "field": "flags"}}, {"|": ["syn", "ack"]}]}, "right": "syn"}})
+    );
+    assert_eq!(
+        json(Statement::CtMarkClear(0x8000_0000)),
+        serde_json::json!({"mangle": {"key": {"ct": {"key": "mark"}}, "value": {"&": [{"ct": {"key": "mark"}}, 2147483647u32]}}})
+    );
+}

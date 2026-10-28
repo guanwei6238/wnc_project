@@ -96,6 +96,15 @@ fn table(inspection: Inspection) -> Table {
             rules: vec![
                 vec![Statement::Counter],
                 vec![
+                    Statement::TcpFlagsEq {
+                        mask: vec![TcpFlag::Syn, TcpFlag::Ack],
+                        value: vec![TcpFlag::Syn],
+                    },
+                    Statement::CtMarkHas(TRUSTED_MARK),
+                    Statement::Counter,
+                    Statement::CtMarkClear(TRUSTED_MARK),
+                ],
+                vec![
                     Statement::TcpFlagsAny(vec![TcpFlag::Fin, TcpFlag::Syn, TcpFlag::Rst]),
                     Statement::Jump(IDS_CHAIN.to_owned()),
                 ],

@@ -119,3 +119,26 @@ fn ids_chain_always_ends_with_a_verdict() {
 fn trusted_mark_is_a_single_bit() {
     assert_eq!(TRUSTED_MARK.count_ones(), 1);
 }
+
+#[test]
+fn a_bare_syn_clears_trust_before_anything_else_sees_it() {
+    let rules = &table(inspection("0", WhenUnavailable::Drop)).chains[0].rules;
+    let syn = Statement::TcpFlagsEq {
+        mask: vec![TcpFlag::Syn, TcpFlag::Ack],
+        value: vec![TcpFlag::Syn],
+    };
+    let clear = rules
+        .iter()
+        .position(|r| {
+            r == &vec![syn.clone(), Statement::CtMarkHas(TRUSTED_MARK), Statement::Counter, Statement::CtMarkClear(TRUSTED_MARK)]
+        })
+        .expect("syn clear rule");
+    let first_verdict = rules
+        .iter()
+        .position(|r| r.iter().any(|s| matches!(s, Statement::Jump(_) | Statement::Accept)))
+        .expect("a rule with a verdict");
+    assert!(
+        clear < first_verdict,
+        "a new connection reusing a trusted entry must lose the mark before its syn is judged"
+    );
+}

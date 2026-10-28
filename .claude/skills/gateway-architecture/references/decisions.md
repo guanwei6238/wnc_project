@@ -338,5 +338,13 @@ wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 std
 - kernel 的行為：conntrack 的 hash 放了兩個方向的 tuple，用任一方向的五元組都找到同一筆；更新只看五元組、不比對 `CTA_ID`（3d 先讀一筆比對 ID 再設，擋 port 重用）；更新不帶 `NLM_F_CREATE`，找不到就是 `ENOENT`，不會事先建立 entry（那等於五元組信任）；不帶 `NLM_F_ACK` 的訊息成功時不回、失敗仍回錯誤，批次只讓最後一筆要 ACK；請求在 send 裡就處理完、dump 的後續部分在 recv 裡產生，所以 socket 設 non-blocking，收不到就是錯誤。
 - `wnc-gw trust add|del|list`：手動信任沒有 TTL，到 entry 消失、`del` 或之後 `run` 重啟時清掉為止；TTL 屬於 3d 的狀態機。`add`、`del` 記 log 事件。所有 ctnetlink 訊息（包括讀）都要 `CAP_NET_ADMIN`。
 - conntrack 只在有規則用到它的 network namespace 追蹤連線（kernel 4.10 起）：Pi 上沒有 `run` 時沒有 entry，`trust add` 是 `connection not found`；Docker 容器裡 Docker 的 `table ip nat` 會讓它一直追蹤。
-- 接著要做（已同意）：純 SYN（有 SYN、沒有 ACK）經過時清掉信任 bit。TCP 舊連線沒有 FIN／RST 就消失時，entry 停在 ESTABLISHED（最長 5 天），同一組五元組的新 SYN 會被忽略、等 SYN-ACK 回來就重新同步到舊 entry，mark 跟著沿用（kernel 6.18 `nf_conntrack_proto_tcp.c`）。UDP 沒有這種訊號，只能靠 TTL。然後是 3c-2：`run` 啟動時清掉舊 mark。
+- 接著是 3c-2：`run` 啟動時清掉舊 mark。
+
+**純 SYN 清掉信任 bit（2026-10-28）**：forward chain 的第二條規則是 `tcp flags & (syn | ack) == syn ct mark & 0x80000000 == 0x80000000 counter ct mark set ct mark & 0x7fffffff`，在 L2 和任何判決之前。
+- 為什麼：TCP 舊連線沒有 FIN／RST 經過 gw 就消失時（裝置重開機之類），entry 停在 ESTABLISHED（最長 5 天）；同一組五元組的新 SYN 會被 conntrack 忽略、SYN-ACK 回來時重新同步到舊 entry，**entry 的 id 不變、mark 被沿用**（kernel 6.18 `nf_conntrack_proto_tcp.c`）。舊連線有 FIN／RST 經過時（TIME_WAIT、CLOSE），新 SYN 會讓 kernel 刪掉舊 entry 重建，沒有這個問題。
+- Docker 重現（`tests/ids_inline/synreuse_docker.sh`，wnc-gw run，Suricata 的 tcp established 逾時改成 5 秒）：沒有這條規則時，新連線的資料全部當成信任放行、只有 4 個控制封包進 Suricata；有這條規則時 SYN 經過就清掉，新連線全部進 Suricata。實際上最容易發生在「信任很久」的連線：信任期間 Suricata 只看到控制封包，它自己的 flow 會閒置逾時（預設 600 秒），新 SYN 對它是新連線；conntrack 的 entry 還在。
+- Suricata 的 flow 還沒逾時就重連時，Suricata 會把新的 SYN 當成 stream error 丟掉（`ips.drop_reason.stream_error`），新連線要等它的 flow 逾時才連得上。這是 Suricata inline 的行為，和信任無關。
+- 規則判斷錯的方向只會多檢查：偽造一個純 SYN 可以讓一條被信任的連線回到 Suricata（多花 CPU），不會讓沒被信任的連線被放行。UDP 沒有這種訊號，只能靠 TTL。
+- **3d 要處理**：id 不變，所以「觀察時記下 id、信任前比對」擋不住這種沿用；判定送到前新連線的 SYN 已經過去的話，設 bit 還是會落在新連線上。
+- 成本（Pi、10,000 pps、`empty`、2 輪；`trust_cost.sh` 的 C3／C4／C5，C5 是同一條規則複製 500 條）：每條規則每個封包 52 ns（44-1，大多是 UDP，第一個比對就失敗）到 159 ns（39-1，91% 是控制封包），1 條（C4 − C3）在量測雜訊內（−0.9～+1.8 µs，整台機器 34–80 µs／封包）。結果：`tests/ids_inline/results/synclear.kvl`。
 
