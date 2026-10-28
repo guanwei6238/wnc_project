@@ -8,6 +8,7 @@ use security_gateway::firewall::{self, FAMILY, Inspection, TABLE, WhenUnavailabl
 use security_gateway::ids::lifecycle::{Event, Lifecycle};
 use security_gateway::ids::spawned::{Options, SpawnedSuricata};
 use security_gateway::instance;
+use security_gateway::kernel::conntrack::Conntrack;
 use security_gateway::kernel::nft::Nft;
 use security_gateway::platform::{Current, Dirs};
 use tokio::signal::unix::{Signal, SignalKind, signal};
@@ -55,6 +56,7 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: RunArg
         queue: config.suricata.queue.value,
         when_unavailable: config.suricata.when_unavailable.value,
     };
+    clear_earlier_trust();
     if let Err(e) = firewall::install(&nft, inspection).await {
         error!(table = table.as_str(), error = %e, "failed to install table");
         return ExitCode::FAILURE;
@@ -72,6 +74,34 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: RunArg
         }
     }
     code
+}
+
+fn clear_earlier_trust() {
+    let start = Instant::now();
+    match Conntrack::connect().and_then(|mut conntrack| firewall::untrust_all(&mut conntrack)) {
+        Ok(untrusted) => {
+            if untrusted.cleared + untrusted.gone > 0 {
+                info!(
+                    cleared = untrusted.cleared,
+                    gone = untrusted.gone,
+                    clear_ms = start.elapsed().as_millis() as u64,
+                    "cleared trust left by an earlier run"
+                );
+            }
+            for (tuple, e) in &untrusted.failed {
+                let connection = tuple.to_string();
+                error!(
+                    connection = connection.as_str(),
+                    error = %e,
+                    "cannot clear trust left by an earlier run; this connection skips inspection until it ends"
+                );
+            }
+        }
+        Err(e) => error!(
+            error = %e,
+            "cannot clear trust left by an earlier run; those connections skip inspection until they end"
+        ),
+    }
 }
 
 async fn serve(

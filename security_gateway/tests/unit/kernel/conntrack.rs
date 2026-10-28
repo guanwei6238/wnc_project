@@ -268,3 +268,46 @@ fn tcp_state_names() {
     assert_eq!(TcpState::from(7).to_string(), "TIME_WAIT");
     assert_eq!(TcpState::from(42).to_string(), "UNKNOWN(42)");
 }
+
+#[test]
+fn batch_asks_for_an_ack_only_on_the_last_request() {
+    let tuples = [v4(), v6(), reversed(&v4())];
+    let expected: Vec<u8> = tuples
+        .iter()
+        .enumerate()
+        .flat_map(|(i, t)| {
+            let ack = if i == 2 { NLM_F_ACK } else { 0 };
+            reference(
+                reference_family(t),
+                NLM_F_REQUEST | ack,
+                10 + i as u32,
+                ConntrackMessage::New(vec![
+                    A::CtaTupleOrig(reference_tuple(t)),
+                    A::CtaMark(0),
+                    mark_mask(0x8000_0000),
+                ]),
+            )
+        })
+        .collect();
+    assert_eq!(set_marks_request(10, &tuples, 0, 0x8000_0000), expected);
+}
+
+#[test]
+fn batch_replies_report_each_failure_and_when_the_batch_is_done() {
+    let datagram = [error(11, -libc::ENOENT), error(99, -libc::EINVAL), error(12, -libc::EINVAL)].concat();
+    let (failed, done) = parse_batch_replies(&datagram, 10, 14).unwrap();
+    assert!(matches!(failed.as_slice(), [(11, ConntrackError::NotFound), (12, ConntrackError::Kernel(_))]));
+    assert!(!done);
+
+    let (failed, done) = parse_batch_replies(&error(14, 0), 10, 14).unwrap();
+    assert!(failed.is_empty() && done);
+
+    let (failed, done) = parse_batch_replies(&error(14, -libc::ENOENT), 10, 14).unwrap();
+    assert!(matches!(failed.as_slice(), [(14, ConntrackError::NotFound)]) && done);
+}
+
+#[test]
+fn batch_seq_range_survives_wrapping() {
+    let (failed, done) = parse_batch_replies(&[error(u32::MAX, -libc::ENOENT), error(1, 0)].concat(), u32::MAX - 1, 1).unwrap();
+    assert!(matches!(failed.as_slice(), [(u32::MAX, ConntrackError::NotFound)]) && done);
+}

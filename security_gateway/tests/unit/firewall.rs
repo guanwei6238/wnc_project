@@ -142,3 +142,16 @@ fn a_bare_syn_clears_trust_before_anything_else_sees_it() {
         "a new connection reusing a trusted entry must lose the mark before its syn is judged"
     );
 }
+
+#[test]
+fn connections_that_already_ended_are_not_failures() {
+    use crate::kernel::conntrack::{ConntrackError, FiveTuple, Protocol};
+    let tuple = FiveTuple::new(Protocol::Tcp, "10.0.1.2:1".parse().unwrap(), "10.0.2.2:2".parse().unwrap()).unwrap();
+    let failures = vec![
+        (tuple, ConntrackError::NotFound),
+        (tuple, ConntrackError::Kernel(std::io::Error::from_raw_os_error(libc::EINVAL))),
+        (tuple, ConntrackError::NotFound),
+    ];
+    let u = untrusted(10, failures);
+    assert_eq!((u.cleared, u.gone, u.failed.len()), (7, 2, 1));
+}

@@ -84,6 +84,29 @@ pub fn trusted(conntrack: &mut Conntrack) -> Result<Vec<Connection>, ConntrackEr
     conntrack.list(TRUSTED_MARK, TRUSTED_MARK)
 }
 
+#[derive(Debug, Default)]
+pub struct Untrusted {
+    pub cleared: usize,
+    pub gone: usize,
+    pub failed: Vec<(FiveTuple, ConntrackError)>,
+}
+
+pub fn untrust_all(conntrack: &mut Conntrack) -> Result<Untrusted, ConntrackError> {
+    let tuples: Vec<FiveTuple> = trusted(conntrack)?.into_iter().map(|c| c.original).collect();
+    let failures = conntrack.set_marks(&tuples, 0, TRUSTED_MARK)?;
+    Ok(untrusted(tuples.len(), failures))
+}
+
+fn untrusted(total: usize, failures: Vec<(FiveTuple, ConntrackError)>) -> Untrusted {
+    let (gone, failed): (Vec<_>, Vec<_>) =
+        failures.into_iter().partition(|(_, e)| matches!(e, ConntrackError::NotFound));
+    Untrusted {
+        cleared: total - gone.len() - failed.len(),
+        gone: gone.len(),
+        failed,
+    }
+}
+
 fn table(inspection: Inspection) -> Table {
     Table {
         family: FAMILY,

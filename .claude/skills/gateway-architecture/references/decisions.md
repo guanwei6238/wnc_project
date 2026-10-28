@@ -216,7 +216,7 @@
   - log：進入沒檢查的狀態時 WARN「forwarded traffic passes without inspection」或「…is dropped without inspection」（帶 `when_unavailable`）；恢復時 INFO「forwarded traffic is inspected」，帶 `uninspected_ms`（包含啟動時等 Suricata 就緒的時間）。移除 table 時 WARN「table removed; forwarded traffic passes without inspection」。兩種模式都用 WARN：丟掉是設定好的行為，失敗本身（Suricata 結束）另外有記。
   - 還沒做到：
     - Suricata 跟不上、kernel 因 fail-open 直接放行的封包，kernel 不計數（`/proc/net/netfilter/nfnetlink_queue` 的 `queue_dropped` 只算丟掉的），要比對 `ids` 的 counter 和 Suricata 自己的統計，留給之後的監控步驟，和「記下沒檢查的封包數」一起做。
-    - `drop` 在 wnc-gw 結束、table 被移除後就不成立，和 O9「停止時 table 要移除還是保留」一起決定。
+    - `drop` 在 wnc-gw 結束、table 被移除後就不成立。**[已決定] 2026-10-28：停止時照現在的做法移除 table**，wnc-gw 沒在跑時流量就是直接通過（開發者：「沒 run 當然就是通過」）。SIGHUP 怎麼處理留到最後再決定。
     - Suricata 當掉時還在 queue 裡等判決的封包會被 kernel 丟掉，`bypass` 只管之後進來的封包（Docker 實測：每秒 20 個 ping 掉 2 個）。
 - 2b-3 之後在 Pi 上發現、2026-10-26 決定補上的三項：
   - **強制 `--set detect.delayed-detect=no`**：設成 yes 時 Suricata 先送 `READY=1` 才載入規則（Docker 實測），wnc-gw 會在沒有規則的期間記成「已檢查」。
@@ -274,7 +274,8 @@ wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 std
 
   強制 `ignore` 之後，上面每一種 yaml 都是「連線不斷、照常 alert」，加了 `init-failure-fatal` 也能啟動（`--set` 蓋過 yaml）。doctor 原本加的 midstream-policy 檢查因此拿掉。
 - 還沒處理的同類問題：`engine.init-failure-fatal` 會讓 yaml 裡**任何**一個 warning 都變成 Suricata 起不來，而 doctor 的 `--dump-config` 不做完整驗證（完整驗證要 `suricata -T`，Pi 上 `full` 要 30 秒以上）。可能的做法：執行時偵測「連續 N 次在就緒前結束」記 ERROR，或提供選擇性的完整檢查。
-- 還沒決定：其他 exception policy（memcap 用完、app-layer 解析錯誤等，也就是 Suricata 檢查不了某條 flow 的情況）。傾向跟 `when_unavailable` 一致：`accept` 對應 `ignore`，`drop` 對應 drop-flow。
+  **[已決定] 2026-10-28：wnc-gw 用 `--set engine.init-failure-fatal=no` 強制關掉**（壞掉一條規則不該讓整個網路失去檢查），並在 Suricata 回報「rules failed」大於 0 時記 WARN，讓偵測範圍變小看得到。完整的規則驗證放在規則管線（架構 §7 第 4 步，沙盒裡 `suricata -T` 通過才套用）。還沒實作。
+- **[已決定] 2026-10-28：其他 exception policy 跟著 `when_unavailable`**（memcap 用完、app-layer 解析錯誤等，也就是 Suricata 檢查不了某條 flow 的情況）：`accept` 對應 `ignore`，`drop` 對應 `drop-flow`，wnc-gw 用 `--set` 強制。理由：Suricata 在路徑上但只告警，記憶體不夠不該變成丟正常流量（Debian 的 `exception-policy: auto` 在 NFQ 模式等於 drop）；這和 `when_unavailable` 是同一個問題，只是範圍是一條 flow。還沒實作、還沒測 memcap 用完時的實際行為。
 
 ### O17. 信任狀態放在哪裡、怎麼寫進 kernel（N5）
 
@@ -338,7 +339,7 @@ wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 std
 - kernel 的行為：conntrack 的 hash 放了兩個方向的 tuple，用任一方向的五元組都找到同一筆；更新只看五元組、不比對 `CTA_ID`（3d 先讀一筆比對 ID 再設，擋 port 重用）；更新不帶 `NLM_F_CREATE`，找不到就是 `ENOENT`，不會事先建立 entry（那等於五元組信任）；不帶 `NLM_F_ACK` 的訊息成功時不回、失敗仍回錯誤，批次只讓最後一筆要 ACK；請求在 send 裡就處理完、dump 的後續部分在 recv 裡產生，所以 socket 設 non-blocking，收不到就是錯誤。
 - `wnc-gw trust add|del|list`：手動信任沒有 TTL，到 entry 消失、`del` 或之後 `run` 重啟時清掉為止；TTL 屬於 3d 的狀態機。`add`、`del` 記 log 事件。所有 ctnetlink 訊息（包括讀）都要 `CAP_NET_ADMIN`。
 - conntrack 只在有規則用到它的 network namespace 追蹤連線（kernel 4.10 起）：Pi 上沒有 `run` 時沒有 entry，`trust add` 是 `connection not found`；Docker 容器裡 Docker 的 `table ip nat` 會讓它一直追蹤。
-- 接著是 3c-2：`run` 啟動時清掉舊 mark。
+- 3c-2（`run` 啟動時清掉舊 mark）見下面。
 
 **純 SYN 清掉信任 bit（2026-10-28）**：forward chain 的第二條規則是 `tcp flags & (syn | ack) == syn ct mark & 0x80000000 == 0x80000000 counter ct mark set ct mark & 0x7fffffff`，在 L2 和任何判決之前。
 - 為什麼：TCP 舊連線沒有 FIN／RST 經過 gw 就消失時（裝置重開機之類），entry 停在 ESTABLISHED（最長 5 天）；同一組五元組的新 SYN 會被 conntrack 忽略、SYN-ACK 回來時重新同步到舊 entry，**entry 的 id 不變、mark 被沿用**（kernel 6.18 `nf_conntrack_proto_tcp.c`）。舊連線有 FIN／RST 經過時（TIME_WAIT、CLOSE），新 SYN 會讓 kernel 刪掉舊 entry 重建，沒有這個問題。
@@ -347,4 +348,11 @@ wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 std
 - 規則判斷錯的方向只會多檢查：偽造一個純 SYN 可以讓一條被信任的連線回到 Suricata（多花 CPU），不會讓沒被信任的連線被放行。UDP 沒有這種訊號，只能靠 TTL。
 - **3d 要處理**：id 不變，所以「觀察時記下 id、信任前比對」擋不住這種沿用；判定送到前新連線的 SYN 已經過去的話，設 bit 還是會落在新連線上。
 - 成本（Pi、10,000 pps、`empty`、2 輪；`trust_cost.sh` 的 C3／C4／C5，C5 是同一條規則複製 500 條）：每條規則每個封包 52 ns（44-1，大多是 UDP，第一個比對就失敗）到 159 ns（39-1，91% 是控制封包），1 條（C4 − C3）在量測雜訊內（−0.9～+1.8 µs，整台機器 34–80 µs／封包）。結果：`tests/ids_inline/results/synclear.kvl`。
+
+**3c-2 啟動時清掉上一次留下的信任（2026-10-28）**：`run` 停掉（包括 `kill -9`、當機）之後信任 bit 留在 entry 上，連線不結束就不會消失；`kill -9` 時 table 也留著，這些連線照樣被放行。
+- **[已決定] 2026-10-28**：只在啟動時清，**在裝 table 之前**（table 一裝上舊 mark 就生效；`when_unavailable = "drop"` 時它們會在其他流量都被丟掉時通過）。停止時不清：table 跟著移除，留下的 mark 沒有規則看。做法是 `list`（kernel 依 mark 過濾）再批次清 bit（一次 100 筆、只有最後一筆要 ACK），不刪 entry（刪了連線狀態就沒了，使用者另設的 NAT 會斷），也不用世代值（要多佔 mark 的位元、會繞回）。清不掉時照常啟動、記 ERROR：拒絕啟動的話 table 不會裝，所有流量都不經檢查，更糟。
+- log：有清到東西時 INFO `cleared trust left by an earlier run`（`cleared`、`gone`＝清之前連線已經結束、`clear_ms`）；清不掉的每一筆 ERROR，寫明這條連線結束前都不經檢查。`run` 沒跑時用 `trust add` 設的信任也會在下次啟動時清掉。
+- 清不掉的例子：外部工具（`conntrack -U`）在 ICMP 之類沒有 port 的 entry 設了這個 bit，我們的五元組編碼沒有 ICMP 的欄位，kernel 回 `EINVAL`。wnc-gw 自己只信任有 port 的協定。
+- 成本（Pi、1000 MHz、表 6 萬筆；`tests/ctnetlink/bench/`）：信任 0–100 筆時啟動多 37–38 ms，1 萬筆 151 ms，6 萬筆全信任 636 ms（清除每筆約 3.2 µs）。
+- 驗證：Docker 信任一條傳輸中的連線、`kill -9` wnc-gw，重新 `run`：log 在 `table installed` 之前寫 `cleared=1`，連線的封包回到 `ids`，150 行都收到；Pi 在 `wgw` netns 用 `conntrack -I --mark 0x80001234` 建一筆，`run` 後是 0x1234。
 

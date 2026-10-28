@@ -27,7 +27,7 @@ security_gateway/
 │   │   ├── doctor.rs       doctor：載入設定 → passes()（各項檢查、印報告，沒有 error 才回傳 true）→ 結束碼
 │   │   ├── logging.rs      init()：tracing 的輸出設定（stderr、UTC 時間、終端機才上色），只有 run 會呼叫
 │   │   ├── trust.rs        trust add/del/list：用 ctnetlink 直接設、清信任 bit，或列出有信任 bit 的連線；不需要 run，但沒有 run 時沒有 table 看這個 bit，Pi 上也沒有 entry；add、del 記 log 事件
-│   │   ├── run.rs          run：開 log → 載入設定 → instance::lock()（已有 wnc-gw 在跑就不啟動）→ doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM → 安裝 table（ids chain 是沒就緒狀態）→ 啟動 Suricata（SpawnedSuricata）→ Ready 時 start_inspection、Stopped 時 stop_inspection 再 allow_restart → 收到訊號：stop_inspection → 停止 Suricata → 移除 table；沒檢查的時段都記成 log 事件
+│   │   ├── run.rs          run：開 log → 載入設定 → instance::lock()（已有 wnc-gw 在跑就不啟動）→ doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM → 清掉上一次留下的信任 bit（firewall::untrust_all，清不掉照常啟動、記 ERROR）→ 安裝 table（ids chain 是沒就緒狀態）→ 啟動 Suricata（SpawnedSuricata）→ Ready 時 start_inspection、Stopped 時 stop_inspection 再 allow_restart → 收到訊號：stop_inspection → 停止 Suricata → 移除 table；沒檢查的時段都記成 log 事件
 │   │   └── show/           show 的巢狀子命令（mod.rs 分派，interfaces.rs 列介面）
 │   ├── lib.rs              只宣告功能模組：access、config、datapath、firewall、forwarding、ids、instance、kernel、platform、ports
 │   ├── command.rs          執行外部程式的共用部分：逾時 5 秒、kill_on_drop、寫 stdin、收 stdout 和 stderr（output()、run()、CommandError）
@@ -35,7 +35,7 @@ security_gateway/
 │   ├── config.rs           setting.toml + CLI 覆寫 → Config（每個值帶 Source）；AbsolutePath（路徑設定必須是絕對路徑）
 │   ├── datapath/           核心 eBPF 程式在每個 port 掛在哪、怎麼掛（mod.rs 只放 pub mod / pub use）
 │   │   └── hook.rs         XdpPolicy（xdp 設定）、CoreHook、core_hook() 選擇規則
-│   ├── firewall.rs         我們自己的 nft table（inet wnc_gw）：forward chain 依序是 counter、純 SYN（有 SYN 沒 ACK）而且有 TRUSTED_MARK 時清掉 bit（同一組五元組的新連線可能被 conntrack 重新同步到舊 entry，一定在任何判決之前）、SYN/FIN/RST jump ids（L2）、ct mark 有 TRUSTED_MARK 就 accept、最後 jump ids；ids 依 Suricata 狀態換成 queue 或沒就緒的規則（WhenUnavailable、Inspection），每種狀態都要以判決結尾，否則控制封包會回到 forward 再進一次 ids；install()、start_inspection()、stop_inspection()、remove()；trust()、untrust()、trusted() 用 kernel::conntrack 改、列 TRUSTED_MARK
+│   ├── firewall.rs         我們自己的 nft table（inet wnc_gw）：forward chain 依序是 counter、純 SYN（有 SYN 沒 ACK）而且有 TRUSTED_MARK 時清掉 bit（同一組五元組的新連線可能被 conntrack 重新同步到舊 entry，一定在任何判決之前）、SYN/FIN/RST jump ids（L2）、ct mark 有 TRUSTED_MARK 就 accept、最後 jump ids；ids 依 Suricata 狀態換成 queue 或沒就緒的規則（WhenUnavailable、Inspection），每種狀態都要以判決結尾，否則控制封包會回到 forward 再進一次 ids；install()、start_inspection()、stop_inspection()、remove()；trust()、untrust()、trusted() 用 kernel::conntrack 改、列 TRUSTED_MARK；untrust_all() 清掉全部（Untrusted：cleared、gone、failed）
 │   ├── ids/                跟 IDS engine 打交道的薄模組（mod.rs 只放 pub mod）
 │   │   ├── lifecycle.rs    Suricata 生命週期的介面：trait Lifecycle（next_event、allow_restart、stop）、Event（Ready、Stopped）、Exit；DEFAULT_READY_TIMEOUT
 │   │   ├── spawned.rs      O14 的 (b)：wnc-gw 自己啟動 Suricata（NOTIFY_SOCKET 收 READY=1、輸出轉成 log、Stopped 之後等 allow_restart 再退避重啟、ready_timeout、stop_timeout（SIGTERM 後等多久才 SIGKILL，每 10 秒記一次 still stopping）、PR_SET_PDEATHSIG；--set 強制 nfq.fail-open、detect.delayed-detect=no、coredump.max-dump=0、stream.midstream=true、stream.midstream-policy=ignore（FORCED_SETTINGS）；工作目錄是 log 目錄）
@@ -49,7 +49,7 @@ security_gateway/
 │   └── kernel/             跟 Linux kernel 打交道的薄模組
 │       ├── mod.rs
 │       ├── netif.rs        rtnetlink 列介面、sysfs 讀 driver、MacAddr、LinkStatus
-│       ├── conntrack.rs    手寫 ctnetlink（netlink-sys 的同步 Socket，non-blocking）：set_mark（只動 mask 內的位元）、get、list（kernel 依 mark 過濾）；FiveTuple（兩個位址要同一版本）、Protocol、TcpState、Connection；任一方向的五元組都找到同一筆
+│       ├── conntrack.rs    手寫 ctnetlink（netlink-sys 的同步 Socket，non-blocking）：set_mark（只動 mask 內的位元）、set_marks（一次 100 筆，只有最後一筆要 ACK，回傳失敗的那幾筆）、get、list（kernel 依 mark 過濾）；FiveTuple（兩個位址要同一版本）、Protocol、TcpState、Connection；任一方向的五元組都找到同一筆
 │       ├── modules.rs      /proc/modules + modules.{builtin,dep} → ModuleState；RequiredModule
 │       ├── netdev.rs       netdev genetlink：每個介面的 native XDP 功能（XdpFeatures）
 │       ├── nfqueue.rs      QueueRange（queue 設定：0 或 "0-3"）

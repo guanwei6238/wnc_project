@@ -11,6 +11,7 @@ use netlink_sys::protocols::NETLINK_NETFILTER;
 use netlink_sys::{Socket, SocketAddr as NetlinkAddr};
 
 const RECV_BUF: usize = 64 * 1024;
+const BATCH: usize = 100;
 const MSG_NEW: u16 = 1 << 8;
 const MSG_GET: u16 = (1 << 8) | 1;
 const AF_UNSPEC: u8 = 0;
@@ -266,6 +267,29 @@ impl Conntrack {
         }
     }
 
+    pub fn set_marks(
+        &mut self,
+        tuples: &[FiveTuple],
+        value: u32,
+        mask: u32,
+    ) -> Result<Vec<(FiveTuple, ConntrackError)>, ConntrackError> {
+        let mut failed = Vec::new();
+        for chunk in tuples.chunks(BATCH) {
+            let first = self.seq.wrapping_add(1);
+            self.seq = self.seq.wrapping_add(chunk.len() as u32);
+            self.send(&set_marks_request(first, chunk, value, mask))?;
+            loop {
+                self.recv()?;
+                let (errors, done) = parse_batch_replies(&self.buf, first, self.seq)?;
+                failed.extend(errors.into_iter().map(|(seq, e)| (chunk[seq.wrapping_sub(first) as usize], e)));
+                if done {
+                    break;
+                }
+            }
+        }
+        Ok(failed)
+    }
+
     fn next_seq(&mut self) -> u32 {
         self.seq = self.seq.wrapping_add(1);
         self.seq
@@ -276,9 +300,14 @@ impl Conntrack {
     }
 
     fn receive(&mut self, seq: u32) -> Result<Vec<Reply>, ConntrackError> {
+        self.recv()?;
+        parse_replies(&self.buf, seq)
+    }
+
+    fn recv(&mut self) -> Result<(), ConntrackError> {
         self.buf.clear();
         match self.socket.recv(&mut self.buf, 0) {
-            Ok(_) => parse_replies(&self.buf, seq),
+            Ok(_) => Ok(()),
             Err(e) if e.kind() == io::ErrorKind::WouldBlock => Err(ConntrackError::NoReply),
             Err(e) => Err(ConntrackError::Socket(e)),
         }
@@ -291,6 +320,19 @@ fn set_mark_request(seq: u32, tuple: &FiveTuple, value: u32, mask: u32) -> Vec<u
     r.attr(CTA_MARK, &(value & mask).to_be_bytes());
     r.attr(CTA_MARK_MASK, &mask.to_be_bytes());
     r.finish()
+}
+
+fn set_marks_request(first: u32, tuples: &[FiveTuple], value: u32, mask: u32) -> Vec<u8> {
+    let mut request = Vec::with_capacity(tuples.len() * 112);
+    for (i, tuple) in tuples.iter().enumerate() {
+        let ack = if i + 1 == tuples.len() { NLM_F_ACK } else { 0 };
+        let mut r = Request::new(MSG_NEW, NLM_F_REQUEST | ack, first.wrapping_add(i as u32), tuple.family());
+        r.tuple(CTA_TUPLE_ORIG, tuple);
+        r.attr(CTA_MARK, &(value & mask).to_be_bytes());
+        r.attr(CTA_MARK_MASK, &mask.to_be_bytes());
+        request.extend_from_slice(&r.finish());
+    }
+    request
 }
 
 fn get_request(seq: u32, tuple: &FiveTuple) -> Vec<u8> {
@@ -391,6 +433,30 @@ fn parse_replies(datagram: &[u8], seq: u32) -> Result<Vec<Reply>, ConntrackError
         rest = rest.get(len..).unwrap_or_default();
     }
     Ok(replies)
+}
+
+fn parse_batch_replies(
+    datagram: &[u8],
+    first: u32,
+    last: u32,
+) -> Result<(Vec<(u32, ConntrackError)>, bool), ConntrackError> {
+    let mut failed = Vec::new();
+    let mut done = false;
+    let mut rest = datagram;
+    while !rest.is_empty() {
+        let msg = NetlinkBuffer::new_checked(rest).map_err(malformed)?;
+        let seq = msg.sequence_number();
+        if msg.message_type() == NLMSG_ERROR && seq.wrapping_sub(first) <= last.wrapping_sub(first) {
+            match parse_i32(msg.payload().get(..4).unwrap_or_default()).map_err(malformed)? {
+                0 => {}
+                code => failed.push((seq, kernel_error(code))),
+            }
+            done |= seq == last;
+        }
+        let len = (msg.length() as usize).next_multiple_of(4);
+        rest = rest.get(len..).unwrap_or_default();
+    }
+    Ok((failed, done))
 }
 
 fn kernel_error(code: i32) -> ConntrackError {

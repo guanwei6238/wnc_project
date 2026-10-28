@@ -2,7 +2,7 @@
 //   A   = netlink-packet-netfilter 編碼 + netlink-proto
 //   A'  = netlink-packet-netfilter 編碼 + netlink-sys Socket（同步 / TokioSocket）
 //   B   = 手寫位元組 + netlink-sys Socket
-//   W   = wnc-gw 的 kernel::conntrack（B 的做法）
+//   W   = wnc-gw 的 kernel::conntrack（B 的做法）；最後量 list 和 firewall::untrust_all（3c-2 啟動時清舊信任）
 // 自己用 ctnetlink 建 entries 筆 TCP entry（前 1000 筆輪流設／清 bit 0x80000000），結束時刪掉；要 root。
 // 用法：ctnetlink-bench [ops] [rounds] [entries]，預設 20000 3 60000
 // Docker：cargo build --release --target x86_64-unknown-linux-musl，docker cp 進 wnc-gw 容器執行（容器有自己的 conntrack 表）
@@ -739,7 +739,15 @@ async fn main() -> io::Result<()> {
             ms * 1000.0 / entries as f64,
             if k == 0 { "-".to_owned() } else { format!("{:.2} us", ms * 1000.0 / k as f64) },
         );
-        set_bits(&mut s, 0..k, false)?;
+        let t = Instant::now();
+        let u = security_gateway::firewall::untrust_all(&mut w).map_err(io::Error::other)?;
+        let clear_ms = t.elapsed().as_secs_f64() * 1000.0;
+        let left = w.list(TRUST, TRUST).map_err(io::Error::other)?.len();
+        check(
+            &format!("untrust_all clears the {k} trusted entries"),
+            u.cleared == k && u.gone == 0 && u.failed.is_empty() && left == 0,
+        );
+        println!("  untrust_all entries={entries:<6} trusted={k:<6} {clear_ms:>8.2} ms (list + clear)");
     }
 
     println!("deleted {} entries", delete_all(&mut s, entries)?);
