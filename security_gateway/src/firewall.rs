@@ -1,6 +1,7 @@
 use std::fmt;
 use std::str::FromStr;
 
+use crate::kernel::conntrack::{Connection, Conntrack, ConntrackError, FiveTuple};
 use crate::kernel::nfqueue::QueueRange;
 use crate::kernel::nft::{BaseChain, Family, Hook, Nft, NftError, Policy, RegularChain, Statement, Table, TcpFlag};
 
@@ -69,6 +70,18 @@ pub async fn stop_inspection(nft: &Nft, inspection: Inspection) -> Result<(), Nf
 
 pub async fn remove(nft: &Nft) -> Result<(), NftError> {
     nft.delete_table(FAMILY, TABLE).await
+}
+
+pub fn trust(conntrack: &mut Conntrack, tuple: &FiveTuple) -> Result<(), ConntrackError> {
+    conntrack.set_mark(tuple, TRUSTED_MARK, TRUSTED_MARK)
+}
+
+pub fn untrust(conntrack: &mut Conntrack, tuple: &FiveTuple) -> Result<(), ConntrackError> {
+    conntrack.set_mark(tuple, 0, TRUSTED_MARK)
+}
+
+pub fn trusted(conntrack: &mut Conntrack) -> Result<Vec<Connection>, ConntrackError> {
+    conntrack.list(TRUSTED_MARK, TRUSTED_MARK)
 }
 
 fn table(inspection: Inspection) -> Table {

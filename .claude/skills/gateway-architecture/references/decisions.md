@@ -323,3 +323,20 @@ wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 std
   - 先不改 `nf_conntrack_max`（Pi 預設 65,536）。之後的監控步驟要能看到 `nf_conntrack_count` 和 conntrack 的 `drop` 計數。
 - 腳本：`tests/ids_inline/ctfull_pi.sh`（表滿）、`frag_pi.sh`（分片，pcap 由腳本自己產生）。
 
+**3c-1 實作（2026-10-28）**：wnc-gw 自己的寫入路徑，取代 `conntrack -U`。
+- 實作方式（Pi、1000 MHz、單核、表 1,000 筆；µs／筆；`tests/ctnetlink/bench/`）：
+
+  | | 設一筆 | 一次 100 筆 | 讀一筆（ID、mark、狀態） |
+  |---|---|---|---|
+  | netlink-packet-netfilter 編碼 + netlink-proto | 51–52 | 13.5–13.9（每筆都要 ACK） | — |
+  | netlink-packet-netfilter 編碼 + netlink-sys `Socket` | 19.9–20.8 | 5.4（只等最後一筆 ACK） | 74 |
+  | 手寫位元組 + netlink-sys `Socket` | 13.0–13.7 | 2.4（只等最後一筆 ACK） | 19.6 |
+
+  netlink-proto 每個請求經兩個 channel 和 task 切換；crate 每筆配置好幾層 `Vec`，musl 的記憶體配置慢（筆電同一個 bench 讀一筆：glibc 3.7、musl 8.5–8.9 µs）。兩種編碼出來的位元組完全相同。
+- **[已決定] 2026-10-28：手寫**，在 `kernel/conntrack.rs`。netlink-packet-netfilter 只放 dev-dependency，單元測試比對兩邊的位元組和解碼結果。這是「netlink 用 rust-netlink」的例外，只限 ctnetlink。
+- 實作後在 Pi（表 6 萬筆）：設一筆 14.5、讀一筆 23.4 µs；`list`（kernel 依 mark 過濾）信任 0–100 筆時 37 ms、1 萬筆 111 ms、6 萬筆全部信任 445 ms。
+- kernel 的行為：conntrack 的 hash 放了兩個方向的 tuple，用任一方向的五元組都找到同一筆；更新只看五元組、不比對 `CTA_ID`（3d 先讀一筆比對 ID 再設，擋 port 重用）；更新不帶 `NLM_F_CREATE`，找不到就是 `ENOENT`，不會事先建立 entry（那等於五元組信任）；不帶 `NLM_F_ACK` 的訊息成功時不回、失敗仍回錯誤，批次只讓最後一筆要 ACK；請求在 send 裡就處理完、dump 的後續部分在 recv 裡產生，所以 socket 設 non-blocking，收不到就是錯誤。
+- `wnc-gw trust add|del|list`：手動信任沒有 TTL，到 entry 消失、`del` 或之後 `run` 重啟時清掉為止；TTL 屬於 3d 的狀態機。`add`、`del` 記 log 事件。所有 ctnetlink 訊息（包括讀）都要 `CAP_NET_ADMIN`。
+- conntrack 只在有規則用到它的 network namespace 追蹤連線（kernel 4.10 起）：Pi 上沒有 `run` 時沒有 entry，`trust add` 是 `connection not found`；Docker 容器裡 Docker 的 `table ip nat` 會讓它一直追蹤。
+- 接著要做（已同意）：純 SYN（有 SYN、沒有 ACK）經過時清掉信任 bit。TCP 舊連線沒有 FIN／RST 就消失時，entry 停在 ESTABLISHED（最長 5 天），同一組五元組的新 SYN 會被忽略、等 SYN-ACK 回來就重新同步到舊 entry，mark 跟著沿用（kernel 6.18 `nf_conntrack_proto_tcp.c`）。UDP 沒有這種訊號，只能靠 TTL。然後是 3c-2：`run` 啟動時清掉舊 mark。
+

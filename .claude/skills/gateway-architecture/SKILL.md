@@ -45,7 +45,7 @@ description: 這個專案（Rust 實作的 security gateway：Suricata 8 + nftab
 | 多個 queue 的分流（O14） | 改用 `queue to symhash mod N`（含 port、對稱），和階段 1 的 ct mark 一起實作：沒有 conntrack 時 kernel 不會先組回分片，symhash 會把分片分到別的 worker。table 裡一定有 ct mark 規則，conntrack 一定啟用（10-28 實作，Pi 分片 0/24） | [已決定] 10-27 |
 | log 存在哪裡（O15） | wnc-gw 只印到 stderr。Debian 上用 systemd 的 `LogNamespace=wnc-gw`，只有 wnc-gw 的 log 持久保存（Pi OS 預設 journald 只存在記憶體）；OpenWrt 另外決定 | [已決定] 10-26 |
 | 從中間開始的連線（O16） | wnc-gw 用 `--set stream.midstream=true` 加上 `--set stream.midstream-policy=ignore` 讓 Suricata 從中間接手連線並照常檢查（Docker 驗證：yaml 寫什麼 midstream-policy 都一樣，重啟後連線不斷、照常 alert）。Debian 預設的 `exception-policy: auto` 在 NFQ 模式等於 drop-flow，AUDIT 稽核窗和 Suricata 重啟產生的 midstream flow 會被丟掉。其他 exception policy 未定 | [已決定] 10-27 |
-| 信任狀態（O17、N5） | ct mark，以 ctnetlink 寫入；信任以 conntrack 的一條連線為單位（五元組的 nft set 會被 port 重用、偽造封包繞過）。wnc-gw 自己管 TTL、啟動時清舊 mark。地基實驗：信任每個封包省 39–67 µs。L2（SYN／FIN／RST 一律送 Suricata）要放，規則在信任之前。信任用 mark 最高位元，寫入帶 mask | [已決定] 10-28 |
+| 信任狀態（O17、N5） | ct mark，以 ctnetlink 寫入；信任以 conntrack 的一條連線為單位（五元組的 nft set 會被 port 重用、偽造封包繞過）。wnc-gw 自己管 TTL、啟動時清舊 mark。地基實驗：信任每個封包省 39–67 µs。L2（SYN／FIN／RST 一律送 Suricata）要放，規則在信任之前。信任用 mark 最高位元，寫入帶 mask。ctnetlink 手寫（netlink-proto、crate 編碼在 Pi 慢 1.5–4 倍） | [已決定] 10-28 |
 | 分三階段做 | 1 nftables + NFQUEUE + ct mark → 2 tc eBPF 算特徵 → 3 tc eBPF 轉送信任 flow | [建議]（SYNTHESIS §4.4） |
 | 和 Suricata 的整合方式 | 方案 A：Suricata 是獨立的 process（原版套件），封包經 NFQUEUE 送給它，結果經 EVE 回來，控制走 unix socket；不內嵌 libsuricata、不寫 plugin（B、C 都會讓 wnc-gw 變 GPL）。Suricata 送出就緒通知（`READY=1`）之後才能裝 queue 規則，否則 7.0 和 8.0.7 都會在 NFQ 初始化時 segfault | [已決定] 10-25（`suricata-integration.md` §9） |
 

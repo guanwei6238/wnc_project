@@ -1,0 +1,14 @@
+[package]
+name = "ctnetlink-bench"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+security_gateway = { path = "../../../security_gateway" }
+netlink-packet-netfilter = "0.4.0"
+netlink-packet-core = "0.9.0"
+netlink-sys = { version = "0.9.0", features = ["tokio_socket"] }
+netlink-proto = "0.13.0"
+tokio = { version = "1.54.0", features = ["rt", "macros", "net", "time"] }
+futures = "0.3.34"

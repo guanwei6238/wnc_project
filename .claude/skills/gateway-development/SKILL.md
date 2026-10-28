@@ -5,7 +5,7 @@ description: 在 security_gateway/（執行檔 wnc-gw）加功能或改程式時
 
 # wnc-gw 開發指南
 
-這份 skill 描述**現在的程式長什麼樣子，以及要怎麼往上加**。目標架構、插件點與安全底線在 `gateway-architecture`；兩份都適用時一起讀。內容反映 2026-10-27（commit `db9e057` 之後，加上 O16 的 `stream.midstream=true`，以及 2b-4 的其他 Suricata 檢查：`kernel/procs.rs`、platform 的 `Services`）的狀態，程式之後若有變動，以實際程式碼為準，並回頭更新這份 skill。
+這份 skill 描述**現在的程式長什麼樣子，以及要怎麼往上加**。目標架構、插件點與安全底線在 `gateway-architecture`；兩份都適用時一起讀。內容反映 2026-10-28（3c-1：`kernel/conntrack.rs`、`wnc-gw trust`）的狀態，程式之後若有變動，以實際程式碼為準，並回頭更新這份 skill。
 
 ## 0. 動手之前
 
@@ -26,6 +26,7 @@ security_gateway/
 │   │   ├── mod.rs          Cli（全域參數 -c/--config、--lan、--wan）、Command、run()
 │   │   ├── doctor.rs       doctor：載入設定 → passes()（各項檢查、印報告，沒有 error 才回傳 true）→ 結束碼
 │   │   ├── logging.rs      init()：tracing 的輸出設定（stderr、UTC 時間、終端機才上色），只有 run 會呼叫
+│   │   ├── trust.rs        trust add/del/list：用 ctnetlink 直接設、清信任 bit，或列出有信任 bit 的連線；不需要 run，但沒有 run 時沒有 table 看這個 bit，Pi 上也沒有 entry；add、del 記 log 事件
 │   │   ├── run.rs          run：開 log → 載入設定 → instance::lock()（已有 wnc-gw 在跑就不啟動）→ doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM → 安裝 table（ids chain 是沒就緒狀態）→ 啟動 Suricata（SpawnedSuricata）→ Ready 時 start_inspection、Stopped 時 stop_inspection 再 allow_restart → 收到訊號：stop_inspection → 停止 Suricata → 移除 table；沒檢查的時段都記成 log 事件
 │   │   └── show/           show 的巢狀子命令（mod.rs 分派，interfaces.rs 列介面）
 │   ├── lib.rs              只宣告功能模組：access、config、datapath、firewall、forwarding、ids、instance、kernel、platform、ports
@@ -34,7 +35,7 @@ security_gateway/
 │   ├── config.rs           setting.toml + CLI 覆寫 → Config（每個值帶 Source）；AbsolutePath（路徑設定必須是絕對路徑）
 │   ├── datapath/           核心 eBPF 程式在每個 port 掛在哪、怎麼掛（mod.rs 只放 pub mod / pub use）
 │   │   └── hook.rs         XdpPolicy（xdp 設定）、CoreHook、core_hook() 選擇規則
-│   ├── firewall.rs         我們自己的 nft table（inet wnc_gw）：forward chain 依序是 counter、SYN/FIN/RST jump ids（L2）、ct mark 有 TRUSTED_MARK 就 accept、最後 jump ids；ids 依 Suricata 狀態換成 queue 或沒就緒的規則（WhenUnavailable、Inspection），每種狀態都要以判決結尾，否則控制封包會回到 forward 再進一次 ids；install()、start_inspection()、stop_inspection()、remove()
+│   ├── firewall.rs         我們自己的 nft table（inet wnc_gw）：forward chain 依序是 counter、SYN/FIN/RST jump ids（L2）、ct mark 有 TRUSTED_MARK 就 accept、最後 jump ids；ids 依 Suricata 狀態換成 queue 或沒就緒的規則（WhenUnavailable、Inspection），每種狀態都要以判決結尾，否則控制封包會回到 forward 再進一次 ids；install()、start_inspection()、stop_inspection()、remove()；trust()、untrust()、trusted() 用 kernel::conntrack 改、列 TRUSTED_MARK
 │   ├── ids/                跟 IDS engine 打交道的薄模組（mod.rs 只放 pub mod）
 │   │   ├── lifecycle.rs    Suricata 生命週期的介面：trait Lifecycle（next_event、allow_restart、stop）、Event（Ready、Stopped）、Exit；DEFAULT_READY_TIMEOUT
 │   │   ├── spawned.rs      O14 的 (b)：wnc-gw 自己啟動 Suricata（NOTIFY_SOCKET 收 READY=1、輸出轉成 log、Stopped 之後等 allow_restart 再退避重啟、ready_timeout、stop_timeout（SIGTERM 後等多久才 SIGKILL，每 10 秒記一次 still stopping）、PR_SET_PDEATHSIG；--set 強制 nfq.fail-open、detect.delayed-detect=no、coredump.max-dump=0、stream.midstream=true、stream.midstream-policy=ignore（FORCED_SETTINGS）；工作目錄是 log 目錄）
@@ -48,6 +49,7 @@ security_gateway/
 │   └── kernel/             跟 Linux kernel 打交道的薄模組
 │       ├── mod.rs
 │       ├── netif.rs        rtnetlink 列介面、sysfs 讀 driver、MacAddr、LinkStatus
+│       ├── conntrack.rs    手寫 ctnetlink（netlink-sys 的同步 Socket，non-blocking）：set_mark（只動 mask 內的位元）、get、list（kernel 依 mark 過濾）；FiveTuple（兩個位址要同一版本）、Protocol、TcpState、Connection；任一方向的五元組都找到同一筆
 │       ├── modules.rs      /proc/modules + modules.{builtin,dep} → ModuleState；RequiredModule
 │       ├── netdev.rs       netdev genetlink：每個介面的 native XDP 功能（XdpFeatures）
 │       ├── nfqueue.rs      QueueRange（queue 設定：0 或 "0-3"）
@@ -81,7 +83,7 @@ security_gateway/
 - **kernel 層只翻譯、不判斷**：例如 `Interface::link_status()` 把 admin 與 oper 狀態翻成 `AdminDown`、`NoCarrier` 等原因；「NoCarrier 算 warning」是 doctor 的判斷。
 - **lib 與 bin 分開**：功能模組只在 `lib.rs` 宣告，`main.rs` 只宣告 `mod cli;`，bin 用 `security_gateway::…` 引用 lib。同一個模組若被兩邊各宣告一次，會被編譯兩次，變成兩個不同的型別。
 - **eBPF 程式本身**（在 kernel 裡執行的部分）不放 `src/`：之後以 workspace 成員新增獨立 crate（例如 `gw-ebpf/`、共用型別 `gw-common/`），現有 package 繼續當 workspace 根，不需要搬檔案。`src/kernel/bpf` 只放 user space 的載入與 map 讀寫。
-- **權限邊界**：`kernel/` 裡的寫入操作（nft、conntrack、bpf、sysctl）需要 `CAP_NET_ADMIN`／`CAP_BPF`，之後會是 privd 的範圍；讀取（列介面、讀模組）不需要權限，doctor 可以用沒有權限的帳號執行。
+- **權限邊界**：`kernel/` 裡的寫入操作（nft、conntrack、bpf、sysctl）需要 `CAP_NET_ADMIN`／`CAP_BPF`，之後會是 privd 的範圍；讀取（列介面、讀模組）不需要權限，doctor 可以用沒有權限的帳號執行。例外是 ctnetlink：連讀取（`trust list`）都要 `CAP_NET_ADMIN`。
 
 ## 3. 加功能時的慣例
 
@@ -117,7 +119,7 @@ security_gateway/
 
 - async 用 tokio，單執行緒 runtime；feature 只開用得到的（目前是 `rt`、`macros`、`process`、`time`、`io-util`、`signal`、`sync`、`net`）。**`ids/spawned.rs` 依賴單執行緒 runtime**：`PR_SET_PDEATHSIG` 是在 fork 子程序的那個執行緒結束時觸發，改成多執行緒 runtime 時要重新檢查。
 - `unsafe` 只用在沒有安全 API 的系統呼叫，目前只有 `ids/spawned.rs` 的兩處：`pre_exec` 裡的 `prctl(PR_SET_PDEATHSIG)`（fork 之後不能配置記憶體，錯誤只用 errno），以及送 SIGTERM 的 `kill`（送之前先 `try_wait`，避免 pid 已被回收再被別的程序使用）。透過 `libc` crate 呼叫。新增 `unsafe` 前先跟開發者確認。
-- netlink 用 rust-netlink 系列（`rtnetlink` 等）。這一系列的版本必須彼此對齊（共用同一個 `netlink-packet-core`），升級時整組一起升，並用 `Cargo.lock` 鎖住。netdev family 用 `genetlink` + `netlink-packet-generic` 自己實作在 `kernel/netdev.rs`。**netdev 這類新 family 不要用 dump**：kernel 的 dump 回應不帶 `NLM_F_MULTI`，netlink-proto 收到第一則就認定請求結束，其他裝置會被默默漏掉；改成每個介面各送一次帶 ifindex 的請求。其他缺口：`ethtool` crate 只能讀 feature；ctnetlink 只有封包型別。
+- netlink 用 rust-netlink 系列（`rtnetlink` 等）。這一系列的版本必須彼此對齊（共用同一個 `netlink-packet-core`），升級時整組一起升，並用 `Cargo.lock` 鎖住。netdev family 用 `genetlink` + `netlink-packet-generic` 自己實作在 `kernel/netdev.rs`。**netdev 這類新 family 不要用 dump**：kernel 的 dump 回應不帶 `NLM_F_MULTI`，netlink-proto 收到第一則就認定請求結束，其他裝置會被默默漏掉；改成每個介面各送一次帶 ifindex 的請求。其他缺口：`ethtool` crate 只能讀 feature。**ctnetlink 是例外，手寫在 `kernel/conntrack.rs`**（2026-10-28，O17）：Pi 上 netlink-proto 設一筆 51 µs、netlink-packet-netfilter 編碼 20 µs、手寫 13 µs，讀一筆 crate 解碼 74 µs、手寫 20 µs（musl 的記憶體配置慢）。netlink-packet-netfilter 只放 dev-dependency，測試比對兩邊的位元組。之後頻繁呼叫的 netlink 操作也要先量，不要直接假設 crate 夠快。
 - 呼叫外部程式用 `Command::new().arg()`，不組 shell 字串，並加逾時。用 tokio 的 `Command`，設 `kill_on_drop(true)`，再用 `tokio::time::timeout` 包住，逾時時子行程才會被砍掉。這些都集中在共用的 `command.rs`：`run()`（結束碼不是 0 就是 `Failed`）、`output()`（結束碼本身就是答案時用，例如 `systemctl is-enabled`）、`CommandError`（錯誤帶執行檔的路徑；`NftError`、`SuricataError` 是它的別名）。2026-10-27 有了第三個呼叫者（platform 的 systemctl）之後抽出來，新的外部程式一律用它，不要再寫一份 spawn 加逾時。執行檔用絕對路徑，不從 PATH 找：之後由有權限的 process 執行時，PATH 可能被換掉，而且 Pi 上一般帳號的 PATH 沒有 `/usr/sbin`。
 - 新增 crate 前，用全域需求評估（之後是否還會用到、是否純 Rust、能否編 musl/aarch64、維護狀態、授權）。
 

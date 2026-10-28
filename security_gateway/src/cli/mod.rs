@@ -2,6 +2,7 @@ pub mod doctor;
 mod logging;
 pub mod run;
 pub mod show;
+pub mod trust;
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -31,6 +32,7 @@ pub enum Command {
     Doctor(doctor::DoctorArgs),
     Run(run::RunArgs),
     Show(show::ShowArgs),
+    Trust(trust::TrustArgs),
 }
 
 pub async fn run() -> ExitCode {
@@ -44,5 +46,6 @@ pub async fn run() -> ExitCode {
         Command::Doctor(args) => doctor::run(cli.config.as_deref(), overrides, args).await,
         Command::Run(args) => run::run(cli.config.as_deref(), overrides, args).await,
         Command::Show(args) => show::run(args).await,
+        Command::Trust(args) => trust::run(args),
     }
 }

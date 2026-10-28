@@ -326,6 +326,11 @@ const REQUIRED_MODULES: &[RequiredModule] = &[
         purpose: "matching and setting ct mark",
         must_be_loaded: false,
     },
+    RequiredModule {
+        name: "nf_conntrack_netlink",
+        purpose: "trusting connections by ct mark from user space",
+        must_be_loaded: false,
+    },
 ];
 
 fn check_modules(mode_modules: &[RequiredModule]) -> Vec<Finding> {
@@ -383,9 +388,9 @@ fn module_findings(release: &str, states: &[(&RequiredModule, ModuleState)]) -> 
 
 fn print_modules(release: &str, states: &[(&RequiredModule, ModuleState)]) {
     println!("kernel: {release}");
-    println!("{:<16} {:<9} {}", "KERNEL MODULE", "STATE", "NEEDED FOR");
+    println!("{:<20} {:<9} {}", "KERNEL MODULE", "STATE", "NEEDED FOR");
     for (module, state) in states {
-        println!("{:<16} {:<9} {}", module.name, state.to_string(), module.purpose);
+        println!("{:<20} {:<9} {}", module.name, state.to_string(), module.purpose);
     }
 }
 
