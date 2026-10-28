@@ -45,7 +45,10 @@ fn table_starts_without_queueing() {
 
 #[test]
 fn unavailable_rules_follow_the_setting() {
-    assert_eq!(unavailable_rules(WhenUnavailable::Accept), [vec![Statement::Counter]]);
+    assert_eq!(
+        unavailable_rules(WhenUnavailable::Accept),
+        [vec![Statement::Counter, Statement::Accept]]
+    );
     assert_eq!(
         unavailable_rules(WhenUnavailable::Drop),
         [vec![Statement::Counter, Statement::Drop]]
@@ -81,4 +84,38 @@ fn rejects_unknown_when_unavailable() {
             format!("invalid when_unavailable {s:?} (expected \"accept\" or \"drop\")")
         );
     }
+}
+
+#[test]
+fn control_packets_go_to_ids_before_trusted_flows_are_accepted() {
+    let rules = &table(inspection("0", WhenUnavailable::Drop)).chains[0].rules;
+    let ids = Statement::Jump("ids".into());
+    let l2 = rules
+        .iter()
+        .position(|r| r == &vec![Statement::TcpFlagsAny(vec![TcpFlag::Fin, TcpFlag::Syn, TcpFlag::Rst]), ids.clone()])
+        .expect("syn/fin/rst rule");
+    let trusted = rules
+        .iter()
+        .position(|r| r == &vec![Statement::CtMarkHas(TRUSTED_MARK), Statement::Counter, Statement::Accept])
+        .expect("trusted rule");
+    assert!(l2 < trusted, "control packets must be checked before trusted flows are accepted");
+    assert_eq!(rules.last(), Some(&vec![ids]));
+}
+
+#[test]
+fn ids_chain_always_ends_with_a_verdict() {
+    for when in BOTH {
+        for rules in [unavailable_rules(when), inspecting_rules(inspection("0-3", when))] {
+            let last = rules.last().and_then(|r| r.last());
+            assert!(
+                matches!(last, Some(Statement::Accept | Statement::Drop | Statement::Queue { .. })),
+                "ids must not return to forward, or control packets are counted twice: {rules:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn trusted_mark_is_a_single_bit() {
+    assert_eq!(TRUSTED_MARK.count_ones(), 1);
 }

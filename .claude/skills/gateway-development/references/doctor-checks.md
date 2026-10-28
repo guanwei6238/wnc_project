@@ -114,7 +114,7 @@ RequiredModule {
 |---|---|---|
 | Suricata 的 unix socket | 規則管線（架構 §7 第 4 步）開始用 unix socket 時 | `--build-info` 的 `Unix socket enabled`，探測加在 `SuricataInfo` |
 | queue 被佔用 | 不在 doctor 做（O14） | wnc-gw 非 root 讀不到 `/proc/net/netfilter/nfnetlink_queue`。2b-3 在執行時處理：Suricata 綁定失敗會在 `READY=1` 之前退出，wnc-gw 報錯並記 log |
-| `nf_conntrack_netlink` 模組 | N5：改 ct mark 用 ctnetlink 還是 nft set | 用 ctnetlink 才加進 `REQUIRED_MODULES` |
+| `nf_conntrack_netlink` 模組 | 3c：wnc-gw 用 ctnetlink 寫 ct mark（N5 已決定 ctnetlink，O17） | 加進 `REQUIRED_MODULES` |
 | TCX 可用性（kernel ≥ 6.6、bpffs、JIT） | 階段 2 開始時 | 探測放在 `kernel/` |
 
 做完其中一項，就把它從這張表移到實作裡，並更新這份文件。

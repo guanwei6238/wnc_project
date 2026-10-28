@@ -151,8 +151,9 @@ fn queue_ranges_and_flags() {
     assert_eq!(expr("2", false), serde_json::json!({"queue": {"num": 2}}));
     assert_eq!(
         expr("0-3", true),
-        serde_json::json!({"queue": {"num": {"range": [0, 3]}, "flags": ["bypass"]}})
+        serde_json::json!({"queue": {"num": {"symhash": {"mod": 4, "offset": 0}}, "flags": ["bypass"]}})
     );
+    assert_eq!(expr("2-4", false), serde_json::json!({"queue": {"num": {"symhash": {"mod": 3, "offset": 2}}}}));
 }
 
 #[test]
@@ -166,4 +167,18 @@ async fn runs_the_configured_path() {
     let err = nft.info().await.unwrap_err();
     assert!(matches!(&err, NftError::NotFound { path } if path == Path::new("/nonexistent/nft")));
     assert_eq!(err.to_string(), "/nonexistent/nft not found");
+}
+
+#[test]
+fn ct_mark_bits_and_tcp_flags() {
+    let json = |s: Statement| serde_json::to_value(statement(&s)).unwrap();
+    assert_eq!(
+        json(Statement::CtMarkHas(0x8000_0000)),
+        serde_json::json!({"match": {"op": "==", "left": {"&": [{"ct": {"key": "mark"}}, 2147483648u32]}, "right": 2147483648u32}})
+    );
+    assert_eq!(
+        json(Statement::TcpFlagsAny(vec![TcpFlag::Fin, TcpFlag::Syn, TcpFlag::Rst])),
+        serde_json::json!({"match": {"op": "in", "left": {"payload": {"protocol": "tcp", "field": "flags"}}, "right": ["fin", "syn", "rst"]}})
+    );
+    assert_eq!(json(Statement::Accept), serde_json::json!({"accept": null}));
 }

@@ -4,9 +4,9 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use nftables::batch::Batch;
-use nftables::expr::{Expression, Range};
+use nftables::expr::{BinaryOperation, CT, Expression, NamedExpression, Payload, PayloadField, SymHash};
 use nftables::schema::{self, FlushObject, NfCmd, NfListObject};
-use nftables::stmt::{self, Counter, JumpTarget, QueueFlag};
+use nftables::stmt::{self, Counter, JumpTarget, Operator, QueueFlag};
 use nftables::types::{NfChainPolicy, NfChainType, NfFamily, NfHook};
 use super::nfqueue::QueueRange;
 use crate::command::{self, CommandError};
@@ -53,6 +53,26 @@ pub enum Statement {
     Jump(String),
     Queue { queue: QueueRange, bypass: bool },
     Drop,
+    Accept,
+    CtMarkHas(u32),
+    TcpFlagsAny(Vec<TcpFlag>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TcpFlag {
+    Fin,
+    Syn,
+    Rst,
+}
+
+impl TcpFlag {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Fin => "fin",
+            Self::Syn => "syn",
+            Self::Rst => "rst",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -237,6 +257,27 @@ fn statement(statement: &Statement) -> stmt::Statement<'_> {
             flags: bypass.then(|| HashSet::from([QueueFlag::Bypass])),
         }),
         Statement::Drop => stmt::Statement::Drop(None),
+        Statement::Accept => stmt::Statement::Accept(None),
+        Statement::CtMarkHas(bits) => stmt::Statement::Match(stmt::Match {
+            left: Expression::BinaryOperation(Box::new(BinaryOperation::AND(
+                Expression::Named(NamedExpression::CT(CT {
+                    key: "mark".into(),
+                    family: None,
+                    dir: None,
+                })),
+                Expression::Number(*bits),
+            ))),
+            right: Expression::Number(*bits),
+            op: Operator::EQ,
+        }),
+        Statement::TcpFlagsAny(flags) => stmt::Statement::Match(stmt::Match {
+            left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField {
+                protocol: "tcp".into(),
+                field: "flags".into(),
+            }))),
+            right: Expression::List(flags.iter().map(|f| Expression::String(f.name().into())).collect()),
+            op: Operator::IN,
+        }),
     }
 }
 
@@ -244,11 +285,9 @@ fn queue_num(queue: QueueRange) -> Expression<'static> {
     if queue.first() == queue.last() {
         return Expression::Number(queue.first().into());
     }
-    Expression::Range(Box::new(Range {
-        range: [
-            Expression::Number(queue.first().into()),
-            Expression::Number(queue.last().into()),
-        ],
+    Expression::Named(NamedExpression::SymHash(SymHash {
+        hash_mod: u32::from(queue.last() - queue.first()) + 1,
+        offset: Some(queue.first().into()),
     }))
 }
 

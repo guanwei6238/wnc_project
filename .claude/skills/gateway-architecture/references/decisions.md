@@ -211,7 +211,7 @@
 - 2b-3 的細節（2026-10-26 決定）：
   - 設定是 `[suricata] when_unavailable = "accept" | "drop"`，預設 `"accept"`；`"accept"` 時 doctor 給 warning。
   - forward chain 最後 `jump ids`，queue 規則放在獨立的 `ids` chain。切換時在同一個 nft transaction 裡 `flush chain` 再加規則，不重裝整張 table：之後 table 裡會有黑名單 set 這類動態內容，重裝會清掉。
-  - `ids` 的兩種狀態：就緒時 `counter queue num N`（`accept` 加 `bypass`）；沒就緒時 `counter`（`accept`，交給 policy 放行）或 `counter drop`。`nfq.fail-open` 由 wnc-gw 用 `--set` 強制成和設定一致（`accept` 是 yes），不看 suricata.yaml。
+  - `ids` 的兩種狀態：就緒時 `counter queue num N`（`accept` 加 `bypass`）；沒就緒時 `counter accept` 或 `counter drop`（`accept` 原本是只有 `counter`、交給 policy 放行，2026-10-28 改成明確的 `accept`，見 O17）。`nfq.fail-open` 由 wnc-gw 用 `--set` 強制成和設定一致（`accept` 是 yes），不看 suricata.yaml。
   - 順序：裝 table（沒就緒狀態）→ `READY=1` 後換成 queue → Suricata 結束時先換回沒就緒狀態，**換好之後才呼叫 `Lifecycle::allow_restart()` 讓 supervisor 重啟**（不靠退避的 1 秒剛好夠）；換規則失敗就不重啟、停 Suricata、wnc-gw 以結束碼 1 結束 → 停止時也是先換回沒就緒狀態，再停 Suricata，最後移除 table。之後的 (a) systemd 模式，對應的關卡是 `ExecStartPre` 的 hook。
   - log：進入沒檢查的狀態時 WARN「forwarded traffic passes without inspection」或「…is dropped without inspection」（帶 `when_unavailable`）；恢復時 INFO「forwarded traffic is inspected」，帶 `uninspected_ms`（包含啟動時等 Suricata 就緒的時間）。移除 table 時 WARN「table removed; forwarded traffic passes without inspection」。兩種模式都用 WARN：丟掉是設定好的行為，失敗本身（Suricata 結束）另外有記。
   - 還沒做到：
@@ -227,9 +227,12 @@
 - **多個 queue 的分流方式（2026-10-27 決定）：改用 symhash，和階段 1 的 ct mark 一起實作。** 原本的 `queue num 0-(N-1)` 由 kernel 只依兩端位址加協定做 hash，同一對主機的所有連線都擠進同一個 queue。
   - 量測（Pi 4、1000 MHz、`full`、全速，Suricata 直接跑 NFQ、綁 CPU 0、2、3）：42-1 用 3 個 queue，位址 hash 分到 5／7／88%、12.9 kpps；`queue to symhash mod 3`（含 port、對稱）分到 37／33／30%、26.4 kpps、0 丟失。其他 scenario 兩種 hash 相同；symhash 讓 kernel 每個封包多約 0.7–1.8 µs。單一連線佔大部分流量的（60-1 98%、Honeypot-7-1 96%）不管哪種 hash 都只有一個 worker 在忙，要靠信任機制解決。
   - 分片：symhash 對分片只用位址計算（kernel 不讀第一片的 port），沒有 conntrack 時，同一條連線的分片和其他封包會落在不同 queue（Pi bridge 實測 18/24）。table 用到 conntrack 時，kernel 會在進 queue 前組回分片（0/24），所以和 ct mark 一起做。這相當於 Suricata 在 af-packet 模式預設的 `defrag: yes`。
-  - 實作時要做：queue 範圍用 `queue to symhash mod N offset <first>`（offset 的語法還沒驗證）；開了多個 queue 時，doctor 和啟動要確認 conntrack 已啟用，否則報錯或給 warning；IPv6 的分片要另外驗證。
+  - 2026-10-28 實作（3b）：queue 範圍產生 `queue to symhash mod N offset <first>`，單一 queue 仍是 `queue num N`。nft 1.1.3 接受非 0 的 offset（列出來是 `… mod 3 offset 2`，offset 0 時不印出來）；非 0 offset 實際怎麼分流沒有測。table 裡一定有 ct mark 規則，conntrack 一定是啟用的，所以不另外檢查。
+    - Pi（bridge、wnc-gw、4 個 queue）：24 條連線 0 條被拆開，每條只進 queue 2 個封包（小 UDP、組回來的 datagram）；出口仍是每條 4 個 frame（bridge 送出時重新分片）。
+    - Docker：同一對主機的 6 條 TCP 連線分到 3 個 queue（92／46／137 個封包）。
+    - 還沒做：IPv6 的分片。
   - 如果 ct mark 之前就需要多個 queue：加一條永遠不比對成功的 `tproxy` 規則，也會讓 kernel 組回分片（實測 0/24，每個封包約 +0.5–0.7 µs；`socket` 運算式沒有這個效果）。它靠的是副作用，只當暫時的做法。
-  - conntrack 本身的成本要在加 ct mark 時重新評估：Pi 實測每個封包 +3.7 µs（單一連線）到 +10.6 µs（掃描，連線表到 65,536 上限，靠 early drop 才沒有丟封包）。
+  - conntrack 本身的成本要在加 ct mark 時重新評估：Pi 實測每個封包 +3.7 µs（單一連線）到 +10.6 µs（掃描，連線表到 65,536 上限，靠 early drop 才沒有丟封包）。3a 在 10,000 pps 重量是 −4.3～+3.5 µs，在雜訊內（O17）。
 
 ### O15. log 存在哪裡
 
@@ -272,4 +275,51 @@ wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 std
   強制 `ignore` 之後，上面每一種 yaml 都是「連線不斷、照常 alert」，加了 `init-failure-fatal` 也能啟動（`--set` 蓋過 yaml）。doctor 原本加的 midstream-policy 檢查因此拿掉。
 - 還沒處理的同類問題：`engine.init-failure-fatal` 會讓 yaml 裡**任何**一個 warning 都變成 Suricata 起不來，而 doctor 的 `--dump-config` 不做完整驗證（完整驗證要 `suricata -T`，Pi 上 `full` 要 30 秒以上）。可能的做法：執行時偵測「連續 N 次在就緒前結束」記 ERROR，或提供選擇性的完整檢查。
 - 還沒決定：其他 exception policy（memcap 用完、app-layer 解析錯誤等，也就是 Suricata 檢查不了某條 flow 的情況）。傾向跟 `when_unavailable` 一致：`accept` 對應 `ignore`，`drop` 對應 drop-flow。
+
+### O17. 信任狀態放在哪裡、怎麼寫進 kernel（N5）
+
+背景：階段 1 要讓已信任的 flow 不再進 Suricata（SYNTHESIS §4.2–4.4）。成本已量過：ctnetlink 改 mark 每筆約 13 µs、`conntrack -U` 每筆讀整張表不能用（專案記憶 `pi-ctmark-cost-20261025`）；spawn nft 一次約 7.7 ms（`pi-nft-write-cost-20261025`）。
+
+| | (a) ct mark，用 ctnetlink 寫入 | (b) nft set，key 是五元組，元素帶 TTL |
+|---|---|---|
+| 信任的單位 | 一條連線（conntrack entry），新連線沒有 mark | 一個五元組，port 重用或偽造封包會被當成已信任 |
+| TTL | wnc-gw 自己管 | kernel 的 set timeout |
+| wnc-gw 重啟 | 舊 mark 留在 conntrack，啟動時要清 | 重裝 table 就清空 |
+| 每個封包 | 需要 conntrack | 不需要 conntrack |
+| 和其他規劃 | conntrack 本來就要用（O13 的 conntrack 計數、flowtable）；分片會先組回，symhash 不用 `tproxy` | 那些功能還是要 conntrack |
+
+**[已決定] 2026-10-28：(a)。** 主要理由是安全：五元組信任可以被 port 重用或偽造封包繞過。要另外做的：wnc-gw 管 TTL、啟動時清掉舊 mark、conntrack 表的大小。
+
+**地基實驗（3a，2026-10-28，Docker routed + Pi bridge）**：queue 規則前放 `ct mark & 0x1 == 0x1 accept`，用 ctnetlink 對傳輸中的 TCP 連線設 mark → 之後不進 Suricata、連線不斷；清掉 mark → 回到 Suricata，中間漏看一段仍照常 alert（AUDIT 的情況）。效能（Pi、10,000 pps、`full`、2 輪；整台機器 µs／封包，含 tcpreplay 自己）：
+
+| scenario | 只轉送 | 全部進 Suricata | 全部信任 | 信任 + L2 | 控制封包 |
+|---|---|---|---|---|---|
+| 39-1 (IRCBot) | 37.1 | 105.1 | 38.5 | 96.7 | 91% |
+| 1-1 (Hide and Seek) | 36.0 | 80.4 | 39.6 | 59.5 | 53% |
+| 44-1 (Mirai) | 37.5 | 94.0 | 33.2 | 34.1 | 0.04% |
+| Honeypot-5-1 (Amazon Echo) | 36.9 | 71.4 | 32.8 | 46.8\* | 0.06% |
+| Honeypot-7-1 (door lock) | 40.2 | 103.0 | 38.8 | 39.7 | 0.01% |
+
+- 信任每個封包省 39–67 µs，信任的封包和不檢查一樣便宜；conntrack + ct mark（全部信任 − 只轉送）在 −4.3～+3.5 µs，量測雜訊內。
+- \* Honeypot-5-1 加 L2 後有 34% 封包被 conntrack 判 INVALID 而進 queue：L2 把 SYN 送進 NFQ，重播時後面的封包搶先經過 conntrack；降到 500 pps 時 0 個，是重播假象。
+- 腳本與結果：`tests/ids_inline/ctmark_docker.sh`、`ctmark_pi.sh`、`trust_cost.sh`、`trust.py`、`results/trust1.kvl`。
+
+**[已決定] 2026-10-28：L2（SYN／FIN／RST 一律送 Suricata）要放。** 長連線的成本約 +1 µs（控制封包 0.01–0.04%）；掃描類流量幾乎全是控制封包，但這類 flow 本來就不會被信任。
+
+**3b 實作（2026-10-28）**：
+- forward chain 依序是 `counter` → `tcp flags fin,syn,rst jump ids`（L2，一定在信任之前）→ `ct mark & 0x80000000 == 0x80000000 counter accept` → `jump ids`。
+- `ids` chain 在每種狀態都要以判決結尾（`queue`、`accept`、`drop`）。`jump` 過去的 chain 沒有判決時會回到 forward 繼續比對：原本沒就緒的 `accept` 狀態只有 `counter`，控制封包會先經過 L2、再經過最後的 `jump ids`，被算兩次（Docker：轉送 2 個封包，`ids` 的 counter 是 4）。改成 `counter accept` 之後是 2；放行的效果相同（都只結束我們這張 table）。L2 後面的規則因此在任何狀態都不會看到控制封包。
+- 信任用 mark 的最高位元（`firewall::TRUSTED_MARK`），規則只看這個位元：其他程式（例如 mwan3）用的是低位元。3c 寫入時要帶 mask（`CTA_MARK_MASK`），不動其他位元。
+- Docker（routed）：用 `conntrack -U … --mark 0x80000000/0x80000000` 設上之後，`ids` 的 counter 和 alert 都停住、連線不斷；`--mark 0/0x80000000` 清掉後恢復；信任中結束連線時 `ids` 只多 2 個 FIN；100 行都收到。
+- **連線表滿了時**（Pi bridge、wnc-gw、`empty`；一條被信任的 TCP 連線每 0.2 秒送一行，同時重播 39-1 的掃描）：
+
+  | 重播方式 | 表滿所需時間 | early_drop | 因表滿而丟的封包 | 被信任的連線 |
+  |---|---|---|---|---|
+  | 整個 pcap、10,000 pps | 8 秒 | 114,845 | 0 | entry 一直是 ESTABLISHED、assured、mark 還在；沒有封包回到 Suricata；160／160 行 |
+  | 掃描那一段（pcap 最後 78 秒，約 1,300–6,000 SYN/s、幾乎沒有回應）、原始時間間隔 | 掃描開始後約 20 秒 | 55,584 | 0 | 同上；460／460 行 |
+
+  - early drop 只清沒有 assured 的 entry（掃描的 SYN），已建立的連線不受影響；`dmesg` 沒有「table full」。10,000 pps 一開始有 5–6 個 `insert_failed`／`drop`，同一段封包用原始速度重播是 0，和上面的 INVALID 一樣是重播假象。
+  - 推論（沒有測）：只有單向的 UDP 不會變成 assured，表滿時可能被 early drop 清掉，mark 跟著消失，flow 回到 Suricata（多檢查，不會少檢查）。表裡塞滿 assured 的連線（大量真的連線，或完成握手的連線洪水）時，新連線才會被丟。
+  - 先不改 `nf_conntrack_max`（Pi 預設 65,536）。之後的監控步驟要能看到 `nf_conntrack_count` 和 conntrack 的 `drop` 計數。
+- 腳本：`tests/ids_inline/ctfull_pi.sh`（表滿）、`frag_pi.sh`（分片，pcap 由腳本自己產生）。
 
