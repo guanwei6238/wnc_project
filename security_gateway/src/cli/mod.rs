@@ -11,6 +11,8 @@ use clap::{Parser, Subcommand};
 use security_gateway::config::Overrides;
 use security_gateway::ports::PortSelector;
 
+use logging::LogFormat;
+
 #[derive(Debug, Parser)]
 #[command(name = "wnc-gw", version)]
 pub struct Cli {
@@ -22,6 +24,9 @@ pub struct Cli {
 
     #[arg(long, global = true, value_name = "IFACE|MAC")]
     pub wan: Option<PortSelector>,
+
+    #[arg(long, global = true, value_name = "FORMAT", default_value = "text")]
+    pub log_format: LogFormat,
 
     #[command(subcommand)]
     pub command: Command,
@@ -44,8 +49,12 @@ pub async fn run() -> ExitCode {
 
     match cli.command {
         Command::Doctor(args) => doctor::run(cli.config.as_deref(), overrides, args).await,
-        Command::Run(args) => run::run(cli.config.as_deref(), overrides, args).await,
+        Command::Run(args) => run::run(cli.config.as_deref(), overrides, cli.log_format, args).await,
         Command::Show(args) => show::run(args).await,
-        Command::Trust(args) => trust::run(args),
+        Command::Trust(args) => trust::run(args, cli.log_format),
     }
 }
+
+#[cfg(test)]
+#[path = "../../tests/unit/cli/mod.rs"]
+mod tests;

@@ -15,13 +15,14 @@ use security_gateway::platform::{Current, Dirs};
 use tokio::signal::unix::{Signal, SignalKind, signal};
 use tracing::{error, info, warn};
 
-use super::{doctor, logging};
+use super::doctor;
+use super::logging::{self, LogFormat};
 
 #[derive(Debug, Args)]
 pub struct RunArgs {}
 
-pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: RunArgs) -> ExitCode {
-    logging::init();
+pub async fn run(config_path: Option<&Path>, overrides: Overrides, log_format: LogFormat, _args: RunArgs) -> ExitCode {
+    logging::init(log_format);
     info!(version = env!("CARGO_PKG_VERSION"), "starting");
     let config = match config::load(config_path, overrides) {
         Ok(config) => config,

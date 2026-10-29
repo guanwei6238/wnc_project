@@ -23,9 +23,9 @@ security_gateway/
 ├── src/
 │   ├── main.rs             #[tokio::main(flavor = "current_thread")]，只呼叫 cli::run()
 │   ├── cli/                ← bin：只放參數與膠水
-│   │   ├── mod.rs          Cli（全域參數 -c/--config、--lan、--wan）、Command、run()
+│   │   ├── mod.rs          Cli（全域參數 -c/--config、--lan、--wan、--log-format）、Command、run()
 │   │   ├── doctor.rs       doctor：載入設定 → passes()（各項檢查、印報告，沒有 error 才回傳 true）→ 結束碼
-│   │   ├── logging.rs      init()：tracing 的輸出設定（stderr、UTC 時間、終端機才上色、寫入失敗不回報，否則 stderr 斷掉時會 panic），只有 run 會呼叫
+│   │   ├── logging.rs      LogFormat（text、json）、init()：tracing 的輸出設定（stderr、UTC 時間、text 在終端機才上色、寫入失敗不回報，否則 stderr 斷掉時會 panic），run 和 trust add/del 會呼叫
 │   │   ├── trust.rs        trust add/del/list：用 ctnetlink 直接設、清信任 bit，或列出有信任 bit 的連線；不需要 run，但沒有 run 時沒有 table 看這個 bit，Pi 上也沒有 entry；add、del 記 log 事件
 │   │   ├── run.rs          run：開 log → 載入設定 → instance::lock()（已有 wnc-gw 在跑就不啟動）→ doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM/SIGHUP → 清掉上一次留下的信任 bit（firewall::untrust_all，清不掉照常啟動、記 ERROR）→ 安裝 table（ids chain 是沒就緒狀態）→ 啟動 Suricata（SpawnedSuricata）→ Ready 時 start_inspection、Stopped 時 stop_inspection 再 allow_restart → 收到訊號：stop_inspection → 停止 Suricata → 移除 table；沒檢查的時段都記成 log 事件
 │   │   └── show/           show 的巢狀子命令（mod.rs 分派，interfaces.rs 列介面）
@@ -104,7 +104,7 @@ security_gateway/
   2. `Config` 的對應欄位與合併邏輯。
   3. `setting.example.toml`：用英文說明，值**註解掉**（範本不能替使用者決定）。現有測試會確認範本原樣解析後什麼都沒設、去掉 `# ` 後能解析，但**新欄位沒寫進範本時測試抓不到**，要自己記得補。
   4. `tests/unit/config.rs` 的測試。
-- 只有跨子命令共用的參數才設成 `global = true`（例如 `--config`、`--lan`、`--wan`）。
+- 只有跨子命令共用的參數才設成 `global = true`（例如 `--config`、`--lan`、`--wan`、`--log-format`）。
 - 每個子命令都有自己的 `Args` struct，即使是空的，例如 `DoctorArgs {}`；之後加參數只要新增欄位。分類多的功能用巢狀子命令，例如 `wnc-gw show interfaces`。
 - clap 的 `///` 是 `--help` 的說明文字，不只是註解。開發者傾向刪掉說明性註解；遇到時提醒這會讓 help 變空，由開發者決定，不要自己加回去。
 - 預設路徑用絕對路徑（`/etc/wnc-gw/setting.toml`）：systemd 和 `docker exec` 的工作目錄都是 `/`。
@@ -125,13 +125,14 @@ security_gateway/
 
 ### 3.5 log
 
-- 用 `tracing`（`tracing-subscriber` 只開 `fmt`、`std`、`ansi`）。lib 只用 `info!`、`warn!`、`error!` 這類 macro 發出事件，**不設定輸出**；輸出由 bin 的 `cli/logging.rs` 決定，目前只有 `run` 呼叫 `init()`。
+- 用 `tracing`（`tracing-subscriber` 只開 `fmt`、`std`、`ansi`、`json`）。lib 只用 `info!`、`warn!`、`error!` 這類 macro 發出事件，**不設定輸出**；輸出由 bin 的 `cli/logging.rs` 決定，目前 `run` 和 `trust add/del` 會呼叫 `init()`。
+- **格式**：`--log-format text|json`（全域參數，預設 text，2026-10-29）。放命令列而不是 setting.toml：log 在讀設定檔之前就開始（讀設定失敗也要記），而且格式取決於誰讀輸出，是執行環境的事。json 每行一個物件，欄位攤平在最外層（`{"timestamp":…,"level":"INFO","message":…,"uninspected_ms":97}`），數字欄位是 JSON 數字，不輸出 target 和 span。doctor 的報告（stdout）和 CLI 的 `error: …`（例如 `trust add` 找不到連線）不是事件，維持純文字；分析 `run` 的 log 時只讀 stderr。
 - **報告和事件分開**：doctor 的報告印在 stdout（它是報告，見 `references/doctor-checks.md` §2）；`run` 這類長時間執行的命令，過程中發生的事一律記成事件，印在 stderr。用 systemd 執行時 stderr 直接進 journald。
 - 訊息照錯誤訊息的規則：英文、小寫開頭、結尾不加句號。會變的值放欄位，不要塞進訊息：`info!(table = table.as_str(), "table installed")`，錯誤放 `error = %e`。欄位名稱用 snake_case，有單位的寫在名稱裡（`ready_ms`、`uptime_s`）。字串欄位用 `as_str()` 記錄，輸出時會加引號，含空白也不會跟其他欄位混在一起。
 - **會讓流量沒經過檢查的事件，一定要記**（開發者 2026-10-26 的要求）：Suricata 啟動、就緒、結束（結束碼或 signal、執行多久）、重啟，以及 queue 規則的裝上和拆掉。「從什麼時候到什麼時候沒有檢查」要能直接從 log 讀出來：目前是 WARN「forwarded traffic passes without inspection」（或 `is dropped without inspection`）到 INFO「forwarded traffic is inspected」（帶 `uninspected_ms`）。
 - 時間是 UTC。Pi 沒有校時時，log 的時間不可信（2026-10-26 時 Pi 慢了 6 天）。
 - **log 存在哪裡**：wnc-gw 不自己寫檔案。Debian 上由 systemd unit 的 `LogNamespace=wnc-gw` 保存（O15，2026-10-26 決定，寫 unit 時實作）；開發時直接跑 `run` 要自己導向，例如 `2> run.log`。
-- 還沒做：JSON 輸出（量測時再加）、在 journald 底下省略重複的時間（寫 systemd unit 時再加）、用設定調整等級（目前固定 INFO）。
+- 還沒做：在 journald 底下省略重複的時間（寫 systemd unit 時再加）、用設定調整等級（目前固定 INFO）。
 
 ### 3.6 註解
 
