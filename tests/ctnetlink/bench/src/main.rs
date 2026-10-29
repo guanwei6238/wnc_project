@@ -625,6 +625,9 @@ async fn main() -> io::Result<()> {
     check("W clear via reversed tuple", s.get(f)?.mark == Some(MARK_INIT));
     check("W unknown tuple -> NotFound", matches!(w.set_mark(&wt(flow(entries + 5)), TRUST, TRUST), Err(wc::ConntrackError::NotFound)));
     check("W get unknown tuple -> NotFound", matches!(w.get(&wt(flow(entries + 5))), Err(wc::ConntrackError::NotFound)));
+    let st = w.stats().map_err(io::Error::other)?;
+    println!("W stats entries={} max={} cpus={}", st.entries, st.max, st.cpus.len());
+    check("W stats counts the created entries", st.entries as usize >= entries && st.max > 0 && !st.cpus.is_empty());
 
     for round in 0..=rounds {
         let tag = if round == 0 { "warm".to_owned() } else { format!("r{round}") };
@@ -714,6 +717,10 @@ async fn main() -> io::Result<()> {
         out.push(timed("W get x1", ops, 1, |k| {
             let (t, _) = target(k);
             w.get(&wt(t)).map(drop).map_err(io::Error::other)
+        })?);
+        out.push(timed("W stats", ops / 20, 1, |_| w.stats().map(drop).map_err(io::Error::other))?);
+        out.push(timed("W connect+stats", ops / 20, 1, |_| {
+            wc::Conntrack::connect().and_then(|mut c| c.stats()).map(drop).map_err(io::Error::other)
         })?);
 
         for st in out {

@@ -236,6 +236,19 @@
     - IPv6（2026-10-28，`FAMILY=6 frag_pi.sh`，Fragment 擴充標頭、UDP checksum 照算）：Pi bridge 也是 0/24、每條 2 個封包、出口 96 個 frame；`wgw` 關了 IPv6（`disable_ipv6=1`）也一樣。Docker（臨時容器、routed）IPv4、IPv6 都是 0/24。
   - 如果 ct mark 之前就需要多個 queue：加一條永遠不比對成功的 `tproxy` 規則，也會讓 kernel 組回分片（實測 0/24，每個封包約 +0.5–0.7 µs；`socket` 運算式沒有這個效果）。它靠的是副作用，只當暫時的做法。
   - conntrack 本身的成本要在加 ct mark 時重新評估：Pi 實測每個封包 +3.7 µs（單一連線）到 +10.6 µs（掃描，連線表到 65,536 上限，靠 early drop 才沒有丟封包）。3a 在 10,000 pps 重量是 −4.3～+3.5 µs，在雜訊內（O17）。
+  - **外部送流量的容量（方案 B，2026-10-29）**：Pi 4、1000 MHz、bridge、`wnc-gw run`（`when_unavailable = "drop"`）、`full`。筆電的 tcpreplay（Docker 容器）從兩張實體網卡送進 Pi eth0 和 eth1.20，Pi 只做轉送和檢查。每個速率送一個 pcap（約 20 萬個封包）；容量上限＝「處理不過來而丟」（queue 滿、網卡丟、沒收到）≤ 0.1% 的最高實際速率（kpps）。2 輪結果相同。
+
+    | scenario | 內容 | 1 queue | 2 | 3 | 4 | 全部信任（1 queue） |
+    |---|---|---|---|---|---|---|
+    | 1-1 (Hide and Seek) | 49% 是純 SYN | 30 | ≥ 60 | ≥ 58 | ≥ 58 | 40 |
+    | 17-1 (Kenjiro) | SYN 掃描，99.8% 是純 SYN | 30 | ≥ 60 | ≥ 59 | ≥ 57 | 20（40 時丟 22%，和不信任相同） |
+    | 60-1 (Gafgyt) | 一條 UDP 連線佔大部分 | 30 | 30 | 30 | 30 | ≥ 84 |
+
+    - ≥ 是筆電送不出更快（兩張網卡一起送約 60 kpps，60-1 約 84 kpps），Pi 還沒丟；所以 3、4 個 queue 比 2 個多多少沒量到。
+    - 連線多的流量：2 個 queue 至少是 1 個的 2 倍，Suricata 的判決數各 queue 平均分配。一條連線佔大部分的（60-1）：symhash 把它全放進同一個 queue，加 queue 沒用，信任才有用。
+    - 掃描流量信任沒有用：純 SYN 一定進 Suricata（L2 和清 bit 規則），17-1 幾乎全是純 SYN。
+    - conntrack `insert_failed`（封包被 Suricata 放行後在 conntrack 確認時丟掉）：17-1 約 28%、全部信任時 48%；1-1 0.3–5%。只出現在高速重播大量新連線時，和 3a 的 INVALID 一樣當成重播假象，不算在容量裡；沒有驗證真實流量下不會發生。
+    - 腳本與結果：`tests/ids_inline/planb_pi.sh`、`planb_run.sh`、`planb.py`；原始資料在筆電 `~/datasets/throughput/planb/planb.kvl`。
 
 ### O15. log 存在哪裡
 
@@ -334,6 +347,7 @@ wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 std
   - early drop 只清沒有 assured 的 entry（掃描的 SYN），已建立的連線不受影響；`dmesg` 沒有「table full」。10,000 pps 一開始有 5–6 個 `insert_failed`／`drop`，同一段封包用原始速度重播是 0，和上面的 INVALID 一樣是重播假象。
   - 原本是推論、2026-10-28 實測（`PROTO=udp ctfull_pi.sh 10000 30`）：只有單向的 UDP 不會變成 assured，表滿時可能被 early drop 清掉，mark 跟著消失，flow 回到 Suricata（多檢查，不會少檢查）。表裡塞滿 assured 的連線（大量真的連線，或完成握手的連線洪水）時，新連線才會被丟。 實測：表滿後約 4 秒，被信任的單向 UDP（`UNREPLIED`）的 entry 被 early drop 清掉，下一個封包建新 entry、mark 0，之後全部進 Suricata（129 個），210／210 都收到、Suricata 0 drop。也就是說，掃描塞滿連線表可以讓單向 UDP 的信任失效、逼 gateway 多花 CPU，但不會漏檢查。
   - 先不改 `nf_conntrack_max`（Pi 預設 65,536）。之後的監控步驟要能看到 `nf_conntrack_count` 和 conntrack 的 `drop` 計數。
+  - **2026-10-29 做了**（`monitor/conntrack.rs`）：`run` 每 10 秒用 ctnetlink 讀筆數、上限、每個 CPU 的 `drop`、`insert_failed`、`early_drop`（和 `conntrack -S` 同一個介面；筆電 kernel 7.0 沒有 `/proc/net/stat/nf_conntrack`）。啟動時記一次筆數和上限；到上限 90% 記 WARN、降到 80% 以下記 INFO；`drop` 或 `insert_failed` 增加記 WARN「conntrack dropped packets」；`early_drop` 增加記 WARN「conntrack evicted unassured connections to make room」；讀取失敗只記第一次。10 秒是因為 10,000 pps 時表 8 秒就滿；三個數字都先是常數。Docker 驗證讀到的數字和 `conntrack -C`、`nf_conntrack_max` 相同；計數增加和表滿要在 Pi 上把 `nf_conntrack_max` 調低再重播掃描才測得到（還沒做）。
 - 腳本：`tests/ids_inline/ctfull_pi.sh`（表滿）、`frag_pi.sh`（分片，pcap 由腳本自己產生）。
 
 **3c-1 實作（2026-10-28）**：wnc-gw 自己的寫入路徑，取代 `conntrack -U`。
@@ -347,7 +361,6 @@ wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 std
 
   netlink-proto 每個請求經兩個 channel 和 task 切換；crate 每筆配置好幾層 `Vec`，musl 的記憶體配置慢（筆電同一個 bench 讀一筆：glibc 3.7、musl 8.5–8.9 µs）。兩種編碼出來的位元組完全相同。
 - **[已決定] 2026-10-28：手寫**，在 `kernel/conntrack.rs`。netlink-packet-netfilter 只放 dev-dependency，單元測試比對兩邊的位元組和解碼結果。這是「netlink 用 rust-netlink」的例外，只限 ctnetlink。
-  - **2026-10-29 做了**（`monitor/conntrack.rs`）：`run` 每 10 秒用 ctnetlink 讀筆數、上限、每個 CPU 的 `drop`、`insert_failed`、`early_drop`（和 `conntrack -S` 同一個介面；筆電 kernel 7.0 沒有 `/proc/net/stat/nf_conntrack`）。啟動時記一次筆數和上限；到上限 90% 記 WARN、降到 80% 以下記 INFO；`drop` 或 `insert_failed` 增加記 WARN「conntrack dropped packets」；`early_drop` 增加記 WARN「conntrack evicted unassured connections to make room」；讀取失敗只記第一次。10 秒是因為 10,000 pps 時表 8 秒就滿；三個數字都先是常數。Docker 驗證讀到的數字和 `conntrack -C`、`nf_conntrack_max` 相同；計數增加和表滿要在 Pi 上把 `nf_conntrack_max` 調低再重播掃描才測得到（還沒做）。
 - 實作後在 Pi（表 6 萬筆）：設一筆 14.5、讀一筆 23.4 µs；`list`（kernel 依 mark 過濾）信任 0–100 筆時 37 ms、1 萬筆 111 ms、6 萬筆全部信任 445 ms。
 - kernel 的行為：conntrack 的 hash 放了兩個方向的 tuple，用任一方向的五元組都找到同一筆；更新只看五元組、不比對 `CTA_ID`（3d 先讀一筆比對 ID 再設，擋 port 重用）；更新不帶 `NLM_F_CREATE`，找不到就是 `ENOENT`，不會事先建立 entry（那等於五元組信任）；不帶 `NLM_F_ACK` 的訊息成功時不回、失敗仍回錯誤，批次只讓最後一筆要 ACK；請求在 send 裡就處理完、dump 的後續部分在 recv 裡產生，所以 socket 設 non-blocking，收不到就是錯誤。
 - `wnc-gw trust add|del|list`：手動信任沒有 TTL，到 entry 消失、`del` 或之後 `run` 重啟時清掉為止；TTL 屬於 3d 的狀態機。`add`、`del` 記 log 事件。所有 ctnetlink 訊息（包括讀）都要 `CAP_NET_ADMIN`。
@@ -371,3 +384,51 @@ wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 std
 - 成本（Pi、1000 MHz、表 6 萬筆；`tests/ctnetlink/bench/`）：信任 0–100 筆時啟動多 37–38 ms，1 萬筆 151 ms，6 萬筆全信任 636 ms（清除每筆約 3.2 µs）。
 - 驗證：Docker 信任一條傳輸中的連線、`kill -9` wnc-gw，重新 `run`：log 在 `table installed` 之前寫 `cleared=1`，連線的封包回到 `ids`，150 行都收到；Pi 在 `wgw` netns 用 `conntrack -I --mark 0x80001234` 建一筆，`run` 後是 0x1234。
 
+
+### O18. ids／ips 模式
+
+背景：2026-10-29 開發者提議加一個模式，前期都用 ids（只標記不擋），「要做兩個模式就要做最好」。設定名稱和現有的 `mode = "bridge"` 撞名，提議 `protection = "ids" | "ips"`（未定）。ips 走現在的 NFQ；ids 的候選：(A) NFQ 但永遠放行、(B) NFLOG 送複本、(C) af-packet（看不到 ct mark，信任沒有用，排除）。**[已決定] 2026-10-29：觀察期間有 alert 的連線不信任**（開發者：「先不信任」），兩種模式都一樣。
+
+**[已決定] 2026-10-29：ids 用 B（NFLOG 送複本），ips 用 A（NFQ）。** B 強制 `-k none`（GRO 合併過的封包 checksum 不完整，不關的話 payload 規則比對不到），依「不安全的模式保留但要警告」在 doctor 和啟動時說明 insertion 風險；漏掉的複本數（`/proc/net/netlink` 的 Drops）之後放進 `monitor/`。log 規則和 queue 規則一樣等 `READY=1` 才裝。設定名稱和預設值（提議 `protection`、預設 `"ids"`）實作時再確認。依據見下面的量測。
+
+**NFLOG 的 Docker 功能驗證（2026-10-29，`tests/ids_inline/nflog_docker.sh`，Suricata 8.0.7，不經過 wnc-gw）**：forward chain 用 `log group N` 送複本、`suricata --nflog` 收。
+
+| 項目 | 結果 |
+|---|---|
+| 複本完整 | TCP 第一段 1300 bytes 之後的標記照樣 alert。但要 `-k none`（關掉 checksum 檢查）：NFQ 會由 kernel 標出「checksum 還沒算」的封包（Suricata 對它們跳過檢查），NFLOG 沒有這個資訊，veth 的封包全部被當成 checksum 錯誤（`tcp.invalid_checksum` 28/28），stream 不重組、payload 規則不命中 |
+| 信任 | 傳輸中 `wnc-gw trust add` 之後 log 規則的計數停住（47 → 47，42 個封包走信任的 accept），`trust del` 後恢復（→ 77） |
+| Suricata 被 SIGKILL | ping 100/100，轉送不受影響；沒有程式收的 group，kernel 只是不送複本 |
+| 有流量時啟動 | **也會當**：`ping -f` 下啟動、停止 20 次，5 次 segfault（`ReceiveNFLOGThreadInit` → `nflog_set_timeout` → `nfnl_process`），和 NFQ 同一類問題；15 次有 `nflog_handle_packet error -1` 的 warning。所以 log 規則也要等 `READY=1` 才裝，wnc-gw 現在對 NFQ 的順序就是這樣 |
+| 多個 group | `symhash mod 2 vmap { 0 : jump g0, 1 : jump g1 }`，每個 chain 一個 `log group`，Suricata `--runmode workers` 每個 group 一個 worker：8 條連線兩個方向都在同一個 group，8/8 alert |
+| 跟不上時漏掉的複本 | 預設 `buffer-size` 18 KB、UDP 2 Gbit/s 3 秒：轉送 535,824/535,837；log 規則送出 535,868 份，Suricata 收到 535,531，差 337 份，剛好等於 `/proc/net/netlink` 上 Suricata 那個 socket 的 `Drops`。group 對應哪個 socket 看 `/proc/net/netfilter/nfnetlink_log`（group、portid），兩個檔案一般帳號都能讀。Suricata 自己的統計不算這些，只印一行 warning |
+
+- `-k none` 的代價：Suricata 會接受接收端因 checksum 錯誤而丟掉的封包，攻擊者可以塞進接收端根本沒收到的資料混淆檢查（insertion）。Pi 上從網路來的封包 checksum 是真的，但 GRO 合併過的封包 checksum 欄位不完整，所以 Pi 上大概也需要 `-k none`，要實測。
+- 還沒做（要 Pi）：A 和 B 每個封包的 CPU、容量上限；`buffer-size`、`qthreshold` 怎麼調；Pi 的 7.0.10 有沒有 NFLOG、GRO 的封包 checksum。
+
+**Pi 上的 A 對 B（2026-10-29，`trial.sh` 加了 `IMPL=nflog`、`run_nflog.sh`、`nflog.py`，結果 `tests/ids_inline/results/nflog1.kvl`）**：Pi 4、1000 MHz、Suricata 7.0.10、veth（env.sh）、10,000 pps、1 個 queue／group、2 輪；兩者都直接跑 Suricata（A 是 `-q 0`，B 是 `--nflog`，NFLOG `buffer-size` 1 MB），checksum 檢查都關（make_configs.sh 原本就是）。µs／封包：
+
+| scenario | rules | worker A | worker B | 整台機器 A | 整台機器 B |
+|---|---|---|---|---|---|
+| 60-1 (Gafgyt) | empty | 40.2／41.2 | 19.1／19.1 | 102.8／102.8 | 101.7／101.7 |
+| 60-1 (Gafgyt) | full | 42.6／42.5 | 20.5／20.4 | 101.4／101.5 | 101.8／101.8 |
+| 1-1 (Hide and Seek) | empty | 44.3／44.2 | 22.5／22.5 | 115.1／103.0 | 103.7／103.0 |
+| 1-1 (Hide and Seek) | full | 49.5／49.0 | 25.2／25.2 | 104.6／104.3 | 103.2／103.2 |
+| 17-1 (Kenjiro) | empty | 43.5／43.4 | 22.1／22.1 | 103.7／102.7 | 103.3／103.0 |
+| 17-1 (Kenjiro) | full | 45.9／46.1 | 23.9／23.9 | 103.0／102.7 | 103.3／103.2 |
+
+- **整台機器的 CPU 一樣**（含 tcpreplay；兩者都沒丟、沒降頻）。A 的 worker 比較貴，是因為判決之後 kernel 的轉送在 worker 的 syscall 裡做；B 的轉送照樣要做，只是在別的 CPU 的 softirq。所以 NFLOG 不省總 CPU，省的是「Suricata 那一個 worker」的工作（約一半），轉送也不用等 Suricata。
+- Pi 上 7.0.10 有 NFLOG。有流量時啟動也會當：`nflog_startup_pi.sh`，10,000 pps 下 20 次有 4 次 segfault（Docker 8.0.7 是 5/20）。
+- 還沒做：容量上限（要方案 B 的外部流量，Suricata 那個 worker 成本減半、轉送不受 Suricata 限制時上限會到哪裡）、多個 group 在 Pi 上、實體網卡 GRO 的封包是不是一定要 `-k none`。
+
+**容量和 checksum（2026-10-29，方案 B 的拓樸：筆電兩張實體網卡送、Pi bridge；`planb_pi.sh`、`planb_run.sh` 加了 `IMPL=nflog`，`planb.py` 分轉送上限和檢查上限；結果在筆電 `~/datasets/throughput/planb/nflog.kvl`、`checksum.kvl`、`bufcheck.kvl`）**：
+- B 的 table 和 wnc-gw 一樣先 `ct mark` 信任 accept（用到 conntrack），full 規則。今天筆電最多只送到 40–49 kpps（昨天 60），所以都是下限。
+
+  | scenario | A（wnc-gw NFQ）1 queue | B 1 group：轉送 | B 1 group：Suricata 沒漏 | B 2 group：轉送 |
+  |---|---|---|---|---|
+  | 1-1 (Hide and Seek) | 30（同日重量，和昨天相同） | ≥ 44 | ≥ 44 | ≥ 40 |
+  | 17-1 (Kenjiro) | 30（昨天） | ≥ 42 | 30；40 時漏 1.2% | ≥ 38 |
+  | 60-1 (Gafgyt) | 30（昨天） | ≥ 49 | 30；40 時漏 1.8% | ≥ 46 |
+
+  - **B 的轉送在所有速率都沒丟**（到筆電的上限）。漏掉的只有給 Suricata 的複本：30 kpps 以下全部 0；40 kpps 時 6 次有 3 次漏 1.2–7.4%，更高的 42–49 kpps 反而 0。60-1 用 2 個 group 在 40 kpps 連送三次是 0、2.8%、3.8%，Suricata 也警告 buffer 已到上限（2 MB）。60-1 幾乎是一條連線，全部進同一個 worker；full 規則 10 kpps 時這個 worker 每封包約 20.5 µs，理論上限約 49 kpps，所以 40 kpps 已接近，偶爾停頓就漏。原因沒有完全確認。
+  - **conntrack `insert_failed`：B 全部 0，A 同日 1-1 是 4.1%（昨天 17-1 是 28%）。** 推測：NFQ 讓新連線的第一個封包在 queue 裡等（entry 還沒確認），同一組五元組的下一個封包（重送的 SYN）另建一個 entry，確認時撞在一起被丟。重播把封包的時間間隔壓縮了才常見；真實的 SYN 重送間隔約 1 秒，除非 NFQ 延遲接近那麼久。
+- **GRO 和 checksum**：用 Docker 錄的 iperf3 大量 TCP（先用 `tcprewrite --fixcsum` 修好 checksum），經實體網卡送進 Pi：31,433 個封包到 Pi 只剩 4,675 份複本（GRO 每份平均合併 6.7 個，10 kpps 也合併），`-k all` 時 10,436／14,069（74%）被判 checksum 錯誤。沒修 checksum 的版本 99.99% 被判錯，證明 `-k all` 確實在檢查。1-1、Honeypot-7-1 這類重播（封包分散）0 個錯、也沒合併。**結論：B 一定要 `-k none`**（或關 GRO，代價是每個封包都要個別處理）。A（NFQ）由 kernel 標出這些封包，不用關。
