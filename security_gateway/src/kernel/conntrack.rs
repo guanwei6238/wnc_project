@@ -14,6 +14,8 @@ const RECV_BUF: usize = 64 * 1024;
 const BATCH: usize = 100;
 const MSG_NEW: u16 = 1 << 8;
 const MSG_GET: u16 = (1 << 8) | 1;
+const MSG_GET_STATS_CPU: u16 = (1 << 8) | 4;
+const MSG_GET_STATS: u16 = (1 << 8) | 5;
 const AF_UNSPEC: u8 = 0;
 const AF_INET: u8 = 2;
 const AF_INET6: u8 = 10;
@@ -36,6 +38,11 @@ const CTA_PROTO_SRC_PORT: u16 = 2;
 const CTA_PROTO_DST_PORT: u16 = 3;
 const CTA_PROTOINFO_TCP: u16 = 1;
 const CTA_PROTOINFO_TCP_STATE: u16 = 1;
+const CTA_STATS_INSERT_FAILED: u16 = 9;
+const CTA_STATS_DROP: u16 = 10;
+const CTA_STATS_EARLY_DROP: u16 = 11;
+const CTA_STATS_GLOBAL_ENTRIES: u16 = 1;
+const CTA_STATS_GLOBAL_MAX_ENTRIES: u16 = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Protocol {
@@ -197,6 +204,21 @@ pub struct Connection {
     pub mark: u32,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Stats {
+    pub entries: u32,
+    pub max: u32,
+    pub cpus: Vec<CpuStats>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct CpuStats {
+    pub cpu: u16,
+    pub drop: u32,
+    pub early_drop: u32,
+    pub insert_failed: u32,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum ConntrackError {
     #[error("failed to open a ctnetlink socket: {0}")]
@@ -261,7 +283,31 @@ impl Conntrack {
                 match reply {
                     Reply::Connection(c) => connections.push(c),
                     Reply::Done => return Ok(connections),
-                    Reply::Ack => {}
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    pub fn stats(&mut self) -> Result<Stats, ConntrackError> {
+        let seq = self.next_seq();
+        self.send(&stats_request(seq))?;
+        let (entries, max) = 'global: loop {
+            for reply in self.receive(seq)? {
+                if let Reply::Global { entries, max } = reply {
+                    break 'global (entries, max);
+                }
+            }
+        };
+        let seq = self.next_seq();
+        self.send(&cpu_stats_request(seq))?;
+        let mut cpus = Vec::new();
+        loop {
+            for reply in self.receive(seq)? {
+                match reply {
+                    Reply::Cpu(c) => cpus.push(c),
+                    Reply::Done => return Ok(Stats { entries, max, cpus }),
+                    _ => {}
                 }
             }
         }
@@ -348,6 +394,14 @@ fn list_request(seq: u32, mark: u32, mask: u32) -> Vec<u8> {
     r.finish()
 }
 
+fn stats_request(seq: u32) -> Vec<u8> {
+    Request::new(MSG_GET_STATS, NLM_F_REQUEST, seq, AF_UNSPEC).finish()
+}
+
+fn cpu_stats_request(seq: u32) -> Vec<u8> {
+    Request::new(MSG_GET_STATS_CPU, NLM_F_REQUEST | NLM_F_DUMP, seq, AF_UNSPEC).finish()
+}
+
 struct Request(Vec<u8>);
 
 impl Request {
@@ -411,6 +465,8 @@ enum Reply {
     Ack,
     Done,
     Connection(Connection),
+    Global { entries: u32, max: u32 },
+    Cpu(CpuStats),
 }
 
 fn parse_replies(datagram: &[u8], seq: u32) -> Result<Vec<Reply>, ConntrackError> {
@@ -426,6 +482,8 @@ fn parse_replies(datagram: &[u8], seq: u32) -> Result<Vec<Reply>, ConntrackError
                 },
                 NLMSG_DONE => replies.push(Reply::Done),
                 MSG_NEW => replies.push(Reply::Connection(parse_connection(msg.payload())?)),
+                MSG_GET_STATS => replies.push(parse_global_stats(msg.payload())?),
+                MSG_GET_STATS_CPU => replies.push(Reply::Cpu(parse_cpu_stats(msg.payload())?)),
                 _ => {}
             }
         }
@@ -544,6 +602,42 @@ fn parse_tcp_state(buf: &[u8]) -> Result<Option<TcpState>, ConntrackError> {
         }
     }
     Ok(None)
+}
+
+fn parse_global_stats(payload: &[u8]) -> Result<Reply, ConntrackError> {
+    let attrs = payload.get(4..).ok_or_else(|| ConntrackError::Malformed("message too short".to_owned()))?;
+    let (mut entries, mut max) = (None, None);
+    for nla in NlasIterator::new(attrs) {
+        let nla = nla.map_err(malformed)?;
+        match nla.kind() & NLA_TYPE_MASK {
+            CTA_STATS_GLOBAL_ENTRIES => entries = Some(parse_u32_be(nla.value()).map_err(malformed)?),
+            CTA_STATS_GLOBAL_MAX_ENTRIES => max = Some(parse_u32_be(nla.value()).map_err(malformed)?),
+            _ => {}
+        }
+    }
+    let missing = |what: &str| ConntrackError::Malformed(format!("statistics have no {what}"));
+    Ok(Reply::Global {
+        entries: entries.ok_or_else(|| missing("entry count"))?,
+        max: max.ok_or_else(|| missing("maximum"))?,
+    })
+}
+
+fn parse_cpu_stats(payload: &[u8]) -> Result<CpuStats, ConntrackError> {
+    let (header, attrs) = payload
+        .split_at_checked(4)
+        .ok_or_else(|| ConntrackError::Malformed("message too short".to_owned()))?;
+    let mut stats = CpuStats { cpu: u16::from_be_bytes([header[2], header[3]]), ..CpuStats::default() };
+    for nla in NlasIterator::new(attrs) {
+        let nla = nla.map_err(malformed)?;
+        let counter = match nla.kind() & NLA_TYPE_MASK {
+            CTA_STATS_DROP => &mut stats.drop,
+            CTA_STATS_EARLY_DROP => &mut stats.early_drop,
+            CTA_STATS_INSERT_FAILED => &mut stats.insert_failed,
+            _ => continue,
+        };
+        *counter = parse_u32_be(nla.value()).map_err(malformed)?;
+    }
+    Ok(stats)
 }
 
 fn malformed(e: impl fmt::Display) -> ConntrackError {

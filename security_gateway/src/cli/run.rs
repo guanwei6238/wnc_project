@@ -11,8 +11,10 @@ use security_gateway::ids::spawned::{Options, SpawnedSuricata};
 use security_gateway::instance;
 use security_gateway::kernel::conntrack::Conntrack;
 use security_gateway::kernel::nft::Nft;
+use security_gateway::monitor::conntrack::ConntrackMonitor;
 use security_gateway::platform::{Current, Dirs};
 use tokio::signal::unix::{Signal, SignalKind, signal};
+use tokio::time::{self, MissedTickBehavior};
 use tracing::{error, info, warn};
 
 use super::doctor;
@@ -139,12 +141,16 @@ async fn serve(config: &Config, nft: &Nft, inspection: Inspection, signals: &mut
         }
     };
     let mut uninspected_since = Some(Instant::now());
+    let mut conntrack_monitor = ConntrackMonitor::default();
+    let mut monitor_tick = time::interval(ConntrackMonitor::INTERVAL);
+    monitor_tick.set_missed_tick_behavior(MissedTickBehavior::Delay);
     let mut code = loop {
         tokio::select! {
             signal = signals.recv() => {
                 info!(signal, "stopping");
                 break ExitCode::SUCCESS;
             }
+            _ = monitor_tick.tick() => conntrack_monitor.check(Conntrack::connect().and_then(|mut c| c.stats())),
             event = suricata.next_event() => match event {
                 None => {
                     error!("suricata supervision ended unexpectedly");

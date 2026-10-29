@@ -347,6 +347,7 @@ wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 std
 
   netlink-proto 每個請求經兩個 channel 和 task 切換；crate 每筆配置好幾層 `Vec`，musl 的記憶體配置慢（筆電同一個 bench 讀一筆：glibc 3.7、musl 8.5–8.9 µs）。兩種編碼出來的位元組完全相同。
 - **[已決定] 2026-10-28：手寫**，在 `kernel/conntrack.rs`。netlink-packet-netfilter 只放 dev-dependency，單元測試比對兩邊的位元組和解碼結果。這是「netlink 用 rust-netlink」的例外，只限 ctnetlink。
+  - **2026-10-29 做了**（`monitor/conntrack.rs`）：`run` 每 10 秒用 ctnetlink 讀筆數、上限、每個 CPU 的 `drop`、`insert_failed`、`early_drop`（和 `conntrack -S` 同一個介面；筆電 kernel 7.0 沒有 `/proc/net/stat/nf_conntrack`）。啟動時記一次筆數和上限；到上限 90% 記 WARN、降到 80% 以下記 INFO；`drop` 或 `insert_failed` 增加記 WARN「conntrack dropped packets」；`early_drop` 增加記 WARN「conntrack evicted unassured connections to make room」；讀取失敗只記第一次。10 秒是因為 10,000 pps 時表 8 秒就滿；三個數字都先是常數。Docker 驗證讀到的數字和 `conntrack -C`、`nf_conntrack_max` 相同；計數增加和表滿要在 Pi 上把 `nf_conntrack_max` 調低再重播掃描才測得到（還沒做）。
 - 實作後在 Pi（表 6 萬筆）：設一筆 14.5、讀一筆 23.4 µs；`list`（kernel 依 mark 過濾）信任 0–100 筆時 37 ms、1 萬筆 111 ms、6 萬筆全部信任 445 ms。
 - kernel 的行為：conntrack 的 hash 放了兩個方向的 tuple，用任一方向的五元組都找到同一筆；更新只看五元組、不比對 `CTA_ID`（3d 先讀一筆比對 ID 再設，擋 port 重用）；更新不帶 `NLM_F_CREATE`，找不到就是 `ENOENT`，不會事先建立 entry（那等於五元組信任）；不帶 `NLM_F_ACK` 的訊息成功時不回、失敗仍回錯誤，批次只讓最後一筆要 ACK；請求在 send 裡就處理完、dump 的後續部分在 recv 裡產生，所以 socket 設 non-blocking，收不到就是錯誤。
 - `wnc-gw trust add|del|list`：手動信任沒有 TTL，到 entry 消失、`del` 或之後 `run` 重啟時清掉為止；TTL 屬於 3d 的狀態機。`add`、`del` 記 log 事件。所有 ctnetlink 訊息（包括讀）都要 `CAP_NET_ADMIN`。

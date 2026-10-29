@@ -27,9 +27,9 @@ security_gateway/
 │   │   ├── doctor.rs       doctor：載入設定 → passes()（各項檢查、印報告，沒有 error 才回傳 true）→ 結束碼
 │   │   ├── logging.rs      LogFormat（text、json）、init()：tracing 的輸出設定（stderr、UTC 時間、text 在終端機才上色、寫入失敗不回報，否則 stderr 斷掉時會 panic），run 和 trust add/del 會呼叫
 │   │   ├── trust.rs        trust add/del/list：用 ctnetlink 直接設、清信任 bit，或列出有信任 bit 的連線；不需要 run，但沒有 run 時沒有 table 看這個 bit，Pi 上也沒有 entry；add、del 記 log 事件
-│   │   ├── run.rs          run：開 log → 載入設定 → instance::lock()（已有 wnc-gw 在跑就不啟動）→ doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM/SIGHUP → 清掉上一次留下的信任 bit（firewall::untrust_all，清不掉照常啟動、記 ERROR）→ 安裝 table（ids chain 是沒就緒狀態）→ 啟動 Suricata（SpawnedSuricata）→ Ready 時 start_inspection、Stopped 時 stop_inspection 再 allow_restart → 收到訊號：stop_inspection → 停止 Suricata → 移除 table；沒檢查的時段都記成 log 事件
+│   │   ├── run.rs          run：開 log → 載入設定 → instance::lock()（已有 wnc-gw 在跑就不啟動）→ doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM/SIGHUP → 清掉上一次留下的信任 bit（firewall::untrust_all，清不掉照常啟動、記 ERROR）→ 安裝 table（ids chain 是沒就緒狀態）→ 啟動 Suricata（SpawnedSuricata）→ Ready 時 start_inspection、Stopped 時 stop_inspection 再 allow_restart；每 10 秒用新的 ctnetlink socket 讀 conntrack 統計交給 ConntrackMonitor → 收到訊號：stop_inspection → 停止 Suricata → 移除 table；沒檢查的時段都記成 log 事件
 │   │   └── show/           show 的巢狀子命令（mod.rs 分派，interfaces.rs 列介面）
-│   ├── lib.rs              只宣告功能模組：access、config、datapath、firewall、forwarding、ids、instance、kernel、platform、ports
+│   ├── lib.rs              只宣告功能模組：access、config、datapath、firewall、forwarding、ids、instance、kernel、monitor、platform、ports
 │   ├── command.rs          執行外部程式的共用部分：逾時 5 秒、kill_on_drop、寫 stdin、收 stdout 和 stderr（output()、run()、CommandError）
 │   ├── access.rs           除了 root 之外誰能改某個路徑（檔案本身、每一層目錄、跟著 symlink 之後的實際位置）；/etc/passwd、/etc/group 查名稱
 │   ├── config.rs           setting.toml + CLI 覆寫 → Config（每個值帶 Source）；AbsolutePath（路徑設定必須是絕對路徑）
@@ -41,6 +41,8 @@ security_gateway/
 │   │   ├── spawned.rs      O14 的 (b)：wnc-gw 自己啟動 Suricata（NOTIFY_SOCKET 收 READY=1、輸出轉成 log、Stopped 之後等 allow_restart 再退避重啟、ready_timeout、stop_timeout（SIGTERM 後等多久才 SIGKILL，每 10 秒記一次 still stopping）、PR_SET_PDEATHSIG；--set 強制 nfq.fail-open、detect.delayed-detect=no、coredump.max-dump=0、stream.midstream=true、stream.midstream-policy=ignore、engine.init-failure-fatal=no（FORCED_SETTINGS），exception policy 跟著 when_unavailable（exception_policies()）；加 -v，Suricata 回報有規則載入失敗時記 WARN；工作目錄是 log 目錄）
 │   │   └── suricata.rs     Suricata（路徑由設定決定）：--build-info → SuricataInfo；--dump-config -c（可以帶 --set）→ SuricataConfig（規則路徑）；check_rule_files()；scan()：正在跑的 Suricata（RunningSuricata：Capture、Owner、是否同一個 network namespace；hidepid 時 others_hidden）
 │   ├── instance.rs         同一台機器只跑一個 wnc-gw：flock <runtime_dir>/wnc-gw.lock 並寫入 pid；InstanceError::AlreadyRunning 帶持有者的 pid
+│   ├── monitor/            執行中定期檢查、決定要不要記 log（mod.rs 只放 pub mod）
+│   │   └── conntrack.rs    ConntrackMonitor（INTERVAL 10 秒）：第一次讀到時記筆數和上限；到上限 90% 記 WARN、降到 80% 以下記 INFO（中間不重複記）；drop、insert_failed 有增加記 WARN「conntrack dropped packets」，early_drop 有增加記 WARN「evicted」（每個 CPU 的 u32 計數用 wrapping_sub，只算兩次都有的 CPU）；讀取失敗只記第一次，恢復時記一次。判斷（observe）是純函式，記 log 另外一層
 │   ├── ports.rs            Role、PortSelector（名稱或 MAC）、resolve()
 │   ├── forwarding/         轉送模式：Mode、trait Forwarding，bridge.rs（Bridged）、routed.rs（Routed）
 │   ├── platform/           因 OS 而異的部分：每種差異一個 trait，每個 OS 一個 struct
@@ -49,7 +51,7 @@ security_gateway/
 │   └── kernel/             跟 Linux kernel 打交道的薄模組
 │       ├── mod.rs
 │       ├── netif.rs        rtnetlink 列介面、sysfs 讀 driver、MacAddr、LinkStatus
-│       ├── conntrack.rs    手寫 ctnetlink（netlink-sys 的同步 Socket，non-blocking）：set_mark（只動 mask 內的位元）、set_marks（一次 100 筆，只有最後一筆要 ACK，回傳失敗的那幾筆）、get、list（kernel 依 mark 過濾）；FiveTuple（兩個位址要同一版本）、Protocol、TcpState、Connection；任一方向的五元組都找到同一筆
+│       ├── conntrack.rs    手寫 ctnetlink（netlink-sys 的同步 Socket，non-blocking）：set_mark（只動 mask 內的位元）、set_marks（一次 100 筆，只有最後一筆要 ACK，回傳失敗的那幾筆）、get、list（kernel 依 mark 過濾）、stats（IPCTNL_MSG_CT_GET_STATS 的筆數和上限，加上 GET_STATS_CPU 每個 CPU 的 drop、early_drop、insert_failed；筆電 kernel 沒有 /proc/net/stat/nf_conntrack，所以不讀 procfs）；Stats、CpuStats；FiveTuple（兩個位址要同一版本）、Protocol、TcpState、Connection；任一方向的五元組都找到同一筆
 │       ├── modules.rs      /proc/modules + modules.{builtin,dep} → ModuleState；RequiredModule
 │       ├── netdev.rs       netdev genetlink：每個介面的 native XDP 功能（XdpFeatures）
 │       ├── nfqueue.rs      QueueRange（queue 設定：0 或 "0-3"）
@@ -74,11 +76,12 @@ security_gateway/
 | `access.rs` | 檔案存取權的事實：哪些非 root 的帳號（擁有者、群組、所有人）能改某個路徑，包含每一層目錄和 symlink 的實際位置；sticky 目錄只算擁有者 | 判斷好壞（doctor 決定給 warning）；要檢查哪些檔案（doctor 決定） |
 | `kernel/` | 在 user space 跟 kernel 溝通：netlink、sysfs、procfs；之後的 nft、conntrack、bpf 載入、sysctl | 判斷好壞或嚴重程度；LAN/WAN 等 gateway 概念；讀設定檔 |
 | `ids/` | 跟 IDS engine 打交道：執行 Suricata、解析它的輸出，之後的 EVE、unix socket 也放這裡。整合方式是 A（2026-10-25 決定）：Suricata 是獨立的 process，不內嵌 libsuricata。`suricata.rs` 是探測（`--build-info`、`--dump-config`、規則檔，給 doctor 用）。`lifecycle.rs` 是 O14 的生命週期介面，對外只有「已就緒」「已停止」兩種事件；`spawned.rs` 是 wnc-gw 自己啟動 Suricata 的實作，之後 systemd 管理的實作也實作同一個 trait。實作自己記 log（啟動、就緒、結束、退避），用介面的一方（`run`、之後的 queue 管理）只依事件行動，不重複記錄 | 判斷好壞或嚴重程度（由 doctor 決定）；把封包導進 queue 的 nft 規則（`firewall.rs`） |
+| `monitor/` | `run` 執行中定期讀 kernel 的計數，判斷要不要記 log、用什麼等級（目前是 conntrack；之後 Suricata 跟不上被 fail-open 放行的封包數、3d 的狀態表大小也放這裡）。判斷寫成純函式（輸入上一次和這一次的數字，輸出發現的事），記 log 另外一層 | 讀取本身（`kernel/`）；doctor 的一次性檢查（表滿不滿是執行中的狀態，不是「能不能運作」） |
 | `platform/` | 真正因 OS 而異的東西：設定怎麼在開機後保留、服務管理（systemd 對 procd）、設定來源（檔案對 UCI）。每種差異定一個 trait，每個 OS 一個 struct 實作全部 trait；`Current` 在編譯時指向目前的 OS。目前有 `BootConfig`（kernel 模組和 sysctl 寫在哪裡才會在開機後保留，給 doctor 的修法提示用）、`Dirs`（wnc-gw 自己的執行期目錄和 log 目錄：使用者不能改，但不同 OS 不同，例如 OpenWrt 的 `/var` 在記憶體裡）和 `Debian`。每個 OS 的實作一律編譯（`pub mod`），只有 `Current` 依 feature 選，所以每次建置都會測到所有 OS。新增 OS：加 `<os>.rs`、`tests/unit/platform/<os>.rs`、一個 cargo feature，再讓 `Current` 依 feature 選 | netlink、nft、eBPF、`modprobe`、`sysctl -w`、`ip link` 這類 kernel 介面和立即生效的指令：在每個 OS 上都一樣，屬於 `kernel/` 或直接寫在呼叫端；不是由 OS 決定的選擇（fast path 後端依 probe、IDS engine 依 O6）也不放這裡 |
 
 規則：
 
-- **依賴方向單向**：`cli → config → forwarding / ports / firewall → kernel`（`config` 只用到 `forwarding::Mode` 和 `PortSelector` 這類值型別，以及 `kernel::nft`、`ids::suricata` 的預設路徑）。`platform`、`ids`、`access` 和 `kernel` 一樣在最底層，不依賴其他模組。下層不認識上層的概念。
+- **依賴方向單向**：`cli → config → forwarding / ports / firewall / monitor → kernel`（`config` 只用到 `forwarding::Mode` 和 `PortSelector` 這類值型別，以及 `kernel::nft`、`ids::suricata` 的預設路徑）。`platform`、`ids`、`access` 和 `kernel` 一樣在最底層，不依賴其他模組。下層不認識上層的概念。
 - **薄模組**：外部 crate 的型別（`rtnetlink`、`netlink-packet-route`，之後的 aya 等）不出現在模組對外的介面上，對外一律用自己的型別。升級或替換 crate 時只動那個模組。需要轉換時寫私有函式（例如 `from_link_message()`），不要對外實作 `From<外部型別>`。
 - **kernel 層只翻譯、不判斷**：例如 `Interface::link_status()` 把 admin 與 oper 狀態翻成 `AdminDown`、`NoCarrier` 等原因；「NoCarrier 算 warning」是 doctor 的判斷。
 - **lib 與 bin 分開**：功能模組只在 `lib.rs` 宣告，`main.rs` 只宣告 `mod cli;`，bin 用 `security_gateway::…` 引用 lib。同一個模組若被兩邊各宣告一次，會被編譯兩次，變成兩個不同的型別。

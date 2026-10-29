@@ -311,3 +311,60 @@ fn batch_seq_range_survives_wrapping() {
     let (failed, done) = parse_batch_replies(&[error(u32::MAX, -libc::ENOENT), error(1, 0)].concat(), u32::MAX - 1, 1).unwrap();
     assert!(matches!(failed.as_slice(), [(u32::MAX, ConntrackError::NotFound)]) && done);
 }
+
+fn stats_reply(kind: u16, seq: u32, cpu: u16, attrs: &[(u16, u32)]) -> Vec<u8> {
+    let mut payload = vec![AF_UNSPEC, 0];
+    payload.extend_from_slice(&cpu.to_be_bytes());
+    for (kind, value) in attrs {
+        payload.extend_from_slice(&8u16.to_ne_bytes());
+        payload.extend_from_slice(&kind.to_ne_bytes());
+        payload.extend_from_slice(&value.to_be_bytes());
+    }
+    raw(kind, seq, &payload)
+}
+
+#[test]
+fn stats_requests_are_bare_headers() {
+    let header = |kind: u16, flags: u16| {
+        let mut buf = raw(kind, 9, &[AF_UNSPEC, 0, 0, 0]);
+        buf[6..8].copy_from_slice(&flags.to_ne_bytes());
+        buf
+    };
+    assert_eq!(stats_request(9), header(0x105, NLM_F_REQUEST));
+    assert_eq!(cpu_stats_request(9), header(0x104, NLM_F_REQUEST | NLM_F_DUMP));
+}
+
+#[test]
+fn parses_global_stats() {
+    let reply = stats_reply(MSG_GET_STATS, 4, 0, &[(CTA_STATS_GLOBAL_ENTRIES, 812), (CTA_STATS_GLOBAL_MAX_ENTRIES, 65_536)]);
+    assert_eq!(parse_replies(&reply, 4).unwrap(), [Reply::Global { entries: 812, max: 65_536 }]);
+}
+
+#[test]
+fn global_stats_without_maximum_are_malformed() {
+    let reply = stats_reply(MSG_GET_STATS, 4, 0, &[(CTA_STATS_GLOBAL_ENTRIES, 812)]);
+    assert!(matches!(parse_replies(&reply, 4), Err(ConntrackError::Malformed(_))));
+}
+
+#[test]
+fn parses_per_cpu_stats_and_ignores_other_counters() {
+    let datagram = [
+        stats_reply(MSG_GET_STATS_CPU, 6, 0, &[(4, 99), (CTA_STATS_INSERT_FAILED, 3), (CTA_STATS_DROP, 2), (CTA_STATS_EARLY_DROP, 1)]),
+        stats_reply(MSG_GET_STATS_CPU, 6, 3, &[(CTA_STATS_DROP, 0xffff_fffe), (14, 7)]),
+        done(6),
+    ]
+    .concat();
+    assert_eq!(
+        parse_replies(&datagram, 6).unwrap(),
+        [
+            Reply::Cpu(CpuStats { cpu: 0, drop: 2, early_drop: 1, insert_failed: 3 }),
+            Reply::Cpu(CpuStats { cpu: 3, drop: 0xffff_fffe, ..CpuStats::default() }),
+            Reply::Done,
+        ]
+    );
+}
+
+#[test]
+fn rejects_truncated_cpu_stats() {
+    assert!(matches!(parse_replies(&raw(MSG_GET_STATS_CPU, 1, &[0, 0]), 1), Err(ConntrackError::Malformed(_))));
+}

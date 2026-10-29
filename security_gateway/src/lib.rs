@@ -7,5 +7,6 @@ pub mod forwarding;
 pub mod ids;
 pub mod instance;
 pub mod kernel;
+pub mod monitor;
 pub mod platform;
 pub mod ports;
