@@ -4,9 +4,9 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use nftables::batch::Batch;
-use nftables::expr::{BinaryOperation, CT, Expression, NamedExpression, Payload, PayloadField, SymHash};
+use nftables::expr::{BinaryOperation, CT, Expression, NamedExpression, Payload, PayloadField, SetItem, SymHash, Verdict};
 use nftables::schema::{self, FlushObject, NfCmd, NfListObject};
-use nftables::stmt::{self, Counter, JumpTarget, Operator, QueueFlag};
+use nftables::stmt::{self, Counter, JumpTarget, Log, Operator, QueueFlag, VerdictMap};
 use nftables::types::{NfChainPolicy, NfChainType, NfFamily, NfHook};
 use super::nfqueue::QueueRange;
 use crate::command::{self, CommandError};
@@ -52,6 +52,8 @@ pub enum Statement {
     Counter,
     Jump(String),
     Queue { queue: QueueRange, bypass: bool },
+    Log { group: u16 },
+    JumpBySymhash(Vec<String>),
     Drop,
     Accept,
     CtMarkHas(u32),
@@ -259,6 +261,25 @@ fn statement(statement: &Statement) -> stmt::Statement<'_> {
         Statement::Queue { queue, bypass } => stmt::Statement::Queue(stmt::Queue {
             num: queue_num(*queue),
             flags: bypass.then(|| HashSet::from([QueueFlag::Bypass])),
+        }),
+        Statement::Log { group } => stmt::Statement::Log(Some(Log::new(Some(u32::from(*group))))),
+        Statement::JumpBySymhash(chains) => stmt::Statement::VerdictMap(VerdictMap {
+            key: Expression::Named(NamedExpression::SymHash(SymHash {
+                hash_mod: chains.len() as u32,
+                offset: Some(0),
+            })),
+            data: Expression::Named(NamedExpression::Set(
+                chains
+                    .iter()
+                    .enumerate()
+                    .map(|(i, chain)| {
+                        SetItem::Mapping(
+                            Expression::Number(i as u32),
+                            Expression::Verdict(Verdict::Jump(JumpTarget { target: chain.as_str().into() })),
+                        )
+                    })
+                    .collect(),
+            )),
         }),
         Statement::Drop => stmt::Statement::Drop(None),
         Statement::Accept => stmt::Statement::Accept(None),

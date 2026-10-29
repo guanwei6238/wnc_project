@@ -1,8 +1,9 @@
 use std::fmt;
 use std::str::FromStr;
 
+use crate::ids::delivery::Delivery;
 use crate::kernel::conntrack::{Connection, Conntrack, ConntrackError, FiveTuple};
-use crate::kernel::nfqueue::QueueRange;
+use crate::kernel::nflog::GroupRange;
 use crate::kernel::nft::{BaseChain, Family, Hook, Nft, NftError, Policy, RegularChain, Statement, Table, TcpFlag};
 
 pub const FAMILY: Family = Family::Inet;
@@ -52,7 +53,7 @@ impl<'de> serde::Deserialize<'de> for WhenUnavailable {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Inspection {
-    pub queue: QueueRange,
+    pub delivery: Delivery,
     pub when_unavailable: WhenUnavailable,
 }
 
@@ -135,22 +136,55 @@ fn table(inspection: Inspection) -> Table {
                 vec![Statement::Jump(IDS_CHAIN.to_owned())],
             ],
         }],
-        regular_chains: vec![RegularChain {
+        regular_chains: [RegularChain {
             name: IDS_CHAIN.to_owned(),
             rules: unavailable_rules(inspection.when_unavailable),
-        }],
+        }]
+        .into_iter()
+        .chain(group_chains(inspection.delivery))
+        .collect(),
     }
 }
 
-// bypass：queue 沒有程式綁定時（Suricata 剛結束）直接放行，不加就丟掉
+fn group_chains(delivery: Delivery) -> Vec<RegularChain> {
+    match delivery {
+        Delivery::Copy(groups) if groups.first() != groups.last() => groups
+            .groups()
+            .map(|group| RegularChain {
+                name: group_chain(group),
+                rules: vec![copy_rule(group)],
+            })
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+fn group_chain(group: u16) -> String {
+    format!("{IDS_CHAIN}_g{group}")
+}
+
+fn copy_rule(group: u16) -> Vec<Statement> {
+    vec![Statement::Counter, Statement::Log { group }, Statement::Accept]
+}
+
 fn inspecting_rules(inspection: Inspection) -> Vec<Vec<Statement>> {
-    vec![vec![
-        Statement::Counter,
-        Statement::Queue {
-            queue: inspection.queue,
-            bypass: inspection.when_unavailable == WhenUnavailable::Accept,
-        },
-    ]]
+    match inspection.delivery {
+        Delivery::Queue(queue) => vec![vec![
+            Statement::Counter,
+            Statement::Queue {
+                queue,
+                bypass: inspection.when_unavailable == WhenUnavailable::Accept,
+            },
+        ]],
+        Delivery::Copy(groups) => vec![copy_rules(groups)],
+    }
+}
+
+fn copy_rules(groups: GroupRange) -> Vec<Statement> {
+    if groups.first() == groups.last() {
+        return copy_rule(groups.first());
+    }
+    vec![Statement::Counter, Statement::JumpBySymhash(groups.groups().map(group_chain).collect())]
 }
 
 fn unavailable_rules(when_unavailable: WhenUnavailable) -> Vec<Vec<Statement>> {

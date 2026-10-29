@@ -165,12 +165,14 @@ fn example_sets_nothing_by_default() {
     let config = parse(EXAMPLE).unwrap();
     assert_eq!(config.mode, None);
     assert_eq!(config.xdp, None);
+    assert_eq!(config.protection, None);
     assert_eq!(config.ports.lan, None);
     assert_eq!(config.ports.wan, None);
     assert_eq!(config.nftables.path, None);
     assert_eq!(config.suricata.path, None);
     assert_eq!(config.suricata.config, None);
     assert_eq!(config.suricata.queue, None);
+    assert_eq!(config.suricata.group, None);
     assert_eq!(config.suricata.ready_timeout, None);
     assert_eq!(config.suricata.stop_timeout, None);
     assert_eq!(config.suricata.when_unavailable, None);
@@ -195,12 +197,14 @@ fn example_values_are_valid() {
     let config = parse(&uncommented).unwrap();
     assert!(config.mode.is_some());
     assert!(config.xdp.is_some());
+    assert!(config.protection.is_some());
     assert!(config.ports.lan.is_some());
     assert!(config.ports.wan.is_some());
     assert!(config.nftables.path.is_some());
     assert!(config.suricata.path.is_some());
     assert!(config.suricata.config.is_some());
     assert!(config.suricata.queue.is_some());
+    assert!(config.suricata.group.is_some());
     assert!(config.suricata.ready_timeout.is_some());
     assert!(config.suricata.stop_timeout.is_some());
     assert!(config.suricata.when_unavailable.is_some());
@@ -347,4 +351,32 @@ fn parse_rejects_zero_stop_timeout() {
 fn parse_rejects_zero_ready_timeout() {
     assert!(parse("[suricata]\nready_timeout = 0\n").is_err());
     assert!(parse("[suricata]\nready_timeout = -1\n").is_err());
+}
+
+#[test]
+fn protection_defaults_to_ids_with_group_10() {
+    let file_config = parse("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n").unwrap();
+    let config = merge(None, file_config, Overrides::default()).unwrap();
+    assert_eq!(config.protection, Setting { value: Protection::Ids, source: Source::Default });
+    assert_eq!(config.suricata.group, Setting { value: GroupRange::default(), source: Source::Default });
+    assert_eq!(config.delivery(), Delivery::Copy("10".parse().unwrap()));
+}
+
+#[test]
+fn protection_and_group_from_file() {
+    let file_config =
+        parse("protection = \"ips\"\n[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n[suricata]\nqueue = \"0-1\"\ngroup = \"20-21\"\n")
+            .unwrap();
+    let config = merge(None, file_config, Overrides::default()).unwrap();
+    assert_eq!(config.protection, Setting { value: Protection::Ips, source: Source::File });
+    assert_eq!(config.suricata.group, Setting { value: "20-21".parse().unwrap(), source: Source::File });
+    assert_eq!(config.delivery(), Delivery::Queue("0-1".parse().unwrap()));
+}
+
+#[test]
+fn parse_rejects_unknown_protection_and_group_0() {
+    let err = parse("protection = \"inline\"\n").unwrap_err();
+    assert!(err.contains("invalid protection \"inline\" (expected \"ids\" or \"ips\")"), "{err}");
+    let err = parse("[suricata]\ngroup = 0\n").unwrap_err();
+    assert!(err.contains("invalid group \"0\""), "{err}");
 }

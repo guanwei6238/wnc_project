@@ -2,7 +2,14 @@ use super::*;
 
 fn inspection(queue: &str, when_unavailable: WhenUnavailable) -> Inspection {
     Inspection {
-        queue: queue.parse().unwrap(),
+        delivery: Delivery::Queue(queue.parse().unwrap()),
+        when_unavailable,
+    }
+}
+
+fn copying(groups: &str, when_unavailable: WhenUnavailable) -> Inspection {
+    Inspection {
+        delivery: Delivery::Copy(groups.parse().unwrap()),
         when_unavailable,
     }
 }
@@ -154,4 +161,51 @@ fn connections_that_already_ended_are_not_failures() {
     ];
     let u = untrusted(10, failures);
     assert_eq!((u.cleared, u.gone, u.failed.len()), (7, 2, 1));
+}
+
+#[test]
+fn one_group_logs_and_accepts_in_the_ids_chain() {
+    for when in BOTH {
+        let inspection = copying("10", when);
+        assert_eq!(
+            inspecting_rules(inspection),
+            [vec![Statement::Counter, Statement::Log { group: 10 }, Statement::Accept]]
+        );
+        assert_eq!(table(inspection).regular_chains.len(), 1);
+    }
+}
+
+#[test]
+fn several_groups_jump_by_symhash_to_one_chain_each() {
+    let inspection = copying("10-12", WhenUnavailable::Drop);
+    assert_eq!(
+        inspecting_rules(inspection),
+        [vec![
+            Statement::Counter,
+            Statement::JumpBySymhash(vec!["ids_g10".into(), "ids_g11".into(), "ids_g12".into()])
+        ]]
+    );
+    let table = table(inspection);
+    let names: Vec<_> = table.regular_chains.iter().map(|c| c.name.as_str()).collect();
+    assert_eq!(names, ["ids", "ids_g10", "ids_g11", "ids_g12"]);
+    assert_eq!(table.regular_chains[0].rules, unavailable_rules(WhenUnavailable::Drop));
+    assert_eq!(
+        table.regular_chains[2].rules,
+        [vec![Statement::Counter, Statement::Log { group: 11 }, Statement::Accept]]
+    );
+}
+
+#[test]
+fn every_inspecting_rule_ends_with_a_verdict() {
+    for inspection in [inspection("0", WhenUnavailable::Accept), copying("10", WhenUnavailable::Accept)] {
+        for rule in inspecting_rules(inspection) {
+            assert!(
+                matches!(rule.last(), Some(Statement::Queue { .. } | Statement::Accept | Statement::JumpBySymhash(_))),
+                "{rule:?}"
+            );
+        }
+    }
+    for chain in &table(copying("10-11", WhenUnavailable::Accept)).regular_chains[1..] {
+        assert_eq!(chain.rules[0].last(), Some(&Statement::Accept));
+    }
 }

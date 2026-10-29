@@ -2,6 +2,7 @@ pub mod conntrack;
 pub mod modules;
 pub mod netdev;
 pub mod netif;
+pub mod nflog;
 pub mod nfqueue;
 pub mod nft;
 pub mod procs;

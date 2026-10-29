@@ -1,0 +1,139 @@
+#!/bin/bash
+# wnc-gw 的 ids／ips 模式（Docker testbed，routed，wnc-gw run）
+#   ids1     預設（ids、group 10）：ids chain 是 log group 10 accept、Suricata 帶 --nflog；ICMP 和 TCP payload（1300 bytes 之後的標記）都 alert
+#   trust    ids：TCP 連線傳輸中 wnc-gw trust add，ids chain 的計數停住；trust del 後恢復
+#   kill     ids：持續 ping 時 SIGKILL Suricata；WHEN=accept 不掉，WHEN=drop 重啟期間掉；log 記沒檢查的時段
+#   groups   group = "10-11"：ids chain 是 symhash vmap、ids_g10／ids_g11 各一條 log；8 條連線 8 個 alert
+#   ips      protection = "ips"：ids chain 是 queue、Suricata 帶 -q（和原本一樣）
+#   startup  ids：ping -f 持續送時啟動、停止 wnc-gw 10 次，Suricata 不能當（log 規則要等 READY=1 才裝）
+# 用法: bash protection_docker.sh <ids1|trust|kill|groups|ips|startup>；最後 bash protection_docker.sh clean
+G="docker exec wnc-gw"; GI="docker exec -i wnc-gw"; C="docker exec wnc-cli"; S="docker exec wnc-srv"
+D=/tmp/wt; SLOG=/var/log/wnc-gw/suricata
+P=$((20000 + RANDOM % 20000))   # 來源 port 每次不同，避免撞到上一次的 TIME_WAIT
+
+setup() {  # $1 = 最上層多的設定行，$2 = [suricata] 多的設定行
+  $G mkdir -p $D
+  $GI sh -c "cat > $D/test.rules" <<'EOF'
+alert icmp any any -> any any (msg:"wt icmp"; sid:1000201; rev:1;)
+alert tcp any any -> any 5001 (msg:"wt payload"; flow:to_server,established; content:"WT-PAYLOAD-MARKER"; sid:1000202; rev:1;)
+EOF
+  $GI sh -c "cat > $D/s.yaml" <<EOF
+%YAML 1.1
+---
+include: /etc/suricata/suricata.yaml
+default-rule-path: $D
+rule-files:
+  - test.rules
+EOF
+  $GI sh -c "cat > $D/setting.toml" <<EOF
+mode = "routed"
+$1
+
+[ports]
+lan = "02:00:00:00:01:01"
+wan = "02:00:00:00:02:01"
+
+[suricata]
+config = "$D/s.yaml"
+$2
+EOF
+}
+
+start() {
+  $G sh -c "rm -f $SLOG/fast.log $SLOG/eve.json $D/run.log $D/exit"
+  docker exec -d wnc-gw sh -c "/opt/sg/wnc-gw -c $D/setting.toml run > /dev/null 2> $D/run.log & echo \$! > $D/pid; wait \$!; echo \$? > $D/exit"
+  local i
+  for i in $(seq 1 100); do
+    $G grep -q "traffic is inspected" $D/run.log 2>/dev/null && return 0
+    $G test -e $D/exit && break; sleep 0.2
+  done
+  echo "wnc-gw did not start"; $G tail -5 $D/run.log; return 1
+}
+
+stop() { $G sh -c "kill -INT \$(cat $D/pid)"; until $G test -e $D/exit; do sleep 0.2; done; echo "wnc-gw exit=$($G cat $D/exit)"; }
+
+ids_rules() { $G nft list table inet wnc_gw | sed -n '/chain ids/,$p' | grep -E "chain|log|queue|vmap|accept|drop" | sed 's/^\s*/   /'; }
+ids_count() { $G nft list chain inet wnc_gw ids | grep -o "packets [0-9]*" | head -1 | cut -d" " -f2; }
+alerts() { $G sh -c "cat $SLOG/fast.log 2>/dev/null | grep -c \":$1:\""; }
+suricata_pid() { $G grep -o "suricata started pid=[0-9]*" $D/run.log | tail -1 | cut -d= -f2; }
+
+server() { $S pkill -f wtsrv; docker exec -d wnc-srv python3 -c "
+import socket, threading  # wtsrv
+s = socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); s.bind(('', 5001)); s.listen(64)
+def drain(c):
+    while c.recv(65536): pass
+while True:
+    threading.Thread(target=drain, args=(s.accept()[0],), daemon=True).start()
+"; sleep 0.5; }
+
+client() {  # $1 = 來源 port，$2 = 秒數；第一段是 1300 bytes 再接標記，之後每 0.1 秒一行
+  $C python3 -c "
+import socket, time
+c = socket.create_connection(('10.0.2.2', 5001), source_address=('10.0.1.2', $1))
+c.sendall(b'x' * 1300 + b'WT-PAYLOAD-MARKER\n')
+end = time.time() + $2
+while time.time() < end:
+    c.sendall(b'line\n'); time.sleep(0.1)
+c.close()"
+}
+
+case "$1" in
+ids1)
+  setup "" ""; start || exit 1
+  echo "== ids chain after ready"; ids_rules
+  echo "== suricata: $($G sh -c "tr '\0' ' ' < /proc/$(suricata_pid)/cmdline" | grep -o -- "--nflog --include [^ ]*")"
+  $G cat /run/wnc-gw/suricata-nflog.yaml | sed 's/^/   /'
+  server; $C ping -c 3 -i 0.2 -W 1 10.0.2.2 | grep -o "[0-9]* received"; client $P 1; sleep 1
+  stop
+  echo "icmp alerts: $(alerts 1000201)  payload alerts: $(alerts 1000202)"
+  $G grep -E "inspected|without inspection|suricata started" $D/run.log | cut -c29-160
+  ;;
+trust)
+  setup "" ""; start || exit 1; server
+  client $P 6 &
+  sleep 2; $G /opt/sg/wnc-gw trust add tcp 10.0.1.2 $P 10.0.2.2 5001 2>&1 | grep -o "connection trusted"
+  a=$(ids_count); sleep 2; b=$(ids_count)
+  $G /opt/sg/wnc-gw trust del tcp 10.0.1.2 $P 10.0.2.2 5001 2>&1 | grep -o "no longer trusted"
+  sleep 1.5; c=$(ids_count); wait
+  echo "ids chain packets: after trust $a, 2 s later $b, 1.5 s after del $c"
+  stop
+  ;;
+kill)
+  setup "" "when_unavailable = \"${WHEN:-accept}\""; start || exit 1
+  $C ping -c 120 -i 0.05 -W 1 10.0.2.2 > /tmp/wt-ping.txt &
+  sleep 1.5; $G sh -c "kill -KILL $(suricata_pid)"; echo "suricata killed (when_unavailable=${WHEN:-accept})"; wait
+  grep -o "[0-9]* packets transmitted, [0-9]* received" /tmp/wt-ping.txt; rm -f /tmp/wt-ping.txt
+  $G grep -E "without inspection|is inspected|suricata (stopped|started)" $D/run.log | cut -c29-170
+  stop
+  ;;
+groups)
+  setup "" 'group = "10-11"'; start || exit 1
+  echo "== ids chains after ready"; ids_rules
+  server; for p in $(seq $P $((P + 7))); do client $p 1 & done; wait; sleep 1
+  echo "per group: $($G nft list table inet wnc_gw | awk '/chain ids_g/{c=$2} /log group/{for (i = 1; i <= NF; i++) if ($i == "packets") printf "%s=%s ", c, $(i + 1)}')"
+  stop
+  echo "payload alerts: $(alerts 1000202)/8"
+  ;;
+ips)
+  setup 'protection = "ips"' ""; start || exit 1
+  echo "== ids chain after ready"; ids_rules
+  echo "== suricata: $($G sh -c "tr '\0' ' ' < /proc/$(suricata_pid)/cmdline" | grep -o -- "-q [0-9:]*")"
+  $C ping -c 3 -i 0.2 -W 1 10.0.2.2 | grep -o "[0-9]* received"
+  stop
+  echo "icmp alerts: $(alerts 1000201)"
+  ;;
+startup)
+  setup "" ""
+  $C sh -c "timeout 300 ping -f -q 10.0.2.2 > /dev/null 2>&1 &"
+  for run in $(seq 1 10); do
+    start > /dev/null || { echo "run $run did not start"; break; }
+    sleep 1; stop > /dev/null
+    $G grep -o 'suricata stopped pid=[0-9]* exit="[^"]*"' $D/run.log | sed "s/^/run $run: /"
+  done
+  $C pkill -x ping
+  ;;
+clean)
+  $G rm -rf $D /run/wnc-gw/suricata-nflog.yaml; $S pkill -f wtsrv; true
+  ;;
+*) sed -n '2,10p' "$0"; exit 2 ;;
+esac

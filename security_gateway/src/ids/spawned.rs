@@ -13,11 +13,15 @@ use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 use tracing::{error, info, warn};
 
+use super::delivery::Delivery;
 use super::lifecycle::{Event, Exit, Lifecycle};
-use crate::kernel::nfqueue::QueueRange;
+use crate::kernel::nflog::GroupRange;
 
 const NOTIFY_SOCKET: &str = "notify.sock";
 const CONTROL_SOCKET: &str = "suricata.sock";
+const NFLOG_CONFIG: &str = "suricata-nflog.yaml";
+const NFLOG_BUFFER: u32 = 1 << 20;
+const NFLOG_MAX_BUFFER: u32 = 4 << 20;
 pub const FORCED_SETTINGS: [&str; 5] = [
     "detect.delayed-detect=no",
     "coredump.max-dump=0",
@@ -34,7 +38,7 @@ const STABLE_AFTER: Duration = Duration::from_secs(300);
 pub struct Options {
     pub path: PathBuf,
     pub config: PathBuf,
-    pub queue: QueueRange,
+    pub delivery: Delivery,
     pub ready_timeout: Duration,
     pub stop_timeout: Duration,
     pub fail_open: bool,
@@ -105,8 +109,8 @@ async fn supervise(
             Err(e) => error!(path = %options.path.display(), error = %e, "failed to start suricata"),
             Ok(mut child) => {
                 let pid = child.id().unwrap_or_default();
-                info!(pid, queue = %options.queue, "suricata started");
-                forward_output(&mut child, pid, options.queue);
+                info!(pid, delivery = %options.delivery, "suricata started");
+                forward_output(&mut child, pid, options.delivery);
                 let run = watch(&mut child, pid, started, &notify, &events, &mut stop, &options).await;
                 let exit = run.status.ok().and_then(Exit::from_status);
                 let exit_text = exit.map_or_else(|| "unknown".to_owned(), |exit| exit.to_string());
@@ -187,6 +191,9 @@ async fn watch(
 }
 
 fn spawn(options: &Options) -> io::Result<Child> {
+    if let Delivery::Copy(groups) = options.delivery {
+        std::fs::write(options.runtime_dir.join(NFLOG_CONFIG), nflog_config(groups))?;
+    }
     let parent = std::process::id();
     let mut command = Command::new(&options.path);
     command
@@ -216,35 +223,42 @@ pub fn control_socket(runtime_dir: &Path) -> PathBuf {
 }
 
 fn suricata_args(options: &Options) -> Vec<OsString> {
-    let queue = match (options.queue.first(), options.queue.last()) {
-        (first, last) if first == last => first.to_string(),
-        (first, last) => format!("{first}:{last}"),
-    };
     let mut control = OsString::from("unix-command.filename=");
     control.push(control_socket(&options.runtime_dir));
-    let fail_open = if options.fail_open { "nfq.fail-open=yes" } else { "nfq.fail-open=no" };
-    // -v：「N rules failed」和實際生效的 exception policy 是 Info，console 預設不印
-    let mut args: Vec<OsString> = vec![
-        "-v".into(),
-        "-c".into(),
-        options.config.clone().into(),
-        "-q".into(),
-        queue.into(),
-        "-l".into(),
-        options.log_dir.clone().into(),
-        "--set".into(),
-        control,
-        "--set".into(),
-        fail_open.into(),
-    ];
-    for setting in FORCED_SETTINGS.into_iter().chain(exception_policies(options.fail_open)) {
+    let mut args: Vec<OsString> = vec!["-v".into(), "-c".into(), options.config.clone().into()];
+    let (capture_setting, ignore_exceptions) = match options.delivery {
+        Delivery::Queue(queue) => {
+            let queue = match (queue.first(), queue.last()) {
+                (first, last) if first == last => first.to_string(),
+                (first, last) => format!("{first}:{last}"),
+            };
+            args.extend(["-q".into(), queue.into()]);
+            let fail_open = if options.fail_open { "nfq.fail-open=yes" } else { "nfq.fail-open=no" };
+            (fail_open, options.fail_open)
+        }
+        // 複本裡 GRO 合併過的封包 checksum 不完整；Suricata 在 NFLOG 模式本來就不能丟封包，exception policy 一律 ignore
+        Delivery::Copy(_) => {
+            args.extend(["--nflog".into(), "--include".into(), options.runtime_dir.join(NFLOG_CONFIG).into()]);
+            ("capture.checksum-validation=none", true)
+        }
+    };
+    args.extend(["-l".into(), options.log_dir.clone().into(), "--set".into(), control, "--set".into(), capture_setting.into()]);
+    for setting in FORCED_SETTINGS.into_iter().chain(exception_policies(ignore_exceptions)) {
         args.push("--set".into());
         args.push(setting.into());
     }
     args
 }
 
-// Suricata 檢查不了某條 flow（記憶體用完、解析錯誤）時跟著 when_unavailable；flow 和 defrag 不支援 drop-flow
+fn nflog_config(groups: GroupRange) -> String {
+    let mut yaml = String::from("%YAML 1.1\n---\nnflog:\n");
+    for group in groups.groups() {
+        yaml.push_str(&format!("  - group: {group}\n    buffer-size: {NFLOG_BUFFER}\n"));
+    }
+    yaml.push_str(&format!("  - group: default\n    qthreshold: 1\n    qtimeout: 100\n    max-size: {NFLOG_MAX_BUFFER}\n"));
+    yaml
+}
+
 fn exception_policies(fail_open: bool) -> [&'static str; 6] {
     if fail_open {
         [
@@ -302,16 +316,16 @@ fn is_ready(datagram: &[u8]) -> bool {
     std::str::from_utf8(datagram).is_ok_and(|text| text.lines().any(|line| line == "READY=1"))
 }
 
-fn forward_output(child: &mut Child, pid: u32, queue: QueueRange) {
+fn forward_output(child: &mut Child, pid: u32, delivery: Delivery) {
     if let Some(stdout) = child.stdout.take() {
-        tokio::spawn(forward(stdout, pid, queue));
+        tokio::spawn(forward(stdout, pid, delivery));
     }
     if let Some(stderr) = child.stderr.take() {
-        tokio::spawn(forward(stderr, pid, queue));
+        tokio::spawn(forward(stderr, pid, delivery));
     }
 }
 
-async fn forward(stream: impl AsyncRead + Unpin, pid: u32, queue: QueueRange) {
+async fn forward(stream: impl AsyncRead + Unpin, pid: u32, delivery: Delivery) {
     let mut lines = BufReader::new(stream).split(b'\n');
     while let Ok(Some(bytes)) = lines.next_segment().await {
         let line = String::from_utf8_lossy(&bytes);
@@ -322,7 +336,7 @@ async fn forward(stream: impl AsyncRead + Unpin, pid: u32, queue: QueueRange) {
             Level::Info => info!(source = "suricata", pid, "{text}"),
         }
         if text.contains("nfq_create_queue failed") {
-            error!(pid, queue = %queue, "suricata cannot bind the queue; another program is using it");
+            error!(pid, delivery = %delivery, "suricata cannot bind the queue; another program is using it");
         }
         if let Some(failed) = failed_rules(text).filter(|&n| n > 0) {
             warn!(pid, failed, "suricata could not load some rules; they are not used for detection");

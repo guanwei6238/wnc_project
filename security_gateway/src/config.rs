@@ -10,10 +10,13 @@ use serde::Deserialize;
 use crate::datapath::XdpPolicy;
 use crate::firewall::WhenUnavailable;
 use crate::forwarding::Mode;
+use crate::ids::delivery::Delivery;
 use crate::ids::{lifecycle, suricata};
+use crate::kernel::nflog::GroupRange;
 use crate::kernel::nfqueue::QueueRange;
 use crate::kernel::nft;
 use crate::ports::{PortSelector, PortSpec, Role};
+use crate::protection::Protection;
 
 pub const DEFAULT_PATH: &str = "/etc/wnc-gw/setting.toml";
 
@@ -89,6 +92,7 @@ pub struct Config {
     pub file: Option<PathBuf>,
     pub mode: Setting<Mode>,
     pub xdp: Setting<XdpPolicy>,
+    pub protection: Setting<Protection>,
     pub lan: Setting<PortSelector>,
     pub wan: Setting<PortSelector>,
     pub nftables: NftablesSettings,
@@ -105,6 +109,7 @@ pub struct SuricataSettings {
     pub path: Setting<AbsolutePath>,
     pub config: Setting<AbsolutePath>,
     pub queue: Setting<QueueRange>,
+    pub group: Setting<GroupRange>,
     pub ready_timeout: Setting<Duration>,
     pub stop_timeout: Setting<Duration>,
     pub when_unavailable: Setting<WhenUnavailable>,
@@ -113,6 +118,10 @@ pub struct SuricataSettings {
 impl Config {
     pub fn ports(&self) -> [(Role, &Setting<PortSelector>); 2] {
         [(Role::Lan, &self.lan), (Role::Wan, &self.wan)]
+    }
+
+    pub fn delivery(&self) -> Delivery {
+        self.protection.value.delivery(self.suricata.queue.value, self.suricata.group.value)
     }
 
     pub fn port_specs(&self) -> Vec<PortSpec> {
@@ -148,6 +157,7 @@ fn role_key(role: Role) -> &'static str {
 struct FileConfig {
     mode: Option<Mode>,
     xdp: Option<XdpPolicy>,
+    protection: Option<Protection>,
     #[serde(default)]
     ports: FilePorts,
     #[serde(default)]
@@ -175,6 +185,7 @@ struct FileSuricata {
     path: Option<AbsolutePath>,
     config: Option<AbsolutePath>,
     queue: Option<QueueRange>,
+    group: Option<GroupRange>,
     ready_timeout: Option<NonZeroU64>,
     stop_timeout: Option<NonZeroU64>,
     when_unavailable: Option<WhenUnavailable>,
@@ -224,6 +235,7 @@ fn merge(file: Option<PathBuf>, file_config: FileConfig, overrides: Overrides) -
     Ok(Config {
         mode: file_or_default(file_config.mode),
         xdp: file_or_default(file_config.xdp),
+        protection: file_or_default(file_config.protection),
         lan: pick(Role::Lan, overrides.lan, file_config.ports.lan)?,
         wan: pick(Role::Wan, overrides.wan, file_config.ports.wan)?,
         nftables: NftablesSettings {
@@ -233,6 +245,7 @@ fn merge(file: Option<PathBuf>, file_config: FileConfig, overrides: Overrides) -
             path: file_or_path(file_config.suricata.path, suricata::DEFAULT_PATH),
             config: file_or_path(file_config.suricata.config, suricata::DEFAULT_CONFIG),
             queue: file_or_default(file_config.suricata.queue),
+            group: file_or_default(file_config.suricata.group),
             ready_timeout: file_or_seconds(file_config.suricata.ready_timeout, lifecycle::DEFAULT_READY_TIMEOUT),
             stop_timeout: file_or_seconds(file_config.suricata.stop_timeout, lifecycle::DEFAULT_STOP_TIMEOUT),
             when_unavailable: file_or_default(file_config.suricata.when_unavailable),

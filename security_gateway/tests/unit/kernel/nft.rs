@@ -199,3 +199,18 @@ fn clearing_a_ct_mark_bit_on_a_bare_syn() {
         serde_json::json!({"mangle": {"key": {"ct": {"key": "mark"}}, "value": {"&": [{"ct": {"key": "mark"}}, 2147483647u32]}}})
     );
 }
+
+#[test]
+fn log_group_and_jump_by_symhash() {
+    assert_eq!(
+        serde_json::to_value(statement(&Statement::Log { group: 10 })).unwrap(),
+        serde_json::json!({"log": {"group": 10}})
+    );
+    assert_eq!(
+        serde_json::to_value(statement(&Statement::JumpBySymhash(vec!["ids_g10".into(), "ids_g11".into()]))).unwrap(),
+        serde_json::json!({"vmap": {
+            "key": {"symhash": {"mod": 2, "offset": 0}},
+            "data": {"set": [[0, {"jump": {"target": "ids_g10"}}], [1, {"jump": {"target": "ids_g11"}}]]},
+        }})
+    );
+}

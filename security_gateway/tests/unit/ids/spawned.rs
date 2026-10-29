@@ -2,12 +2,13 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
 use super::*;
+use crate::kernel::nfqueue::QueueRange;
 
 fn options(dir: &Path, path: PathBuf, ready_timeout: Duration) -> Options {
     Options {
         path,
         config: "/etc/suricata/suricata.yaml".into(),
-        queue: QueueRange::default(),
+        delivery: Delivery::Queue(QueueRange::default()),
         ready_timeout,
         stop_timeout: Duration::from_secs(5),
         fail_open: true,
@@ -58,7 +59,7 @@ fn passes_config_queue_and_own_directories() {
         ]
         .map(OsString::from)
     );
-    options.queue = "0-3".parse().unwrap();
+    options.delivery = Delivery::Queue("0-3".parse().unwrap());
     options.fail_open = false;
     let args = suricata_args(&options);
     assert_eq!((&args[4], &args[10]), (&OsString::from("0:3"), &OsString::from("nfq.fail-open=no")));
@@ -82,6 +83,45 @@ fn exception_policies_follow_when_unavailable() {
         assert!(args.iter().any(|a| a == expected), "missing {expected}: {args:?}");
     }
     assert!(!args.iter().any(|a| a.ends_with("=ignore") && a != "stream.midstream-policy=ignore"));
+}
+
+#[test]
+fn ids_copies_over_nflog_without_checksums_or_drops() {
+    let mut options = options(Path::new("/x"), "/usr/bin/suricata".into(), Duration::from_secs(1));
+    options.delivery = Delivery::Copy("10-11".parse().unwrap());
+    options.fail_open = false;
+    let args: Vec<String> = suricata_args(&options).into_iter().map(|a| a.into_string().unwrap()).collect();
+    assert_eq!(
+        args[..12],
+        [
+            "-v",
+            "-c",
+            "/etc/suricata/suricata.yaml",
+            "--nflog",
+            "--include",
+            "/x/run/suricata-nflog.yaml",
+            "-l",
+            "/x/log",
+            "--set",
+            "unix-command.filename=/x/run/suricata.sock",
+            "--set",
+            "capture.checksum-validation=none",
+        ]
+    );
+    assert!(!args.iter().any(|a| a == "-q" || a.starts_with("nfq.")), "{args:?}");
+    assert!(args.iter().any(|a| a == "flow.memcap-policy=ignore"), "{args:?}");
+    assert!(!args.iter().any(|a| a.contains("drop")), "{args:?}");
+}
+
+#[test]
+fn nflog_config_lists_each_group_then_the_defaults() {
+    assert_eq!(
+        nflog_config("10-11".parse().unwrap()),
+        "%YAML 1.1\n---\nnflog:\n\
+         \x20 - group: 10\n    buffer-size: 1048576\n\
+         \x20 - group: 11\n    buffer-size: 1048576\n\
+         \x20 - group: default\n    qthreshold: 1\n    qtimeout: 100\n    max-size: 4194304\n"
+    );
 }
 
 #[test]

@@ -23,6 +23,16 @@
 # Run `wnc-gw doctor` to see which hook each port would use.
 # xdp = "auto"
 
+# What the gateway does with Suricata's verdicts (default: "ids"):
+#   - "ids": detect only. The kernel forwards every packet at once and hands a
+#     copy to Suricata over NFLOG (see `group` below), so Suricata never slows
+#     down or blocks traffic. Suricata's checksum validation is turned off,
+#     because packets merged by GRO reach it with incomplete checksums.
+#   - "ips": every packet waits in an NFQUEUE (see `queue` below) for
+#     Suricata's verdict, so rules with action "drop" block traffic.
+# `wnc-gw doctor` explains what the chosen mode does not protect against.
+# protection = "ids"
+
 [ports]
 # Each port is selected by interface name or by MAC address:
 #   - name: as shown by `ip link` or `wnc-gw show interfaces`, e.g. "eth0"
@@ -53,10 +63,16 @@
 # Suricata's own config file (default: "/etc/suricata/suricata.yaml").
 # config = "/etc/suricata/suricata.yaml"
 
-# NFQUEUE number Suricata receives packets from (default: 0), or a range such
-# as "0-3" to spread the traffic over several queues. Suricata fails to start
-# if another program already uses one of them.
+# NFQUEUE number Suricata receives packets from when protection = "ips"
+# (default: 0), or a range such as "0-3" to spread the traffic over several
+# queues. Suricata fails to start if another program already uses one of them.
 # queue = 0
+
+# NFLOG group Suricata receives copies from when protection = "ids" (default:
+# 10), or a range such as "10-11" to spread the traffic over several groups.
+# Group 0 is not allowed. Suricata fails to start if another program already
+# uses one of them.
+# group = 10
 
 # Seconds to wait for Suricata to report that it is ready (default: 300).
 # Loading a large rule set can take minutes on slow hardware. If Suricata is
@@ -73,6 +89,8 @@
 # starts or restarts, and when it falls behind (default: "accept").
 #   "accept"  pass it without inspection (`wnc-gw doctor` warns about this)
 #   "drop"    drop it, so the network stops while Suricata is unavailable
+# With protection = "ids", traffic that arrives faster than Suricata can take
+# the copies is still forwarded either way; Suricata just misses those copies.
 # Either way, the log records when inspection stops and starts again.
 # when_unavailable = "accept"
 

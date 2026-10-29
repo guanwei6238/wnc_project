@@ -57,7 +57,7 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, log_format: L
     let table = format!("{FAMILY} {TABLE}");
     let nft = Nft::new(config.nftables.path.value.as_path());
     let inspection = Inspection {
-        queue: config.suricata.queue.value,
+        delivery: config.delivery(),
         when_unavailable: config.suricata.when_unavailable.value,
     };
     clear_earlier_trust();
@@ -158,16 +158,16 @@ async fn serve(config: &Config, nft: &Nft, inspection: Inspection, signals: &mut
                 }
                 Some(Event::Ready { .. }) => {
                     if let Err(e) = firewall::start_inspection(nft, inspection).await {
-                        error!(error = %e, "failed to queue forwarded traffic to suricata");
+                        error!(error = %e, "failed to send forwarded traffic to suricata");
                         break ExitCode::FAILURE;
                     }
                     let uninspected_ms = uninspected_since.take().map_or(0, |since| since.elapsed().as_millis() as u64);
-                    info!(queue = %inspection.queue, uninspected_ms, "forwarded traffic is inspected");
+                    info!(delivery = %inspection.delivery, uninspected_ms, "forwarded traffic is inspected");
                 }
                 Some(Event::Stopped { .. }) => {
                     if uninspected_since.is_none() {
                         if let Err(e) = firewall::stop_inspection(nft, inspection).await {
-                            error!(error = %e, "failed to stop queueing forwarded traffic; not restarting suricata");
+                            error!(error = %e, "failed to stop sending forwarded traffic to suricata; not restarting suricata");
                             break ExitCode::FAILURE;
                         }
                         uninspected_since = Some(Instant::now());
@@ -182,7 +182,7 @@ async fn serve(config: &Config, nft: &Nft, inspection: Inspection, signals: &mut
         match firewall::stop_inspection(nft, inspection).await {
             Ok(()) => log_uninspected(inspection.when_unavailable),
             Err(e) => {
-                error!(error = %e, "failed to stop queueing forwarded traffic");
+                error!(error = %e, "failed to stop sending forwarded traffic to suricata");
                 code = ExitCode::FAILURE;
             }
         }
@@ -203,7 +203,7 @@ fn suricata_options(config: &Config) -> Options {
     Options {
         path: config.suricata.path.value.as_path().to_path_buf(),
         config: config.suricata.config.value.as_path().to_path_buf(),
-        queue: config.suricata.queue.value,
+        delivery: config.delivery(),
         ready_timeout: config.suricata.ready_timeout.value,
         stop_timeout: config.suricata.stop_timeout.value,
         fail_open: config.suricata.when_unavailable.value == WhenUnavailable::Accept,

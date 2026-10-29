@@ -10,3 +10,4 @@ pub mod kernel;
 pub mod monitor;
 pub mod platform;
 pub mod ports;
+pub mod protection;

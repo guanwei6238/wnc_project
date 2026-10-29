@@ -29,21 +29,23 @@ security_gateway/
 │   │   ├── trust.rs        trust add/del/list：用 ctnetlink 直接設、清信任 bit，或列出有信任 bit 的連線；不需要 run，但沒有 run 時沒有 table 看這個 bit，Pi 上也沒有 entry；add、del 記 log 事件
 │   │   ├── run.rs          run：開 log → 載入設定 → instance::lock()（已有 wnc-gw 在跑就不啟動）→ doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM/SIGHUP → 清掉上一次留下的信任 bit（firewall::untrust_all，清不掉照常啟動、記 ERROR）→ 安裝 table（ids chain 是沒就緒狀態）→ 啟動 Suricata（SpawnedSuricata）→ Ready 時 start_inspection、Stopped 時 stop_inspection 再 allow_restart；每 10 秒用新的 ctnetlink socket 讀 conntrack 統計交給 ConntrackMonitor → 收到訊號：stop_inspection → 停止 Suricata → 移除 table；沒檢查的時段都記成 log 事件
 │   │   └── show/           show 的巢狀子命令（mod.rs 分派，interfaces.rs 列介面）
-│   ├── lib.rs              只宣告功能模組：access、config、datapath、firewall、forwarding、ids、instance、kernel、monitor、platform、ports
+│   ├── lib.rs              只宣告功能模組：access、config、datapath、firewall、forwarding、ids、instance、kernel、monitor、platform、ports、protection
 │   ├── command.rs          執行外部程式的共用部分：逾時 5 秒、kill_on_drop、寫 stdin、收 stdout 和 stderr（output()、run()、CommandError）
 │   ├── access.rs           除了 root 之外誰能改某個路徑（檔案本身、每一層目錄、跟著 symlink 之後的實際位置）；/etc/passwd、/etc/group 查名稱
-│   ├── config.rs           setting.toml + CLI 覆寫 → Config（每個值帶 Source）；AbsolutePath（路徑設定必須是絕對路徑）
+│   ├── config.rs           setting.toml + CLI 覆寫 → Config（每個值帶 Source）；AbsolutePath（路徑設定必須是絕對路徑）；delivery()：依 protection 選 queue 或 group
 │   ├── datapath/           核心 eBPF 程式在每個 port 掛在哪、怎麼掛（mod.rs 只放 pub mod / pub use）
 │   │   └── hook.rs         XdpPolicy（xdp 設定）、CoreHook、core_hook() 選擇規則
-│   ├── firewall.rs         我們自己的 nft table（inet wnc_gw）：forward chain 依序是 counter、純 SYN（有 SYN 沒 ACK）而且有 TRUSTED_MARK 時清掉 bit（同一組五元組的新連線可能被 conntrack 重新同步到舊 entry，一定在任何判決之前）、SYN/FIN/RST jump ids（L2）、ct mark 有 TRUSTED_MARK 就 accept、最後 jump ids；ids 依 Suricata 狀態換成 queue 或沒就緒的規則（WhenUnavailable、Inspection），每種狀態都要以判決結尾，否則控制封包會回到 forward 再進一次 ids；install()、start_inspection()、stop_inspection()、remove()；trust()、untrust()、trusted() 用 kernel::conntrack 改、列 TRUSTED_MARK；untrust_all() 清掉全部（Untrusted：cleared、gone、failed）
+│   ├── firewall.rs         我們自己的 nft table（inet wnc_gw）：forward chain 依序是 counter、純 SYN（有 SYN 沒 ACK）而且有 TRUSTED_MARK 時清掉 bit（同一組五元組的新連線可能被 conntrack 重新同步到舊 entry，一定在任何判決之前）、SYN/FIN/RST jump ids（L2）、ct mark 有 TRUSTED_MARK 就 accept、最後 jump ids；ids 依 Suricata 狀態換成送檢查或沒就緒的規則（WhenUnavailable、Inspection），每種狀態都要以判決結尾，否則控制封包會回到 forward 再進一次 ids；送檢查依 Delivery：Queue 是 `queue`（accept 時加 bypass），Copy 是 `log group N accept`，多個 group 時 ids 是 `symhash mod N vmap` 跳到 ids_g<group>（這些 chain 一直在，各一條 log … accept）；install()、start_inspection()、stop_inspection()、remove()；trust()、untrust()、trusted() 用 kernel::conntrack 改、列 TRUSTED_MARK；untrust_all() 清掉全部（Untrusted：cleared、gone、failed）
 │   ├── ids/                跟 IDS engine 打交道的薄模組（mod.rs 只放 pub mod）
+│   │   ├── delivery.rs     Delivery：Queue(QueueRange)（ips，等 Suricata 判決）或 Copy(GroupRange)（ids，NFLOG 送複本、kernel 照常轉送）；firewall 和 spawned 共用
 │   │   ├── lifecycle.rs    Suricata 生命週期的介面：trait Lifecycle（next_event、allow_restart、stop）、Event（Ready、Stopped）、Exit；DEFAULT_READY_TIMEOUT
-│   │   ├── spawned.rs      O14 的 (b)：wnc-gw 自己啟動 Suricata（NOTIFY_SOCKET 收 READY=1、輸出轉成 log、Stopped 之後等 allow_restart 再退避重啟、ready_timeout、stop_timeout（SIGTERM 後等多久才 SIGKILL，每 10 秒記一次 still stopping）、PR_SET_PDEATHSIG；--set 強制 nfq.fail-open、detect.delayed-detect=no、coredump.max-dump=0、stream.midstream=true、stream.midstream-policy=ignore、engine.init-failure-fatal=no（FORCED_SETTINGS），exception policy 跟著 when_unavailable（exception_policies()）；加 -v，Suricata 回報有規則載入失敗時記 WARN；工作目錄是 log 目錄）
+│   │   ├── spawned.rs      O14 的 (b)：wnc-gw 自己啟動 Suricata（NOTIFY_SOCKET 收 READY=1、輸出轉成 log、Stopped 之後等 allow_restart 再退避重啟、ready_timeout、stop_timeout（SIGTERM 後等多久才 SIGKILL，每 10 秒記一次 still stopping）、PR_SET_PDEATHSIG；--set 強制 detect.delayed-detect=no、coredump.max-dump=0、stream.midstream=true、stream.midstream-policy=ignore、engine.init-failure-fatal=no（FORCED_SETTINGS）；Delivery::Queue 用 -q、強制 nfq.fail-open，exception policy 跟著 when_unavailable（exception_policies()）；Delivery::Copy 用 --nflog，每次啟動前在 runtime_dir 寫 suricata-nflog.yaml（每個 group 1 MB buffer、上限 4 MB）再 --include（會整個取代使用者 yaml 的 nflog 清單），強制 capture.checksum-validation=none（GRO 合併的封包 checksum 不完整），exception policy 一律 ignore；加 -v，Suricata 回報有規則載入失敗時記 WARN；工作目錄是 log 目錄）
 │   │   └── suricata.rs     Suricata（路徑由設定決定）：--build-info → SuricataInfo；--dump-config -c（可以帶 --set）→ SuricataConfig（規則路徑）；check_rule_files()；scan()：正在跑的 Suricata（RunningSuricata：Capture、Owner、是否同一個 network namespace；hidepid 時 others_hidden）
 │   ├── instance.rs         同一台機器只跑一個 wnc-gw：flock <runtime_dir>/wnc-gw.lock 並寫入 pid；InstanceError::AlreadyRunning 帶持有者的 pid
 │   ├── monitor/            執行中定期檢查、決定要不要記 log（mod.rs 只放 pub mod）
 │   │   └── conntrack.rs    ConntrackMonitor（INTERVAL 10 秒）：第一次讀到時記筆數和上限；到上限 90% 記 WARN、降到 80% 以下記 INFO（中間不重複記）；drop、insert_failed 有增加記 WARN「conntrack dropped packets」，early_drop 有增加記 WARN「evicted」（每個 CPU 的 u32 計數用 wrapping_sub，只算兩次都有的 CPU）；讀取失敗只記第一次，恢復時記一次。判斷（observe）是純函式，記 log 另外一層
 │   ├── ports.rs            Role、PortSelector（名稱或 MAC）、resolve()
+│   ├── protection.rs       Protection（ids 預設、ips）：delivery() 決定封包怎麼交給 Suricata；之後的黑名單、雲端判定要不要真的擋也看它
 │   ├── forwarding/         轉送模式：Mode、trait Forwarding，bridge.rs（Bridged）、routed.rs（Routed）
 │   ├── platform/           因 OS 而異的部分：每種差異一個 trait，每個 OS 一個 struct
 │   │   ├── mod.rs          trait BootConfig、Dirs、Services（BootState）；pub use debian::Debian as Current（編譯時選 OS）
@@ -54,6 +56,7 @@ security_gateway/
 │       ├── conntrack.rs    手寫 ctnetlink（netlink-sys 的同步 Socket，non-blocking）：set_mark（只動 mask 內的位元）、set_marks（一次 100 筆，只有最後一筆要 ACK，回傳失敗的那幾筆）、get、list（kernel 依 mark 過濾）、stats（IPCTNL_MSG_CT_GET_STATS 的筆數和上限，加上 GET_STATS_CPU 每個 CPU 的 drop、early_drop、insert_failed；筆電 kernel 沒有 /proc/net/stat/nf_conntrack，所以不讀 procfs）；Stats、CpuStats；FiveTuple（兩個位址要同一版本）、Protocol、TcpState、Connection；任一方向的五元組都找到同一筆
 │       ├── modules.rs      /proc/modules + modules.{builtin,dep} → ModuleState；RequiredModule
 │       ├── netdev.rs       netdev genetlink：每個介面的 native XDP 功能（XdpFeatures）
+│       ├── nflog.rs        GroupRange（[suricata] group：NFLOG 的 group 編號，不能是 0，預設 10）
 │       ├── nfqueue.rs      QueueRange（queue 設定：0 或 "0-3"）
 │       ├── procs.rs        /proc 裡 comm 符合的程序：State、PPid、cmdline、VmRSS、cgroup、network namespace（Process）；讀不到 status 就當成已經結束；others_hidden()：hidepid 而且不是 root
 │       ├── nft.rs          Nft（路徑由設定決定）：自己的 Table/BaseChain/RegularChain/Statement（Counter、Jump、Queue、Drop、Accept、CtMarkHas、CtMarkClear、TcpFlagsAny、TcpFlagsEq）型別，queue 範圍產生 symhash → nftables crate 的 JSON → nft -j -f -（有逾時）；replace_table、replace_rules（同一個 transaction 裡 flush chain 再加規則）、delete_table；nft -V → NftInfo
