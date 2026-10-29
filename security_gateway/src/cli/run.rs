@@ -1,3 +1,4 @@
+use std::io;
 use std::path::Path;
 use std::process::ExitCode;
 use std::time::Instant;
@@ -42,9 +43,9 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: RunArg
     }
     println!();
 
-    let (mut interrupt, mut terminate) = match (signal(SignalKind::interrupt()), signal(SignalKind::terminate())) {
-        (Ok(interrupt), Ok(terminate)) => (interrupt, terminate),
-        (Err(e), _) | (_, Err(e)) => {
+    let mut signals = match StopSignals::listen() {
+        Ok(signals) => signals,
+        Err(e) => {
             error!(error = %e, "failed to listen for signals");
             return ExitCode::FAILURE;
         }
@@ -61,10 +62,10 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: RunArg
         error!(table = table.as_str(), error = %e, "failed to install table");
         return ExitCode::FAILURE;
     }
-    info!(table = table.as_str(), "table installed; waiting for SIGINT or SIGTERM");
+    info!(table = table.as_str(), "table installed; waiting for SIGINT, SIGTERM or SIGHUP");
     log_uninspected(inspection.when_unavailable);
 
-    let mut code = serve(&config, &nft, inspection, &mut interrupt, &mut terminate).await;
+    let mut code = serve(&config, &nft, inspection, &mut signals).await;
 
     match firewall::remove(&nft).await {
         Ok(()) => warn!(table = table.as_str(), "table removed; forwarded traffic passes without inspection"),
@@ -104,13 +105,31 @@ fn clear_earlier_trust() {
     }
 }
 
-async fn serve(
-    config: &Config,
-    nft: &Nft,
-    inspection: Inspection,
-    interrupt: &mut Signal,
-    terminate: &mut Signal,
-) -> ExitCode {
+struct StopSignals {
+    interrupt: Signal,
+    terminate: Signal,
+    hangup: Signal,
+}
+
+impl StopSignals {
+    fn listen() -> io::Result<Self> {
+        Ok(Self {
+            interrupt: signal(SignalKind::interrupt())?,
+            terminate: signal(SignalKind::terminate())?,
+            hangup: signal(SignalKind::hangup())?,
+        })
+    }
+
+    async fn recv(&mut self) -> &'static str {
+        tokio::select! {
+            _ = self.interrupt.recv() => "SIGINT",
+            _ = self.terminate.recv() => "SIGTERM",
+            _ = self.hangup.recv() => "SIGHUP",
+        }
+    }
+}
+
+async fn serve(config: &Config, nft: &Nft, inspection: Inspection, signals: &mut StopSignals) -> ExitCode {
     let mut suricata = match SpawnedSuricata::start(suricata_options(config)) {
         Ok(suricata) => suricata,
         Err(e) => {
@@ -121,12 +140,8 @@ async fn serve(
     let mut uninspected_since = Some(Instant::now());
     let mut code = loop {
         tokio::select! {
-            _ = interrupt.recv() => {
-                info!(signal = "SIGINT", "stopping");
-                break ExitCode::SUCCESS;
-            }
-            _ = terminate.recv() => {
-                info!(signal = "SIGTERM", "stopping");
+            signal = signals.recv() => {
+                info!(signal, "stopping");
                 break ExitCode::SUCCESS;
             }
             event = suricata.next_event() => match event {

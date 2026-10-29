@@ -216,7 +216,10 @@
   - log：進入沒檢查的狀態時 WARN「forwarded traffic passes without inspection」或「…is dropped without inspection」（帶 `when_unavailable`）；恢復時 INFO「forwarded traffic is inspected」，帶 `uninspected_ms`（包含啟動時等 Suricata 就緒的時間）。移除 table 時 WARN「table removed; forwarded traffic passes without inspection」。兩種模式都用 WARN：丟掉是設定好的行為，失敗本身（Suricata 結束）另外有記。
   - 還沒做到：
     - Suricata 跟不上、kernel 因 fail-open 直接放行的封包，kernel 不計數（`/proc/net/netfilter/nfnetlink_queue` 的 `queue_dropped` 只算丟掉的），要比對 `ids` 的 counter 和 Suricata 自己的統計，留給之後的監控步驟，和「記下沒檢查的封包數」一起做。
-    - `drop` 在 wnc-gw 結束、table 被移除後就不成立。**[已決定] 2026-10-28：停止時照現在的做法移除 table**，wnc-gw 沒在跑時流量就是直接通過（開發者：「沒 run 當然就是通過」）。SIGHUP 怎麼處理留到最後再決定。
+    - `drop` 在 wnc-gw 結束、table 被移除後就不成立。**[已決定] 2026-10-28：停止時照現在的做法移除 table**，wnc-gw 沒在跑時流量就是直接通過（開發者：「沒 run 當然就是通過」）。
+    - **[已決定] 2026-10-29：SIGHUP 和 SIGINT、SIGTERM 一樣正常停止**（收尾、移除 table）。原本沒處理，收到就直接結束：table 留著、Suricata 跟著結束，`drop` 模式下所有轉送流量被丟到 wnc-gw 重啟為止，而且這段時間沒有 log。SIGHUP 不再用來重新載入設定，之後要重新載入另外加指令。
+      - 2026-10-29 Docker 驗證：`kill -HUP`、用 `script` 開虛擬終端機跑 `run` 再強制關掉終端機（kernel 送 SIGHUP，和 SSH 斷線相同）、輸出再經過管線（`| cat`）三種情況都正常收尾、結束碼 0、table 移除。
+      - 測的時候發現：終端機斷掉後寫 log 失敗，`tracing-subscriber` 預設會用 `eprintln!` 回報，`eprintln!` 在 stderr 斷掉時 panic（結束碼 101），收尾沒做完、table 留著，Suricata 被 `kill_on_drop` 的 SIGKILL 殺掉。`cli/logging.rs` 改成 `log_internal_errors(false)`，寫不出去的 log 就丟掉。正式部署時 stderr 是 journald，不會遇到。
     - Suricata 當掉時還在 queue 裡等判決的封包會被 kernel 丟掉，`bypass` 只管之後進來的封包（Docker 實測：每秒 20 個 ping 掉 2 個）。
 - 2b-3 之後在 Pi 上發現、2026-10-26 決定補上的三項：
   - **強制 `--set detect.delayed-detect=no`**：設成 yes 時 Suricata 先送 `READY=1` 才載入規則（Docker 實測），wnc-gw 會在沒有規則的期間記成「已檢查」。

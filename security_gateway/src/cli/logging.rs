@@ -5,5 +5,6 @@ pub fn init() {
         .with_writer(io::stderr)
         .with_ansi(io::stderr().is_terminal())
         .with_target(false)
+        .log_internal_errors(false)
         .init();
 }
