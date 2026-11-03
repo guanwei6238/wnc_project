@@ -1,0 +1,180 @@
+1	none		無關
+2	none		無關
+3	related	C3	在 ARM Cortex-A15 上對 Suricata 做 CPU 核心與頻率調度並顧及同機其他應用，但目標是省電、沒有 ML 推論也沒量記憶體／快取干擾。
+4	related	C3	Pi 4 上同時有 Snort 簽章偵測與 FL／BERT-mini 推論，但只量各自延遲，沒有量同機互相干擾，也沒有依負載調整 ML 工作量。
+5	none		無關
+6	none		無關
+7	none		無關
+8	none		無關
+9	none		無關
+10	none		無關
+11	related	C2	比較靜態封包抽樣對攻擊偵測的影響（弱相關）：是離線統計比較，不是 inline、不是每段對話開頭，也沒處理有狀態 IDS。
+12	none		無關
+13	none		無關
+14	none		無關
+15	none		無關
+16	none		無關
+17	none		無關
+18	none		無關
+19	none		無關
+20	none		無關
+21	none		無關
+22	none		無關
+23	none		無關
+24	none		Pi 上跑 Snort 的 SOHO 防火牆示範，僅平台相同，無 C1–C4 機制。
+25	none		無關
+26	none		無關
+27	none		無關
+28	none		無關
+29	none		無關
+30	none		無關
+31	none		無關
+32	related	C4	用 XDP 在 kernel 做流特徵萃取並以 XDP_DROP 擋，減少 user space 成本（弱相關）：沒有讓已信任 flow 跳過 IDS、不是 ARM、沒有放行後稽核。
+33	none		無關
+34	none		無關
+35	none		無關
+36	none		在 Pi／Wi-Fi Pineapple 上量 Snort 類 IDS 吞吐，僅平台與效能基線相關，無 fast path、部分檢查或同機 ML。
+37	none		無關
+38	none		無關
+39	none		無關
+40	none		無關
+41	none		無關
+42	none		無關
+43	none		無關
+44	none		無關
+45	none		無關
+46	none		無關
+47	none		無關
+48	none		無關
+49	none		無關
+50	none		無關
+51	none		無關
+52	none		Pi 虛擬環境中 Zeek 的偵測效果評估，僅平台相關，無 C1–C4 機制。
+53	none		無關
+54	none		無關
+55	none		無關
+56	none		無關
+57	none		無關
+58	none		無關
+59	none		無關
+60	none		無關
+61	none		無關
+62	none		無關
+63	none		無關
+64	none		無關
+65	related	C2	IDS 前端的自適應封包抽樣以減輕過載（依記憶體瓶頸調整抽樣率），但是整體封包抽樣而非每段對話開頭，沒有處理有狀態 IDS 的中途接手，也沒有放行後撤銷。
+66	none		無關
+67	none		Pi 4 上的 Snort 邊緣路由器與規則自動產生，僅平台相同，無 C1–C4 機制。
+68	none		無關
+69	none		無關
+70	none		無關
+71	none		無關
+72	related	C3	依威脅程度動態調整 ML 模型精度（4–32 bit）以省能源（弱相關）：只有 ML、沒有規則式 IDS 同機，也沒量干擾。
+73	none		無關
+74	none		無關
+75	none		無關
+76	related	C4	XDP fast path 處理簡單工作、user space slow path 處理複雜工作（含 DPI VNF），但是通用 NFV 架構，沒有信任／放行 flow 的機制、不是 ARM、沒有放行後稽核。
+77	none		無關
+78	none		無關
+79	none		無關
+80	none		無關
+81	none		無關
+82	related	C2	依輸入佇列佔用率自適應抽樣讓 DPI 不丟包，屬於 IDS 前端抽樣，但只有解析模型與模擬，非 inline 實機、非每段對話開頭、不處理有狀態 IDS。
+83	none		無關
+84	none		無關
+85	none		無關
+86	none		無關
+87	none		無關
+88	none		無關
+89	none		無關
+90	none		無關
+91	none		無關
+92	none		無關
+93	none		無關
+94	related	C3	用 RL 依流量動態選 ML 模型並分配運算容量（IDS as a Service，弱相關）：在雲端服務層，沒有同機規則 IDS 與 ML 的干擾量測。
+95	none		無關
+96	related	C2	IDS 前端自適應封包抽樣以減少需分析的資料量，但只針對 DoS 的流量統計，不是每段對話開頭，也沒處理有狀態 IDS 與放行後稽核。
+97	none		無關
+98	none		無關
+99	none		無關
+100	none		無關
+101	none		無關
+102	none		無關
+103	none		無關
+104	none		無關
+105	none		無關
+106	related	C3	同一 IDS 內有 Snort 與額外 ML 分類模組（e-bike 嵌入式場景），但摘要只有偵測效果，沒有量同機資源干擾或調整 ML 工作量。
+107	related	C2,C4	eBPF kernel-to-user 管線加封包抽樣政策並量吞吐，與部分檢查和 kernel 前處理相近，但抽樣對象是 ML 異常偵測封包、非有狀態 IDS、無放行後稽核、非 ARM。
+108	none		無關
+109	none		無關
+110	none		無關
+111	none		無關
+112	none		無關
+113	none		無關
+114	none		無關
+115	none		無關
+116	related	C2,C4	eBPF 在 kernel 做簡單工作、user space 做 DPI（Dynamic Sniffing），可能涉及只對部分封包送 user space，但摘要看不出是否為 inline 部分檢查或信任 flow 跳過；需讀全文。
+117	none		無關
+118	none		無關
+119	none		無關
+120	none		無關
+121	none		無關
+122	none		無關
+123	none		無關
+124	none		無關
+125	none		無關
+126	none		無關
+127	none		無關
+128	none		無關
+129	none		無關
+130	none		無關
+131	none		無關
+132	none		無關
+133	none		無關
+134	none		無關
+135	none		無關
+136	related	C3	Pi 與 ESP32 實機上結合 FL 異常偵測與 Snort 簽章偵測，但只報準確率與區塊鏈延遲，沒有量同機干擾或依負載調整。
+137	none		無關
+138	none		無關
+139	none		無關
+140	related	C4	eVNF 的 XDP fast path 加 user space slow path（含 eDPI），但是通用 NFV 架構，沒有信任／放行 flow 與放行後稽核，也不是 ARM。
+141	none		無關
+142	none		無關
+143	none		Snort 在 ARM 單板機上以 GPU 加速樣式比對，僅平台與成本基線相關，無 fast path、部分檢查或同機 ML。
+144	none		無關
+145	none		無關
+146	none		無關
+147	none		無關
+148	none		無關
+149	none		無關
+150	none		無關
+151	none		無關
+152	none		無關
+153	none		無關
+154	none		無關
+155	none		無關
+156	none		無關
+157	none		無關
+158	related	C3	邊緣 IDS 架構與分層資源分配（SDMMF／MDMMF，弱相關）：偏理論公平分配，摘要沒有規則 IDS 與 ML 同機干擾量測；需讀全文確認。
+159	none		無關
+160	related	C2	SDN 上以 RL 調整流量抽樣率以平衡偵測準確度與開銷（弱相關）：是交換器抽樣給控制器，非 inline 有狀態 IDS 的部分檢查，也無放行後稽核。
+161	none		無關
+162	none		無關
+163	none		無關
+164	none		無關
+165	none		無關
+166	none		無關
+167	none		無關
+168	none		無關
+169	none		無關
+170	none		無關
+171	none		無關
+172	none		無關
+173	none		無關
+174	none		無關
+175	none		無關
+176	none		無關
+177	related	C2	用 DRL 決定抽樣點與抽樣率並在多個 IDS／DPI 分析器間分流，以偵測惡意流並平衡負載，但在 SDN 層、非每段對話開頭、非有狀態 IDS 處理、無放行後撤銷。
+178	none		無關
+179	none		無關
+180	related	C3	量測同機 VNF 間的效能干擾（記憶體頻寬等硬體資源競爭，弱相關）：x86 伺服器上的 VNF，不是 IDS 加 ML 推論，也沒依負載調整工作量。

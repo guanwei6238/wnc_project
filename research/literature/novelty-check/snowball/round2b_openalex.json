@@ -1,0 +1,46 @@
+[
+ {
+  "q": "In-Network Traffic Analysis for IoT Gateways",
+  "found": true,
+  "title": "Toward Continuous Threat Defense: in-Network Traffic Analysis for IoT Gateways",
+  "year": 2023,
+  "venue": "IEEE Internet of Things Journal",
+  "doi": "https://doi.org/10.1109/jiot.2023.3323771",
+  "cited_by": 27,
+  "oa_url": "https://orbit.dtu.dk/en/publications/a21d68b0-0b6d-428e-8fff-7c93f76efd57",
+  "abstract": "The widespread use of IoT devices has unveiled overlooked security risks. With the advent of ultrareliable low-latency communications (URLLCs) in 5G, fast threat defense is critical to minimize damage from attacks. IoT gateways, equipped with wireless/wired interfaces, serve as vital frontline defense against emerging threats on IoT edge. However, current gateways struggle with dynamic IoT traffic and have limited defense capabilities against attacks with changing patterns. In-network computing offers fast machine learning (ML)-based attack detection and mitigation within network devices, but leveraging its capability in IoT gateways requires new continuous learning capability and runtime model updates. In this work, we present P4Pir, a novel in-network traffic analysis framework for IoT gateways. P4Pir incorporates programmable data plane into IoT gateway, pioneering the utilization of in-network ML inference for fast mitigation. It facilitates continuous and seamless updates of in-network inference models within gateways. P4Pir is prototyped in P4 language on raspberry pi and Dell Edge Gateway. With ML inference offloaded to gateway’s data plane, P4Pir’s in-network approach achieves swift attack mitigation and lightweight deployment compared to prior ML-based solutions. Evaluation results using three public data sets show that P4Pir accurately detects and fastly mitigates emerging attacks (>30% accuracy improvement and submillisecond mitigation time). The proposed model updates method allows seamless runtime updates without disrupting network traffic."
+ },
+ {
+  "q": "Enhancing trust management for wireless intrusion detection via traffic sampling",
+  "found": true,
+  "title": "Enhancing Trust Management for Wireless Intrusion Detection via Traffic Sampling in the Era of Big Data",
+  "year": 2017,
+  "venue": "IEEE Access",
+  "doi": "https://doi.org/10.1109/access.2017.2772294",
+  "cited_by": 89,
+  "oa_url": "https://doi.org/10.1109/access.2017.2772294",
+  "abstract": "Internet of Things (IoT) has been widely used in our daily life, which enables various objects to be interconnected for data exchange, including physical devices, vehicles, and other items embedded with network connectivity. Wireless sensor network (WSN) is a vital application of IoT, providing many kinds of information among sensors, whereas such network is vulnerable to a wide range of attacks, especially insider attacks, due to its natural environment and inherent unreliable transmission. To safeguard its security, intrusion detection systems (IDSs) are widely adopted in a WSN to defend against insider attacks through implementing proper trust-based mechanisms. However, in the era of big data, sensors may generate excessive information and data, which could degrade the effectiveness of trust computation. In this paper, we focus on this challenge and propose a way of combining Bayesian-based trust management with traffic sampling for wireless intrusion detection under a hierarchical structure. In the evaluation, we investigate the performance of our approach in both a simulated and a real network environment. Experimental results demonstrate that packet-based trust management would become ineffective in a heavy traffic environment, and that our approach can help lighten the burden of IDSs in handling traffic, while maintaining the detection of insider attacks."
+ },
+ {
+  "q": "Adaptive blacklist-based packet filter with a statistic-based approach in network intrusion detection",
+  "found": true,
+  "title": "Adaptive blacklist-based packet filter with a statistic-based approach in network intrusion detection",
+  "year": 2013,
+  "venue": "Journal of Network and Computer Applications",
+  "doi": "https://doi.org/10.1016/j.jnca.2013.05.009",
+  "cited_by": 41,
+  "oa_url": null,
+  "abstract": ""
+ },
+ {
+  "q": "Analysing performance issues of open-source intrusion detection systems",
+  "found": true,
+  "title": "Analysing performance issues of open-source intrusion detection systems in high-speed networks",
+  "year": 2020,
+  "venue": "Journal of Information Security and Applications",
+  "doi": "https://doi.org/10.1016/j.jisa.2019.102426",
+  "cited_by": 36,
+  "oa_url": null,
+  "abstract": ""
+ }
+]

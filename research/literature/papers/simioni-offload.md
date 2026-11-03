@@ -5,7 +5,10 @@
 ## A. 書目與取得狀況
 - 標題：An Energy-efficient Intrusion Detection Offloading Based on DNN for Edge Computing
 - 作者：João A. Simioni, Eduardo K. Viegas, Altair O. Santin（PUCPR, PPGIa, 巴西）, Everton de Matos（TII, 阿布達比）[原文 p.1]
-- 年份／出處：稿件版，頁首為 "IEEE Internet of Things Journal, VOL. X, NO. X, 2024"，稿件註記 "Manuscript received X XXXXXX 2025"，PDF 產生日 2025-09-18 [原文 p.1；pdfinfo]。正式卷期、DOI **未能確認**。
+- 年份／出處：稿件版，頁首為 "IEEE Internet of Things Journal, VOL. X, NO. X, 2024"，稿件註記 "Manuscript received X XXXXXX 2025"，PDF 產生日 2025-09-18 [原文 p.1；pdfinfo]。
+- **正式出版版（2026-10-20 補）**：IEEE Internet of Things Journal, vol. 12, no. 12, pp. 20326–（共 17 頁）, 15 June 2025。DOI 10.1109/JIOT.2025.3544060（IEEE Xplore document 10896783）。Received 2024-10-04；revised 2024-12-14、2025-01-23 [出版版 p.1；pdfinfo Subject]。本地檔：`research/literature/pdfs/An_Energy-Efficient_Intrusion_Detection_Offloading_Based_on_DNN_for_Edge_Computing.pdf`（使用者下載）。
+  - 主 agent 抽查出版版內文，與稿件版一致的數字：AlexNet 約 7.36 events/s；本地每事件 1385 / 669 ms，卸載後 28 / 223 ms（Brazil）；RTT 23.51 / 157.48 ms；每事件卸載約 7.2 / 14.5 KB；處理時間降到 1% / 32%、能耗降到 1% / 41%（AlexNet / MobileNetV2）[出版版 p.14–15 內文]。
+  - Table IV 與 Fig.10 的小數點數值在出版版是圖檔，pdftotext 抽不出來，沒有逐格核對。其餘章節沒有逐段比對兩個版本。
 - URL：https://secplab.ppgia.pucpr.br/files/papers/2025_3.pdf ；程式碼 https://github.com/jasimioni/ids-ee-offload [原文 p.16]。
 - 另見 SBC 版：CTD-SBC（Thesis and Dissertation Contest）引用紀錄，2026，Simioni, Viegas, Santin [二手 https://sol.sbc.org.br/index.php/ctd/article/cite/43048/CbeCitationPlugin]；前一輪記 DOI 10.5753/ctd.2026.19705，本輪未重驗。
 - 與給定資訊的差異：給定資訊未指出期刊正式刊登；稿件版無法證實已刊出。Pi 型號全文一致寫 "Raspberry Pi 3 Model B"（非 B+）[原文 p.7, p.11]。

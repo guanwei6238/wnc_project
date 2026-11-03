@@ -1,0 +1,178 @@
+361	none		無關（可驗證資料串流的密碼學協定）
+362	none		無關（IIoT 異常偵測模型的超參數調校）
+363	none		無關（網路事件分類的 DNN 模型）
+364	none		無關（IoT 節點零信任的 GNN 信任評估，非 flow 放行／稽核）
+365	none		無關（vRAN 微架構效能，與 IDS／ML 同機干擾無關）
+366	related	C2	Pyrolyse 測 Suricata/Snort 對 IP/TCP 重疊資料的重組策略（規避手法），可供 C2 處理規避時引用；但沒有部分檢查或 inline 放行
+367	none		無關（可程式交換器與 eBPF 的資訊流控制）
+368	none		無關（LLM 產生防火牆規則的形式驗證）
+369	none		無關（SmartNIC 卸載 Suricata 的 pattern matching，非信任 flow 放行）
+370	none		無關（量子 SVM 零日偵測）
+371	none		無關（高速網路慢速掃描偵測 sketch）
+372	none		無關（Pi 3 上 Suricata IPS 的滲透測試方法，無效能或 bypass）
+373	none		無關（雲端 DDoS 封包計數過濾）
+374	related	C2,C4	在 Raspberry Pi 上比較 Snort 與 Suricata 抓封包效能，是 ARM 上 IDS 成本基線，但沒有 bypass／部分檢查
+375	related	C4	嵌入式平台上量測 Snort 元件效能（基線），沒有 fast path 或部分檢查
+376	related	C3	預測 SmartNIC 上同機 NF 的多資源（加速器、記憶體）競爭，與 C3 干擾量測方法相近，但不是 IDS＋ML 也不在 ARM gateway
+377	related	C2,C4	以 eBPF 在 kernel 內只對 flow 的前幾個封包做封包級與 flow 級特徵推論（不必等 flow 結束），概念上接近只看開頭，但是 ML 分類器、屬 kernel 內偵測，不是有狀態 IDS 的部分檢查，也沒有讓信任 flow 跳過 user space IDS
+378	none		無關（provenance graph APT 偵測模型）
+379	none		無關（工控實體層入侵偵測）
+380	related	C2,C4	Raspberry Pi 2 上比較 Snort 與 Bro 的效能，是 ARM 基線，沒有 bypass／部分檢查
+381	related	C3	Pi 上 Snort 加行為輪廓的混合偵測，有 IDS＋行為分析同機，但未量干擾也未調配資源
+382	none		無關（負責任 AI 書籍）
+383	related	C4	嵌入式平台量測 Snort 元件效能（基線），沒有 fast path 或部分檢查
+384	none		無關（資料中心管理平台）
+385	none		無關（資料庫伺服器 eBPF IPS，非網路 flow 放行）
+386	none		無關（whole-system provenance 擷取）
+387	related	C3,C4	eBPF/uBPF 的 ML NIDPS 在 AF_XDP／DPDK 上比較可行性，有 kernel/user-space 處理成本但沒有信任 flow 繞過 IDS
+388	related	C3,C4	比較 eBPF/XDP 內與 AF_XDP user space 跑輕量 NN／DT 的封包分類，有 kernel/user 成本比較但不是信任 flow 繞過有狀態 IDS
+389	related	C2	P4 交換器只檢視可預測的 client 封包結構做 DPI（部分檢查），但不是有狀態 IDS、不在 ARM、沒有處理規避
+390	none		無關（駱駝寄生蟲）
+391	none		無關（Kubernetes IP spoofing eBPF 防護）
+392	none		無關（區塊鏈與聯邦學習綜述）
+393	none		無關（惡意程式收集）
+394	none		無關（身分驗證 TEE）
+395	related	C2,C4	NIDS 前置 run-time filter 先排除不可能匹配的封包再送完整檢查，並把針對 filter 的攻擊當異常偵測、對轉送到完整檢查的流量限速，與 C2/C4 的預過濾及其被規避風險相近，但不是 inline 放行後稽核、非 ARM；需讀全文
+396	none		無關（SQL injection 防護）
+397	none		無關（provenance graph 對抗防禦）
+398	none		無關（對 NIDS 的量子 GAN 對抗攻擊）
+399	none		無關（水產養殖 IDS 的演算法優化）
+400	related	C2,C4	Raspberry Pi 5 上以 Snort 3 做效能最佳化的 NIDS（1 Gbps），是 Pi 上 IDS 基線，但沒有 bypass／部分檢查／稽核
+401	none		無關（IIoT APT 攻擊階段關聯）
+402	none		無關（用 Raspberry Pi 建置資安實驗沙盒）
+403	related	C3	以 LLC 與記憶體頻寬隔離處理共置 VNF 的效能干擾，與 C3 的干擾控制相近，但不是 IDS＋ML、不是 ARM edge
+404	related	C2	剖析 Snort/Bro 瓶頸並建議只在長連線中「精確指定簽章可能出現的位置」，與只檢查對話開頭相近，但只是建議方向，沒有實作 inline 部分檢查，也不是 ARM
+405	none		無關（eBPF 遙測加 SIEM 的 DDoS 偵測）
+406	related	C4	在 eBPF 內跑 NN 做即時偵測與阻擋（每 flow 推論約 3-5 µs），屬 kernel 內偵測，沒有讓信任 flow 跳過 user space IDS
+407	related	C3	Raspberry Pi 5 上 Snort 加 Random Forest 的混合 IDS，同機有規則 IDS＋ML，但沒有量干擾或調配資源
+408	related	C3	Raspberry Pi 4 上 Suricata 加 ML 二階段（ML 只處理有 alert 的 flow），量 CPU 使用與吞吐，最接近 C3 但未分析記憶體頻寬／快取干擾，也未依負載調整 ML；需讀全文
+409	none		無關（以抽樣 sketch 偵測封包遺失）
+410	none		無關（eBPF 加 NLP/ML 勒索軟體偵測）
+411	none		無關（XDP token 驗證的 DDoS 防護）
+412	none		無關（6G-IoT 階層式 IDS 模型，非 flow 放行／稽核）
+413	none		無關（IoMT 預測與區塊鏈）
+414	none		無關（IaaS 動態網路安全架構）
+415	none		無關（APT 惡意程式 CNN）
+416	related	C2	以選擇性封包取樣（偏重小封包）餵給 Snort 做 portscan 偵測，是輸入端取樣，但不是 inline、不是 ARM、沒有處理有狀態 IDS 的缺口
+417	none		無關（電力側通道 DDoS 偵測）
+418	none		無關（eBPF SDN DDoS 緩解）
+419	none		無關（HTTPS 明文還原）
+420	related	C3	以 CAT/MBA 依輸入流量速率動態配置 LLC 與記憶體頻寬給共置 VNF，與 C3「依負載調整資源」機制相近，但是 x86 NFV 且不是 IDS＋ML
+421	none		無關（RNN 自編碼邊界存取控制）
+422	none		無關（區塊鏈聯邦學習 IDS，已撤稿）
+423	none		無關（撤稿通知）
+424	none		無關（重傳隱寫術與偵測）
+425	none		無關（分類器盲點與對抗樣本）
+426	none		無關（WUSTL-EHMS 異常偵測模型）
+427	related	C2,C4	評估 Raspberry Pi 上執行 Snort 的效能（ARM IDS 基線），沒有 bypass／部分檢查／稽核
+428	none		無關（eBPF flow 特徵擷取工具）
+429	none		無關（VM 監控 eBPF 注入）
+430	none		無關（壓縮流量的有狀態解壓縮）
+431	none		無關（聯邦圖 transformer IDS）
+432	none		無關（2006 年緩衝區溢位網路偵測）
+433	none		無關（CI/CD 威脅評估模型）
+434	related	C4	多核心 NIDS 設計原則含 flow offloading，但是 many-core／可程式 NIC 高吞吐設計，不是信任 flow 繞過 user space IDS；需讀全文
+435	related	C3	IoT 上 ML-based IDS 用動態 user-level scheduler 依攻擊嫌疑分配資源，有依負載調配的概念，但只有 ML IDS，沒有規則 IDS 同機、沒量記憶體頻寬干擾
+436	none		無關（SDN honeynet）
+437	none		無關（Wi-Fi 入侵偵測 CNN 與信任分數，非 flow 放行）
+438	none		無關（LLM 資安事件回應）
+439	none		無關（機密 VM 監控）
+440	none		無關（聯邦學習 IDS 綜述）
+441	none		無關（容器間通訊的 XDP 安全橋接，選擇性串接是依容器政策而非 flow 信任）
+442	none		無關（容器 kernel audit）
+443	none		無關（IoT 威脅對應防禦框架）
+444	none		無關（IoT 實體層認證與金鑰降級）
+445	none		無關（V2G 充電邊緣智慧）
+446	none		無關（honeypot 地理封鎖研究）
+447	related	C4	指出 QUIC connection migration 會讓依連線狀態表運作的 IDS/IPS 與中間設備失效，對以 conntrack 辨識「已信任 flow」的 fast path 是需考慮的威脅，但沒有做信任放行
+448	none		無關（資料庫安全綜述）
+449	related	C1	指出封包取樣機制可被攻擊者構造封包流迴避，並提出密碼學隨機取樣，對稽核取樣要防預測／規避有參考價值，但不是 IDS 放行後的稽核
+450	none		無關（經濟阻斷式防禦框架）
+451	none		無關（資料集選擇性標註）
+452	none		無關（web 探勘式 IDS）
+453	none		無關（內部威脅偵測 GNN）
+454	none		無關（Pi 5 上 Suricata 旁路被動監控 OT，無效能或 bypass）
+455	none		無關（應用層 DDoS 挑戰回應）
+456	none		無關（藥學文獻）
+457	none		無關（eBPF 取 SSH 金鑰解密）
+458	none		無關（加密流量取樣與 sketch 分析）
+459	none		無關（程式漏洞緩解）
+460	none		無關（SIEM 日誌資料集）
+461	related	C3	家用 IoT 防護系統結合 Snort 與行為式（含 ML）偵測並跑在 Raspberry Pi，有同機規則 IDS＋ML，但未量干擾也未調配資源
+462	none		無關（AI 與區塊鏈 IoT 安全綜述）
+463	none		無關（醫療 IoT 異常偵測）
+464	none		無關（智慧鏡子）
+465	none		無關（多站點邊緣叢集可視化框架）
+466	none		無關（NIDS 研究反思 SoK，未涉及 fast path／部分檢查／同機資源）
+467	related	C3	SoK 盤點資源受限裝置上的 on-device IDS 與 runtime-aware（自適應）機制，是 C3 related work 的綜述來源，但是綜述／設計樣板，沒有實作也沒有規則 IDS＋ML 同機干擾量測
+468	related	C2	用強化學習決定 flow 內要檢查哪些封包（可跳過多數封包仍維持分類準確度，並可調稀疏度），與只檢查部分封包相近，但是 RNN 分類器而非有狀態 IDS、不是 inline ARM
+469	none		無關（SDN 有狀態交換器 DDoS 偵測）
+470	none		無關（TLS 1.3 隱密金鑰交換）
+471	none		無關（對 IDS 的對抗攻擊）
+472	none		無關（隱寫圖片惡意程式 GNN）
+473	none		無關（對 ML-IDS 的 GAN 規避）
+474	none		無關（email 惡意程式研究）
+475	none		無關（STUN 隱蔽通道）
+476	related	C3	Raspberry Pi 上 Suricata 加 kNN 分類 IoT botnet 的系統，有同機規則 IDS＋ML，但重點在特徵選擇準確度，沒有量干擾或資源分配
+477	none		無關（教育學論文，名稱巧合）
+478	related	C2	在 SDN 邊緣 gateway 對流量取樣供 IDS 偵測 DDoS，是 gateway 取樣但為 SDN／DDoS 閾值而非 inline 有狀態部分檢查
+479	related	C2	SDN 中依 IDS 處理容量最佳化各交換器取樣率，把送 IDS 的量壓在處理能力內，與部分檢查概念相近但是模擬／SDN、無有狀態 IDS 缺口分析
+480	related	C2,C4	在 Raspberry Pi 5 無線 gateway 上同時跑 Snort 與 Suricata 監看 IoT，是 Pi gateway 上 IDS 基線，但只比偵測與紀錄，沒有 bypass／部分檢查／效能量測
+481	none		無關（6G 醫療 IoT 的分裂聯邦學習）
+482	none		無關（惡意程式規避綜述）
+483	none		無關（eBPF/XDP 綜述，未涉及信任 flow 繞過 IDS）
+484	none		無關（Snort 偵測 IRC botnet 規則）
+485	none		無關（NetDPI 規則搜尋演算法）
+486	related	C3	在低功耗 edge gateway 上跑 ML IDS 並把 CPU／記憶體遙測送 LLM 分析，有 gateway 上 ML IDS 與資源觀測，但沒有規則式 IDS 同機、沒量干擾、沒調配 ML 工作量
+487	none		無關（TLS 弱點偵測工具）
+488	related	C2,C4	在 Raspberry Pi 5 gateway 上 inline 跑 Snort IPS（detection filter 限速）並量 CPU／記憶體／延遲，是 ARM inline IPS 基線，但沒有信任 flow 繞過或部分檢查
+489	none		無關（eBPF TCP timestamp 隱蔽通道）
+490	none		無關（fog 運算 IoT IDS）
+491	none		無關（低碳 IDS 聯邦學習框架）
+492	none		無關（多媒體通訊稽核熵分析）
+493	none		無關（IoT 測試床網狀網路）
+494	none		無關（FPGA 加速邊緣 IPS，非 kernel fast path）
+495	none		無關（OpenC2 意圖轉譯協定評估）
+496	none		無關（UAV 信任式入侵偵測）
+497	none		無關（對 DL 攻擊調查模型的對抗攻擊）
+498	none		無關（野生動物疫苗研究，名稱巧合）
+499	none		無關（UAV 交接信任融合）
+500	none		無關（醫學病例對照研究）
+501	none		無關（可解釋 AI）
+502	none		無關（聯邦學習加密流量 IDS）
+503	none		無關（遠端 DNN 服務品質抽樣檢驗，非 IDS 放行稽核）
+504	none		無關（web 攻擊偵測模型）
+505	none		無關（區塊鏈共識式信任計算）
+506	none		無關（少樣本生成 IDS 模型）
+507	none		無關（AIoT 數位孿生訓練）
+508	none		無關（SSH 加密流量分類）
+509	none		無關（兩階段 DL 入侵偵測模型）
+510	none		無關（UAV 入侵偵測與故障診斷）
+511	none		無關（MQTT 未知攻擊拒識）
+512	none		無關（對抗樣本偵測）
+513	none		無關（伺服器安全教科書章節）
+514	none		無關（6G-IoT 信任管理模型）
+515	none		無關（分散式非監督異常偵測加速）
+516	related	C4	在 eBPF kernel 內跑非監督式 autoencoder IDS（224 kpps 對 user space 3.2 kpps），屬 kernel 內偵測，沒有讓信任 flow 繞過 user space 規則式 IDS
+517	related	C4	用多片 Raspberry Pi 叢集平行跑 Bro IDS 實例的擴充做法（ARM 基線），沒有 bypass／部分檢查
+518	none		無關（超向量圖串流異常偵測）
+519	related	C4	以 eBPF 在 kernel 內跑 Decision Tree 封包分類以避免 user/kernel 切換，屬 kernel 內偵測，沒有讓信任 flow 繞過 user space IDS，且是 K8s 非 ARM edge
+520	none		無關（KDD99 視覺化）
+521	none		無關（維生素 D 醫學研究，IDS 為檢驗儀器名稱）
+522	none		無關（對 ML-NIDS 的後門攻擊）
+523	none		無關（Snort 規則警示系統）
+524	related	C4	以 eBPF 在 NIC 層過濾非必要流量以減輕 WAF 的 DPI 負擔，是 kernel 預過濾，但不是依信任／放行判定且沒有稽核，也非 ARM
+525	none		無關（內部威脅生物行為偵測）
+526	none		無關（對抗樣本 IDS 強化）
+527	none		無關（農業 IoT 邊緣異常偵測）
+528	none		無關（eBPF 內特徵選擇，非 fast path）
+529	none		無關（EV 充電 XGBoost 與區塊鏈）
+530	none		無關（鐵路影像物體偵測）
+531	related	C4	在 eBPF/XDP 內做 Aho-Corasick 預過濾加 DFA 的 DPI（kernel 內偵測），但是取代 user space IDS 而非讓信任 flow 跳過，也非 ARM
+532	none		無關（VM 內 Zeek 偵測能力初探，無效能成本或 bypass）
+533	none		無關（Kubernetes 零日偵測 GNN）
+534	none		無關（零日惡意程式混合 DL）
+535	none		無關（零樣本 NIDS 模型）
+536	none		無關（智慧城市醫療零信任架構）
+537	none		無關（O-RAN 零信任 IDS 模型）
+538	none		無關（偵察攻擊 SVM-ANN）

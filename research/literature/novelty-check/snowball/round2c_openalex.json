@@ -1,0 +1,50 @@
+[
+ {
+  "q": "iGuard: Efficient Isolation Forest Design for Malicious Traffic Detection in Programmable Switches",
+  "found": true,
+  "title": "iGuard: Efficient Isolation Forest Design for Malicious Traffic Detection in Programmable Switches",
+  "year": 2024,
+  "venue": "ACM International Conference on emerging Networking EXperiments and Technologies (CoNEXT)",
+  "doi": "https://doi.org/10.1145/3680121.3697807",
+  "cited_by": 4,
+  "oa_url": "https://doi.org/10.1145/3680121.3697807",
+  "abstract": ""
+ },
+ {
+  "q": "Performance adaptation in real-time intrusion detection systems",
+  "found": true,
+  "title": "Performance Adaptation in Real-Time Intrusion Detection Systems",
+  "year": 2002,
+  "venue": "Lecture notes in computer science",
+  "doi": "https://doi.org/10.1007/3-540-36084-0_14",
+  "cited_by": 66,
+  "oa_url": null,
+  "abstract": ""
+ },
+ {
+  "q": "Low-storage capture and loss recovery selective replay of real flows",
+  "found": true,
+  "title": "Low-storage capture and loss recovery selective replay of real flows",
+  "year": 2012,
+  "venue": "IEEE Communications Magazine",
+  "doi": "https://doi.org/10.1109/mcom.2012.6178843",
+  "cited_by": 20,
+  "oa_url": null,
+  "abstract": "Capturing and replaying real flows are important for testing network security products. However, capturing real flows demands a high storage cost and runs a risk of capture loss, which makes the replay inaccurate. Replaying real flows should be accurate and stateful to adapt to the reaction of the device under test. It should also efficiently reproduce a defect and help developers identify the flows triggering defects. Therefore, this work first presents the (N, M, P) capture scheme which begins with, for each connection, capturing at most N bytes of application payload and then at most M bytes of application payload for at most each of the subsequent P packets in the same connection. This scheme reduces 87 percent of storage cost while retaining 99.74 percent of original events. This work develops a tool named SocketReplay with the mechanisms of loss recovery, stateful replay, and selective replay. Loss recovery tracks TCP sequence numbers to identify capture loss and recovers incomplete flows with dummy data. Stateful replay maintains the states in the TCP/IP stack to replay real flows. Selective replay incrementally selects flows to replay. The results show that SocketReplay can accurately and efficiently reproduce product events and significantly decrease the volume of replayed packet traces."
+ },
+ {
+  "q": "Enhancing network intrusion detection with integrated sampling and filtering",
+  "found": true,
+  "title": "Enhancing Network Intrusion Detection with Integrated Sampling and Filtering",
+  "year": 2006,
+  "venue": "Lecture notes in computer science",
+  "doi": "https://doi.org/10.1007/11856214_14",
+  "cited_by": 17,
+  "oa_url": null,
+  "abstract": ""
+ },
+ {
+  "q": "FTShield",
+  "found": false
+ }
+]

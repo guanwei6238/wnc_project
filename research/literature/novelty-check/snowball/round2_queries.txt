@@ -1,0 +1,12 @@
+Towards Continuous Threat Defense: In-Network Traffic Analysis for IoT Gateways
+HALIDS: a Hardware-Assisted Machine Learning IDS for In-Network Monitoring
+Real-time intrusion detection and prevention with neural network in kernel using eBPF
+Comparing user space and in-kernel packet processing for edge data centers
+Performance comparison of intrusion detection systems and application of machine learning to Snort system
+Advancing Snort IPS to achieve line rate traffic processing
+Analysing performance issues of open-source intrusion detection systems in high-speed networks
+adaptive blacklist-based packet filter
+RPiDS: Raspberry Pi IDS
+Passban IDS: An Intelligent Anomaly-Based Intrusion Detection System for IoT Edge Devices
+Implementing lightweight IDS on resource constrained devices
+Improving the Accuracy of Network Intrusion Detection Systems Under Load Using Selective Packet Discarding

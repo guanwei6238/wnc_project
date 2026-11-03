@@ -1,0 +1,120 @@
+[
+ {
+  "q": "Towards Continuous Threat Defense: In-Network Traffic Analysis for IoT Gateways",
+  "found": false
+ },
+ {
+  "q": "HALIDS: a Hardware-Assisted Machine Learning IDS for In-Network Monitoring",
+  "found": true,
+  "title": "HALIDS: a Hardware-Assisted Machine Learning IDS for in-Network Monitoring",
+  "year": 2024,
+  "venue": "Network Traffic Measurement and Analysis Conference (TMA)",
+  "doi": "https://doi.org/10.23919/tma62044.2024.10559083",
+  "cited_by": 7,
+  "oa_url": "https://opus.bibliothek.uni-augsburg.de/opus4/files/112866/112866.pdf",
+  "abstract": "Early decision-making at the network device level is crucial for network security. This entails moving beyond traditional forwarding functions towards more intelligent network devices. Integrating Machine Learning (ML) models into the data plane enables quicker processing and reduced reliance on the control plane. This paper explores the development of a ML-driven Intrusion Detection System (IDS) where network devices autonomously make security decisions or defer to an expert Oracle, relying on in-band and off-band traffic analysis. Programmable devices, such as those using P4, are essential to enable these functionalities and allow for network device re-training to adapt to changing traffic patterns. We introduce HALIDS, a prototype for in-band ML-IDS using P4, complemented with off-band Oracles which support in-network ML-driven classification with more confident classifications, targeting an active learning logic for more accurate in-band analysis. We implement HALIDS using the open source software switch BMv2, and show its operation with real traffic traces publicly available."
+ },
+ {
+  "q": "Real-time intrusion detection and prevention with neural network in kernel using eBPF",
+  "found": true,
+  "title": "Real-Time Intrusion Detection and Prevention with Neural Network in Kernel Using eBPF",
+  "year": 2024,
+  "venue": "International Conference on Dependable Systems & Networks/Proceedings",
+  "doi": "https://doi.org/10.1109/dsn58291.2024.00048",
+  "cited_by": 18,
+  "oa_url": null,
+  "abstract": "With the development of public cloud, real-time intrusion detection is becoming necessary. Current methods neither address the overhead of real-time network data capturing, nor effectively balance security level with performance. These issues can be addressed by offloading intrusion detection and prevention to the extended Berkeley Packet Filter (eBPF). However, current eBPF-based methods suffer from shortcomings in model performance or inference overhead. Moreover, they overlook the issues of eBPF in real-time scenarios, such as maximum eBPF instruction limitations. In this paper, we redesign the Neural Network inference mechanism to address the limitations of eBPF. Then, we propose a thread-safe parameter hot-updating mechanism without explicit spin lock. Evaluations indicate that our method achieves model performance comparable to the current best eBPF-based method while reducing memory overhead (5KB) and inference time (3000-5000ns per flow). Our method achieve F1-scores of 0.933 and 0.992 on the offline and online datasets, respectively."
+ },
+ {
+  "q": "Comparing user space and in-kernel packet processing for edge data centers",
+  "found": true,
+  "title": "Comparing User Space and In-Kernel Packet Processing for Edge Data Centers",
+  "year": 2023,
+  "venue": "ACM SIGCOMM Computer Communication Review",
+  "doi": "https://doi.org/10.1145/3594255.3594257",
+  "cited_by": 24,
+  "oa_url": "https://dl.acm.org/doi/pdf/10.1145/3594255.3594257",
+  "abstract": "Telecommunication operators are massively moving their network functions in small data centers at the edge of the network, which are becoming increasingly common. However, the high performance provided by commonly used technologies for data plane processing such as DPDK, based on kernel-bypass primitives, comes at the cost of rigid resource partitioning. This is unsuitable for edge data centers, in which efficiency demands both general-purpose applications and data-plane telco workloads to be executed on the same (shared) physical machines. In this respect, eBPF/XDP looks a more appealing solution, thanks to its capability to process packets in the kernel, achieving a higher level of integration with non-data plane applications albeit with lower performance than DPDK. In this paper we leverage the recent introduction of AF_XDP, an XDP-based technology that allows to efficiently steer packets in user space, to provide a thorough comparison of user space vs in-kernel packet processing in typical scenarios of a data center at the edge of the network. Our results provide useful insights on how to select and combine these technologies in order to improve overall throughput and optimize resource usage."
+ },
+ {
+  "q": "Performance comparison of intrusion detection systems and application of machine learning to Snort system",
+  "found": true,
+  "title": "Performance comparison of intrusion detection systems and application of machine learning to Snort system",
+  "year": 2017,
+  "venue": "Future Generation Computer Systems",
+  "doi": "https://doi.org/10.1016/j.future.2017.10.016",
+  "cited_by": 225,
+  "oa_url": "https://www.sciencedirect.com/science/article/pii/S0167739X17323178",
+  "abstract": "This study investigates the performance of two open source intrusion detection systems (IDSs) namely Snort and Suricata for accurately detecting the malicious traffic on computer networks. Snort and Suricata were installed on two different but identical computers and the performance was evaluated at 10 Gbps network speed. It was noted that Suricata could process a higher speed of network traffic than Snort with lower packet drop rate but it consumed higher computational resources. Snort had higher detection accuracy and was thus selected for further experiments. It was observed that the Snort triggered a high rate of false positive alarms. To solve this problem a Snort adaptive plug-in was developed. To select the best performing algorithm for Snort adaptive plug-in, an empirical study was carried out with different learning algorithms and Support Vector Machine (SVM) was selected. A hybrid version of SVM and Fuzzy logic produced a better detection accuracy. But the best result was achieved using an optimised SVM with firefly algorithm with FPR (false positive rate) as 8.6% and FNR (false negative rate) as 2.2%, which is a good result. The novelty of this work is the performance comparison of two IDSs at 10 Gbps and the application of hybrid and optimised machine learning algorithms to Snort."
+ },
+ {
+  "q": "Advancing Snort IPS to achieve line rate traffic processing",
+  "found": true,
+  "title": "Advancing Snort IPS to Achieve Line Rate Traffic Processing for Effective Network Security Monitoring",
+  "year": 2024,
+  "venue": "IEEE Access",
+  "doi": "https://doi.org/10.1109/access.2024.3395123",
+  "cited_by": 38,
+  "oa_url": "https://doi.org/10.1109/access.2024.3395123",
+  "abstract": "Intrusion Prevention Systems (IPS), capable of preventing the organizational network from a cyber-attack in addition to detecting it, are widely adopted by organizations to protect their networks from unauthorized access, attacks, and malicious activities. Similarly, Snort an open-source IPS is extensively used for effective network security monitoring and analysis. When functioning as an IPS, Snort can be deployed in inline mode within an organizational network, so that all the organizational network traffic travels through it, hence actively blocking or preventing malicious traffic in real-time. This requires Snort to process the network traffic fast enough to match the network traffic line rate. But the Snort IPS default data acquisition module i.e. advanced packet filtering (AF_PACKET) cannot process network traffic at the line rate that causes packet loss and network services disturbance. This research work discusses the technologies available to make Snort IPS process network traffic at line rate. Packet filtering framework (PF_RING) and data plane development kit (DPDK) are the most effective and widely used software technologies, whereas the Napatech smart network interface card (smartNIC) is a very efficient hardware technology for achieving line rate traffic processing. A throughput comparison shows that PF_RING and DPDK achieve a throughput close to 1G with 100% CPU utilization whereas Napatech smartNIC achieves full 1G throughput with CPU utilization of less than 5%. Furthermore, the integration of Snort IPS with the security information and event management (SIEM) system has been discussed for better attack detection in an organizational network."
+ },
+ {
+  "q": "Analysing performance issues of open-source intrusion detection systems in high-speed networks",
+  "found": true,
+  "title": "Analysing performance issues of open-source intrusion detection systems in high-speed networks",
+  "year": 2020,
+  "venue": "Journal of Information Security and Applications",
+  "doi": "https://doi.org/10.1016/j.jisa.2019.102426",
+  "cited_by": 36,
+  "oa_url": null,
+  "abstract": ""
+ },
+ {
+  "q": "adaptive blacklist-based packet filter",
+  "found": true,
+  "title": "Adaptive blacklist-based packet filter with a statistic-based approach in network intrusion detection",
+  "year": 2013,
+  "venue": "Journal of Network and Computer Applications",
+  "doi": "https://doi.org/10.1016/j.jnca.2013.05.009",
+  "cited_by": 41,
+  "oa_url": null,
+  "abstract": ""
+ },
+ {
+  "q": "RPiDS: Raspberry Pi IDS",
+  "found": true,
+  "title": "RPiDS: Raspberry Pi IDS — A Fruitful Intrusion Detection System for IoT",
+  "year": 2016,
+  "venue": "IEEE Smart World Congress and International Conferences on Ubiquitous Intelligence & Computing, Advanced and Trusted Computing, Scalable Computing and Communications, Cloud and Big Data Computing, Internet of People (SmartWorld/UIC/ATC/ScalCom/CBDCom/IoP)",
+  "doi": "https://doi.org/10.1109/uic-atc-scalcom-cbdcom-iop-smartworld.2016.0080",
+  "cited_by": 112,
+  "oa_url": null,
+  "abstract": "Our technology keeps advancing towards a future where everything is connected together. The Internet of Things (IoT) goal is to make every device accessible from the Internet. Even the most common electrical appliances, such as ovens, light bulbs, will have their own IP address,, will be reachable remotely. While this enhanced connectivity will definitely improve our quality of life, it also raises serious security, privacy, trustworthiness questions, the resource constrained nature of IoT entities makes traditional security techniques impractical. In this paper, we propose an intrusion detection architecture for the IoT. We discuss the feasibility of employing a commodity device as the core component of the architecture. In particular, we evaluated the performance of the Raspberry Pi, one of the most used commodity single-board computers, while running Snort, a widely known, open source Intrusion Detection System (IDS). Our experiments show that our proposed architecture based on resource constrained devices, such as the Raspberry Pi, can effectively serve as IDS in a distributed system such as IoT."
+ },
+ {
+  "q": "Passban IDS: An Intelligent Anomaly-Based Intrusion Detection System for IoT Edge Devices",
+  "found": true,
+  "title": "Passban IDS: An Intelligent Anomaly-Based Intrusion Detection System for IoT Edge Devices",
+  "year": 2020,
+  "venue": "IEEE Internet of Things Journal",
+  "doi": "https://doi.org/10.1109/jiot.2020.2970501",
+  "cited_by": 430,
+  "oa_url": null,
+  "abstract": "Cyber-threat protection is today's one of the most challenging research branches of information technology, while the exponentially increasing number of tiny, connected devices able to push personal data to the Internet is doing nothing but exacerbating the battle between the involved parties. Thus, this protection becomes crucial with a typical Internet-of-Things (IoT) setup, as it usually involves several IoT-based data sources interacting with the physical world within various application domains, such as agriculture, health care, home automation, critical industrial processes, etc. Unfortunately, contemporary IoT devices often offer very limited security features, laying themselves open to always new and more sophisticated attacks and also inhibiting the expected global adoption of IoT technologies, not to mention millions of IoT devices already deployed without any hardware security support. In this context, it is crucial to develop tools able to detect such cyber threats. In this article, we present Passban, an intelligent intrusion detection system (IDS) able to protect the IoT devices that are directly connected to it. The peculiarity of the proposed solution is that it can be deployed directly on very cheap IoT gateways (e.g., single-board PCs currently costing few tens of U.S. dollars), hence taking full advantage of the edge computing paradigm to detect cyber threats as close as possible to the corresponding data sources. We will demonstrate that Passban is able to detect various types of malicious traffic, including Port Scanning, HTTP and SSH Brute Force, and SYN Flood attacks with very low false positive rates and satisfactory accuracies."
+ },
+ {
+  "q": "Implementing lightweight IDS on resource constrained devices",
+  "found": false
+ },
+ {
+  "q": "Improving the Accuracy of Network Intrusion Detection Systems Under Load Using Selective Packet Discarding",
+  "found": true,
+  "title": "Improving the accuracy of network intrusion detection systems under load using selective packet discarding",
+  "year": 2010,
+  "venue": "European Workshop on System Security",
+  "doi": "https://doi.org/10.1145/1752046.1752049",
+  "cited_by": 41,
+  "oa_url": null,
+  "abstract": "Under conditions of heavy traffic load or sudden traffic bursts, the peak processing throughput of network intrusion detection systems (NIDS) may not be sufficient for inspecting all monitored traffic, and the packet capturing subsystem inevitably drops excess arriving packets before delivering them to the NIDS. This impedes the detection ability of the system and leads to missed attacks. In this work we present selective packet discarding, a best effort approach that enables the NIDS to anticipate overload conditions and minimize their impact on attack detection. Instead of letting the packet capturing subsystem randomly drop arriving packets, the NIDS proactively discards packets that are less likely to affect its detection accuracy, and focuses on the traffic at the early stages of each network flow. We present the design of selective packet discarding and its implementation in Snort NIDS. Our experiments show that selective packet discarding significantly improves the detection accuracy of Snort under increased traffic load, allowing it to detect attacks that would have otherwise been missed."
+ }
+]

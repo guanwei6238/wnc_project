@@ -1,0 +1,4 @@
+In-Network Traffic Analysis for IoT Gateways
+Enhancing trust management for wireless intrusion detection via traffic sampling
+Adaptive blacklist-based packet filter with a statistic-based approach in network intrusion detection
+Analysing performance issues of open-source intrusion detection systems

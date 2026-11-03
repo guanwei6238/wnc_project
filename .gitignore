@@ -4,4 +4,8 @@ dist/
 # 有版權的論文 PDF（repo 是 public）
 research/literature/pdfs/
 research/literature/trust-bypass/pdfs/
+research/literature/framework/pdfs/
+research/literature/fastpath-methods/pdfs/
+research/literature/edge-colocation/pdfs/
+research/literature/novelty-check/pdfs/
 security_gateway/target

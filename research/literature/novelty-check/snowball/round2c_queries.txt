@@ -1,0 +1,5 @@
+iGuard: Efficient Isolation Forest Design for Malicious Traffic Detection in Programmable Switches
+Performance adaptation in real-time intrusion detection systems
+Low-storage capture and loss recovery selective replay of real flows
+Enhancing network intrusion detection with integrated sampling and filtering
+FTShield
