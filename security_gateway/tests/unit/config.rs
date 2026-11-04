@@ -176,6 +176,12 @@ fn example_sets_nothing_by_default() {
     assert_eq!(config.suricata.ready_timeout, None);
     assert_eq!(config.suricata.stop_timeout, None);
     assert_eq!(config.suricata.when_unavailable, None);
+    assert_eq!(config.suricata.eve_interval, None);
+    assert_eq!(config.trust.auto, None);
+    assert_eq!(config.trust.min_packets, None);
+    assert_eq!(config.trust.min_age, None);
+    assert_eq!(config.trust.ttl, None);
+    assert_eq!(config.trust.check_interval, None);
 }
 
 #[test]
@@ -208,6 +214,84 @@ fn example_values_are_valid() {
     assert!(config.suricata.ready_timeout.is_some());
     assert!(config.suricata.stop_timeout.is_some());
     assert!(config.suricata.when_unavailable.is_some());
+    assert!(config.suricata.eve_interval.is_some());
+    assert!(config.trust.auto.is_some());
+    assert!(config.trust.min_packets.is_some());
+    assert!(config.trust.min_age.is_some());
+    assert!(config.trust.ttl.is_some());
+    assert!(config.trust.check_interval.is_some());
+}
+
+#[test]
+fn eve_interval_defaults_to_half_a_second() {
+    let file_config = parse("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n").unwrap();
+    let config = merge(None, file_config, Overrides::default()).unwrap();
+    assert_eq!(config.suricata.eve_interval.value.duration(), Duration::from_millis(500));
+    assert_eq!(config.suricata.eve_interval.source, Source::Default);
+}
+
+#[test]
+fn eve_interval_from_file() {
+    for (value, ms) in [("0.05", 50), ("2", 2000), ("1.5", 1500)] {
+        let file_config =
+            parse(&format!("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n[suricata]\neve_interval = {value}\n")).unwrap();
+        let config = merge(None, file_config, Overrides::default()).unwrap();
+        assert_eq!(config.suricata.eve_interval.value.duration(), Duration::from_millis(ms));
+        assert_eq!(config.suricata.eve_interval.source, Source::File);
+    }
+}
+
+#[test]
+fn parse_rejects_eve_interval_out_of_range() {
+    for value in ["0", "0.04", "10.5", "-1"] {
+        let err = parse(&format!("[suricata]\neve_interval = {value}\n")).unwrap_err();
+        assert!(err.contains("expected 0.05 to 10 seconds"), "{err}");
+    }
+}
+
+#[test]
+fn trust_defaults_to_manual() {
+    let file_config = parse("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n").unwrap();
+    let config = merge(None, file_config, Overrides::default()).unwrap();
+    assert!(!config.trust.auto.value);
+    assert_eq!(config.trust.auto.source, Source::Default);
+    assert_eq!(config.trust.min_packets.value, 10);
+    assert_eq!(config.trust.min_age.value, Duration::from_secs(5));
+    assert_eq!(config.trust.ttl.value, Duration::from_secs(900));
+    assert_eq!(config.trust.check_interval.value, Duration::from_secs(5));
+}
+
+#[test]
+fn trust_from_file() {
+    let file_config = parse(
+        "[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n[trust]\nauto = true\nmin_packets = 3\nmin_age = 2\nttl = 30\ncheck_interval = 1\n",
+    )
+    .unwrap();
+    let config = merge(None, file_config, Overrides::default()).unwrap();
+    assert!(config.trust.auto.value);
+    assert_eq!(config.trust.auto.source, Source::File);
+    assert_eq!(config.trust.min_packets.value, 3);
+    assert_eq!(config.trust.min_age.value, Duration::from_secs(2));
+    assert_eq!(config.trust.ttl.value, Duration::from_secs(30));
+    assert_eq!(config.trust.check_interval.value, Duration::from_secs(1));
+}
+
+#[test]
+fn parse_rejects_trust_values_out_of_range() {
+    for (key, value, range) in [
+        ("min_packets", 0, "1 to 1000000"),
+        ("min_age", 3601, "1 to 3600"),
+        ("ttl", 9, "10 to 86400"),
+        ("check_interval", 61, "1 to 60"),
+    ] {
+        let err = parse(&format!("[trust]\n{key} = {value}\n")).unwrap_err();
+        assert!(err.contains(&format!("expected {range}")), "{err}");
+    }
+}
+
+#[test]
+fn parse_rejects_unknown_trust_field() {
+    assert!(parse("[trust]\nautomatic = true\n").is_err());
 }
 
 fn path(s: &str) -> AbsolutePath {

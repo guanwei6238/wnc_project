@@ -1,4 +1,5 @@
 pub mod access;
+pub mod agent;
 pub mod command;
 pub mod config;
 pub mod datapath;

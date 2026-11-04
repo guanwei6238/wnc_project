@@ -4,7 +4,7 @@ use std::process::ExitCode;
 
 use clap::Args;
 use security_gateway::access::{self, Writable, Writer};
-use security_gateway::config::{self, AbsolutePath, Config, Overrides, Setting};
+use security_gateway::config::{self, AbsolutePath, Config, Overrides, Setting, SuricataSettings, TrustSettings};
 use security_gateway::datapath::{CoreHook, XdpPolicy, core_hook};
 use security_gateway::firewall::WhenUnavailable;
 use security_gateway::forwarding::{self, EnvCheck, EnvState, Forwarding, Level, Mode};
@@ -19,6 +19,7 @@ use security_gateway::kernel::netdev::{Netdev, XdpFeatures};
 use security_gateway::kernel::netif::{Interface, LinkStatus, NetifError, Netlink, XdpAttachment, XdpMode};
 use security_gateway::kernel::nfqueue::QueueRange;
 use security_gateway::kernel::nft::{Nft, NftError, NftInfo};
+use security_gateway::kernel::sysctl;
 use security_gateway::platform::{BootConfig, BootState, Current, Dirs, Services};
 use security_gateway::ports::{self, Port, ResolveError};
 use security_gateway::protection::Protection;
@@ -77,6 +78,7 @@ pub async fn passes(config: &Config, starting: bool) -> bool {
     println!("mode:   {} ({})", config.mode.value, config.mode.source);
     println!("xdp:    {} ({})", config.xdp.value, config.xdp.source);
     println!("protection: {} ({}), suricata receives {}", config.protection.value, config.protection.source, config.delivery());
+    println!("trust:  {}", trust_summary(&config.trust));
     println!();
 
     let interfaces = match load_interfaces().await {
@@ -479,11 +481,23 @@ async fn check_suricata(config: &Config) -> Vec<Finding> {
     if info.is_ok() {
         findings.push(spawned_finding());
         println!();
-        let config = settings.config.value.as_path();
-        let dump = suricata.dump_config(config, &spawned::FORCED_SETTINGS).await;
+        let yaml = settings.config.value.as_path();
+        let dump = suricata.dump_config(yaml, &spawned::FORCED_SETTINGS).await;
         let rule_files = dump.as_ref().map(SuricataConfig::check_rule_files).unwrap_or_default();
-        print_suricata_config(&settings.config, &dump, &rule_files);
-        findings.extend(suricata_config_findings(config, &dump, &rule_files));
+        let log_dir = spawned::log_dir(Current.log_dir());
+        let alert_file = dump.as_ref().ok().and_then(|dump| dump.alert_file(&log_dir));
+        print_suricata_config(settings, &dump, &rule_files, alert_file.as_deref());
+        findings.extend(suricata_config_findings(yaml, &dump, &rule_files, alert_file.as_deref()));
+        if let Ok(dump) = &dump {
+            let acct = sysctl::read(CONNTRACK_ACCT).map_err(|e| e.to_string());
+            findings.extend(trust_findings(
+                &config.trust,
+                config.protection.value,
+                alert_file.is_some(),
+                acct,
+                dump.tcp_established_timeout,
+            ));
+        }
     }
     findings
 }
@@ -830,7 +844,110 @@ fn print_suricata(path: &Setting<AbsolutePath>, info: &Result<SuricataInfo, Suri
     );
 }
 
+const CONNTRACK_ACCT: &str = "net.netfilter.nf_conntrack_acct";
+
+fn trust_summary(trust: &TrustSettings) -> String {
+    if !trust.auto.value {
+        return format!("manual (wnc-gw trust) ({})", trust.auto.source);
+    }
+    format!(
+        "automatic after {} packets each way and {} s, for {} s; checked every {} s ({})",
+        trust.min_packets.value,
+        trust.min_age.value.as_secs(),
+        trust.ttl.value.as_secs(),
+        trust.check_interval.value.as_secs(),
+        trust.auto.source
+    )
+}
+
+fn trust_findings(
+    trust: &TrustSettings,
+    protection: Protection,
+    alerts: bool,
+    acct: Result<Option<String>, String>,
+    tcp_established_timeout: Option<u64>,
+) -> Vec<Finding> {
+    if !trust.auto.value {
+        return Vec::new();
+    }
+    let ttl = trust.ttl.value.as_secs();
+    let mut findings = vec![Finding {
+        severity: Severity::Warning,
+        message: format!(
+            "automatic trust is on: a connection that carries {} packets each way, for at least {} s and without \
+             a suricata alert, skips inspection for {ttl} s except for syn/fin/rst; an attack sent after that is \
+             not seen until the trust expires",
+            trust.min_packets.value,
+            trust.min_age.value.as_secs()
+        ),
+    }];
+    if !alerts {
+        findings.push(Finding {
+            severity: Severity::Error,
+            message: "automatic trust needs suricata's alerts in an EVE file; without them, connections that raise \
+                      alerts would be trusted too"
+                .to_owned(),
+        });
+    }
+    match acct {
+        Ok(Some(value)) if value == "1" => {}
+        Ok(Some(value)) => findings.push(Finding {
+            severity: Severity::Error,
+            message: format!(
+                "automatic trust needs {CONNTRACK_ACCT} = 1 to count each connection's packets, but it is {value}; \
+                 set it with: sysctl -w {CONNTRACK_ACCT}=1, and {}",
+                Current.persist_sysctl_hint(CONNTRACK_ACCT, "1")
+            ),
+        }),
+        Ok(None) => findings.push(Finding {
+            severity: Severity::Warning,
+            message: format!(
+                "cannot verify {CONNTRACK_ACCT} because nf_conntrack is not loaded yet; automatic trust needs it set \
+                 to 1 (sysctl -w {CONNTRACK_ACCT}=1 once the module is loaded)"
+            ),
+        }),
+        Err(e) => findings.push(Finding {
+            severity: Severity::Warning,
+            message: format!("cannot verify {CONNTRACK_ACCT}: {e}; automatic trust needs it set to 1"),
+        }),
+    }
+    if protection == Protection::Ips
+        && let Some(established) = tcp_established_timeout
+        && ttl <= established
+    {
+        findings.push(Finding {
+            severity: Severity::Warning,
+            message: format!(
+                "trust ttl ({ttl} s) is not longer than suricata's flow-timeouts.tcp.established ({established} s): \
+                 when trust ends suricata may still hold the connection's old state and drop its packets as out of \
+                 sync; set [trust] ttl above {established}"
+            ),
+        });
+    }
+    findings
+}
+
 fn suricata_config_findings(
+    config: &Path,
+    dump: &Result<SuricataConfig, SuricataError>,
+    rule_files: &[RuleFile],
+    alert_file: Option<&Path>,
+) -> Vec<Finding> {
+    let mut findings = rule_file_findings(config, dump, rule_files);
+    if dump.is_ok() && alert_file.is_none() {
+        findings.push(Finding {
+            severity: Severity::Warning,
+            message: format!(
+                "suricata does not write alerts to a regular EVE file, so wnc-gw cannot see alerts; enable an \
+                 eve-log output with filetype: regular and alert in its types in {}",
+                config.display()
+            ),
+        });
+    }
+    findings
+}
+
+fn rule_file_findings(
     config: &Path,
     dump: &Result<SuricataConfig, SuricataError>,
     rule_files: &[RuleFile],
@@ -918,10 +1035,12 @@ fn suricata_errors(stderr: &str) -> String {
 }
 
 fn print_suricata_config(
-    config: &Setting<AbsolutePath>,
+    settings: &SuricataSettings,
     dump: &Result<SuricataConfig, SuricataError>,
     rule_files: &[RuleFile],
+    alert_file: Option<&Path>,
 ) {
+    let config = &settings.config;
     let result = match dump {
         Ok(_) => "ok",
         Err(SuricataError::Failed { .. }) => "error",
@@ -942,6 +1061,18 @@ fn print_suricata_config(
             RuleFileState::Wildcard | RuleFileState::NoRulePath => "not checked",
         };
         println!("{:<40} {:<12} {result}", rule_file_name(file), "rule-files");
+    }
+    if dump.is_ok() {
+        match alert_file {
+            Some(path) => println!(
+                "{:<40} {:<12} alerts, read every {} ({})",
+                path.display().to_string(),
+                "eve-log",
+                settings.eve_interval.value,
+                settings.eve_interval.source
+            ),
+            None => println!("{:<40} {:<12} no alerts", "(none)", "eve-log"),
+        }
     }
 }
 

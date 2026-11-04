@@ -57,6 +57,8 @@ pub enum Statement {
     Drop,
     Accept,
     CtMarkHas(u32),
+    CtMarkLacks(u32),
+    CtMarkSet(u32),
     CtMarkClear(u32),
     TcpFlagsAny(Vec<TcpFlag>),
     TcpFlagsEq { mask: Vec<TcpFlag>, value: Vec<TcpFlag> },
@@ -287,6 +289,15 @@ fn statement(statement: &Statement) -> stmt::Statement<'_> {
             left: Expression::BinaryOperation(Box::new(BinaryOperation::AND(ct_mark(), Expression::Number(*bits)))),
             right: Expression::Number(*bits),
             op: Operator::EQ,
+        }),
+        Statement::CtMarkLacks(bits) => stmt::Statement::Match(stmt::Match {
+            left: Expression::BinaryOperation(Box::new(BinaryOperation::AND(ct_mark(), Expression::Number(*bits)))),
+            right: Expression::Number(0),
+            op: Operator::EQ,
+        }),
+        Statement::CtMarkSet(bits) => stmt::Statement::Mangle(stmt::Mangle {
+            key: ct_mark(),
+            value: Expression::BinaryOperation(Box::new(BinaryOperation::OR(vec![ct_mark(), Expression::Number(*bits)]))),
         }),
         Statement::CtMarkClear(bits) => stmt::Statement::Mangle(stmt::Mangle {
             key: ct_mark(),

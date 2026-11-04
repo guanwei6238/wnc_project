@@ -97,5 +97,42 @@
 # Either way, the log records when inspection stops and starts again.
 # when_unavailable = "accept"
 
+# Seconds between reads of Suricata's EVE file (default: 0.5, 0.05 to 10).
+# wnc-gw reads the eve-log output that has filetype: regular and alert in its
+# types, and only the lines Suricata added since the last read. Shorter means
+# alerts reach wnc-gw sooner; longer means fewer wakeups.
+# eve_interval = 0.5
+
 # The gateway runs these programs with its own privileges. `wnc-gw doctor`
 # warns when a non-root account can modify them or the directories they are in.
+
+[trust]
+# Trust connections automatically (default: false). A connection is trusted
+# once it has carried min_packets packets in each direction, for at least
+# min_age seconds, while Suricata was inspecting and without a Suricata alert.
+# Its packets then skip inspection, except SYN/FIN/RST, until the trust expires
+# after ttl seconds; an alert on it revokes the trust at once. Trust is the
+# most dangerous action of the gateway: an attack sent after a connection is
+# trusted is not seen until the trust expires. `wnc-gw doctor` warns about it.
+# Needs net.netfilter.nf_conntrack_acct = 1 (packet counters per connection)
+# and Suricata's alerts in an EVE file (see eve_interval above).
+# Connections can always be trusted by hand with `wnc-gw trust add`.
+# auto = false
+
+# Packets each direction must carry before a connection can be trusted
+# (default: 10, 1 to 1000000).
+# min_packets = 10
+
+# Seconds a connection must be watched before it can be trusted (default: 5,
+# 1 to 3600). Gives Suricata's alerts time to reach wnc-gw.
+# min_age = 5
+
+# Seconds a connection stays trusted before it is inspected again (default:
+# 900, 10 to 86400). With protection = "ips", keep it longer than Suricata's
+# flow-timeouts.tcp.established (600 by default): Suricata then has forgotten
+# the connection and picks it up again instead of dropping its packets as out
+# of sync. `wnc-gw doctor` warns when it is not.
+# ttl = 900
+
+# Seconds between reads of the conntrack table (default: 5, 1 to 60).
+# check_interval = 5

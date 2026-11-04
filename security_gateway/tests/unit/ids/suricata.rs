@@ -121,8 +121,20 @@ fn parses_rule_settings_from_dump() {
         SuricataConfig {
             default_rule_path: Some("/var/lib/suricata/rules".into()),
             rule_files: vec!["suricata.rules".into(), "/etc/suricata/local.rules".into()],
+            eve_outputs: vec![EveOutput {
+                filetype: "regular".into(),
+                filename: "eve.json".into(),
+                types: vec![],
+            }],
+            tcp_established_timeout: None,
         }
     );
+}
+
+#[test]
+fn parses_the_tcp_established_timeout() {
+    let config = SuricataConfig::parse("flow-timeouts.tcp.new = 60\nflow-timeouts.tcp.established = 600\n");
+    assert_eq!(config.tcp_established_timeout, Some(600));
 }
 
 #[test]
@@ -132,14 +144,88 @@ fn dump_without_rule_settings() {
         SuricataConfig {
             default_rule_path: None,
             rule_files: vec![],
+            eve_outputs: vec![],
+            tcp_established_timeout: None,
         }
     );
+}
+
+const EVE_DUMP: &str = "outputs = (null)
+outputs.0 = fast
+outputs.0.fast.enabled = yes
+outputs.0.fast.filename = fast.log
+outputs.1 = eve-log
+outputs.1.eve-log.enabled = yes
+outputs.1.eve-log.filetype = regular
+outputs.1.eve-log.filename = eve.json
+outputs.1.eve-log.types = (null)
+outputs.1.eve-log.types.0 = alert
+outputs.1.eve-log.types.0.alert = (null)
+outputs.1.eve-log.types.0.alert.tagged-packets = yes
+outputs.1.eve-log.types.1 = flow
+outputs.1.eve-log.types.10 = stats
+outputs.1.eve-log.types.10.stats.totals = yes
+";
+
+#[test]
+fn parses_eve_outputs_from_dump() {
+    assert_eq!(
+        SuricataConfig::parse(EVE_DUMP).eve_outputs,
+        vec![EveOutput {
+            filetype: "regular".into(),
+            filename: "eve.json".into(),
+            types: vec!["alert".into(), "flow".into(), "stats".into()],
+        }]
+    );
+}
+
+#[test]
+fn alert_file_is_relative_to_the_log_dir() {
+    let config = SuricataConfig::parse(EVE_DUMP);
+    assert_eq!(
+        config.alert_file(Path::new("/var/log/wnc-gw/suricata")),
+        Some(PathBuf::from("/var/log/wnc-gw/suricata/eve.json"))
+    );
+}
+
+#[test]
+fn alert_file_keeps_an_absolute_filename() {
+    let dump = EVE_DUMP.replace("filename = eve.json", "filename = /tmp/alerts.json");
+    let config = SuricataConfig::parse(&dump);
+    assert_eq!(config.alert_file(Path::new("/var/log/wnc-gw/suricata")), Some(PathBuf::from("/tmp/alerts.json")));
+}
+
+#[test]
+fn alert_file_needs_an_enabled_regular_output_with_alerts() {
+    let log_dir = Path::new("/var/log/wnc-gw/suricata");
+    for dump in [
+        EVE_DUMP.replace("eve-log.enabled = yes", "eve-log.enabled = no"),
+        EVE_DUMP.replace("filetype = regular", "filetype = unix_stream"),
+        EVE_DUMP.replace("types.0 = alert", "types.0 = dns"),
+        EVE_DUMP.lines().filter(|l| !l.contains("eve-log.enabled")).collect::<Vec<_>>().join("\n"),
+    ] {
+        assert_eq!(SuricataConfig::parse(&dump).alert_file(log_dir), None, "{dump}");
+    }
+}
+
+#[test]
+fn alert_file_uses_defaults_and_the_first_output_with_alerts() {
+    let dump = "outputs.0.eve-log.enabled = yes
+outputs.0.eve-log.filename = dns.json
+outputs.0.eve-log.types.0 = dns
+outputs.1.eve-log.enabled = yes
+outputs.1.eve-log.types.0 = alert
+";
+    let config = SuricataConfig::parse(dump);
+    assert_eq!(config.alert_file(Path::new("/log")), Some(PathBuf::from("/log/eve.json")));
 }
 
 fn rules_config(default_rule_path: Option<&str>) -> SuricataConfig {
     SuricataConfig {
         default_rule_path: default_rule_path.map(PathBuf::from),
         rule_files: vec![],
+        eve_outputs: vec![],
+        tcp_established_timeout: None,
     }
 }
 
@@ -177,6 +263,8 @@ fn checks_rule_files_on_disk() {
     let config = SuricataConfig {
         default_rule_path: Some(dir.clone()),
         rule_files: vec!["a.rules".into(), "b.rules".into(), "c.rules".into(), "*.rules".into()],
+        eve_outputs: vec![],
+        tcp_established_timeout: None,
     };
     let files = config.check_rule_files();
     std::fs::remove_dir_all(&dir).unwrap();

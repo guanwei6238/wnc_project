@@ -11,6 +11,7 @@ pub const TABLE: &str = "wnc_gw";
 const PRIORITY_FILTER: i32 = 0;
 const IDS_CHAIN: &str = "ids";
 pub const TRUSTED_MARK: u32 = 0x8000_0000;
+pub const FORWARDED_MARK: u32 = 0x4000_0000;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum WhenUnavailable {
@@ -85,6 +86,10 @@ pub fn trusted(conntrack: &mut Conntrack) -> Result<Vec<Connection>, ConntrackEr
     conntrack.list(TRUSTED_MARK, TRUSTED_MARK)
 }
 
+pub fn forwarded(conntrack: &mut Conntrack) -> Result<Vec<Connection>, ConntrackError> {
+    conntrack.list(FORWARDED_MARK, FORWARDED_MARK)
+}
+
 #[derive(Debug, Default)]
 pub struct Untrusted {
     pub cleared: usize,
@@ -128,6 +133,7 @@ fn table(inspection: Inspection) -> Table {
                     Statement::Counter,
                     Statement::CtMarkClear(TRUSTED_MARK),
                 ],
+                vec![Statement::CtMarkLacks(FORWARDED_MARK), Statement::CtMarkSet(FORWARDED_MARK)],
                 vec![
                     Statement::TcpFlagsAny(vec![TcpFlag::Fin, TcpFlag::Syn, TcpFlag::Rst]),
                     Statement::Jump(IDS_CHAIN.to_owned()),

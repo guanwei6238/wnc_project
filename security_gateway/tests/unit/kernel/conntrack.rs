@@ -63,6 +63,8 @@ fn kernel_reply(seq: u32, c: &Connection) -> Vec<u8> {
             A::CtaMark(c.mark),
             A::Other(DefaultNla::new(CTA_ID, c.id.to_be_bytes().to_vec())),
             A::Other(DefaultNla::new(18, 1_u32.to_be_bytes().to_vec())),
+            counters_nla(CTA_COUNTERS_ORIG, c.original_counters.unwrap()),
+            counters_nla(CTA_COUNTERS_REPLY, c.reply_counters.unwrap()),
         ]),
     )
 }
@@ -96,7 +98,19 @@ fn connection(original: FiveTuple) -> Connection {
         tcp_state: Some(TcpState::Established),
         timeout_s: Some(431_999),
         mark: 0x8000_1234,
+        original_counters: Some(Counters { packets: 12, bytes: 3_456 }),
+        reply_counters: Some(Counters { packets: 10, bytes: 1 << 40 }),
     }
+}
+
+fn counters_nla(kind: u16, c: Counters) -> A {
+    let mut body = Vec::new();
+    for (attr, value) in [(1u16, c.packets), (2u16, c.bytes)] {
+        body.extend_from_slice(&12u16.to_ne_bytes());
+        body.extend_from_slice(&attr.to_ne_bytes());
+        body.extend_from_slice(&value.to_be_bytes());
+    }
+    A::Other(DefaultNla::new(kind | NLA_F_NESTED, body))
 }
 
 #[test]

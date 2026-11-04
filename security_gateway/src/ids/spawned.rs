@@ -19,6 +19,7 @@ use crate::kernel::nflog::GroupRange;
 
 const NOTIFY_SOCKET: &str = "notify.sock";
 const CONTROL_SOCKET: &str = "suricata.sock";
+const LOG_SUBDIR: &str = "suricata";
 const NFLOG_CONFIG: &str = "suricata-nflog.yaml";
 const NFLOG_BUFFER: u32 = 1 << 20;
 const NFLOG_MAX_BUFFER: u32 = 4 << 20;
@@ -221,6 +222,10 @@ fn spawn(options: &Options) -> io::Result<Child> {
 
 pub fn control_socket(runtime_dir: &Path) -> PathBuf {
     runtime_dir.join(CONTROL_SOCKET)
+}
+
+pub fn log_dir(base_log_dir: &Path) -> PathBuf {
+    base_log_dir.join(LOG_SUBDIR)
 }
 
 fn suricata_args(options: &Options) -> Vec<OsString> {

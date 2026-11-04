@@ -128,6 +128,26 @@ fn trusted_mark_is_a_single_bit() {
 }
 
 #[test]
+fn forwarded_mark_is_another_single_bit() {
+    assert_eq!(FORWARDED_MARK.count_ones(), 1);
+    assert_eq!(FORWARDED_MARK & TRUSTED_MARK, 0);
+}
+
+#[test]
+fn forwarded_connections_are_marked_once_before_any_verdict() {
+    let rules = &table(inspection("0", WhenUnavailable::Drop)).chains[0].rules;
+    let mark = rules
+        .iter()
+        .position(|r| r == &vec![Statement::CtMarkLacks(FORWARDED_MARK), Statement::CtMarkSet(FORWARDED_MARK)])
+        .expect("forwarded mark rule");
+    let first_verdict = rules
+        .iter()
+        .position(|r| r.iter().any(|s| matches!(s, Statement::Jump(_) | Statement::Accept)))
+        .expect("a rule with a verdict");
+    assert!(mark < first_verdict, "every forwarded connection must get the mark, trusted or not");
+}
+
+#[test]
 fn a_bare_syn_clears_trust_before_anything_else_sees_it() {
     let rules = &table(inspection("0", WhenUnavailable::Drop)).chains[0].rules;
     let syn = Statement::TcpFlagsEq {

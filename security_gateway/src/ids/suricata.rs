@@ -1,9 +1,11 @@
+use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::str::Lines;
 
+use super::eve;
 use crate::command::{self, CommandError};
 use crate::kernel::nfqueue::QueueRange;
 use crate::kernel::procs::{self, Process};
@@ -28,6 +30,29 @@ pub struct SuricataInfo {
 pub struct SuricataConfig {
     pub default_rule_path: Option<PathBuf>,
     pub rule_files: Vec<String>,
+    pub eve_outputs: Vec<EveOutput>,
+    pub tcp_established_timeout: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EveOutput {
+    pub filetype: String,
+    pub filename: String,
+    pub types: Vec<String>,
+}
+
+impl EveOutput {
+    fn writes_alerts_to_file(&self) -> bool {
+        matches!(self.filetype.as_str(), "regular" | "file") && self.types.iter().any(|t| t == "alert")
+    }
+}
+
+#[derive(Debug, Default)]
+struct EveEntry {
+    enabled: bool,
+    filetype: Option<String>,
+    filename: Option<String>,
+    types: BTreeMap<usize, String>,
 }
 
 #[derive(Debug)]
@@ -110,18 +135,52 @@ impl SuricataConfig {
         let mut config = Self {
             default_rule_path: None,
             rule_files: Vec::new(),
+            eve_outputs: Vec::new(),
+            tcp_established_timeout: None,
         };
+        let mut eve: BTreeMap<usize, EveEntry> = BTreeMap::new();
         for (key, value) in output.lines().filter_map(|line| line.split_once(" = ")) {
             if key == "default-rule-path" {
                 config.default_rule_path = Some(PathBuf::from(value));
-            } else if key
-                .strip_prefix("rule-files.")
-                .is_some_and(|index| !index.is_empty() && index.bytes().all(|b| b.is_ascii_digit()))
-            {
+            } else if key == "flow-timeouts.tcp.established" {
+                config.tcp_established_timeout = value.parse().ok();
+            } else if key.strip_prefix("rule-files.").and_then(index).is_some() {
                 config.rule_files.push(value.to_owned());
+            } else if let Some((output, field)) = key
+                .strip_prefix("outputs.")
+                .and_then(|rest| rest.split_once(".eve-log."))
+                .and_then(|(i, field)| Some((index(i)?, field)))
+            {
+                let entry = eve.entry(output).or_default();
+                match field {
+                    "enabled" => entry.enabled = is_true(value),
+                    "filetype" => entry.filetype = Some(value.to_owned()),
+                    "filename" => entry.filename = Some(value.to_owned()),
+                    _ => {
+                        if let Some(i) = field.strip_prefix("types.").and_then(index) {
+                            entry.types.insert(i, value.to_owned());
+                        }
+                    }
+                }
             }
         }
+        config.eve_outputs = eve
+            .into_values()
+            .filter(|entry| entry.enabled)
+            .map(|entry| EveOutput {
+                filetype: entry.filetype.unwrap_or_else(|| "regular".to_owned()),
+                filename: entry.filename.unwrap_or_else(|| eve::DEFAULT_FILENAME.to_owned()),
+                types: entry.types.into_values().collect(),
+            })
+            .collect();
         config
+    }
+
+    pub fn alert_file(&self, log_dir: &Path) -> Option<PathBuf> {
+        self.eve_outputs
+            .iter()
+            .find(|output| output.writes_alerts_to_file())
+            .map(|output| log_dir.join(&output.filename))
     }
 
     pub fn check_rule_files(&self) -> Vec<RuleFile> {
@@ -155,6 +214,17 @@ impl SuricataConfig {
             .map(|dir| dir.join(entry))
             .ok_or(RuleFileState::NoRulePath)
     }
+}
+
+fn index(s: &str) -> Option<usize> {
+    if s.is_empty() || !s.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    s.parse().ok()
+}
+
+fn is_true(value: &str) -> bool {
+    matches!(value, "yes" | "true" | "on" | "1")
 }
 
 fn check_rule_file(path: &Path) -> RuleFileState {

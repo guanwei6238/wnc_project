@@ -11,6 +11,8 @@ use crate::datapath::XdpPolicy;
 use crate::firewall::WhenUnavailable;
 use crate::forwarding::Mode;
 use crate::ids::delivery::Delivery;
+use crate::agent::trust;
+use crate::ids::eve::EveInterval;
 use crate::ids::{lifecycle, suricata};
 use crate::kernel::nflog::GroupRange;
 use crate::kernel::nfqueue::QueueRange;
@@ -97,6 +99,7 @@ pub struct Config {
     pub wan: Setting<PortSelector>,
     pub nftables: NftablesSettings,
     pub suricata: SuricataSettings,
+    pub trust: TrustSettings,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -113,6 +116,16 @@ pub struct SuricataSettings {
     pub ready_timeout: Setting<Duration>,
     pub stop_timeout: Setting<Duration>,
     pub when_unavailable: Setting<WhenUnavailable>,
+    pub eve_interval: Setting<EveInterval>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TrustSettings {
+    pub auto: Setting<bool>,
+    pub min_packets: Setting<u64>,
+    pub min_age: Setting<Duration>,
+    pub ttl: Setting<Duration>,
+    pub check_interval: Setting<Duration>,
 }
 
 impl Config {
@@ -164,6 +177,32 @@ struct FileConfig {
     nftables: FileNftables,
     #[serde(default)]
     suricata: FileSuricata,
+    #[serde(default)]
+    trust: FileTrust,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FileTrust {
+    auto: Option<bool>,
+    min_packets: Option<Bounded<1, 1_000_000>>,
+    min_age: Option<Bounded<1, 3_600>>,
+    ttl: Option<Bounded<10, 86_400>>,
+    check_interval: Option<Bounded<1, 60>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Bounded<const MIN: u64, const MAX: u64>(u64);
+
+impl<'de, const MIN: u64, const MAX: u64> Deserialize<'de> for Bounded<MIN, MAX> {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = u64::deserialize(deserializer)?;
+        if (MIN..=MAX).contains(&value) {
+            Ok(Self(value))
+        } else {
+            Err(serde::de::Error::custom(format!("invalid value {value} (expected {MIN} to {MAX})")))
+        }
+    }
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -189,6 +228,7 @@ struct FileSuricata {
     ready_timeout: Option<NonZeroU64>,
     stop_timeout: Option<NonZeroU64>,
     when_unavailable: Option<WhenUnavailable>,
+    eve_interval: Option<EveInterval>,
 }
 
 pub fn load(path: Option<&Path>, overrides: Overrides) -> Result<Config, ConfigError> {
@@ -249,6 +289,14 @@ fn merge(file: Option<PathBuf>, file_config: FileConfig, overrides: Overrides) -
             ready_timeout: file_or_seconds(file_config.suricata.ready_timeout, lifecycle::DEFAULT_READY_TIMEOUT),
             stop_timeout: file_or_seconds(file_config.suricata.stop_timeout, lifecycle::DEFAULT_STOP_TIMEOUT),
             when_unavailable: file_or_default(file_config.suricata.when_unavailable),
+            eve_interval: file_or_default(file_config.suricata.eve_interval),
+        },
+        trust: TrustSettings {
+            auto: file_or_default(file_config.trust.auto),
+            min_packets: file_or(file_config.trust.min_packets.map(|v| v.0), trust::DEFAULT_MIN_PACKETS),
+            min_age: file_or(file_config.trust.min_age.map(seconds), trust::DEFAULT_MIN_AGE),
+            ttl: file_or(file_config.trust.ttl.map(seconds), trust::DEFAULT_TTL),
+            check_interval: file_or(file_config.trust.check_interval.map(seconds), trust::DEFAULT_CHECK_INTERVAL),
         },
         file,
     })
@@ -258,6 +306,23 @@ fn file_or_seconds(from_file: Option<NonZeroU64>, default: Duration) -> Setting<
     match from_file {
         Some(seconds) => Setting {
             value: Duration::from_secs(seconds.get()),
+            source: Source::File,
+        },
+        None => Setting {
+            value: default,
+            source: Source::Default,
+        },
+    }
+}
+
+fn seconds<const MIN: u64, const MAX: u64>(value: Bounded<MIN, MAX>) -> Duration {
+    Duration::from_secs(value.0)
+}
+
+fn file_or<T>(from_file: Option<T>, default: T) -> Setting<T> {
+    match from_file {
+        Some(value) => Setting {
+            value,
             source: Source::File,
         },
         None => Setting {

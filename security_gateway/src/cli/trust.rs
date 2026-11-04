@@ -7,7 +7,7 @@ use security_gateway::firewall;
 use security_gateway::kernel::conntrack::{Connection, Conntrack, FiveTuple, Protocol};
 use tracing::info;
 
-use super::logging::{self, LogFormat};
+use super::logging::{self, LogFormat, LogLevel};
 
 #[derive(Debug, Args)]
 pub struct TrustArgs {
@@ -39,15 +39,15 @@ pub struct ConnectionArgs {
 #[derive(Debug, Args)]
 pub struct ListArgs {}
 
-pub fn run(args: TrustArgs, log_format: LogFormat) -> ExitCode {
+pub fn run(args: TrustArgs, log_format: LogFormat, log_level: LogLevel) -> ExitCode {
     match args.command {
-        TrustCommand::Add(args) => change(args, true, log_format),
-        TrustCommand::Del(args) => change(args, false, log_format),
+        TrustCommand::Add(args) => change(args, true, log_format, log_level),
+        TrustCommand::Del(args) => change(args, false, log_format, log_level),
         TrustCommand::List(_) => list(),
     }
 }
 
-fn change(args: ConnectionArgs, trust: bool, log_format: LogFormat) -> ExitCode {
+fn change(args: ConnectionArgs, trust: bool, log_format: LogFormat, log_level: LogLevel) -> ExitCode {
     let tuple = match FiveTuple::new(
         args.protocol,
         SocketAddr::new(args.src, args.src_port),
@@ -68,7 +68,7 @@ fn change(args: ConnectionArgs, trust: bool, log_format: LogFormat) -> ExitCode 
     if let Err(e) = result {
         return fail(format_args!("{tuple}: {e}"));
     }
-    logging::init(log_format);
+    logging::init(log_format, log_level);
     let connection = tuple.to_string();
     if trust {
         info!(connection = connection.as_str(), "connection trusted, its packets other than syn/fin/rst skip inspection");

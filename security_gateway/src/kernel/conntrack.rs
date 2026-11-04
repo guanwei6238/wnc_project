@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 use netlink_packet_core::{
     NLA_F_NESTED, NLA_TYPE_MASK, NLM_F_ACK, NLM_F_DUMP, NLM_F_REQUEST, NLMSG_DONE, NLMSG_ERROR,
-    NetlinkBuffer, NlasIterator, parse_i32, parse_ip, parse_u8, parse_u16_be, parse_u32_be,
+    NetlinkBuffer, NlasIterator, parse_i32, parse_ip, parse_u8, parse_u16_be, parse_u32_be, parse_u64_be,
 };
 use netlink_sys::protocols::NETLINK_NETFILTER;
 use netlink_sys::{Socket, SocketAddr as NetlinkAddr};
@@ -25,6 +25,8 @@ const CTA_TUPLE_REPLY: u16 = 2;
 const CTA_PROTOINFO: u16 = 4;
 const CTA_TIMEOUT: u16 = 7;
 const CTA_MARK: u16 = 8;
+const CTA_COUNTERS_ORIG: u16 = 9;
+const CTA_COUNTERS_REPLY: u16 = 10;
 const CTA_ID: u16 = 12;
 const CTA_MARK_MASK: u16 = 21;
 const CTA_TUPLE_IP: u16 = 1;
@@ -36,6 +38,8 @@ const CTA_IP_V6_DST: u16 = 4;
 const CTA_PROTO_NUM: u16 = 1;
 const CTA_PROTO_SRC_PORT: u16 = 2;
 const CTA_PROTO_DST_PORT: u16 = 3;
+const CTA_COUNTERS_PACKETS: u16 = 1;
+const CTA_COUNTERS_BYTES: u16 = 2;
 const CTA_PROTOINFO_TCP: u16 = 1;
 const CTA_PROTOINFO_TCP_STATE: u16 = 1;
 const CTA_STATS_INSERT_FAILED: u16 = 9;
@@ -44,7 +48,7 @@ const CTA_STATS_EARLY_DROP: u16 = 11;
 const CTA_STATS_GLOBAL_ENTRIES: u16 = 1;
 const CTA_STATS_GLOBAL_MAX_ENTRIES: u16 = 2;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Protocol {
     Tcp,
     Udp,
@@ -98,7 +102,7 @@ impl FromStr for Protocol {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FiveTuple {
     protocol: Protocol,
     src: SocketAddr,
@@ -202,6 +206,14 @@ pub struct Connection {
     pub tcp_state: Option<TcpState>,
     pub timeout_s: Option<u32>,
     pub mark: u32,
+    pub original_counters: Option<Counters>,
+    pub reply_counters: Option<Counters>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Counters {
+    pub packets: u64,
+    pub bytes: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -528,6 +540,7 @@ fn kernel_error(code: i32) -> ConntrackError {
 fn parse_connection(payload: &[u8]) -> Result<Connection, ConntrackError> {
     let attrs = payload.get(4..).ok_or_else(|| ConntrackError::Malformed("message too short".to_owned()))?;
     let (mut id, mut original, mut reply, mut tcp_state, mut timeout_s, mut mark) = (None, None, None, None, None, 0);
+    let (mut original_counters, mut reply_counters) = (None, None);
     for nla in NlasIterator::new(attrs) {
         let nla = nla.map_err(malformed)?;
         let value = nla.value();
@@ -538,6 +551,8 @@ fn parse_connection(payload: &[u8]) -> Result<Connection, ConntrackError> {
             CTA_TIMEOUT => timeout_s = Some(parse_u32_be(value).map_err(malformed)?),
             CTA_MARK => mark = parse_u32_be(value).map_err(malformed)?,
             CTA_ID => id = Some(parse_u32_be(value).map_err(malformed)?),
+            CTA_COUNTERS_ORIG => original_counters = Some(parse_counters(value)?),
+            CTA_COUNTERS_REPLY => reply_counters = Some(parse_counters(value)?),
             _ => {}
         }
     }
@@ -549,7 +564,22 @@ fn parse_connection(payload: &[u8]) -> Result<Connection, ConntrackError> {
         tcp_state,
         timeout_s,
         mark,
+        original_counters,
+        reply_counters,
     })
+}
+
+fn parse_counters(buf: &[u8]) -> Result<Counters, ConntrackError> {
+    let mut counters = Counters::default();
+    for nla in NlasIterator::new(buf) {
+        let nla = nla.map_err(malformed)?;
+        match nla.kind() & NLA_TYPE_MASK {
+            CTA_COUNTERS_PACKETS => counters.packets = parse_u64_be(nla.value()).map_err(malformed)?,
+            CTA_COUNTERS_BYTES => counters.bytes = parse_u64_be(nla.value()).map_err(malformed)?,
+            _ => {}
+        }
+    }
+    Ok(counters)
 }
 
 fn parse_tuple(buf: &[u8]) -> Result<FiveTuple, ConntrackError> {

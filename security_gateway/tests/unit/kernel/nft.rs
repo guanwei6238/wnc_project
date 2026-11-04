@@ -201,6 +201,20 @@ fn clearing_a_ct_mark_bit_on_a_bare_syn() {
 }
 
 #[test]
+fn setting_a_ct_mark_bit_once() {
+    // 期望值是 nft 1.1.3 對 `ct mark & 0x40000000 == 0 ct mark set ct mark | 0x40000000` 的 nft -j 輸出
+    let json = |s: Statement| serde_json::to_value(statement(&s)).unwrap();
+    assert_eq!(
+        json(Statement::CtMarkLacks(0x4000_0000)),
+        serde_json::json!({"match": {"op": "==", "left": {"&": [{"ct": {"key": "mark"}}, 1073741824u32]}, "right": 0}})
+    );
+    assert_eq!(
+        json(Statement::CtMarkSet(0x4000_0000)),
+        serde_json::json!({"mangle": {"key": {"ct": {"key": "mark"}}, "value": {"|": [{"ct": {"key": "mark"}}, 1073741824u32]}}})
+    );
+}
+
+#[test]
 fn log_group_and_jump_by_symhash() {
     assert_eq!(
         serde_json::to_value(statement(&Statement::Log { group: 10 })).unwrap(),
