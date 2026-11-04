@@ -6,17 +6,19 @@
 #   ids1 trust kill groups ips startup missed：和 protection_docker.sh 相同；startup 跑 N 次（預設 20），missed 用 python 送 UDP
 #   bind         wgw 裡另外跑一個綁 group 10 的 Suricata：doctor 給提示、run 記 ERROR 並重試，對方停掉後就緒
 #   runmode      ids、ips 各一個和多個 queue／group：Suricata 只有 W 執行緒（workers）、ICMP 有 alert；AUTOFP=1 時 yaml 明寫 runmode: autofp
+#   alerts autotrust：和 protection_docker.sh 相同（PROTECTION=ips）；autotrust 先用 nf_conntrack_acct=0 跑一次 doctor
 # 前置：sudo sh env.sh up；系統的 suricata 服務已停；wnc-gw 放在 $GW
-# 用法: sudo bash protection_pi.sh <net up|net down|doctor|ids1|trust|kill|groups|ips|startup|missed|bind|runmode|clean>
+# 用法: sudo bash protection_pi.sh <net up|net down|doctor|ids1|trust|kill|groups|ips|startup|missed|bind|runmode|alerts|autotrust|clean>
 GW=${GW:-/tmp/wncgw/wnc-gw}; D=/tmp/wncgw/pt; SLOG=/var/log/wnc-gw/suricata
 W="ip netns exec wgw"; C="ip netns exec fcli"; S="ip netns exec fsrv"
 P=$((20000 + RANDOM % 20000))
 
-setup() {  # $1 = 最上層多的設定行，$2 = [suricata] 多的設定行
+setup() {  # $1 = 最上層多的設定行，$2 = [suricata] 多的設定行，$3 = 多的規則
   mkdir -p $D
-  cat > $D/test.rules <<'EOF'
+  cat > $D/test.rules <<EOF
 alert icmp any any -> any any (msg:"wt icmp"; sid:1000201; rev:1;)
 alert tcp any any -> any 5001 (msg:"wt payload"; flow:to_server,established; content:"WT-PAYLOAD-MARKER"; sid:1000202; rev:1;)
+$3
 EOF
   printf '%%YAML 1.1\n---\ninclude: /etc/suricata/suricata.yaml\ndefault-rule-path: %s\nrule-files:\n  - test.rules\n' $D > $D/s.yaml
   printf 'mode = "bridge"\nxdp = "off"\n%s\n\n[ports]\nlan = "g-lan"\nwan = "g-wan"\n\n[suricata]\nconfig = "%s"\n%s\n' "$1" $D/s.yaml "$2" > $D/setting.toml
@@ -24,7 +26,7 @@ EOF
 
 start() {
   rm -f $SLOG/fast.log $SLOG/eve.json $D/run.log $D/exit
-  ( $W $GW -c $D/setting.toml run > /dev/null 2> $D/run.log; echo $? > $D/exit ) &
+  ( $W $GW ${RUNARGS:-} -c $D/setting.toml run > /dev/null 2> $D/run.log; echo $? > $D/exit ) &
   local i
   for i in $(seq 1 150); do
     grep -q "traffic is inspected" $D/run.log 2>/dev/null && return 0
@@ -62,6 +64,16 @@ while time.time() < end:
 c.close()"
 }
 
+clean_client() {  # $1 = 來源 port，$2 = 秒數：每 0.1 秒一行，沒有 payload 標記
+  $C python3 -c "
+import socket, time
+c = socket.create_connection(('10.9.0.2', 5001), source_address=('10.9.0.1', $1))
+end = time.time() + $2
+while time.time() < end:
+    c.sendall(b'line\\n'); time.sleep(0.1)
+c.close()"
+}
+
 case "$1" in
 net)
   if [ "$2" = up ]; then
@@ -72,6 +84,7 @@ net)
     ip -n fcli addr add 10.9.0.1/24 dev c-lan; ip -n fcli link set c-lan up
     ip -n fsrv addr add 10.9.0.2/24 dev s-wan; ip -n fsrv link set s-wan up
     echo 'table inet t { counter got {}; chain in { type filter hook input priority 0; policy accept; udp dport 9 counter name "got" drop; }; }' | $S nft -f -
+    modprobe nf_conntrack; $W sysctl -q -w net.netfilter.nf_conntrack_acct=1
     $C ping -c 1 -W 2 10.9.0.2 | grep -o "1 received"
   else
     for ns in fcli fsrv; do ip netns del $ns 2>/dev/null; done; true
@@ -194,8 +207,43 @@ runmode)
   done
   echo "yaml runmode: $(suricata --dump-config -c $D/s.yaml 2>/dev/null | grep '^runmode')"
   ;;
+alerts)
+  setup "" ""; RUNARGS="--log-level debug" start || exit 1; server
+  grep -E "reading suricata's alerts" $D/run.log | cut -c28-220
+  $C ping -c 3 -i 0.2 -W 1 10.9.0.2 | grep -o "[0-9]* received"; client $P 1; sleep 1
+  echo "== rotate: mv eve.json eve.json.1, SIGHUP suricata"
+  mv $SLOG/eve.json $SLOG/eve.json.1; kill -HUP $(suricata_pid); sleep 1
+  client $((P + 1)) 1; sleep 1
+  echo "== truncate eve.json"
+  : > $SLOG/eve.json; sleep 1
+  client $((P + 2)) 1; sleep 1
+  stop
+  echo "alerts in fast.log: icmp $(alerts 1000201), payload $(alerts 1000202)"
+  echo "alert lines in wnc-gw's log: icmp $(grep -c 'DEBUG suricata alert.*sid=1000201' $D/run.log), payload $(grep -c 'DEBUG suricata alert.*sid=1000202' $D/run.log)"
+  grep -m1 'DEBUG suricata alert.*sid=1000202' $D/run.log | cut -c28-260
+  grep -E "raised alerts|replaced|truncated|appeared|cannot read|EVE" $D/run.log | grep -v 'DEBUG suricata alert' | cut -c28-300
+  ;;
+autotrust)
+  setup "${PROTECTION:+protection = \"$PROTECTION\"}" "" \
+    'alert tcp any any -> any 5001 (msg:"wt fin"; flow:to_server; flags:F+; sid:1000203; rev:1;)'
+  printf '\n[trust]\nauto = true\nmin_packets = 5\nmin_age = 2\nttl = 10\ncheck_interval = 1\n' >> $D/setting.toml
+  $W sysctl -q -w net.netfilter.nf_conntrack_acct=0
+  echo "== doctor with nf_conntrack_acct = 0"; $W $GW -c $D/setting.toml doctor | grep -i -E "acct|trust" | sed 's/^/   /'
+  $W sysctl -q -w net.netfilter.nf_conntrack_acct=1
+  echo "== doctor with nf_conntrack_acct = 1"; $W $GW -c $D/setting.toml doctor | grep -i -E "acct|trust" | sed 's/^/   /'
+  RUNARGS="--log-level debug" start || exit 1; server
+  clean_client $P 25 &
+  cp=$!
+  sleep 1; c1=$(ids_count); sleep 4; c2=$(ids_count); sleep 3; c3=$(ids_count)
+  echo "ids chain packets at 1 s, 5 s, 8 s: $c1 $c2 $c3 (trusted from about 3 s: grows by only a few after that)"
+  client $((P + 1)) 6
+  wait $cp; sleep 2
+  stop
+  echo "== clean connection: port $P, connection with the payload marker: port $((P + 1))"
+  grep -E "automatic trust|connection trusted|trust expired|trust revoked|will not be trusted|watching the connection again" $D/run.log | cut -c28-300
+  ;;
 clean)
   rm -rf $D /run/wnc-gw/suricata-nflog.yaml; pkill -f wtsrv; true
   ;;
-*) sed -n '2,10p' "$0"; exit 2 ;;
+*) sed -n '2,11p' "$0"; exit 2 ;;
 esac

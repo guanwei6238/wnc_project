@@ -27,7 +27,7 @@ $W $GW -c $L/setting.toml run > /dev/null 2> $L/run.log &
 gp=$!
 until grep -q "traffic is inspected" $L/run.log; do sleep 0.2; kill -0 $gp 2>/dev/null || { cat $L/run.log; exit 1; }; done
 if [ "$v" = noclear ]; then
-  h=$($W nft -a list chain inet wnc_gw forward | grep "ct mark set" | sed 's/.*# handle //')
+  h=$($W nft -a list chain inet wnc_gw forward | grep "ct mark set ct mark & 0x7fffffff" | sed 's/.*# handle //')
   $W nft delete rule inet wnc_gw forward handle "$h"
 fi
 echo "== $v (suricata tcp established timeout: $(suricata --dump-config -c $L/s.yaml 2>/dev/null | grep '^flow-timeouts.tcp.established' | sed 's/.* = //') s)"

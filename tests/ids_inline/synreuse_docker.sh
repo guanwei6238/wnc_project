@@ -17,7 +17,7 @@ $G nft add chain inet tdrop pre '{ type filter hook prerouting priority -350; po
 $G sh -c '/opt/sg/wnc-gw -c /tmp/tr/setting.toml run > /dev/null 2> /tmp/tr/run.log &'
 until $G grep -q "forwarded traffic is inspected" /tmp/tr/run.log 2>/dev/null; do sleep 0.2; done
 if [ "$v" = noclear ]; then
-  h=$($G nft -a list chain inet wnc_gw forward | grep "ct mark set" | sed 's/.*# handle //')
+  h=$($G nft -a list chain inet wnc_gw forward | grep "ct mark set ct mark & 0x7fffffff" | sed 's/.*# handle //')
   $G nft delete rule inet wnc_gw forward handle "$h"
 fi
 echo "== $v (suricata tcp established timeout: $($G suricata --dump-config -c /tmp/tr/s.yaml 2>/dev/null | grep '^flow-timeouts.tcp.established' | sed 's/.* = //') s)"

@@ -1,0 +1,20 @@
+test=eve eve_watch=poll rate=0 sent=0 alerts=0 gw_cpu_ms_per_s=0.373 read=0 clock_mhz=1000
+test=eve eve_watch=poll rate=100 sent=6000 alerts=6000 gw_cpu_ms_per_s=2.244 read=6000 clock_mhz=1000
+test=eve eve_watch=poll rate=1000 sent=60000 alerts=60000 gw_cpu_ms_per_s=16.339 read=60000 clock_mhz=1000
+test=eve eve_watch=inotify rate=0 sent=0 alerts=0 gw_cpu_ms_per_s=0.195 read=0 clock_mhz=1000
+test=eve eve_watch=inotify rate=100 sent=6000 alerts=6000 gw_cpu_ms_per_s=6.460 read=6000 clock_mhz=1000
+test=eve eve_watch=inotify rate=1000 sent=60000 alerts=60000 gw_cpu_ms_per_s=50.784 read=60000 clock_mhz=1000
+test=latency eve_watch=poll rate=1 eve_alerts=30 gw_alerts=30 p50_ms=240.8 p95_ms=241.3 max_ms=241.3 min_ms=240.3
+test=latency eve_watch=poll rate=10 eve_alerts=300 gw_alerts=300 p50_ms=249.9 p95_ms=449.8 max_ms=450.1 min_ms=49.3
+test=latency eve_watch=inotify rate=1 eve_alerts=30 gw_alerts=30 p50_ms=2.5 p95_ms=2.6 max_ms=210.7 min_ms=0.4
+test=latency eve_watch=inotify rate=10 eve_alerts=300 gw_alerts=300 p50_ms=231.4 p95_ms=446.4 max_ms=461.0 min_ms=1.5
+test=saving auto=false forward_pps=4004 ids_pps=4004 suricata_cpu_ms_per_s=100.45 gw_cpu_ms_per_s=0.487 trusted=0 clock_mhz=1000
+test=saving auto=true forward_pps=4003 ids_pps=0 suricata_cpu_ms_per_s=13.55 gw_cpu_ms_per_s=1.861 trusted=8 clock_mhz=1000
+test=check flows=0 conntrack_count=16 gw_cpu_ms_per_s=7.400 clock_mhz=1000
+test=check flows=1000 conntrack_count=1008 gw_cpu_ms_per_s=17.196 clock_mhz=1000
+test=check flows=10000 conntrack_count=10000 gw_cpu_ms_per_s=100.941 clock_mhz=1000
+test=wakeups eve_watch=poll rate=0 wakeups_per_s=4 gw_cpu_ms_per_s=0.39 clock_mhz=1000
+test=wakeups eve_watch=poll rate=1000 wakeups_per_s=4 gw_cpu_ms_per_s=15.88 clock_mhz=1000
+test=wakeups eve_watch=inotify rate=0 wakeups_per_s=1 gw_cpu_ms_per_s=0.25 clock_mhz=1000
+test=wakeups eve_watch=inotify rate=1000 wakeups_per_s=1966 gw_cpu_ms_per_s=52.24 clock_mhz=1000
+test=ctdump table=empty buckets=65536 dump_minus_count_us=6621 note=conntrack_cli_x100_incl_spawn
