@@ -4,10 +4,11 @@ use std::process::ExitCode;
 
 use clap::Args;
 use security_gateway::access::{self, Writable, Writer};
-use security_gateway::config::{self, AbsolutePath, Config, Overrides, Setting, SuricataSettings};
+use security_gateway::config::{self, AbsolutePath, Config, Overrides, Setting};
 use security_gateway::datapath::{CoreHook, XdpPolicy, core_hook};
 use security_gateway::firewall::WhenUnavailable;
 use security_gateway::forwarding::{self, EnvCheck, EnvState, Forwarding, Level, Mode};
+use security_gateway::ids::delivery::Delivery;
 use security_gateway::ids::spawned;
 use security_gateway::ids::suricata::{
     self, Capture, Owner, RuleFile, RuleFileState, RunningSuricata, Suricata, SuricataConfig, SuricataError,
@@ -20,6 +21,7 @@ use security_gateway::kernel::nfqueue::QueueRange;
 use security_gateway::kernel::nft::{Nft, NftError, NftInfo};
 use security_gateway::platform::{BootConfig, BootState, Current, Dirs, Services};
 use security_gateway::ports::{self, Port, ResolveError};
+use security_gateway::protection::Protection;
 
 #[derive(Debug, Args)]
 pub struct DoctorArgs {}
@@ -74,6 +76,7 @@ pub async fn passes(config: &Config, starting: bool) -> bool {
     }
     println!("mode:   {} ({})", config.mode.value, config.mode.source);
     println!("xdp:    {} ({})", config.xdp.value, config.xdp.source);
+    println!("protection: {} ({}), suricata receives {}", config.protection.value, config.protection.source, config.delivery());
     println!();
 
     let interfaces = match load_interfaces().await {
@@ -97,16 +100,16 @@ pub async fn passes(config: &Config, starting: bool) -> bool {
     findings.extend(check_xdp(config.xdp.value, &ports).await);
     println!();
 
-    findings.extend(check_modules(forwarding.required_modules()));
+    findings.extend(check_modules(forwarding.required_modules(), config.delivery()));
     println!();
 
     findings.extend(check_nft(&config.nftables.path).await);
     println!();
 
-    findings.extend(check_suricata(&config.suricata).await);
+    findings.extend(check_suricata(config).await);
     println!();
 
-    findings.extend(check_other_suricata(config.suricata.queue.value, !starting).await);
+    findings.extend(check_other_suricata(config.delivery(), !starting).await);
     println!();
 
     findings.extend(check_access(config));
@@ -307,16 +310,6 @@ const REQUIRED_MODULES: &[RequiredModule] = &[
         must_be_loaded: false,
     },
     RequiredModule {
-        name: "nft_queue",
-        purpose: "queueing packets to the IDS",
-        must_be_loaded: false,
-    },
-    RequiredModule {
-        name: "nfnetlink_queue",
-        purpose: "passing queued packets to user space",
-        must_be_loaded: false,
-    },
-    RequiredModule {
         name: "nf_conntrack",
         purpose: "connection tracking",
         must_be_loaded: false,
@@ -333,7 +326,40 @@ const REQUIRED_MODULES: &[RequiredModule] = &[
     },
 ];
 
-fn check_modules(mode_modules: &[RequiredModule]) -> Vec<Finding> {
+const QUEUE_MODULES: &[RequiredModule] = &[
+    RequiredModule {
+        name: "nft_queue",
+        purpose: "queueing packets to the IDS",
+        must_be_loaded: false,
+    },
+    RequiredModule {
+        name: "nfnetlink_queue",
+        purpose: "passing queued packets to user space",
+        must_be_loaded: false,
+    },
+];
+
+const COPY_MODULES: &[RequiredModule] = &[
+    RequiredModule {
+        name: "nft_log",
+        purpose: "copying packets to the IDS",
+        must_be_loaded: false,
+    },
+    RequiredModule {
+        name: "nfnetlink_log",
+        purpose: "passing packet copies to user space",
+        must_be_loaded: false,
+    },
+];
+
+fn delivery_modules(delivery: Delivery) -> &'static [RequiredModule] {
+    match delivery {
+        Delivery::Queue(_) => QUEUE_MODULES,
+        Delivery::Copy(_) => COPY_MODULES,
+    }
+}
+
+fn check_modules(mode_modules: &[RequiredModule], delivery: Delivery) -> Vec<Finding> {
     let index = match ModuleIndex::load() {
         Ok(index) => index,
         Err(e) => {
@@ -345,6 +371,7 @@ fn check_modules(mode_modules: &[RequiredModule]) -> Vec<Finding> {
     };
     let states: Vec<_> = REQUIRED_MODULES
         .iter()
+        .chain(delivery_modules(delivery))
         .chain(mode_modules)
         .map(|module| (module, index.state(module.name)))
         .collect();
@@ -441,12 +468,14 @@ fn print_nft(path: &Setting<AbsolutePath>, info: &Result<NftInfo, NftError>) {
     );
 }
 
-async fn check_suricata(settings: &SuricataSettings) -> Vec<Finding> {
+async fn check_suricata(config: &Config) -> Vec<Finding> {
+    let settings = &config.suricata;
     let suricata = Suricata::new(settings.path.value.as_path());
     let info = suricata.info().await;
     print_suricata(&settings.path, &info);
-    let mut findings = suricata_findings(suricata.path(), &info);
-    findings.extend(when_unavailable_finding(settings.when_unavailable.value));
+    let mut findings = suricata_findings(suricata.path(), &info, config.delivery());
+    findings.extend(when_unavailable_finding(settings.when_unavailable.value, config.protection.value));
+    findings.extend(protection_findings(config.protection.value));
     if info.is_ok() {
         findings.push(spawned_finding());
         println!();
@@ -459,7 +488,7 @@ async fn check_suricata(settings: &SuricataSettings) -> Vec<Finding> {
     findings
 }
 
-async fn check_other_suricata(queue: QueueRange, check_boot: bool) -> Vec<Finding> {
+async fn check_other_suricata(delivery: Delivery, check_boot: bool) -> Vec<Finding> {
     let scan = suricata::scan(&spawned::control_socket(Current.runtime_dir()));
     let service = Current.suricata_service();
     let boot = if check_boot {
@@ -468,11 +497,11 @@ async fn check_other_suricata(queue: QueueRange, check_boot: bool) -> Vec<Findin
         None
     };
     print_other_suricata(&scan, service, boot.as_ref());
-    other_suricata_findings(queue, &scan, service, boot.as_ref())
+    other_suricata_findings(delivery, &scan, service, boot.as_ref())
 }
 
 fn other_suricata_findings(
-    queue: QueueRange,
+    delivery: Delivery,
     scan: &io::Result<SuricataScan>,
     service: &str,
     boot: Option<&BootState>,
@@ -500,8 +529,14 @@ fn other_suricata_findings(
     };
     let mut service_running = false;
     for other in running {
-        let held = match &other.capture {
-            Capture::Nfq(queues) if queues.iter().any(|q| q.overlaps(&queue)) => Some(queue_list(queues)),
+        let held = match (&other.capture, delivery) {
+            (Capture::Nfq(queues), Delivery::Queue(queue)) if queues.iter().any(|q| q.overlaps(&queue)) => {
+                Some(queue_list(queues))
+            }
+            _ => None,
+        };
+        let nflog_groups = match (&other.capture, delivery) {
+            (Capture::Live("nflog"), Delivery::Copy(groups)) if other.same_net_ns != Some(false) => Some(groups),
             _ => None,
         };
         match other.owner {
@@ -538,6 +573,14 @@ fn other_suricata_findings(
             .rss_kb
             .map_or_else(|| "memory".to_owned(), |kb| format!("{} MB of memory", megabytes(kb)));
         let (severity, message) = match (&other.capture, &held, other.same_net_ns) {
+            _ if let Some(groups) = nflog_groups => (
+                Severity::Warning,
+                format!(
+                    "{who} is receiving packet copies over NFLOG; if it binds NFLOG group {groups}, which wnc-gw is \
+                     configured to use (wnc-gw cannot see that without root), wnc-gw's suricata cannot start until \
+                     that one stops; stop it with: {stop}"
+                ),
+            ),
             (Capture::Nfq(_), Some(queues), Some(true)) => (
                 Severity::Warning,
                 format!(
@@ -656,7 +699,7 @@ fn print_other_suricata(scan: &io::Result<SuricataScan>, service: &str, boot: Op
     println!("{service:<18} {at_boot}");
 }
 
-fn suricata_findings(path: &Path, info: &Result<SuricataInfo, SuricataError>) -> Vec<Finding> {
+fn suricata_findings(path: &Path, info: &Result<SuricataInfo, SuricataError>, delivery: Delivery) -> Vec<Finding> {
     let suricata = path.display();
     let info = match info {
         Ok(info) => info,
@@ -674,18 +717,22 @@ fn suricata_findings(path: &Path, info: &Result<SuricataInfo, SuricataError>) ->
         }
     };
     let mut findings = Vec::new();
-    match info.nfqueue {
+    let (support, name, needed_for) = match delivery {
+        Delivery::Queue(_) => (info.nfqueue, "NFQueue", "receiving the packets the gateway queues"),
+        Delivery::Copy(_) => (info.nflog, "NFLOG", "receiving the packet copies the gateway sends"),
+    };
+    match support {
         Some(true) => {}
         Some(false) => findings.push(Finding {
             severity: Severity::Error,
             message: format!(
-                "{suricata} is built without NFQueue support (needed for receiving the packets the gateway queues); \
-                 install a suricata build with NFQueue support"
+                "{suricata} is built without {name} support (needed for {needed_for}); \
+                 install a suricata build with {name} support"
             ),
         }),
         None => findings.push(Finding {
             severity: Severity::Warning,
-            message: format!("cannot verify NFQueue support of {suricata}: --build-info does not report it"),
+            message: format!("cannot verify {name} support of {suricata}: --build-info does not report it"),
         }),
     }
     match info.ready_notify {
@@ -694,7 +741,7 @@ fn suricata_findings(path: &Path, info: &Result<SuricataInfo, SuricataError>) ->
             severity: Severity::Error,
             message: format!(
                 "{suricata} is built without systemd support (needed for the readiness notification the gateway \
-                 waits for before queueing packets); install a suricata build with systemd support"
+                 waits for before sending it packets); install a suricata build with systemd support"
             ),
         }),
         None => findings.push(Finding {
@@ -717,16 +764,43 @@ fn spawned_finding() -> Finding {
     }
 }
 
-fn when_unavailable_finding(when_unavailable: WhenUnavailable) -> Option<Finding> {
+fn when_unavailable_finding(when_unavailable: WhenUnavailable, protection: Protection) -> Option<Finding> {
+    // ids 時跟不上不受 when_unavailable 影響，另外由 protection_findings 說明
+    let when = match protection {
+        Protection::Ips => "starts, restarts or falls behind",
+        Protection::Ids => "starts or restarts",
+    };
     match when_unavailable {
         WhenUnavailable::Accept => Some(Finding {
             severity: Severity::Warning,
-            message: "forwarded traffic passes without inspection while suricata starts, restarts or falls behind \
-                      (when_unavailable = \"accept\"); set when_unavailable = \"drop\" to drop it instead"
-                .to_owned(),
+            message: format!(
+                "forwarded traffic passes without inspection while suricata {when} (when_unavailable = \"accept\"); \
+                 set when_unavailable = \"drop\" to drop it instead"
+            ),
         }),
         WhenUnavailable::Drop => None,
     }
+}
+
+fn protection_findings(protection: Protection) -> Vec<Finding> {
+    if protection == Protection::Ips {
+        return Vec::new();
+    }
+    [
+        "protection = \"ids\": suricata only gets copies of forwarded packets, so no detection blocks traffic; \
+         set protection = \"ips\" to make packets wait for suricata's verdict",
+        "protection = \"ids\": suricata does not validate checksums, because packets merged by GRO reach it with \
+         incomplete ones; it also inspects packets that the receiving host drops for a bad checksum, which an \
+         attacker can use to hide data from inspection; protection = \"ips\" does not have this limitation",
+        "protection = \"ids\": traffic that arrives faster than suricata takes the copies is forwarded without \
+         inspection, whichever when_unavailable is set",
+    ]
+    .into_iter()
+    .map(|message| Finding {
+        severity: Severity::Warning,
+        message: message.to_owned(),
+    })
+    .collect()
 }
 
 fn print_suricata(path: &Setting<AbsolutePath>, info: &Result<SuricataInfo, SuricataError>) {
@@ -735,21 +809,22 @@ fn print_suricata(path: &Setting<AbsolutePath>, info: &Result<SuricataInfo, Suri
         Some(false) => "no",
         None => "unknown",
     };
-    let (version, nfqueue, ready_notify) = match info {
+    let (version, nfqueue, nflog, ready_notify) = match info {
         Ok(info) => (
             info.version.as_deref().unwrap_or("unknown"),
             yes_no(info.nfqueue),
+            yes_no(info.nflog),
             yes_no(info.ready_notify),
         ),
-        Err(SuricataError::NotFound { .. }) => ("not found", "-", "-"),
-        Err(_) => ("unknown", "unknown", "unknown"),
+        Err(SuricataError::NotFound { .. }) => ("not found", "-", "-", "-"),
+        Err(_) => ("unknown", "unknown", "unknown", "unknown"),
     };
     println!(
-        "{:<18} {:<12} {:<10} {:<8} {}",
-        "COMMAND", "SOURCE", "VERSION", "NFQUEUE", "READY NOTIFY"
+        "{:<18} {:<12} {:<10} {:<8} {:<8} {}",
+        "COMMAND", "SOURCE", "VERSION", "NFQUEUE", "NFLOG", "READY NOTIFY"
     );
     println!(
-        "{:<18} {:<12} {version:<10} {nfqueue:<8} {ready_notify}",
+        "{:<18} {:<12} {version:<10} {nfqueue:<8} {nflog:<8} {ready_notify}",
         path.value.to_string(),
         path.source.to_string()
     );

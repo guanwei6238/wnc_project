@@ -22,7 +22,8 @@ const CONTROL_SOCKET: &str = "suricata.sock";
 const NFLOG_CONFIG: &str = "suricata-nflog.yaml";
 const NFLOG_BUFFER: u32 = 1 << 20;
 const NFLOG_MAX_BUFFER: u32 = 4 << 20;
-pub const FORCED_SETTINGS: [&str; 5] = [
+pub const FORCED_SETTINGS: [&str; 6] = [
+    "runmode=workers",
     "detect.delayed-detect=no",
     "coredump.max-dump=0",
     "stream.midstream=true",
@@ -338,13 +339,15 @@ async fn forward(stream: impl AsyncRead + Unpin, pid: u32, delivery: Delivery) {
         if text.contains("nfq_create_queue failed") {
             error!(pid, delivery = %delivery, "suricata cannot bind the queue; another program is using it");
         }
+        if text.contains("nflog_bind_group() failed") {
+            error!(pid, delivery = %delivery, "suricata cannot bind the nflog group; another program is using it");
+        }
         if let Some(failed) = failed_rules(text).filter(|&n| n > 0) {
             warn!(pid, failed, "suricata could not load some rules; they are not used for detection");
         }
     }
 }
 
-// 規則載完時的那一行：「1 rule files processed. 1 rules successfully loaded, 0 rules failed, 0 rules skipped」
 fn failed_rules(text: &str) -> Option<u64> {
     let (before, _) = text.split_once(" rules failed")?;
     before.rsplit(' ').next()?.parse().ok()

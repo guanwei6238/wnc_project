@@ -322,14 +322,23 @@ fn suricata_info(nfqueue: Option<bool>, ready_notify: Option<bool>) -> Result<Su
     Ok(SuricataInfo {
         version: Some("8.0.7".into()),
         nfqueue,
+        nflog: Some(true),
         ready_notify,
     })
+}
+
+fn queue() -> Delivery {
+    Delivery::Queue(QueueRange::default())
+}
+
+fn copy() -> Delivery {
+    Delivery::Copy("10".parse().unwrap())
 }
 
 #[test]
 fn suricata_with_nfqueue_and_notify_has_no_finding() {
     assert_eq!(
-        suricata_findings(Path::new("/usr/bin/suricata"), &suricata_info(Some(true), Some(true))),
+        suricata_findings(Path::new("/usr/bin/suricata"), &suricata_info(Some(true), Some(true)), queue()),
         vec![]
     );
 }
@@ -337,7 +346,7 @@ fn suricata_with_nfqueue_and_notify_has_no_finding() {
 #[test]
 fn suricata_without_nfqueue_is_an_error() {
     assert_eq!(
-        suricata_findings(Path::new("/usr/bin/suricata"), &suricata_info(Some(false), Some(true))),
+        suricata_findings(Path::new("/usr/bin/suricata"), &suricata_info(Some(false), Some(true)), queue()),
         vec![Finding {
             severity: Severity::Error,
             message: "/usr/bin/suricata is built without NFQueue support (needed for receiving the packets the \
@@ -350,11 +359,11 @@ fn suricata_without_nfqueue_is_an_error() {
 #[test]
 fn suricata_without_systemd_support_is_an_error() {
     assert_eq!(
-        suricata_findings(Path::new("/usr/bin/suricata"), &suricata_info(Some(true), Some(false))),
+        suricata_findings(Path::new("/usr/bin/suricata"), &suricata_info(Some(true), Some(false)), queue()),
         vec![Finding {
             severity: Severity::Error,
             message: "/usr/bin/suricata is built without systemd support (needed for the readiness notification the \
-                      gateway waits for before queueing packets); install a suricata build with systemd support"
+                      gateway waits for before sending it packets); install a suricata build with systemd support"
                 .into(),
         }]
     );
@@ -363,7 +372,7 @@ fn suricata_without_systemd_support_is_an_error() {
 #[test]
 fn unreported_suricata_capabilities_are_warnings() {
     assert_eq!(
-        suricata_findings(Path::new("/usr/bin/suricata"), &suricata_info(None, None)),
+        suricata_findings(Path::new("/usr/bin/suricata"), &suricata_info(None, None), queue()),
         vec![
             Finding {
                 severity: Severity::Warning,
@@ -384,7 +393,8 @@ fn missing_suricata_is_an_error() {
     assert_eq!(
         suricata_findings(
             Path::new("/usr/bin/suricata"),
-            &Err(SuricataError::NotFound { path: "/usr/bin/suricata".into() })
+            &Err(SuricataError::NotFound { path: "/usr/bin/suricata".into() }),
+            queue()
         ),
         vec![Finding {
             severity: Severity::Error,
@@ -398,7 +408,8 @@ fn suricata_probe_failure_is_a_warning() {
     assert_eq!(
         suricata_findings(
             Path::new("/usr/bin/suricata"),
-            &Err(SuricataError::Timeout { path: "/usr/bin/suricata".into() })
+            &Err(SuricataError::Timeout { path: "/usr/bin/suricata".into() }),
+            queue()
         ),
         vec![Finding {
             severity: Severity::Warning,
@@ -622,7 +633,7 @@ fn access_probe_failure_is_a_warning() {
 #[test]
 fn accepting_uninspected_traffic_is_a_warning() {
     assert_eq!(
-        when_unavailable_finding(WhenUnavailable::Accept),
+        when_unavailable_finding(WhenUnavailable::Accept, Protection::Ips),
         Some(Finding {
             severity: Severity::Warning,
             message: "forwarded traffic passes without inspection while suricata starts, restarts or falls behind \
@@ -630,7 +641,7 @@ fn accepting_uninspected_traffic_is_a_warning() {
                 .into(),
         })
     );
-    assert_eq!(when_unavailable_finding(WhenUnavailable::Drop), None);
+    assert_eq!(when_unavailable_finding(WhenUnavailable::Drop, Protection::Ips), None);
 }
 
 #[test]
@@ -682,7 +693,7 @@ fn system_service_capturing_is_a_warning() {
     let running = scan(vec![other(842, Capture::Live("af-packet"), "/system.slice/suricata.service")]);
     let stop = Current.stop_service_hint(SERVICE);
     assert_eq!(
-        other_suricata_findings(q("0"), &running, SERVICE, Some(&BootState::Enabled)),
+        other_suricata_findings(Delivery::Queue(q("0")), &running, SERVICE, Some(&BootState::Enabled)),
         [warning(format!(
             "another suricata (pid 842, suricata.service) is capturing traffic (af-packet) and inspects it \
              separately from wnc-gw; it competes for CPU and uses 71 MB of memory; stop it with: {stop}"
@@ -694,7 +705,7 @@ fn system_service_capturing_is_a_warning() {
 fn another_suricata_on_our_queue_is_a_warning_not_an_error() {
     let running = scan(vec![other(9, Capture::Nfq(vec![q("0-3")]), "/")]);
     assert_eq!(
-        other_suricata_findings(q("2"), &running, SERVICE, Some(&BootState::Disabled)),
+        other_suricata_findings(Delivery::Queue(q("2")), &running, SERVICE, Some(&BootState::Disabled)),
         [warning(
             "another suricata (pid 9) is running inline on NFQUEUE 0-3, which wnc-gw is configured to use; wnc-gw's \
              suricata cannot bind it until that one stops (wnc-gw keeps retrying); stop it with: kill 9"
@@ -707,7 +718,7 @@ fn queue_in_an_unknown_network_namespace_says_so() {
     let mut s = other(9, Capture::Nfq(vec![q("0")]), "/");
     s.same_net_ns = None;
     assert_eq!(
-        other_suricata_findings(q("0"), &scan(vec![s]), SERVICE, Some(&BootState::Disabled)),
+        other_suricata_findings(Delivery::Queue(q("0")), &scan(vec![s]), SERVICE, Some(&BootState::Disabled)),
         [warning(
             "another suricata (pid 9) is running inline on NFQUEUE 0, which wnc-gw is configured to use; if it is in \
              wnc-gw's network namespace (could not tell), wnc-gw's suricata cannot bind it until that one stops; \
@@ -721,7 +732,7 @@ fn queue_in_another_network_namespace_does_not_conflict() {
     let mut s = other(9, Capture::Nfq(vec![q("0")]), "/");
     s.same_net_ns = Some(false);
     assert_eq!(
-        other_suricata_findings(q("0"), &scan(vec![s]), SERVICE, Some(&BootState::Disabled)),
+        other_suricata_findings(Delivery::Queue(q("0")), &scan(vec![s]), SERVICE, Some(&BootState::Disabled)),
         [warning(
             "another suricata (pid 9) is running inline on NFQUEUE 0 in another network namespace; it competes with \
              wnc-gw's suricata for CPU and uses 71 MB of memory; stop it with: kill 9"
@@ -733,7 +744,7 @@ fn queue_in_another_network_namespace_does_not_conflict() {
 fn another_suricata_on_other_queues_is_a_warning() {
     let running = scan(vec![other(9, Capture::Nfq(vec![q("4"), q("6-7")]), "/")]);
     assert_eq!(
-        other_suricata_findings(q("0"), &running, SERVICE, Some(&BootState::Disabled)),
+        other_suricata_findings(Delivery::Queue(q("0")), &running, SERVICE, Some(&BootState::Disabled)),
         [warning(
             "another suricata (pid 9) is running inline on NFQUEUE 4, 6-7; it competes with wnc-gw's suricata for CPU \
              and uses 71 MB of memory; stop it with: kill 9"
@@ -745,7 +756,7 @@ fn another_suricata_on_other_queues_is_a_warning() {
 fn only_the_suricata_service_gets_a_systemctl_hint() {
     let running = scan(vec![other(9, Capture::Live("af-packet"), "/system.slice/cron.service")]);
     assert_eq!(
-        other_suricata_findings(q("0"), &running, SERVICE, Some(&BootState::Disabled)),
+        other_suricata_findings(Delivery::Queue(q("0")), &running, SERVICE, Some(&BootState::Disabled)),
         [warning(
             "another suricata (pid 9, under cron.service) is capturing traffic (af-packet) and inspects it separately \
              from wnc-gw; it competes for CPU and uses 71 MB of memory; stop it with: kill 9"
@@ -761,7 +772,7 @@ fn suricata_left_by_a_previous_wnc_gw() {
     elsewhere.pid = 6;
     elsewhere.same_net_ns = Some(false);
     assert_eq!(
-        other_suricata_findings(q("0"), &scan(vec![holding, elsewhere]), SERVICE, Some(&BootState::Disabled)),
+        other_suricata_findings(Delivery::Queue(q("0")), &scan(vec![holding, elsewhere]), SERVICE, Some(&BootState::Disabled)),
         [
             warning(
                 "a suricata left by a previous wnc-gw (pid 5) is still running and holds NFQUEUE 0, so wnc-gw's \
@@ -781,7 +792,7 @@ fn suricata_started_by_wnc_gw_is_not_a_finding() {
     let mut ours = other(5, Capture::Nfq(vec![q("0")]), "/");
     ours.owner = Owner::WncGw;
     assert_eq!(
-        other_suricata_findings(q("0"), &scan(vec![ours]), SERVICE, Some(&BootState::Disabled)),
+        other_suricata_findings(Delivery::Queue(q("0")), &scan(vec![ours]), SERVICE, Some(&BootState::Disabled)),
         []
     );
 }
@@ -794,7 +805,7 @@ fn transient_runs_are_notes_and_do_not_hide_the_boot_warning() {
     ]);
     let disable = Current.disable_service_hint(SERVICE);
     assert_eq!(
-        other_suricata_findings(q("0"), &running, SERVICE, Some(&BootState::Enabled)),
+        other_suricata_findings(Delivery::Queue(q("0")), &running, SERVICE, Some(&BootState::Enabled)),
         [
             Finding {
                 severity: Severity::Note,
@@ -820,7 +831,7 @@ fn unknown_capture_is_a_warning() {
     let mut s = other(10, Capture::Unknown, "/");
     s.rss_kb = None;
     assert_eq!(
-        other_suricata_findings(q("0"), &scan(vec![s]), SERVICE, Some(&BootState::NotInstalled)),
+        other_suricata_findings(Delivery::Queue(q("0")), &scan(vec![s]), SERVICE, Some(&BootState::NotInstalled)),
         [warning(
             "another suricata (pid 10) is running, but its command line does not show how it gets packets; it may \
              compete with wnc-gw's suricata; stop it with: kill 10"
@@ -832,7 +843,7 @@ fn unknown_capture_is_a_warning() {
 fn enabled_service_that_is_not_running_is_a_warning() {
     let disable = Current.disable_service_hint(SERVICE);
     assert_eq!(
-        other_suricata_findings(q("0"), &scan(vec![]), SERVICE, Some(&BootState::Enabled)),
+        other_suricata_findings(Delivery::Queue(q("0")), &scan(vec![]), SERVICE, Some(&BootState::Enabled)),
         [warning(format!(
             "suricata.service is enabled, so another suricata starts at boot; disable it with: {disable}"
         ))]
@@ -841,7 +852,7 @@ fn enabled_service_that_is_not_running_is_a_warning() {
 
 #[test]
 fn boot_is_not_checked_when_starting() {
-    assert_eq!(other_suricata_findings(q("0"), &scan(vec![]), SERVICE, None), []);
+    assert_eq!(other_suricata_findings(Delivery::Queue(q("0")), &scan(vec![]), SERVICE, None), []);
 }
 
 #[test]
@@ -851,7 +862,7 @@ fn hidden_processes_unknown_boot_state_and_probe_failure_are_warnings() {
         others_hidden: true,
     });
     assert_eq!(
-        other_suricata_findings(q("0"), &hidden, SERVICE, Some(&BootState::Disabled)),
+        other_suricata_findings(Delivery::Queue(q("0")), &hidden, SERVICE, Some(&BootState::Disabled)),
         [warning(
             "could not see other users' processes (/proc is mounted with hidepid), so other suricata processes may \
              be missing"
@@ -860,7 +871,7 @@ fn hidden_processes_unknown_boot_state_and_probe_failure_are_warnings() {
     let failed = Err(io::Error::from(io::ErrorKind::PermissionDenied));
     assert_eq!(
         other_suricata_findings(
-            q("0"),
+            Delivery::Queue(q("0")),
             &failed,
             SERVICE,
             Some(&BootState::Unknown("/usr/bin/systemctl not found".into()))
@@ -869,5 +880,96 @@ fn hidden_processes_unknown_boot_state_and_probe_failure_are_warnings() {
             warning("could not check for other suricata processes: permission denied"),
             warning("could not check whether suricata.service starts at boot: /usr/bin/systemctl not found"),
         ]
+    );
+}
+
+#[test]
+fn ids_needs_nflog_support_instead_of_nfqueue() {
+    let info = |nfqueue, nflog| -> Result<SuricataInfo, SuricataError> {
+        Ok(SuricataInfo { version: Some("8.0.7".into()), nfqueue, nflog, ready_notify: Some(true) })
+    };
+    assert_eq!(suricata_findings(Path::new("/usr/bin/suricata"), &info(Some(false), Some(true)), copy()), vec![]);
+    assert_eq!(
+        suricata_findings(Path::new("/usr/bin/suricata"), &info(Some(true), Some(false)), copy()),
+        vec![Finding {
+            severity: Severity::Error,
+            message: "/usr/bin/suricata is built without NFLOG support (needed for receiving the packet copies the \
+                      gateway sends); install a suricata build with NFLOG support"
+                .into(),
+        }]
+    );
+    assert_eq!(
+        suricata_findings(Path::new("/usr/bin/suricata"), &info(Some(true), None), copy()),
+        vec![warning("cannot verify NFLOG support of /usr/bin/suricata: --build-info does not report it")]
+    );
+}
+
+#[test]
+fn each_protection_needs_its_own_modules() {
+    let names = |delivery| delivery_modules(delivery).iter().map(|m| m.name).collect::<Vec<_>>();
+    assert_eq!(names(queue()), ["nft_queue", "nfnetlink_queue"]);
+    assert_eq!(names(copy()), ["nft_log", "nfnetlink_log"]);
+    assert!(REQUIRED_MODULES.iter().all(|m| !names(queue()).contains(&m.name) && !names(copy()).contains(&m.name)));
+}
+
+#[test]
+fn ids_warns_about_what_it_does_not_protect_against() {
+    assert_eq!(protection_findings(Protection::Ips), []);
+    assert_eq!(
+        protection_findings(Protection::Ids),
+        [
+            warning(
+                "protection = \"ids\": suricata only gets copies of forwarded packets, so no detection blocks \
+                 traffic; set protection = \"ips\" to make packets wait for suricata's verdict"
+            ),
+            warning(
+                "protection = \"ids\": suricata does not validate checksums, because packets merged by GRO reach it \
+                 with incomplete ones; it also inspects packets that the receiving host drops for a bad checksum, \
+                 which an attacker can use to hide data from inspection; protection = \"ips\" does not have this \
+                 limitation"
+            ),
+            warning(
+                "protection = \"ids\": traffic that arrives faster than suricata takes the copies is forwarded \
+                 without inspection, whichever when_unavailable is set"
+            ),
+        ]
+    );
+}
+
+#[test]
+fn accepting_in_ids_does_not_promise_to_cover_falling_behind() {
+    assert_eq!(
+        when_unavailable_finding(WhenUnavailable::Accept, Protection::Ids),
+        Some(warning(
+            "forwarded traffic passes without inspection while suricata starts or restarts (when_unavailable = \
+             \"accept\"); set when_unavailable = \"drop\" to drop it instead"
+        ))
+    );
+    assert_eq!(when_unavailable_finding(WhenUnavailable::Drop, Protection::Ids), None);
+}
+
+#[test]
+fn another_nflog_suricata_may_hold_our_group() {
+    let running = scan(vec![other(9, Capture::Live("nflog"), "/")]);
+    assert_eq!(
+        other_suricata_findings(copy(), &running, SERVICE, Some(&BootState::Disabled)),
+        [warning(
+            "another suricata (pid 9) is receiving packet copies over NFLOG; if it binds NFLOG group 10, which \
+             wnc-gw is configured to use (wnc-gw cannot see that without root), wnc-gw's suricata cannot start \
+             until that one stops; stop it with: kill 9"
+        )]
+    );
+    let mut elsewhere = other(9, Capture::Live("nflog"), "/");
+    elsewhere.same_net_ns = Some(false);
+    assert!(
+        other_suricata_findings(copy(), &scan(vec![elsewhere]), SERVICE, Some(&BootState::Disabled))[0]
+            .message
+            .contains("is capturing traffic (nflog)")
+    );
+    let nfq = scan(vec![other(9, Capture::Nfq(vec![q("0")]), "/")]);
+    assert!(
+        other_suricata_findings(copy(), &nfq, SERVICE, Some(&BootState::Disabled))[0]
+            .message
+            .contains("competes with wnc-gw's suricata for CPU")
     );
 }

@@ -245,6 +245,9 @@
     | 60-1 (Gafgyt) | 一條 UDP 連線佔大部分 | 30 | 30 | 30 | 30 | ≥ 84 |
 
     - ≥ 是筆電送不出更快（兩張網卡一起送約 60 kpps，60-1 約 84 kpps），Pi 還沒丟；所以 3、4 個 queue 比 2 個多多少沒量到。
+    - **更正（2026-10-30）：不是筆電的上限，是 Pi 用 Ethernet PAUSE 讓筆電變慢，瓶頸是 Pi 的 CPU 0。** 筆電不限速時一個 tcpreplay 送兩張網卡 856 kpps（只走 USB 網卡 836、只走 eno2.20 356–395），`--pps=200000` 準確送到，Pi eth0 的硬體計數全部收到；網線四端都是 1 Gbps，pcap 平均 60–71 bytes。Pi 的 eth0（bcmgenet）PAUSE 收送都開而且協商成功；Pi 所有網卡的中斷都在 CPU 0（eth0 只有一個 RX queue、RPS 沒開），CPU 0 收不完時網卡送 PAUSE，筆電暫停，所以 Pi 不丟、筆電看起來送不快。舊資料的徵兆：要求 70–120 kpps 時實際 2 queue 59.6、3 queue 58.9、4 queue 56.8（越多 queue 越低），Pi 真的丟的那次筆電照樣送滿 60。
+      - 驗證（同樣拓樸、`wnc-gw run` ips、2 queue、full、17-1）：30、50 kpps 沒有 PAUSE，CPU 0 忙 46%、77%；要求 100 kpps 時實際 58.3、Pi 送出 24,878 個 PAUSE、0 丟、CPU 0 100%。Pi eth0 關掉 PAUSE（`ethtool -A eth0 rx off tx off`）後筆電照要求送：50 kpps 0 丟；60 kpps 網卡丟 9,617（4.8%）、CPU 0 100%；100 kpps 丟 41.7%。三次 Suricata 的 queue 都沒丟（`nfq_drop=0`）。所以 17-1、2 queue 的真正容量在 50–60 kpps 之間，卡在 CPU 0 收封包，不是 Suricata；3、4 個 queue 沒有幫助。10/29 NFLOG 那天「筆電只送到 40–49」應該也是同一個原因（沒驗證）。
+      - 之後量容量：關掉 Pi eth0 的 PAUSE，或把 Pi 送出的 PAUSE 當成「處理不過來」（`planb_pi.sh counters` 已加 `pause_tx0`）。
     - 連線多的流量：2 個 queue 至少是 1 個的 2 倍，Suricata 的判決數各 queue 平均分配。一條連線佔大部分的（60-1）：symhash 把它全放進同一個 queue，加 queue 沒用，信任才有用。
     - 掃描流量信任沒有用：純 SYN 一定進 Suricata（L2 和清 bit 規則），17-1 幾乎全是純 SYN。
     - conntrack `insert_failed`（封包被 Suricata 放行後在 conntrack 確認時丟掉）：17-1 約 28%、全部信任時 48%；1-1 0.3–5%。只出現在高速重播大量新連線時，和 3a 的 INVALID 一樣當成重播假象，不算在容量裡；沒有驗證真實流量下不會發生。
@@ -400,7 +403,7 @@ wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 std
 | Suricata 被 SIGKILL | ping 100/100，轉送不受影響；沒有程式收的 group，kernel 只是不送複本 |
 | 有流量時啟動 | **也會當**：`ping -f` 下啟動、停止 20 次，5 次 segfault（`ReceiveNFLOGThreadInit` → `nflog_set_timeout` → `nfnl_process`），和 NFQ 同一類問題；15 次有 `nflog_handle_packet error -1` 的 warning。所以 log 規則也要等 `READY=1` 才裝，wnc-gw 現在對 NFQ 的順序就是這樣 |
 | 多個 group | `symhash mod 2 vmap { 0 : jump g0, 1 : jump g1 }`，每個 chain 一個 `log group`，Suricata `--runmode workers` 每個 group 一個 worker：8 條連線兩個方向都在同一個 group，8/8 alert |
-| 跟不上時漏掉的複本 | 預設 `buffer-size` 18 KB、UDP 2 Gbit/s 3 秒：轉送 535,824/535,837；log 規則送出 535,868 份，Suricata 收到 535,531，差 337 份，剛好等於 `/proc/net/netlink` 上 Suricata 那個 socket 的 `Drops`。group 對應哪個 socket 看 `/proc/net/netfilter/nfnetlink_log`（group、portid），兩個檔案一般帳號都能讀。Suricata 自己的統計不算這些，只印一行 warning |
+| 跟不上時漏掉的複本 | 預設 `buffer-size` 18 KB、UDP 2 Gbit/s 3 秒：轉送 535,824/535,837；log 規則送出 535,868 份，Suricata 收到 535,531，差 337 份，剛好等於 `/proc/net/netlink` 上 Suricata 那個 socket 的 `Drops`。group 對應哪個 socket 看 `/proc/net/netfilter/nfnetlink_log`（group、portid），`/proc/net/netlink` 一般帳號能讀，**`nfnetlink_log` 只有 root 能讀**（2026-10-29 第 2 步時更正；wnc-gw 不是 root，第 3 步改從 Suricata 的 `/proc/<pid>/fd` 找 socket inode 對到 `/proc/net/netlink`）。Suricata 自己的統計不算這些，只印一行 warning |
 
 - `-k none` 的代價：Suricata 會接受接收端因 checksum 錯誤而丟掉的封包，攻擊者可以塞進接收端根本沒收到的資料混淆檢查（insertion）。Pi 上從網路來的封包 checksum 是真的，但 GRO 合併過的封包 checksum 欄位不完整，所以 Pi 上大概也需要 `-k none`，要實測。
 - 還沒做（要 Pi）：A 和 B 每個封包的 CPU、容量上限；`buffer-size`、`qthreshold` 怎麼調；Pi 的 7.0.10 有沒有 NFLOG、GRO 的封包 checksum。
@@ -416,12 +419,31 @@ wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 std
 | 17-1 (Kenjiro) | empty | 43.5／43.4 | 22.1／22.1 | 103.7／102.7 | 103.3／103.0 |
 | 17-1 (Kenjiro) | full | 45.9／46.1 | 23.9／23.9 | 103.0／102.7 | 103.3／103.2 |
 
-- **整台機器的 CPU 一樣**（含 tcpreplay；兩者都沒丟、沒降頻）。A 的 worker 比較貴，是因為判決之後 kernel 的轉送在 worker 的 syscall 裡做；B 的轉送照樣要做，只是在別的 CPU 的 softirq。所以 NFLOG 不省總 CPU，省的是「Suricata 那一個 worker」的工作（約一半），轉送也不用等 Suricata。
-- Pi 上 7.0.10 有 NFLOG。有流量時啟動也會當：`nflog_startup_pi.sh`，10,000 pps 下 20 次有 4 次 segfault（Docker 8.0.7 是 5/20）。
+- **（2026-10-30 更正：「整台機器」這兩欄量錯了，不能用。）** `trial.sh` 的整台機器 CPU 讀 `/proc/stat`，Pi 的 kernel 是 tick 取樣（`TICK_CPU_ACCOUNTING`、HZ 250、沒有 `IRQ_TIME_ACCOUNTING`），10,000 pps 的固定間隔和 tick 對齊，Suricata 所在 CPU 時而多算一倍、時而幾乎算成 0；tcpreplay 預設的 gtod 計時又忙等吃滿 CPU 1，NFLOG 在 CPU 1 上的轉送被它蓋住。表裡約 100 µs 幾乎就是 CPU 1 的 20 秒 ÷ 20 萬個封包。`trust_cost.sh`（10/28）已經改用 `/proc/schedstat` 的 rq_cpu_time 和 `tcpreplay -T nano`，這裡沒有跟上。worker 欄是 Suricata 執行緒的 schedstat，仍然正確。下面這段原本的結論「NFLOG 不省總 CPU」因此沒有根據，要重量。
+- 原本的記錄：**整台機器的 CPU 一樣**（含 tcpreplay；兩者都沒丟、沒降頻）。A 的 worker 比較貴，是因為判決之後 kernel 的轉送在 worker 的 syscall 裡做；B 的轉送照樣要做，只是在別的 CPU 的 softirq。所以 NFLOG 不省總 CPU，省的是「Suricata 那一個 worker」的工作（約一半），轉送也不用等 Suricata。
+- Pi 上 7.0.10 有 NFLOG。有流量時啟動也會當：`nflog_startup_pi.sh`，10,000 pps 下 20 次有 4 次 segfault（Docker 8.0.7 是 5/20；Pi 升級 8.0.7 後是 2/20，2026-10-30）。
 - 還沒做：容量上限（要方案 B 的外部流量，Suricata 那個 worker 成本減半、轉送不受 Suricata 限制時上限會到哪裡）、多個 group 在 Pi 上、實體網卡 GRO 的封包是不是一定要 `-k none`。
 
+**8.0.7 重量、加上 runmode（2026-10-30，`run_nflog.sh` 加 `RUNMODES`，結果 `tests/ids_inline/results/nflog2.kvl`）**：Pi 4、1000 MHz、Suricata 8.0.7（full 規則和 7.0.10 一樣載入 52,606 條、0 失敗）、veth、10,000 pps、1 個 queue／group、2 輪、都沒丟。`trial.sh` 改了量法：整台機器的 CPU 讀 `/proc/schedstat` 各 CPU 的 rq_cpu_time（含 tcpreplay 送封包的成本，所以只看差距；另外用「經過時間 − idle」交叉檢查，大小順序都一致），tcpreplay 用 `-T nano`；Suricata 欄是收封包到判決的執行緒（autofp 再加 RX、TX）。µs／封包：
+
+| scenario | rules | Suricata A workers | Suricata B workers | 整台 A workers | 整台 B workers | Suricata A autofp | Suricata B autofp | 整台 A autofp | 整台 B autofp |
+|---|---|---|---|---|---|---|---|---|---|
+| 60-1 (Gafgyt) | empty | 40.8／41.2 | 19.2／19.3 | 80.7／80.0 | 55.8／56.6 | 72.3／57.8 | 33.6／33.6 | 112.7／95.1 | 71.3／72.5 |
+| 60-1 (Gafgyt) | full | 43.3／42.3 | 21.1／21.2 | 87.1／81.2 | 58.2／59.5 | 58.7／59.5 | 35.7／36.0 | 94.8／96.9 | 74.2／74.5 |
+| 1-1 (Hide and Seek) | empty | 43.9／43.0 | 22.1／22.2 | 83.7／81.6 | 60.0／61.6 | 69.3／67.2 | 37.8／37.9 | 109.5／105.3 | 76.4／78.2 |
+| 1-1 (Hide and Seek) | full | 47.8／47.0 | 24.4／24.4 | 86.0／85.4 | 62.2／63.5 | 68.4／69.0 | 41.1／41.1 | 105.3／106.3 | 80.9／81.6 |
+| 17-1 (Kenjiro) | empty | 35.3／35.5 | 21.3／21.3 | 66.2／66.9 | 59.7／60.3 | 62.5／61.6 | 36.2／36.2 | 103.1／101.0 | 76.2／76.0 |
+| 17-1 (Kenjiro) | full | 37.6／37.8 | 23.4／23.3 | 68.2／68.7 | 64.4／63.2 | 64.1／63.8 | 38.3／38.6 | 104.0／102.7 | 77.8／81.0 |
+
+- **NFLOG 省整台機器的 CPU**（推翻 10/29 量錯的「一樣」）：workers 下 60-1、1-1 省 22–25 µs（約 3 成），17-1 只省 4–6 µs（約 1 成）。17-1 的 A 比 7.0.10 時便宜（43.5 → 35.4），其他 scenario 和 7.0.10 差 1–2 µs 以內；這次同時換了版本和 tcpreplay 的計時，分不出是哪一個造成的。
+- **autofp 每個封包都比 workers 貴**：Suricata 那邊 A 多 15–30 µs、B 多約 15 µs，整台機器多 15–35 µs。一個封包要經過 RX → worker →（NFQ 再到 TX 送判決）兩三條執行緒交接。60-1 幾乎是一條連線，autofp 下也只有一條 W 在忙；1-1、17-1 平均分到 4 條 W（各約 1 秒），有用到多核，總成本還是比較高。拆開看，autofp 的 W 合計只有 14–25 µs，貴在 RX＋TX（A 43–54、B 約 19 µs）。A 的 autofp 跨輪變動較大（60-1 empty 72.3 對 57.8）；試跑時 tcpreplay 用預設的 gtod 計時（封包間隔很平均），A 的 autofp 是 72 µs，用 `-T nano` 是 58 µs，autofp 的成本和封包到達的方式有關。
+- 還沒量：autofp 的容量。接收和判決分到別的執行緒後，一個 queue 的上限可能比 workers 高，要用方案 B 從外部送流量才量得出來。
+- **[已決定] 2026-10-30：wnc-gw 強制 `runmode=workers`，多核靠多個 queue／group（symhash）。** 理由：每個封包最便宜；分流放在 kernel（symhash 每個封包 +0.7–1.8 µs）比 autofp 在 Suricata 裡交接（B +15–17、A +21–27 µs）便宜很多，兩者都是同一條連線交給同一條執行緒，分得一樣平均；只剩 1 核時 autofp 的幾條執行緒擠在同一顆核上更差；之前的效能決策（多 queue、方案 B）都是在 workers 下量的。代價：queue／group 只有一個時（目前的預設）只用一顆核心檢查，autofp 下這一個 queue 有 4 條 W 分攤，預設開幾個要另外決定。autofp 單一 queue 的容量沒量，單一連線要超過約 30 kpps 時再用方案 B 補量。
+  - 實作：`spawned::FORCED_SETTINGS` 加 `runmode=workers`（doctor 的 `--dump-config` 跟著帶上）。`--set runmode=` 會蓋過 yaml 的 `runmode:`。
+  - 驗證（`protection_docker.sh runmode`、`protection_pi.sh runmode`，Docker 和 Pi 結果相同）：ids `group = 10` 只有 `W#01-10`，`"10-11"` 是 `W#01-10`、`W#01-11`；ips `queue = 0` 是 `W-NFQ#0`，`"0-3"` 是 `W-NFQ#0`–`#3`；都沒有 RX、TX，ICMP 都 alert。yaml 明寫 `runmode: autofp`（`--dump-config` 顯示 autofp）時結果一樣。原本的 ids1、groups、ips、missed、startup 在 Docker 照常；Pi 的 ids1、groups 照常，`ping -f` 下啟動 20 次都 exit 0、沒有 core 檔。
+
 **容量和 checksum（2026-10-29，方案 B 的拓樸：筆電兩張實體網卡送、Pi bridge；`planb_pi.sh`、`planb_run.sh` 加了 `IMPL=nflog`，`planb.py` 分轉送上限和檢查上限；結果在筆電 `~/datasets/throughput/planb/nflog.kvl`、`checksum.kvl`、`bufcheck.kvl`）**：
-- B 的 table 和 wnc-gw 一樣先 `ct mark` 信任 accept（用到 conntrack），full 規則。今天筆電最多只送到 40–49 kpps（昨天 60），所以都是下限。
+- B 的 table 和 wnc-gw 一樣先 `ct mark` 信任 accept（用到 conntrack），full 規則。今天筆電最多只送到 40–49 kpps（昨天 60），所以都是下限（2026-10-30 更正：應該是 Pi 送 PAUSE 讓筆電變慢，見 O14 方案 B 的更正）。
 
   | scenario | A（wnc-gw NFQ）1 queue | B 1 group：轉送 | B 1 group：Suricata 沒漏 | B 2 group：轉送 |
   |---|---|---|---|---|
@@ -435,4 +457,79 @@ wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 std
 
 **實作第 1 步（2026-10-29，主體）**：`protection.rs`（`Protection`）、`ids/delivery.rs`（`Delivery`：Queue 或 Copy）、`kernel/nflog.rs`（`GroupRange`，不能是 0，預設 10）；設定是最上層 `protection`、`[suricata] group`，`Config::delivery()` 依 protection 選 queue 或 group。firewall 的 ids chain、Suricata 參數、`run` 的 log（`delivery=nflog 10`）都改用 `Delivery`；ips 的規則和參數和原本相同。nft 的 `symhash` 當 vmap 的 key 時明確給 `offset 0`（crate 沒給會寫成 `null`）。三個錯誤訊息改成兩種模式都適用的「send forwarded traffic to suricata」。
 - Docker 驗證（`tests/ids_inline/protection_docker.sh`，wnc-gw run）：ids chain 是 `log group 10 accept`、Suricata 帶 `--nflog --include /run/wnc-gw/suricata-nflog.yaml`；ICMP 和 TCP payload（1300 bytes 之後的標記）都 alert；信任中 ids chain 的計數停住（45 → 45），`trust del` 後恢復（→ 75）；SIGKILL Suricata 時 `accept` 120/120、`drop` 98/120（重啟約 1.1 秒），兩者都記沒檢查的時段；`group = "10-11"` 時 nft 接受 symhash vmap，8 條連線分成 112／112、8/8 alert；`protection = "ips"` 時和原本一樣是 `queue … to 0`、`-q 0`；`ping -f` 下啟動、停止 10 次，Suricata 都正常結束（log 規則等 `READY=1` 才裝）。
-- 還沒做：doctor（第 2 步，現在仍只檢查 NFQ 的模組和 Suricata 的 NFQueue 支援）、漏掉的複本（第 3 步）、Pi 驗證（Pi 的 7.0.10 有沒有 `--include` 還沒確認）。
+- 還沒做：doctor（第 2 步，現在仍只檢查 NFQ 的模組和 Suricata 的 NFQueue 支援）、漏掉的複本（第 3 步）、Pi 驗證（Pi 的 7.0.10 有沒有 `--include` 還沒確認）。（三項都已完成，見下面）
+
+**實作第 2 步（2026-10-29，doctor）**：
+- 標頭多一行 `protection: ids (default), suricata receives nflog 10`。
+- kernel 模組依模式：ips 是 `nft_queue`、`nfnetlink_queue`，ids 是 `nft_log`、`nfnetlink_log`（`nfnetlink_log` 有 `nf-logger-*` 別名，kernel 需要時自己載入）。
+- Suricata：`--build-info` 多讀 `NFLOG support`（8.0.7、7.0.10 都有這一行），表格多一欄；沒有就是 error，只檢查目前模式要用的那一種。就緒通知的訊息改成「before sending it packets」。
+- warning：ids 時三條（偵測不會擋流量；checksum 不檢查與 insertion 風險；跟不上時不管 `when_unavailable` 都照樣轉送）。`when_unavailable = "accept"` 的訊息在 ids 時只說「starts or restarts」，跟不上那部分交給上面第三條。
+- group 被佔用：`/proc/net/netfilter/nfnetlink_log` 只有 root 能讀，和 queue 一樣不在 doctor 判斷。執行時 Suricata 印 `nflog_bind_group() failed` 後在就緒前結束，wnc-gw 加記 ERROR「suricata cannot bind the nflog group; another program is using it」，照常退避重試。doctor 看到別的 Suricata 是 `--nflog` 時給 warning，說它可能佔了我們的 group。
+- Docker 驗證：ids、ips 的 doctor 輸出如上；手動開一個綁 group 10 的 Suricata 時 doctor 給提示，`run` 每次重試都記 ERROR，對方停掉後下一次就緒（`uninspected_ms=7380`）。觀察到 Debian 預設 yaml 下 NFLOG 是 `autofp` runmode（Pi 量測用的是 `workers`），wnc-gw 不強制，Pi 驗證時一起看差異（2026-10-30 量過後改成強制 workers，見上面「8.0.7 重量、加上 runmode」）。
+
+**實作第 3 步（2026-10-29，漏掉的複本）**：`kernel/nflog.rs` 的 `netfilter_sockets(pid)` 從 Suricata 的 `/proc/<pid>/fd` 找 socket inode，對到 `/proc/net/netlink` 協定 12 的列讀 `Drops`（kernel 以有號整數印，轉成 u32 讓相減時繞回）；`monitor/nflog.rs` 的 `CopyMonitor` 每 10 秒比較，增加就記 WARN「suricata missed packet copies; that traffic was forwarded without inspection」（`missed`、`interval_s`）。只在 ids、Suricata 就緒之後才讀；Suricata 重啟（新 pid、新 socket）從 0 算起，因為 log 規則就緒後才裝，之前不會有複本被丟。Suricata 結束前最後一段（上次讀到結束之間）漏掉的算不到：程序結束後 `/proc/<pid>/fd` 就讀不到了。
+- Docker 驗證（`protection_docker.sh missed`）：iperf3 UDP 200 Mbit/s 6 秒，中間 SIGSTOP Suricata 3 秒：轉送 107,160/107,160；kernel 的 Drops 53,425，wnc-gw 記 `missed=53425`。
+- 讀取成本沒量（每 10 秒讀一次 fd 目錄和 /proc/net/netlink），Pi 驗證時一起看。
+
+**Pi 驗證（2026-10-30，第 1–3 步一起，`tests/ids_inline/protection_pi.sh`）**：Pi 4、1000 MHz、bridge（env.sh 的 wgw 加 fcli、fsrv），Suricata 7.0.10，用 include 系統 suricata.yaml 的 yaml。
+- 7.0.10 接受 `--include`：Suricata 印 `Configuration node 'nflog' redefined`，group 10 的 `buffer-size`、`max-size` 生效；`device: 10: … invalid chksum: 0`。
+- 結果和 Docker 相同：ICMP 2、payload 1 個 alert；信任中 ids chain 計數停住（45 → 45，del 後 75）；SIGKILL 時 `accept` 120/120、`drop` 97/120（`uninspected_ms=1292`）；`group = "10-11"` 8/8 alert；ips 是 `queue … to 0`、`-q 0`；`ping -f` 下啟動、停止 **20 次都正常結束**；missed：python 送 UDP 10 kpps 6 秒、SIGSTOP 3 秒，60,000/60,000 送達，kernel Drops 28,016 = `missed=28016`；另一個 Suricata 先綁 group 10 時 doctor 給提示、`run` 每次重試記 ERROR，對方停掉後就緒。
+- doctor：ids 列 `nft_log`、`nfnetlink_log`（開機後都是 loadable），ips 列 `nft_queue`、`nfnetlink_queue`；NFLOG 欄 yes；root 和 wnc 帳號的輸出相同。
+- SSH 斷線經過 sudo（`ssh -tt … sudo ip netns exec wgw wnc-gw run`，殺掉筆電的 ssh）：log 印在終端機、導到檔案兩種都正常停止（`stopping signal="SIGHUP"`）、table 移除、Suricata `exit code 0`。
+- `netfilter_sockets(pid)` 一次約 340 µs（wgw：Suricata 9 個 fd，`/proc/net/netlink` 7 列、141 µs）；主 namespace 的 `/proc/net/netlink` 26 列 205 µs，fd 多的程序（pid 1，108 個 fd）1.6 ms。每 10 秒一次，可以忽略。
+- **同一天把 Pi 升級到 Suricata 8.0.7**（trixie-backports，只換 `suricata` 一個套件，相依套件 Pi 都有；yaml 沒改過，直接換成 8.0.7 的預設檔）後整組重跑，結果相同：doctor 的 READY NOTIFY 變成 yes、沒有「cannot verify systemd support」；ICMP 2、payload 1；信任 45 → 45 → 75；`accept` 120/120、`drop` 96/120；groups 8/8；missed 28,016 一致；bind 一樣；`ping -f` 下啟動 20 次都正常結束、沒有 core 檔。runmode 仍是 autofp。
+- **runmode**：Debian 預設 yaml 沒設 `runmode`，NFLOG 是 `RunModeIdsNflogAutoFp`（RX#01-10 一個收封包、W#01–04 四個 worker），**NFQ 也是 autofp**（RX-NFQ#0、TX#00、W#01–04）；之前所有 Pi 量測用的是 `workers`。wnc-gw 兩種模式都沒強制，差異還沒量（2026-10-30 量過後改成強制 workers，見上面「8.0.7 重量、加上 runmode」）。
+
+### O19. Edge AI 的介面與 CPU 分配（2026-11-02 新增）
+
+背景（2026-11-02 開發者轉述和老師的討論）：
+- 地端有 rule（Suricata）和 edge AI，再加上雲端。
+- edge AI 和雲端一樣是和其他教授合作的部分，輸入、任務、模型目前都不確定。
+- edge AI 跑在 gateway 同一台機器上。正式設備之後不是 Pi，但開發者自己的研究在 Pi 4 上做。
+
+已知的影響：
+- edge AI 和網卡中斷、Suricata worker、轉送共用 CPU。Pi 4 的網卡中斷全在 CPU 0，上限約 50–60 kpps（O14 方案 B）。信任每個封包省 39–67 µs（O17），省下的 CPU 就是 edge AI 能用的預算。
+- 文獻裡 Pi 上的推論成本（模型不同，只能當量級）：Kitsune（KitNET）在 Pi 3B 單核每個封包約 175–1,100 µs（讀圖，`research/literature/papers/kitsune.md`）；eBPF/XDP-DL 的 GRU 在 Pi 4B 每條 flow 平均 10.38 ms（`research/literature/papers/ebpf-xdp-dl.md`）。Suricata 每個封包約 40 µs。所以 edge AI 不太可能逐封包看完全部流量，比較適合吃抽樣資料或每條 flow 的彙總特徵。
+- Suricata 要完整的 stream，吃不了零散的抽樣封包（`research/literature/fastpath-methods/C-partial-inspection.md`）；edge AI 的模型不需要前後文，可以吃抽樣資料。
+
+待決：
+1. 傳輸方式：O12 的 https 是給雲端的，同一台機器要另外選（例如 Unix socket、共用記憶體、直接讀 BPF ring buffer）。
+2. 權限：[建議] edge AI 是獨立的無特權 process，和雲端一樣只能回 trust/block/observe，由 agent 和 privd 檢查後才動 ct mark（SKILL.md §3）。
+3. edge AI 要不要看 payload：SKILL.md §5 第 9 條目前只允許數值、bool、enum。要給 payload 得另外設計並做安全檢查，因為那等於把攻擊者控制的 bytes 交給另一個程式。
+4. CPU 怎麼分：哪些核給網卡中斷、Suricata、edge AI；固定分配還是依負載調整。照 CLAUDE.md 規則 6 要實測。類似框架的調查在 `research/literature/edge-colocation/`。
+5. 合作方的模型出來之前：[建議] 用每次呼叫 CPU 成本可調的替身（和 O13 的模擬雲端同一種做法），量「edge AI 用掉多少 CPU 時，轉送和 Suricata 還剩多少」。
+6. 結果要能換到正式設備：報每個封包、每次推論的 µs（換硬體要重量），以及各層處理的封包比例（可以直接搬）。
+
+**實測（2026-11-02 晚，`tests/cpu_alloc/README.md`；Pi 4、1000 MHz、方案 B、PAUSE 關）**：
+- CPU0 只是轉送和信任流量的天花板：只轉送時 RPS 分到 CPU1–3 從 100 到 300 kpps；信任的單一 flow 把收封包移出 CPU0（IRQ 29 → CPU1、threaded NAPI 或 RPS）從 50 到 80 kpps。eth0 的流量全在 IRQ 29（RX 與 5 個 TX ring），IRQ 28 只管 link；USB 網卡（xhci、brcmstb MSI）的 IRQ 搬不動。
+- 全部檢查（ips、full）每個封包 55–61 µs，4 核心約 60 kpps 就滿；2、3、4 個 queue 都一樣。信任的封包約 14 µs，edge AI 的 CPU 幾乎全部來自信任。
+- edge AI 替身（40 kpps）：純運算的 AI 綁在 Suricata 以外的核心時 0 干擾；和 Suricata 共用核心時即使 `SCHED_IDLE` 也丟 28–47%；**記憶體頻寬是共用的**：吃記憶體的負載綁在別的核心仍讓 Suricata 每封包成本變 2 倍、丟 32%，權重 6 MiB 的 MLP 讓它貴 15–17%（不丟），限制工作比例 25%／50% 時貴 16%／32%。
+- 把 eth0 的 IRQ 搬到 CPU1 後，CPU0 可以放 edge AI（cpu、mlp 都不丟）。
+- 對第 4 點的意涵：「綁核心」是必要但不夠，要依 Suricata 的負載調整 AI 的工作比例；Pi 4 沒有 MPAM，不能用硬體限制記憶體頻寬。
+
+### O20. 已信任 flow 的「部分檢查」用哪種切段（2026-11-03 新增，待決）
+
+背景：實驗 3–5（`tests/partial_inspect/README.md`）。只檢查每段開頭可以抓到長連線後段的攻擊，成本約 5–8% 的封包；但固定長度會被「先塞資料再攻擊」繞過。
+
+| 選項 | 做法 | 後段攻擊／先塞 4 KB 再攻擊（實驗 5） | 送出封包 | 代價 |
+|---|---|---|---|---|
+| (a) DPA | 看 TCP 序號，每次方向改變後送前 N bytes | 100%／0% | 8% | 不懂協定、最好放進 kernel；會被繞過 |
+| (b) HPA | 解析 HTTP（header 結尾、`Content-Length`），每個訊息送前 N bytes | 100%／100% | 8% | kernel 裡要掃 payload、解析數字；chunked、HTTP/2 沒處理；HTTPS 看不到；攻擊放在單一訊息 body 深處仍擋不住 |
+| (c) 隨機 N 的 DPA | 每條 flow 的 N 隨機（1–16 KB） | 100%／83–90% | 14% | 不懂協定；機率性 |
+| (d) DPA + 隨機稽核窗 | (a) 再以機率 a 整段全送 | 100%／約 a | 17–19% | 對繞過只多 a |
+
+- 都還沒在 Pi 上量 tc eBPF 的實作成本（照 CLAUDE.md 規則 6 要量）。
+- 送給 Suricata 的子集要從訊息邊界開始、跳過的量要小於 Suricata 看到的接收視窗（實驗 3）。
+
+### O21. 稽核前要不要讓 Suricata 先忘掉這條 flow（established 逾時）（2026-11-03 新增，待決）
+
+背景：信任期間 Suricata 看不到這條連線。取消信任時它若還記得，序號和 ACK 都過時：app-layer 規則漏、ips 還會自己丟封包；它若已逾時忘記，會當成新的 midstream session，ids 全部抓到、ips 只漏第一個交易的 established 規則（實驗 3b，Docker、逾時 10 秒）。`flow-timeouts.tcp.established` 預設 600 秒。
+
+| 選項 | 好處 | 代價 |
+|---|---|---|
+| (a) 調短逾時（例如 60 秒） | 信任後更早可以稽核 | 全域：所有閒置超過逾時的連線都會被忘掉，ips 下下一個交易的 established 規則漏（ET TCP 規則 97.2% 要求 established）；flowbits、threshold 等連線內狀態被清掉；EVE 的一條連線拆成多筆 flow；記憶體用得少 |
+| (b) 不調，只稽核信任超過 600 秒的連線 | 不影響其他連線 | 短的信任期不能稽核（信任主要省的是長連線，影響可能不大，[推測]） |
+| (c) 只在 ids 模式稽核 | 新 session 第一個交易也抓得到 | ips 模式沒有稽核 |
+| (d) ips 下取消信任時，等下一個 server→client 的封包才開始送 | 第一個 request 也抓得到（實驗 3 E1 ii、iii） | [推測] 還沒在真的連線測過；要多一條 nft 規則 |
+
+- 只在 Docker 用 10 秒測過，Pi 上沒量。

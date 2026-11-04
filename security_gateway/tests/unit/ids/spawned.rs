@@ -35,6 +35,8 @@ fn passes_config_queue_and_own_directories() {
             "--set",
             "nfq.fail-open=yes",
             "--set",
+            "runmode=workers",
+            "--set",
             "detect.delayed-detect=no",
             "--set",
             "coredump.max-dump=0",

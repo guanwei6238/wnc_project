@@ -1,9 +1,13 @@
+use std::collections::HashSet;
 use std::fmt;
+use std::io;
 use std::str::FromStr;
 
 use super::nfqueue::QueueRange;
 
 const DEFAULT_GROUP: u16 = 10;
+const PROC_NET_NETLINK: &str = "/proc/net/netlink";
+const NETLINK_NETFILTER: u32 = 12;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GroupRange(QueueRange);
@@ -75,6 +79,52 @@ impl<'de> serde::Deserialize<'de> for GroupRange {
 
         deserializer.deserialize_any(Visitor)
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NetfilterSocket {
+    pub inode: u64,
+    pub drops: u32,
+}
+
+pub fn netfilter_sockets(pid: u32) -> io::Result<Vec<NetfilterSocket>> {
+    let mut inodes = HashSet::new();
+    for entry in std::fs::read_dir(format!("/proc/{pid}/fd"))? {
+        if let Ok(link) = std::fs::read_link(entry?.path())
+            && let Some(inode) = socket_inode(&link.to_string_lossy())
+        {
+            inodes.insert(inode);
+        }
+    }
+    let table = std::fs::read_to_string(PROC_NET_NETLINK)?;
+    Ok(parse_netlink(&table).into_iter().filter(|s| inodes.contains(&s.inode)).collect())
+}
+
+fn socket_inode(link: &str) -> Option<u64> {
+    link.strip_prefix("socket:[")?.strip_suffix(']')?.parse().ok()
+}
+
+fn parse_netlink(text: &str) -> Vec<NetfilterSocket> {
+    let mut lines = text.lines();
+    let Some(header) = lines.next() else {
+        return Vec::new();
+    };
+    let column = |name| header.split_whitespace().position(|h| h == name);
+    let (Some(protocol), Some(drops), Some(inode)) = (column("Eth"), column("Drops"), column("Inode")) else {
+        return Vec::new();
+    };
+    lines
+        .filter_map(|line| {
+            let fields: Vec<&str> = line.split_whitespace().collect();
+            if fields.get(protocol)?.parse::<u32>().ok()? != NETLINK_NETFILTER {
+                return None;
+            }
+            Some(NetfilterSocket {
+                inode: fields.get(inode)?.parse().ok()?,
+                drops: fields.get(drops)?.parse::<i64>().ok()? as u32,
+            })
+        })
+        .collect()
 }
 
 #[cfg(test)]

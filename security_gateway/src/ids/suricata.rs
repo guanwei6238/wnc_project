@@ -20,6 +20,7 @@ pub struct Suricata {
 pub struct SuricataInfo {
     pub version: Option<String>,
     pub nfqueue: Option<bool>,
+    pub nflog: Option<bool>,
     pub ready_notify: Option<bool>,
 }
 
@@ -87,6 +88,7 @@ impl SuricataInfo {
         Self {
             version,
             nfqueue: flag(lines.clone(), "NFQueue support"),
+            nflog: flag(lines.clone(), "NFLOG support"),
             ready_notify: flag(lines, "Systemd support"),
         }
     }

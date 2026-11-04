@@ -1,6 +1,6 @@
 ---
 name: gateway-architecture
-description: 這個專案（Rust 實作的 security gateway：Suricata 8 + nftables/NFQUEUE + tc/XDP eBPF + 雲端卸載）的框架架構、插件點與安全底線。只要在這個 repo 裡寫或改 gateway 程式、設計或審查任何插件（eBPF 外掛、送雲端的欄位腳本、nft 黑名單、Suricata 規則、雲端 API、Debian/OpenWrt 後端、fast path 或 offloading），或處理權限、RCE、注入等安全問題，都要先讀這份 skill，即使使用者沒有提到「架構」。
+description: 這個專案（Rust 實作的 security gateway：Suricata 8 + nftables/NFQUEUE + tc/XDP eBPF + 同機 edge AI + 雲端卸載）的框架架構、插件點與安全底線。只要在這個 repo 裡寫或改 gateway 程式、設計或審查任何插件（eBPF 外掛、送雲端的欄位腳本、nft 黑名單、Suricata 規則、雲端 API、edge AI 介面或 CPU 分配、Debian/OpenWrt 後端、fast path 或 offloading），或處理權限、RCE、注入等安全問題，都要先讀這份 skill，即使使用者沒有提到「架構」。
 ---
 
 # Security Gateway 框架架構
@@ -26,11 +26,12 @@ description: 這個專案（Rust 實作的 security gateway：Suricata 8 + nftab
 |---|---|---|
 | 保護範圍 | 公司 LAN↔Internet 邊界，不只 IoT | [已決定] 10-17 |
 | IDS | 以 Suricata 為 base，之後可能自製 engine | [已決定] 10-18 |
-| Suricata 版本 | 8.0.7（trixie-backports） | [已決定] 10-20 |
+| Suricata 版本 | 8.0.7（trixie-backports）。最低要求 8.0（任一 8.0.x，低於 8.0 時 doctor 報 error、`run` 不啟動）；比 8 新的大版本不另外警告。7.0 已在 2026-07-07 EOL | [已決定] 10-20，最低版本 10-30 |
 | 語言 | Rust | [已決定] 10-20 |
 | 平台 | Raspberry Pi 4（CLAUDE.md 已同步），之後會換正式設備 | [已決定] 10-20 |
 | NAT | 不做 | [已決定] 10-20 |
 | 雲端 | 不看 payload；一部分用 Jev 類決策模型，一部分用 ML；特徵格式未定 | [已決定] 10-20 |
+| Edge AI | 地端有 rule（Suricata）和 edge AI，再加上雲端。edge AI 和雲端一樣是和其他教授合作的部分，輸入、任務、模型都未定；跑在 gateway 同一台機器上（研究在 Pi 4，正式設備不是 Pi）。設計上當外部元件，先用我們自己的替身；介面和 CPU 分配見 `references/decisions.md` O19 | [已決定] 11-02（老師討論） |
 | Fast path | tc eBPF，不用 XDP 當 fast path | [已決定] 10-20 |
 | 框架定位 | 框架只定描述語法（型別、合併規則、CEL 計算式）；eBPF 程式、它輸出的欄位、送雲端的欄位和計算方式都由使用者設定 | [已決定] 10-22 |
 | Suricata 擷取方式 | 走 NFQUEUE，不用 AF_PACKET＋XDP；行為由使用者設定，預設不做 inline drop（verdict 一律 accept，擋人由 nft 執行） | [已決定] 10-22 |
@@ -71,12 +72,13 @@ NFQUEUE → Suricata 8 → verdict（預設一律 accept，不做 inline drop）
 從另一個 port 送出
 
 控制迴路（非同步，不擋封包）：
-  Suricata EVE + flow 特徵 → agent（狀態機）→ 雲端 → 判定
+  Suricata EVE + flow 特徵 → agent（狀態機）→ edge AI（同一台機器）／雲端 → 判定
     → privd 改 ct mark / nft set / BPF map
 ```
 
 - 被轉送的封包一定會經過某個 port 的 ingress，加上不做 NAT，所以觀察和丟包只掛 ingress 就夠。
 - 雲端不在封包路徑上。它的成本是判定延遲、上傳 bytes 和雲端運算費用，不是每個封包多花的處理時間。
+- edge AI 目前也設計成不在封包路徑上，但它跑在同一台機器，會和網卡中斷、Suricata、轉送搶 CPU，成本要算進地端 CPU。信任省下的 CPU 就是 edge AI 能用的預算（O19）。
 - tc ingress 比 netfilter ingress 早執行（`net/core/dev.c`）。所以即使 flowtable 讓信任 flow 跳過 netfilter，tc 的特徵計算仍然看得到這些封包。
 
 ## 3. Process 與權限 [建議]
@@ -90,6 +92,7 @@ NFQUEUE → Suricata 8 → verdict（預設一律 accept，不做 inline drop）
 | `gw-transform` | 無特權，加 seccomp 或 landlock、rlimit；無網路、無檔案 | 批次執行使用者的欄位腳本 | 任何 I/O |
 | `rule-check` | 無特權，只用暫存目錄，有逾時 | 用 `suricata -T -S` 驗證候選規則 | 碰 active 規則目錄 |
 | Suricata | 非 root、開 landlock、關閉 Lua 規則 | IDS | — |
+| edge AI | 無特權（程式由合作方提供） | 收 agent 給的資料，回判定 | 不碰 nft、BPF、conntrack；判定只能是 trust/block/observe，由 agent 和 privd 檢查後才執行 |
 
 privd 的 IPC 走 unix socket，用 `SO_PEERCRED` 檢查呼叫者的 uid，只開放這些動作：
 - `ban(ip|cidr, ttl, reason)`、`unban(ip)`
@@ -114,6 +117,7 @@ privd 的 IPC 走 unix socket，用 `SO_PEERCRED` 檢查呼叫者的 uid，只�
 | 8 | 特徵來源 | conntrack acct、tc map、EVE flow | 設定 | tc 看到的是 GRO 合併後的 skb | `references/ebpf-plugins.md` §8 |
 | 9 | 狀態機參數 | 設定值：觀察期 N/B、TTL、稽核率、K-of-M 等 | 設定 | 是資料，不是程式碼 | SYNTHESIS §4.7 |
 | 10 | 量測 hook | 時間戳事件，例如判定延遲、撤銷延遲 | 編譯時 feature | 只輸出到本機，給實驗用 | — |
+| 11 | edge AI connector | 設定（同機的傳輸方式、送出的欄位） | 本機管理者 | 回應只能是白名單動作；送出的資料照 §5 第 9 條；傳輸方式未定 | `references/decisions.md` O19 |
 
 ## 5. 安全底線
 
@@ -135,6 +139,7 @@ privd 的 IPC 走 unix socket，用 `SO_PEERCRED` 檢查呼叫者的 uid，只�
 8. **以下輸入一律不可信，都要 parse 和驗證**：封包（eBPF 內要做 bounds check）、EVE JSON、雲端回應、使用者腳本、插件 bundle、規則檔、設定檔。
 9. **送雲端的欄位只能是數值、bool 或事先宣告的 enum。** 來自封包的字串（SNI、UA、DNS 名稱、URL）不送原文，真的要送就送雜湊或分桶結果。
    理由：雲端有 LLM 類決策模型，原文字串就是 prompt injection 的載體。
+   送同一台機器上 edge AI 的資料目前也照這一條；edge AI 要不要看 payload 還沒決定（`references/decisions.md` O19）。
 10. **所有特權動作都寫進 audit log**，記錄誰、做了什麼、為什麼、結果如何。log 裡的外部字串要跳脫。
 11. **雲端異常時進入 fail-safe**：簽章錯誤、動作速率異常或連不上時，停止接受新的 trust，維持本地規則。斷線時該 fail-open 還是 fail-closed 還沒決定（`references/decisions.md` O9）。
 

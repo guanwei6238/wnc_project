@@ -65,13 +65,16 @@
 
 # NFQUEUE number Suricata receives packets from when protection = "ips"
 # (default: 0), or a range such as "0-3" to spread the traffic over several
-# queues. Suricata fails to start if another program already uses one of them.
+# queues. Each queue is inspected by its own Suricata thread, so a range of N
+# queues can use up to N CPU cores. Suricata fails to start if another program
+# already uses one of them.
 # queue = 0
 
 # NFLOG group Suricata receives copies from when protection = "ids" (default:
 # 10), or a range such as "10-11" to spread the traffic over several groups.
-# Group 0 is not allowed. Suricata fails to start if another program already
-# uses one of them.
+# Each group is inspected by its own Suricata thread, as with queues. Group 0 is
+# not allowed. Suricata fails to start if another program already uses one of
+# them.
 # group = 10
 
 # Seconds to wait for Suricata to report that it is ready (default: 300).

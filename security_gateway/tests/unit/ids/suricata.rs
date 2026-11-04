@@ -7,6 +7,7 @@ compiled with LibHTP v8.0.7
 Suricata Configuration:
   AF_PACKET support:                       yes
   NFQueue support:                         yes
+  NFLOG support:                           yes
   Npcap support:
 
   Unix socket enabled:                     yes
@@ -22,6 +23,7 @@ Features: NFQ PCAP_SET_BUFF AF_PACKET HAVE_PACKET_FANOUT LIBCAP_NG LIBNET1.1 RUS
 
 Suricata Configuration:
   NFQueue support:                         yes
+  NFLOG support:                           no
   Unix socket enabled:                     yes
   LUA support:                             yes, through luajit
 ";
@@ -33,6 +35,7 @@ fn parses_suricata_8() {
         SuricataInfo {
             version: Some("8.0.7".into()),
             nfqueue: Some(true),
+            nflog: Some(true),
             ready_notify: Some(true),
         }
     );
@@ -45,6 +48,7 @@ fn suricata_7_does_not_report_systemd_support() {
         SuricataInfo {
             version: Some("7.0.10".into()),
             nfqueue: Some(true),
+            nflog: Some(false),
             ready_notify: None,
         }
     );
@@ -72,6 +76,7 @@ fn unexpected_first_line_has_no_version() {
         SuricataInfo {
             version: None,
             nfqueue: Some(true),
+            nflog: None,
             ready_notify: None,
         }
     );
@@ -80,6 +85,7 @@ fn unexpected_first_line_has_no_version() {
         SuricataInfo {
             version: None,
             nfqueue: None,
+            nflog: None,
             ready_notify: None,
         }
     );

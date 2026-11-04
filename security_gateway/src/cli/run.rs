@@ -6,12 +6,15 @@ use std::time::Instant;
 use clap::Args;
 use security_gateway::config::{self, Config, Overrides};
 use security_gateway::firewall::{self, FAMILY, Inspection, TABLE, WhenUnavailable};
+use security_gateway::ids::delivery::Delivery;
 use security_gateway::ids::lifecycle::{Event, Lifecycle};
 use security_gateway::ids::spawned::{Options, SpawnedSuricata};
 use security_gateway::instance;
 use security_gateway::kernel::conntrack::Conntrack;
+use security_gateway::kernel::nflog;
 use security_gateway::kernel::nft::Nft;
 use security_gateway::monitor::conntrack::ConntrackMonitor;
+use security_gateway::monitor::nflog::CopyMonitor;
 use security_gateway::platform::{Current, Dirs};
 use tokio::signal::unix::{Signal, SignalKind, signal};
 use tokio::time::{self, MissedTickBehavior};
@@ -144,6 +147,10 @@ async fn serve(config: &Config, nft: &Nft, inspection: Inspection, signals: &mut
     let mut conntrack_monitor = ConntrackMonitor::default();
     let mut monitor_tick = time::interval(ConntrackMonitor::INTERVAL);
     monitor_tick.set_missed_tick_behavior(MissedTickBehavior::Delay);
+    let mut copying_to = None;
+    let mut copy_monitor = CopyMonitor::default();
+    let mut copy_tick = time::interval(CopyMonitor::INTERVAL);
+    copy_tick.set_missed_tick_behavior(MissedTickBehavior::Delay);
     let mut code = loop {
         tokio::select! {
             signal = signals.recv() => {
@@ -151,20 +158,29 @@ async fn serve(config: &Config, nft: &Nft, inspection: Inspection, signals: &mut
                 break ExitCode::SUCCESS;
             }
             _ = monitor_tick.tick() => conntrack_monitor.check(Conntrack::connect().and_then(|mut c| c.stats())),
+            _ = copy_tick.tick(), if copying_to.is_some() => {
+                if let Some(pid) = copying_to {
+                    copy_monitor.check(pid, nflog::netfilter_sockets(pid));
+                }
+            }
             event = suricata.next_event() => match event {
                 None => {
                     error!("suricata supervision ended unexpectedly");
                     break ExitCode::FAILURE;
                 }
-                Some(Event::Ready { .. }) => {
+                Some(Event::Ready { pid, .. }) => {
                     if let Err(e) = firewall::start_inspection(nft, inspection).await {
                         error!(error = %e, "failed to send forwarded traffic to suricata");
                         break ExitCode::FAILURE;
+                    }
+                    if let Delivery::Copy(_) = inspection.delivery {
+                        copying_to = Some(pid);
                     }
                     let uninspected_ms = uninspected_since.take().map_or(0, |since| since.elapsed().as_millis() as u64);
                     info!(delivery = %inspection.delivery, uninspected_ms, "forwarded traffic is inspected");
                 }
                 Some(Event::Stopped { .. }) => {
+                    copying_to = None;
                     if uninspected_since.is_none() {
                         if let Err(e) = firewall::stop_inspection(nft, inspection).await {
                             error!(error = %e, "failed to stop sending forwarded traffic to suricata; not restarting suricata");
