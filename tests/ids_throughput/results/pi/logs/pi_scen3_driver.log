@@ -1,0 +1,827 @@
+Pi 狀態: throttled=0x0 temp=52.1'C 時脈 1000 MHz
+governor: performance  上限: 1000 MHz
+suricata: This is Suricata version 8.0.7 RELEASE
+
+=================== 2026-10-31T14:28:18Z  開始 pi_scen3_anchor0 ===================
+jobs/round=1 rounds=4 (含 warm-up 1) -> /home/wnc/ids_throughput/results/pi_scen3_anchor0.csv
+r0   1/1 suricata full   C_somfy02.pcap             self=2.639 wall=43.0179 pk=119638/119638 void=
+r1   1/1 suricata full   C_somfy02.pcap             self=2.638 wall=41.6669 pk=119638/119638 void=
+r2   1/1 suricata full   C_somfy02.pcap             self=2.628 wall=41.5358 pk=119638/119638 void=
+r3   1/1 suricata full   C_somfy02.pcap             self=2.618 wall=41.6137 pk=119638/119638 void=
+--- pi_scen3_anchor0 結束 rc=0  2026-10-31T14:31:08Z
+
+=================== 2026-10-31T14:31:08Z  開始 pi_scen3_E ===================
+jobs/round=82 rounds=4 (含 warm-up 1) -> /home/wnc/ids_throughput/results/pi_scen3_E.csv
+r0   1/82 suricata empty  C17_DoS_Hulk.small.pcap    self=0.077 wall=0.3866 pk=500/500 void=
+r0   2/82 suricata empty  S_m42.pcap                 self=0.531 wall=0.8504 pk=24484/24484 void=
+r0   3/82 suricata empty  I23_DDoS-UDP_Flood.small.pcap self=0.072 wall=0.3817 pk=500/500 void=
+r0   4/82 suricata empty  I23_DDoS-HTTP_Flood.pcap   self=9.577 wall=10.0678 pk=200000/200000 void=
+r0   5/82 suricata empty  S_h5.pcap                  self=1.185 wall=1.4917 pk=200000/200000 void=
+r0   6/82 suricata empty  I23_DDoS-ICMP_Flood.pcap   self=0.527 wall=0.8357 pk=200000/200000 void=
+r0   7/82 suricata empty  I23_Mirai-udpplain.small.pcap self=0.073 wall=0.3866 pk=500/500 void=
+r0   8/82 suricata empty  I23_DoS-TCP_Flood.pcap     self=1.752 wall=4.7745 pk=200000/200000 void=
+r0   9/82 suricata empty  I23_Benign_Final.pcap      self=3.426 wall=3.7665 pk=200000/200000 void=
+r0  10/82 suricata empty  I23_DDoS-SYN_Flood.pcap    self=1.728 wall=8.7854 pk=200000/200000 void=
+r0  11/82 suricata empty  S_m48.small.pcap           self=0.072 wall=0.3848 pk=500/500 void=
+r0  12/82 suricata empty  I23_DDoS-HTTP_Flood.small.pcap self=0.071 wall=0.3805 pk=500/500 void=
+r0  13/82 suricata empty  I23_Benign_Final.small.pcap self=0.071 wall=0.3873 pk=500/500 void=
+r0  14/82 suricata empty  S_m39.small.pcap           self=0.076 wall=0.3886 pk=500/500 void=
+r0  15/82 suricata empty  D12_Benign.pcap            self=4.199 wall=4.5254 pk=200000/200000 void=
+r0  16/82 suricata empty  D12_DrDoS_NTP.small.pcap   self=0.065 wall=0.3763 pk=500/500 void=
+r0  17/82 suricata empty  I23_DoS-UDP_Flood.small.pcap self=0.061 wall=0.3723 pk=500/500 void=
+r0  18/82 suricata empty  C17_FTP-Patator.pcap       self=1.298 wall=1.6305 pk=200000/200000 void=
+r0  19/82 suricata empty  I23_DoS-TCP_Flood.small.pcap self=0.071 wall=0.378 pk=500/500 void=
+r0  20/82 suricata empty  I23_DDoS-TCP_Flood.small.pcap self=0.062 wall=0.3785 pk=500/500 void=
+r0  21/82 suricata empty  I23_Recon-PortScan.pcap    self=3.275 wall=3.8703 pk=200000/200000 void=
+r0  22/82 suricata empty  I23_DoS-UDP_Flood.pcap     self=0.884 wall=3.2369 pk=200000/200000 void=
+r0  23/82 suricata empty  S_m44.small.pcap           self=0.074 wall=0.3884 pk=500/500 void=
+r0  24/82 suricata empty  I23_Recon-PortScan.small.pcap self=0.074 wall=0.3882 pk=500/500 void=
+r0  25/82 suricata empty  D12_DrDoS_SNMP.small.pcap  self=0.058 wall=0.3728 pk=500/500 void=
+r0  26/82 suricata empty  I23_DDoS-ACK_Fragmentation.pcap self=2.85 wall=4.3597 pk=200000/200000 void=
+r0  27/82 suricata empty  C17_Portscan.small.pcap    self=0.061 wall=0.3732 pk=500/500 void=
+r0  28/82 suricata empty  S_m42.small.pcap           self=0.074 wall=0.385 pk=500/500 void=
+r0  29/82 suricata empty  D12_DrDoS_UDP.pcap         self=1.341 wall=2.688 pk=200000/200000 void=
+r0  30/82 suricata empty  D12_DrDoS_DNS.small.pcap   self=0.06 wall=0.3761 pk=500/500 void=
+r0  31/82 suricata empty  D12_Syn.pcap               self=1.189 wall=4.9237 pk=200000/200000 void=
+r0  32/82 suricata empty  S_m34.pcap                 self=1.298 wall=1.6125 pk=200000/200000 void=
+r0  33/82 suricata empty  I23_DDoS-UDP_Flood.pcap    self=0.614 wall=0.9356 pk=200000/200000 void=
+r0  34/82 suricata empty  I23_DDoS-UDP_Fragmentation.small.pcap self=0.071 wall=0.3854 pk=500/500 void=
+r0  35/82 suricata empty  D12_DrDoS_UDP.small.pcap   self=0.062 wall=0.3729 pk=500/500 void=
+r0  36/82 suricata empty  S_m34.small.pcap           self=0.079 wall=0.3923 pk=500/500 void=
+r0  37/82 suricata empty  C17_DoS_Hulk.pcap          self=9.357 wall=9.7737 pk=200000/200000 void=
+r0  38/82 suricata empty  D12_DrDoS_SNMP.pcap        self=0.929 wall=4.2831 pk=200000/200000 void=
+r0  39/82 suricata empty  C17_Benign.pcap            self=5.56 wall=5.9808 pk=200000/200000 void=
+r0  40/82 suricata empty  S_m48.pcap                 self=1.324 wall=1.9868 pk=200000/200000 void=
+r0  41/82 suricata empty  S_somfy02.pcap             self=0.46 wall=0.777 pk=119638/119638 void=
+r0  42/82 suricata empty  C17_Portscan.pcap          self=2.548 wall=4.4168 pk=200000/200000 void=
+r0  43/82 suricata empty  I23_DDoS-TCP_Flood.pcap    self=1.148 wall=7.6163 pk=200000/200000 void=
+r0  44/82 suricata empty  S_m60.pcap                 self=0.799 wall=1.1102 pk=200000/200000 void=
+r0  45/82 suricata empty  S_m1.small.pcap            self=0.063 wall=0.3729 pk=500/500 void=
+r0  46/82 suricata empty  I23_Mirai-udpplain.pcap    self=0.787 wall=1.106 pk=200000/200000 void=
+r0  47/82 suricata empty  S_m20.pcap                 self=0.316 wall=0.621 pk=50156/50156 void=
+r0  48/82 suricata empty  D12_DrDoS_MSSQL.pcap       self=1.22 wall=4.2099 pk=200000/200000 void=
+r0  49/82 suricata empty  S_h4.pcap                  self=0.285 wall=0.5943 pk=21664/21664 void=
+r0  50/82 suricata empty  D12_DrDoS_DNS.pcap         self=1.602 wall=2.9687 pk=200000/200000 void=
+r0  51/82 suricata empty  S_m36.pcap                 self=2.676 wall=8.5251 pk=200000/200000 void=
+r0  52/82 suricata empty  D12_DrDoS_MSSQL.small.pcap self=0.063 wall=0.3691 pk=500/500 void=
+r0  53/82 suricata empty  S_m1.pcap                  self=2.412 wall=3.3515 pk=200000/200000 void=
+r0  54/82 suricata empty  I23_DDoS-ACK_Fragmentation.small.pcap self=0.064 wall=0.3722 pk=500/500 void=
+r0  55/82 suricata empty  D12_Syn.small.pcap         self=0.062 wall=0.3731 pk=500/500 void=
+r0  56/82 suricata empty  D12_DrDoS_NTP.pcap         self=0.667 wall=1.043 pk=200000/200000 void=
+r0  57/82 suricata empty  I23_DDoS-SYN_Flood.small.pcap self=0.077 wall=0.3862 pk=500/500 void=
+r0  58/82 suricata empty  S_m20.small.pcap           self=0.084 wall=0.3928 pk=500/500 void=
+r0  59/82 suricata empty  S_m39.pcap                 self=1.611 wall=8.8701 pk=200000/200000 void=
+r0  60/82 suricata empty  S_m36.small.pcap           self=0.061 wall=0.3817 pk=500/500 void=
+r0  61/82 suricata empty  S_m60.small.pcap           self=0.07 wall=0.3789 pk=500/500 void=
+r0  62/82 suricata empty  I23_DDoS-UDP_Fragmentation.pcap self=1.72 wall=2.0351 pk=200000/200000 void=
+r0  63/82 suricata empty  D12_TFTP.small.pcap        self=0.062 wall=0.3823 pk=500/500 void=
+r0  64/82 suricata empty  C17_Benign.small.pcap      self=0.078 wall=0.3963 pk=500/500 void=
+r0  65/82 suricata empty  S_m17.pcap                 self=1.911 wall=4.9416 pk=200000/200000 void=
+r0  66/82 suricata empty  S_h5.small.pcap            self=0.086 wall=0.3975 pk=500/500 void=
+r0  67/82 suricata empty  I23_Mirai-greip_flood.pcap self=2.732 wall=7.2494 pk=200000/200000 void=
+r0  68/82 suricata empty  S_m44.pcap                 self=1.193 wall=1.5178 pk=200000/200000 void=
+r0  69/82 suricata empty  D12_Benign.small.pcap      self=0.076 wall=0.392 pk=500/500 void=
+r0  70/82 suricata empty  S_h4.small.pcap            self=0.072 wall=0.4027 pk=500/500 void=
+r0  71/82 suricata empty  D12_TFTP.pcap              self=1.251 wall=3.761 pk=200000/200000 void=
+r0  72/82 suricata empty  S_m17.small.pcap           self=0.07 wall=0.3869 pk=500/500 void=
+r0  73/82 suricata empty  S_m3.pcap                  self=1.917 wall=2.3377 pk=200000/200000 void=
+r0  74/82 suricata empty  I23_Mirai-greip_flood.small.pcap self=0.059 wall=0.3664 pk=500/500 void=
+r0  75/82 suricata empty  I23_DDoS-ICMP_Fragmentation.small.pcap self=0.074 wall=0.3877 pk=500/500 void=
+r0  76/82 suricata empty  S_m3.small.pcap            self=0.072 wall=0.3797 pk=500/500 void=
+r0  77/82 suricata empty  S_somfy02.small.pcap       self=0.058 wall=0.3655 pk=500/500 void=
+r0  78/82 suricata empty  C17_FTP-Patator.small.pcap self=0.061 wall=0.368 pk=500/500 void=
+r0  79/82 suricata empty  I23_DDoS-ICMP_Flood.small.pcap self=0.072 wall=0.3832 pk=500/500 void=
+r0  80/82 suricata empty  I23_MITM-ArpSpoofing.small.pcap self=0.061 wall=0.3733 pk=500/500 void=
+r0  81/82 suricata empty  I23_DDoS-ICMP_Fragmentation.pcap self=1.812 wall=2.1478 pk=200000/200000 void=
+r0  82/82 suricata empty  I23_MITM-ArpSpoofing.pcap  self=1.026 wall=1.3453 pk=200000/200000 void=
+r1   1/82 suricata empty  I23_Mirai-greip_flood.small.pcap self=0.074 wall=0.385 pk=500/500 void=
+r1   2/82 suricata empty  C17_DoS_Hulk.small.pcap    self=0.068 wall=0.3805 pk=500/500 void=
+r1   3/82 suricata empty  S_m48.small.pcap           self=0.073 wall=0.3882 pk=500/500 void=
+r1   4/82 suricata empty  I23_Mirai-udpplain.small.pcap self=0.071 wall=0.3808 pk=500/500 void=
+r1   5/82 suricata empty  S_m60.small.pcap           self=0.072 wall=0.383 pk=500/500 void=
+r1   6/82 suricata empty  S_m20.small.pcap           self=0.075 wall=0.3905 pk=500/500 void=
+r1   7/82 suricata empty  I23_DoS-TCP_Flood.small.pcap self=0.057 wall=0.3708 pk=500/500 void=
+r1   8/82 suricata empty  S_m39.small.pcap           self=0.073 wall=0.3842 pk=500/500 void=
+r1   9/82 suricata empty  C17_DoS_Hulk.pcap          self=9.288 wall=9.7171 pk=200000/200000 void=
+r1  10/82 suricata empty  C17_Portscan.small.pcap    self=0.063 wall=0.383 pk=500/500 void=
+r1  11/82 suricata empty  S_m1.small.pcap            self=0.071 wall=0.3819 pk=500/500 void=
+r1  12/82 suricata empty  I23_Benign_Final.small.pcap self=0.074 wall=0.3892 pk=500/500 void=
+r1  13/82 suricata empty  I23_DDoS-ICMP_Flood.pcap   self=0.536 wall=0.8547 pk=200000/200000 void=
+r1  14/82 suricata empty  I23_Mirai-udpplain.pcap    self=0.78 wall=1.09 pk=200000/200000 void=
+r1  15/82 suricata empty  I23_DoS-TCP_Flood.pcap     self=1.846 wall=4.7536 pk=200000/200000 void=
+r1  16/82 suricata empty  S_h5.small.pcap            self=0.081 wall=0.3932 pk=500/500 void=
+r1  17/82 suricata empty  S_m42.pcap                 self=0.527 wall=0.8405 pk=24484/24484 void=
+r1  18/82 suricata empty  I23_DDoS-TCP_Flood.small.pcap self=0.057 wall=0.3752 pk=500/500 void=
+r1  19/82 suricata empty  S_m48.pcap                 self=1.545 wall=2.0654 pk=200000/200000 void=
+r1  20/82 suricata empty  S_somfy02.small.pcap       self=0.058 wall=0.3716 pk=500/500 void=
+r1  21/82 suricata empty  S_h4.small.pcap            self=0.07 wall=0.3799 pk=500/500 void=
+r1  22/82 suricata empty  I23_DDoS-ICMP_Flood.small.pcap self=0.077 wall=0.3855 pk=500/500 void=
+r1  23/82 suricata empty  C17_FTP-Patator.pcap       self=1.298 wall=1.6261 pk=200000/200000 void=
+r1  24/82 suricata empty  S_m39.pcap                 self=1.609 wall=8.9046 pk=200000/200000 void=
+r1  25/82 suricata empty  D12_TFTP.pcap              self=1.268 wall=3.7601 pk=200000/200000 void=
+r1  26/82 suricata empty  I23_MITM-ArpSpoofing.small.pcap self=0.063 wall=0.3835 pk=500/500 void=
+r1  27/82 suricata empty  C17_Portscan.pcap          self=2.275 wall=4.647 pk=200000/200000 void=
+r1  28/82 suricata empty  I23_DDoS-UDP_Fragmentation.small.pcap self=0.067 wall=0.3796 pk=500/500 void=
+r1  29/82 suricata empty  I23_DDoS-UDP_Flood.small.pcap self=0.074 wall=0.3845 pk=500/500 void=
+r1  30/82 suricata empty  S_m20.pcap                 self=0.318 wall=0.6292 pk=50156/50156 void=
+r1  31/82 suricata empty  I23_Recon-PortScan.pcap    self=2.983 wall=3.8556 pk=200000/200000 void=
+r1  32/82 suricata empty  S_h4.pcap                  self=0.285 wall=0.5949 pk=21664/21664 void=
+r1  33/82 suricata empty  D12_DrDoS_NTP.small.pcap   self=0.064 wall=0.3748 pk=500/500 void=
+r1  34/82 suricata empty  S_m34.pcap                 self=1.315 wall=1.6234 pk=200000/200000 void=
+r1  35/82 suricata empty  I23_Recon-PortScan.small.pcap self=0.071 wall=0.3831 pk=500/500 void=
+r1  36/82 suricata empty  D12_DrDoS_NTP.pcap         self=1.381 wall=1.7612 pk=200000/200000 void=
+r1  37/82 suricata empty  D12_Benign.pcap            self=4.145 wall=4.4656 pk=200000/200000 void=
+r1  38/82 suricata empty  D12_Syn.pcap               self=1.185 wall=4.9226 pk=200000/200000 void=
+r1  39/82 suricata empty  S_h5.pcap                  self=1.191 wall=1.4975 pk=200000/200000 void=
+r1  40/82 suricata empty  D12_TFTP.small.pcap        self=0.061 wall=0.3766 pk=500/500 void=
+r1  41/82 suricata empty  D12_DrDoS_SNMP.pcap        self=0.917 wall=4.2629 pk=200000/200000 void=
+r1  42/82 suricata empty  I23_DDoS-SYN_Flood.small.pcap self=0.075 wall=0.3912 pk=500/500 void=
+r1  43/82 suricata empty  I23_Mirai-greip_flood.pcap self=2.652 wall=7.2545 pk=200000/200000 void=
+r1  44/82 suricata empty  C17_FTP-Patator.small.pcap self=0.063 wall=0.3732 pk=500/500 void=
+r1  45/82 suricata empty  D12_DrDoS_DNS.pcap         self=1.617 wall=2.982 pk=200000/200000 void=
+r1  46/82 suricata empty  S_m42.small.pcap           self=0.077 wall=0.3885 pk=500/500 void=
+r1  47/82 suricata empty  I23_MITM-ArpSpoofing.pcap  self=1.019 wall=1.34 pk=200000/200000 void=
+r1  48/82 suricata empty  D12_DrDoS_UDP.pcap         self=1.244 wall=2.7882 pk=200000/200000 void=
+r1  49/82 suricata empty  I23_DDoS-TCP_Flood.pcap    self=1.144 wall=7.629 pk=200000/200000 void=
+r1  50/82 suricata empty  I23_DDoS-ICMP_Fragmentation.pcap self=1.749 wall=2.0811 pk=200000/200000 void=
+r1  51/82 suricata empty  S_m1.pcap                  self=2.139 wall=2.8118 pk=200000/200000 void=
+r1  52/82 suricata empty  S_m3.pcap                  self=2.085 wall=2.4462 pk=200000/200000 void=
+r1  53/82 suricata empty  I23_DDoS-ACK_Fragmentation.small.pcap self=0.076 wall=0.3897 pk=500/500 void=
+r1  54/82 suricata empty  D12_DrDoS_SNMP.small.pcap  self=0.058 wall=0.3726 pk=500/500 void=
+r1  55/82 suricata empty  I23_DDoS-HTTP_Flood.small.pcap self=0.072 wall=0.3837 pk=500/500 void=
+r1  56/82 suricata empty  I23_DDoS-ICMP_Fragmentation.small.pcap self=0.073 wall=0.3824 pk=500/500 void=
+r1  57/82 suricata empty  I23_Benign_Final.pcap      self=3.447 wall=3.7963 pk=200000/200000 void=
+r1  58/82 suricata empty  I23_DDoS-ACK_Fragmentation.pcap self=2.828 wall=4.3451 pk=200000/200000 void=
+r1  59/82 suricata empty  S_m44.small.pcap           self=0.074 wall=0.3832 pk=500/500 void=
+r1  60/82 suricata empty  I23_DoS-UDP_Flood.pcap     self=0.855 wall=3.1974 pk=200000/200000 void=
+r1  61/82 suricata empty  D12_DrDoS_MSSQL.pcap       self=1.246 wall=4.2559 pk=200000/200000 void=
+r1  62/82 suricata empty  I23_DDoS-UDP_Fragmentation.pcap self=1.759 wall=2.0803 pk=200000/200000 void=
+r1  63/82 suricata empty  D12_DrDoS_UDP.small.pcap   self=0.063 wall=0.3916 pk=500/500 void=
+r1  64/82 suricata empty  S_m44.pcap                 self=1.169 wall=1.4803 pk=200000/200000 void=
+r1  65/82 suricata empty  S_m60.pcap                 self=0.773 wall=1.0822 pk=200000/200000 void=
+r1  66/82 suricata empty  I23_DoS-UDP_Flood.small.pcap self=0.059 wall=0.3668 pk=500/500 void=
+r1  67/82 suricata empty  I23_DDoS-HTTP_Flood.pcap   self=9.626 wall=10.108 pk=200000/200000 void=
+r1  68/82 suricata empty  S_m36.small.pcap           self=0.061 wall=0.3788 pk=500/500 void=
+r1  69/82 suricata empty  D12_DrDoS_DNS.small.pcap   self=0.064 wall=0.3792 pk=500/500 void=
+r1  70/82 suricata empty  C17_Benign.small.pcap      self=0.075 wall=0.385 pk=500/500 void=
+r1  71/82 suricata empty  S_m34.small.pcap           self=0.072 wall=0.3818 pk=500/500 void=
+r1  72/82 suricata empty  D12_Syn.small.pcap         self=0.06 wall=0.3716 pk=500/500 void=
+r1  73/82 suricata empty  I23_DDoS-SYN_Flood.pcap    self=1.721 wall=8.6818 pk=200000/200000 void=
+r1  74/82 suricata empty  C17_Benign.pcap            self=5.493 wall=5.9198 pk=200000/200000 void=
+r1  75/82 suricata empty  S_m36.pcap                 self=3.064 wall=8.5653 pk=200000/200000 void=
+r1  76/82 suricata empty  D12_Benign.small.pcap      self=0.077 wall=0.3874 pk=500/500 void=
+r1  77/82 suricata empty  D12_DrDoS_MSSQL.small.pcap self=0.061 wall=0.3761 pk=500/500 void=
+r1  78/82 suricata empty  S_m3.small.pcap            self=0.063 wall=0.3724 pk=500/500 void=
+r1  79/82 suricata empty  S_m17.pcap                 self=1.723 wall=4.9432 pk=200000/200000 void=
+r1  80/82 suricata empty  S_somfy02.pcap             self=0.454 wall=0.7612 pk=119638/119638 void=
+r1  81/82 suricata empty  S_m17.small.pcap           self=0.071 wall=0.3819 pk=500/500 void=
+r1  82/82 suricata empty  I23_DDoS-UDP_Flood.pcap    self=0.62 wall=0.9325 pk=200000/200000 void=
+r2   1/82 suricata empty  S_m20.pcap                 self=0.319 wall=0.6288 pk=50156/50156 void=
+r2   2/82 suricata empty  I23_Mirai-udpplain.small.pcap self=0.071 wall=0.3791 pk=500/500 void=
+r2   3/82 suricata empty  S_m1.pcap                  self=2.37 wall=2.8667 pk=200000/200000 void=
+r2   4/82 suricata empty  S_somfy02.small.pcap       self=0.071 wall=0.3776 pk=500/500 void=
+r2   5/82 suricata empty  I23_DoS-UDP_Flood.small.pcap self=0.073 wall=0.3878 pk=500/500 void=
+r2   6/82 suricata empty  C17_Portscan.pcap          self=2.388 wall=4.5922 pk=200000/200000 void=
+r2   7/82 suricata empty  S_m48.pcap                 self=1.439 wall=1.9865 pk=200000/200000 void=
+r2   8/82 suricata empty  C17_Portscan.small.pcap    self=0.061 wall=0.3759 pk=500/500 void=
+r2   9/82 suricata empty  S_m3.small.pcap            self=0.066 wall=0.3758 pk=500/500 void=
+r2  10/82 suricata empty  I23_DDoS-HTTP_Flood.pcap   self=9.62 wall=10.1036 pk=200000/200000 void=
+r2  11/82 suricata empty  D12_TFTP.small.pcap        self=0.064 wall=0.3868 pk=500/500 void=
+r2  12/82 suricata empty  I23_DDoS-UDP_Flood.pcap    self=0.61 wall=0.9247 pk=200000/200000 void=
+r2  13/82 suricata empty  S_m20.small.pcap           self=0.085 wall=0.396 pk=500/500 void=
+r2  14/82 suricata empty  D12_DrDoS_NTP.small.pcap   self=0.062 wall=0.3732 pk=500/500 void=
+r2  15/82 suricata empty  D12_DrDoS_NTP.pcap         self=0.668 wall=1.0389 pk=200000/200000 void=
+r2  16/82 suricata empty  D12_DrDoS_DNS.pcap         self=1.681 wall=3.0652 pk=200000/200000 void=
+r2  17/82 suricata empty  C17_FTP-Patator.pcap       self=1.303 wall=1.6296 pk=200000/200000 void=
+r2  18/82 suricata empty  D12_Benign.pcap            self=4.173 wall=4.4914 pk=200000/200000 void=
+r2  19/82 suricata empty  S_m3.pcap                  self=1.698 wall=2.3108 pk=200000/200000 void=
+r2  20/82 suricata empty  I23_DDoS-ACK_Fragmentation.small.pcap self=0.072 wall=0.3823 pk=500/500 void=
+r2  21/82 suricata empty  S_m44.small.pcap           self=0.07 wall=0.3818 pk=500/500 void=
+r2  22/82 suricata empty  D12_Benign.small.pcap      self=0.072 wall=0.3836 pk=500/500 void=
+r2  23/82 suricata empty  D12_DrDoS_UDP.pcap         self=1.305 wall=2.7504 pk=200000/200000 void=
+r2  24/82 suricata empty  I23_MITM-ArpSpoofing.small.pcap self=0.068 wall=0.3774 pk=500/500 void=
+r2  25/82 suricata empty  I23_DDoS-UDP_Fragmentation.pcap self=1.75 wall=2.0657 pk=200000/200000 void=
+r2  26/82 suricata empty  D12_DrDoS_DNS.small.pcap   self=0.062 wall=0.4038 pk=500/500 void=
+r2  27/82 suricata empty  S_m17.small.pcap           self=0.058 wall=0.3717 pk=500/500 void=
+r2  28/82 suricata empty  D12_Syn.small.pcap         self=0.057 wall=0.3678 pk=500/500 void=
+r2  29/82 suricata empty  I23_DDoS-SYN_Flood.small.pcap self=0.076 wall=0.3926 pk=500/500 void=
+r2  30/82 suricata empty  I23_DDoS-ICMP_Flood.pcap   self=0.552 wall=0.864 pk=200000/200000 void=
+r2  31/82 suricata empty  S_h5.small.pcap            self=0.086 wall=0.397 pk=500/500 void=
+r2  32/82 suricata empty  I23_Benign_Final.pcap      self=3.424 wall=3.7709 pk=200000/200000 void=
+r2  33/82 suricata empty  I23_DoS-TCP_Flood.small.pcap self=0.07 wall=0.3816 pk=500/500 void=
+r2  34/82 suricata empty  I23_Mirai-greip_flood.small.pcap self=0.07 wall=0.3792 pk=500/500 void=
+r2  35/82 suricata empty  S_m17.pcap                 self=1.832 wall=4.8121 pk=200000/200000 void=
+r2  36/82 suricata empty  S_m1.small.pcap            self=0.057 wall=0.3656 pk=500/500 void=
+r2  37/82 suricata empty  S_m60.small.pcap           self=0.073 wall=0.3874 pk=500/500 void=
+r2  38/82 suricata empty  I23_DDoS-SYN_Flood.pcap    self=1.725 wall=8.7838 pk=200000/200000 void=
+r2  39/82 suricata empty  C17_Benign.small.pcap      self=0.079 wall=0.3902 pk=500/500 void=
+r2  40/82 suricata empty  S_h4.small.pcap            self=0.071 wall=0.3781 pk=500/500 void=
+r2  41/82 suricata empty  D12_DrDoS_UDP.small.pcap   self=0.061 wall=0.3826 pk=500/500 void=
+r2  42/82 suricata empty  I23_DDoS-ICMP_Fragmentation.pcap self=1.735 wall=2.0671 pk=200000/200000 void=
+r2  43/82 suricata empty  C17_FTP-Patator.small.pcap self=0.062 wall=0.373 pk=500/500 void=
+r2  44/82 suricata empty  I23_DoS-UDP_Flood.pcap     self=0.875 wall=3.2261 pk=200000/200000 void=
+r2  45/82 suricata empty  D12_DrDoS_SNMP.pcap        self=0.942 wall=4.3077 pk=200000/200000 void=
+r2  46/82 suricata empty  I23_DDoS-ICMP_Fragmentation.small.pcap self=0.076 wall=0.3851 pk=500/500 void=
+r2  47/82 suricata empty  S_m34.small.pcap           self=0.076 wall=0.3869 pk=500/500 void=
+r2  48/82 suricata empty  I23_Recon-PortScan.pcap    self=3.499 wall=4.0095 pk=200000/200000 void=
+r2  49/82 suricata empty  I23_DoS-TCP_Flood.pcap     self=1.807 wall=4.709 pk=200000/200000 void=
+r2  50/82 suricata empty  S_h4.pcap                  self=0.285 wall=0.5957 pk=21664/21664 void=
+r2  51/82 suricata empty  I23_Recon-PortScan.small.pcap self=0.073 wall=0.3813 pk=500/500 void=
+r2  52/82 suricata empty  S_m34.pcap                 self=1.308 wall=1.6159 pk=200000/200000 void=
+r2  53/82 suricata empty  I23_DDoS-TCP_Flood.small.pcap self=0.06 wall=0.3752 pk=500/500 void=
+r2  54/82 suricata empty  I23_DDoS-ACK_Fragmentation.pcap self=2.867 wall=4.3272 pk=200000/200000 void=
+r2  55/82 suricata empty  I23_Benign_Final.small.pcap self=0.072 wall=0.3982 pk=500/500 void=
+r2  56/82 suricata empty  S_m48.small.pcap           self=0.072 wall=0.3857 pk=500/500 void=
+r2  57/82 suricata empty  S_m60.pcap                 self=0.775 wall=1.0848 pk=200000/200000 void=
+r2  58/82 suricata empty  D12_TFTP.pcap              self=1.379 wall=3.7202 pk=200000/200000 void=
+r2  59/82 suricata empty  I23_DDoS-ICMP_Flood.small.pcap self=0.071 wall=0.3784 pk=500/500 void=
+r2  60/82 suricata empty  S_m36.pcap                 self=3.104 wall=8.0695 pk=200000/200000 void=
+r2  61/82 suricata empty  D12_DrDoS_MSSQL.pcap       self=1.232 wall=4.2494 pk=200000/200000 void=
+r2  62/82 suricata empty  D12_DrDoS_MSSQL.small.pcap self=0.061 wall=0.3727 pk=500/500 void=
+r2  63/82 suricata empty  I23_DDoS-TCP_Flood.pcap    self=1.133 wall=7.6198 pk=200000/200000 void=
+r2  64/82 suricata empty  I23_MITM-ArpSpoofing.pcap  self=1.025 wall=1.3425 pk=200000/200000 void=
+r2  65/82 suricata empty  I23_DDoS-UDP_Fragmentation.small.pcap self=0.07 wall=0.3889 pk=500/500 void=
+r2  66/82 suricata empty  S_m42.small.pcap           self=0.072 wall=0.3867 pk=500/500 void=
+r2  67/82 suricata empty  S_m44.pcap                 self=1.176 wall=1.496 pk=200000/200000 void=
+r2  68/82 suricata empty  C17_DoS_Hulk.small.pcap    self=0.067 wall=0.4358 pk=500/500 void=
+r2  69/82 suricata empty  S_m39.small.pcap           self=0.072 wall=0.3811 pk=500/500 void=
+r2  70/82 suricata empty  C17_Benign.pcap            self=5.539 wall=5.9565 pk=200000/200000 void=
+r2  71/82 suricata empty  S_h5.pcap                  self=1.197 wall=1.5116 pk=200000/200000 void=
+r2  72/82 suricata empty  S_m36.small.pcap           self=0.058 wall=0.3771 pk=500/500 void=
+r2  73/82 suricata empty  C17_DoS_Hulk.pcap          self=9.378 wall=9.804 pk=200000/200000 void=
+r2  74/82 suricata empty  S_somfy02.pcap             self=0.468 wall=0.9455 pk=119638/119638 void=
+r2  75/82 suricata empty  I23_DDoS-UDP_Flood.small.pcap self=0.074 wall=0.3843 pk=500/500 void=
+r2  76/82 suricata empty  S_m39.pcap                 self=1.627 wall=8.8955 pk=200000/200000 void=
+r2  77/82 suricata empty  I23_Mirai-greip_flood.pcap self=2.494 wall=7.5553 pk=200000/200000 void=
+r2  78/82 suricata empty  I23_DDoS-HTTP_Flood.small.pcap self=0.072 wall=0.3846 pk=500/500 void=
+r2  79/82 suricata empty  D12_DrDoS_SNMP.small.pcap  self=0.062 wall=0.3753 pk=500/500 void=
+r2  80/82 suricata empty  S_m42.pcap                 self=0.528 wall=0.843 pk=24484/24484 void=
+r2  81/82 suricata empty  I23_Mirai-udpplain.pcap    self=0.773 wall=1.083 pk=200000/200000 void=
+r2  82/82 suricata empty  D12_Syn.pcap               self=1.201 wall=4.9208 pk=200000/200000 void=
+r3   1/82 suricata empty  S_m48.pcap                 self=1.383 wall=1.9694 pk=200000/200000 void=
+r3   2/82 suricata empty  I23_DDoS-UDP_Flood.pcap    self=0.616 wall=0.9314 pk=200000/200000 void=
+r3   3/82 suricata empty  S_m60.small.pcap           self=0.059 wall=0.3685 pk=500/500 void=
+r3   4/82 suricata empty  C17_FTP-Patator.small.pcap self=0.063 wall=0.3726 pk=500/500 void=
+r3   5/82 suricata empty  I23_MITM-ArpSpoofing.small.pcap self=0.061 wall=0.3728 pk=500/500 void=
+r3   6/82 suricata empty  I23_DoS-TCP_Flood.small.pcap self=0.071 wall=0.3819 pk=500/500 void=
+r3   7/82 suricata empty  D12_Benign.pcap            self=4.17 wall=4.4905 pk=200000/200000 void=
+r3   8/82 suricata empty  C17_Portscan.small.pcap    self=0.061 wall=0.368 pk=500/500 void=
+r3   9/82 suricata empty  S_m3.small.pcap            self=0.073 wall=0.3898 pk=500/500 void=
+r3  10/82 suricata empty  S_m1.pcap                  self=2.327 wall=2.9386 pk=200000/200000 void=
+r3  11/82 suricata empty  D12_DrDoS_MSSQL.pcap       self=1.221 wall=4.2217 pk=200000/200000 void=
+r3  12/82 suricata empty  I23_Mirai-udpplain.pcap    self=0.773 wall=1.0817 pk=200000/200000 void=
+r3  13/82 suricata empty  I23_DoS-TCP_Flood.pcap     self=1.799 wall=4.6642 pk=200000/200000 void=
+r3  14/82 suricata empty  S_m60.pcap                 self=0.785 wall=1.0949 pk=200000/200000 void=
+r3  15/82 suricata empty  C17_DoS_Hulk.small.pcap    self=0.065 wall=0.374 pk=500/500 void=
+r3  16/82 suricata empty  S_m36.small.pcap           self=0.071 wall=0.3903 pk=500/500 void=
+r3  17/82 suricata empty  I23_DDoS-ACK_Fragmentation.pcap self=2.804 wall=4.3969 pk=200000/200000 void=
+r3  18/82 suricata empty  D12_DrDoS_SNMP.pcap        self=0.926 wall=4.2563 pk=200000/200000 void=
+r3  19/82 suricata empty  I23_DDoS-ICMP_Flood.small.pcap self=0.073 wall=0.3879 pk=500/500 void=
+r3  20/82 suricata empty  D12_DrDoS_UDP.pcap         self=1.287 wall=2.8596 pk=200000/200000 void=
+r3  21/82 suricata empty  D12_TFTP.pcap              self=1.275 wall=3.7588 pk=200000/200000 void=
+r3  22/82 suricata empty  S_m17.small.pcap           self=0.072 wall=0.3812 pk=500/500 void=
+r3  23/82 suricata empty  S_m48.small.pcap           self=0.072 wall=0.3795 pk=500/500 void=
+r3  24/82 suricata empty  S_m36.pcap                 self=2.978 wall=8.5712 pk=200000/200000 void=
+r3  25/82 suricata empty  I23_DDoS-TCP_Flood.pcap    self=1.162 wall=7.649 pk=200000/200000 void=
+r3  26/82 suricata empty  I23_Recon-PortScan.pcap    self=3.143 wall=4.2015 pk=200000/200000 void=
+r3  27/82 suricata empty  S_h4.pcap                  self=0.279 wall=0.5891 pk=21664/21664 void=
+r3  28/82 suricata empty  C17_Benign.small.pcap      self=0.077 wall=0.3852 pk=500/500 void=
+r3  29/82 suricata empty  I23_Mirai-udpplain.small.pcap self=0.062 wall=0.3719 pk=500/500 void=
+r3  30/82 suricata empty  D12_Syn.pcap               self=1.173 wall=4.8797 pk=200000/200000 void=
+r3  31/82 suricata empty  S_h5.pcap                  self=1.188 wall=1.5004 pk=200000/200000 void=
+r3  32/82 suricata empty  I23_DDoS-SYN_Flood.small.pcap self=0.074 wall=0.3839 pk=500/500 void=
+r3  33/82 suricata empty  I23_DDoS-TCP_Flood.small.pcap self=0.061 wall=0.3784 pk=500/500 void=
+r3  34/82 suricata empty  I23_DDoS-HTTP_Flood.small.pcap self=0.077 wall=0.3917 pk=500/500 void=
+r3  35/82 suricata empty  I23_DoS-UDP_Flood.pcap     self=0.875 wall=3.2126 pk=200000/200000 void=
+r3  36/82 suricata empty  S_m44.small.pcap           self=0.077 wall=0.3919 pk=500/500 void=
+r3  37/82 suricata empty  S_m20.small.pcap           self=0.074 wall=0.3901 pk=500/500 void=
+r3  38/82 suricata empty  I23_MITM-ArpSpoofing.pcap  self=1.017 wall=1.3343 pk=200000/200000 void=
+r3  39/82 suricata empty  S_m17.pcap                 self=1.525 wall=4.9707 pk=200000/200000 void=
+r3  40/82 suricata empty  S_somfy02.pcap             self=0.475 wall=0.7893 pk=119638/119638 void=
+r3  41/82 suricata empty  S_m42.pcap                 self=0.517 wall=0.8305 pk=24484/24484 void=
+r3  42/82 suricata empty  S_somfy02.small.pcap       self=0.071 wall=0.3788 pk=500/500 void=
+r3  43/82 suricata empty  S_m39.small.pcap           self=0.072 wall=0.3892 pk=500/500 void=
+r3  44/82 suricata empty  S_m34.small.pcap           self=0.073 wall=0.3843 pk=500/500 void=
+r3  45/82 suricata empty  S_m3.pcap                  self=1.709 wall=2.4412 pk=200000/200000 void=
+r3  46/82 suricata empty  S_m39.pcap                 self=1.636 wall=8.888 pk=200000/200000 void=
+r3  47/82 suricata empty  I23_Benign_Final.pcap      self=3.445 wall=3.792 pk=200000/200000 void=
+r3  48/82 suricata empty  S_h4.small.pcap            self=0.071 wall=0.3823 pk=500/500 void=
+r3  49/82 suricata empty  S_m44.pcap                 self=1.174 wall=1.4799 pk=200000/200000 void=
+r3  50/82 suricata empty  I23_DDoS-UDP_Fragmentation.small.pcap self=0.071 wall=0.3847 pk=500/500 void=
+r3  51/82 suricata empty  S_m42.small.pcap           self=0.071 wall=0.3805 pk=500/500 void=
+r3  52/82 suricata empty  I23_Mirai-greip_flood.pcap self=2.54 wall=7.3509 pk=200000/200000 void=
+r3  53/82 suricata empty  I23_Benign_Final.small.pcap self=0.071 wall=0.3764 pk=500/500 void=
+r3  54/82 suricata empty  D12_DrDoS_SNMP.small.pcap  self=0.062 wall=0.37 pk=500/500 void=
+r3  55/82 suricata empty  I23_DDoS-SYN_Flood.pcap    self=1.731 wall=8.7342 pk=200000/200000 void=
+r3  56/82 suricata empty  C17_Portscan.pcap          self=2.518 wall=4.458 pk=200000/200000 void=
+r3  57/82 suricata empty  D12_DrDoS_UDP.small.pcap   self=0.061 wall=0.3756 pk=500/500 void=
+r3  58/82 suricata empty  S_m34.pcap                 self=1.291 wall=1.5985 pk=200000/200000 void=
+r3  59/82 suricata empty  D12_DrDoS_MSSQL.small.pcap self=0.061 wall=0.374 pk=500/500 void=
+r3  60/82 suricata empty  C17_Benign.pcap            self=5.537 wall=5.9537 pk=200000/200000 void=
+r3  61/82 suricata empty  I23_DDoS-UDP_Flood.small.pcap self=0.076 wall=0.3822 pk=500/500 void=
+r3  62/82 suricata empty  I23_DDoS-ICMP_Fragmentation.pcap self=1.786 wall=2.1202 pk=200000/200000 void=
+r3  63/82 suricata empty  S_h5.small.pcap            self=0.085 wall=0.3995 pk=500/500 void=
+r3  64/82 suricata empty  C17_DoS_Hulk.pcap          self=9.267 wall=9.6945 pk=200000/200000 void=
+r3  65/82 suricata empty  C17_FTP-Patator.pcap       self=1.301 wall=1.628 pk=200000/200000 void=
+r3  66/82 suricata empty  D12_DrDoS_DNS.pcap         self=1.633 wall=3.0018 pk=200000/200000 void=
+r3  67/82 suricata empty  I23_DDoS-UDP_Fragmentation.pcap self=1.762 wall=2.0775 pk=200000/200000 void=
+r3  68/82 suricata empty  I23_DDoS-ACK_Fragmentation.small.pcap self=0.072 wall=0.3818 pk=500/500 void=
+r3  69/82 suricata empty  I23_DoS-UDP_Flood.small.pcap self=0.063 wall=0.3747 pk=500/500 void=
+r3  70/82 suricata empty  D12_TFTP.small.pcap        self=0.061 wall=0.3789 pk=500/500 void=
+r3  71/82 suricata empty  D12_Syn.small.pcap         self=0.063 wall=0.3732 pk=500/500 void=
+r3  72/82 suricata empty  D12_DrDoS_NTP.pcap         self=0.674 wall=1.053 pk=200000/200000 void=
+r3  73/82 suricata empty  D12_Benign.small.pcap      self=0.072 wall=0.388 pk=500/500 void=
+r3  74/82 suricata empty  I23_DDoS-HTTP_Flood.pcap   self=9.667 wall=10.1445 pk=200000/200000 void=
+r3  75/82 suricata empty  I23_DDoS-ICMP_Fragmentation.small.pcap self=0.071 wall=0.3792 pk=500/500 void=
+r3  76/82 suricata empty  I23_DDoS-ICMP_Flood.pcap   self=0.535 wall=0.8467 pk=200000/200000 void=
+r3  77/82 suricata empty  I23_Recon-PortScan.small.pcap self=0.071 wall=0.3795 pk=500/500 void=
+r3  78/82 suricata empty  D12_DrDoS_NTP.small.pcap   self=0.061 wall=0.371 pk=500/500 void=
+r3  79/82 suricata empty  I23_Mirai-greip_flood.small.pcap self=0.077 wall=0.3882 pk=500/500 void=
+r3  80/82 suricata empty  S_m1.small.pcap            self=0.064 wall=0.3749 pk=500/500 void=
+r3  81/82 suricata empty  S_m20.pcap                 self=0.317 wall=0.6342 pk=50156/50156 void=
+r3  82/82 suricata empty  D12_DrDoS_DNS.small.pcap   self=0.061 wall=0.375 pk=500/500 void=
+--- pi_scen3_E 結束 rc=0  2026-10-31T14:51:23Z
+
+=================== 2026-10-31T14:51:23Z  開始 pi_scen3_S ===================
+jobs/round=82 rounds=4 (含 warm-up 1) -> /home/wnc/ids_throughput/results/pi_scen3_S.csv
+r0   1/82 suricata gw_corp C17_DoS_Hulk.pcap          self=28.678 wall=56.2576 pk=200000/200000 void=
+r0   2/82 suricata full   S_m42.pcap                 self=1.136 wall=41.537 pk=24484/24484 void=
+r0   3/82 suricata gw_corp I23_DDoS-UDP_Flood.pcap    self=0.899 wall=28.866 pk=200000/200000 void=
+r0   4/82 suricata full   I23_DDoS-HTTP_Flood.pcap   self=23.494 wall=62.7046 pk=200000/200000 void=
+r0   5/82 suricata full   S_h5.pcap                  self=1.468 wall=40.577 pk=200000/200000 void=
+r0   6/82 suricata full   I23_DDoS-ICMP_Flood.pcap   self=0.731 wall=39.688 pk=200000/200000 void=
+r0   7/82 suricata gw_corp I23_Mirai-udpplain.pcap    self=2.732 wall=29.8731 pk=200000/200000 void=
+r0   8/82 suricata full   I23_DoS-TCP_Flood.pcap     self=2.034 wall=43.8281 pk=200000/200000 void=
+r0   9/82 suricata full   I23_Benign_Final.pcap      self=9.152 wall=48.2594 pk=200000/200000 void=
+r0  10/82 suricata full   I23_DDoS-SYN_Flood.pcap    self=10.545 wall=49.7679 pk=200000/200000 void=
+r0  11/82 suricata gw_corp S_m48.pcap                 self=2.664 wall=29.7201 pk=200000/200000 void=
+r0  12/82 suricata gw_corp I23_DDoS-HTTP_Flood.pcap   self=22.925 wall=50.0765 pk=200000/200000 void=
+r0  13/82 suricata gw_corp I23_Benign_Final.pcap      self=7.908 wall=35.011 pk=200000/200000 void=
+r0  14/82 suricata gw_corp S_m39.pcap                 self=13.325 wall=40.5861 pk=200000/200000 void=
+r0  15/82 suricata full   D12_Benign.pcap            self=12.48 wall=51.5202 pk=200000/200000 void=
+r0  16/82 suricata gw_corp D12_DrDoS_NTP.pcap         self=2.344 wall=29.4926 pk=200000/200000 void=
+r0  17/82 suricata gw_corp I23_DoS-UDP_Flood.pcap     self=1.094 wall=30.1811 pk=200000/200000 void=
+r0  18/82 suricata full   C17_FTP-Patator.pcap       self=10.987 wall=50.0473 pk=200000/200000 void=
+r0  19/82 suricata gw_corp I23_DoS-TCP_Flood.pcap     self=1.898 wall=31.8062 pk=200000/200000 void=
+r0  20/82 suricata gw_corp I23_DDoS-TCP_Flood.pcap    self=1.457 wall=34.7373 pk=200000/200000 void=
+r0  21/82 suricata full   I23_Recon-PortScan.pcap    self=8.641 wall=47.7029 pk=200000/200000 void=
+r0  22/82 suricata full   I23_DoS-UDP_Flood.pcap     self=1.236 wall=42.215 pk=200000/200000 void=
+r0  23/82 suricata gw_corp S_m44.pcap                 self=5.396 wall=32.5178 pk=200000/200000 void=
+r0  24/82 suricata gw_corp I23_Recon-PortScan.pcap    self=7.884 wall=34.8968 pk=200000/200000 void=
+r0  25/82 suricata gw_corp D12_DrDoS_SNMP.pcap        self=2.023 wall=32.1194 pk=200000/200000 void=
+r0  26/82 suricata full   I23_DDoS-ACK_Fragmentation.pcap self=11.768 wall=51.7954 pk=200000/200000 void=
+r0  27/82 suricata gw_corp C17_Portscan.pcap          self=7.134 wall=34.3191 pk=200000/200000 void=
+r0  28/82 suricata gw_corp S_m42.pcap                 self=1.036 wall=28.0693 pk=24484/24484 void=
+r0  29/82 suricata full   D12_DrDoS_UDP.pcap         self=3.725 wall=43.0245 pk=200000/200000 void=
+r0  30/82 suricata gw_corp D12_DrDoS_DNS.pcap         self=3.994 wall=32.0029 pk=200000/200000 void=
+r0  31/82 suricata full   D12_Syn.pcap               self=5.858 wall=44.933 pk=200000/200000 void=
+r0  32/82 suricata full   S_m34.pcap                 self=5.563 wall=44.6154 pk=200000/200000 void=
+r0  33/82 suricata full   I23_DDoS-UDP_Flood.pcap    self=0.964 wall=39.9987 pk=200000/200000 void=
+r0  34/82 suricata gw_corp I23_DDoS-UDP_Fragmentation.pcap self=3.77 wall=30.7553 pk=200000/200000 void=
+r0  35/82 suricata gw_corp D12_DrDoS_UDP.pcap         self=2.928 wall=31.0339 pk=200000/200000 void=
+r0  36/82 suricata gw_corp S_m34.pcap                 self=5.078 wall=32.0867 pk=200000/200000 void=
+r0  37/82 suricata full   C17_DoS_Hulk.pcap          self=32.203 wall=71.3917 pk=200000/200000 void=
+r0  38/82 suricata full   D12_DrDoS_SNMP.pcap        self=2.629 wall=44.7248 pk=200000/200000 void=
+r0  39/82 suricata full   C17_Benign.pcap            self=12.895 wall=52.128 pk=200000/200000 void=
+r0  40/82 suricata full   S_m48.pcap                 self=2.871 wall=41.995 pk=200000/200000 void=
+r0  41/82 suricata full   S_somfy02.pcap             self=2.639 wall=41.6785 pk=119638/119638 void=
+r0  42/82 suricata full   C17_Portscan.pcap          self=7.645 wall=46.6512 pk=200000/200000 void=
+r0  43/82 suricata full   I23_DDoS-TCP_Flood.pcap    self=1.734 wall=46.9642 pk=200000/200000 void=
+r0  44/82 suricata full   S_m60.pcap                 self=1.109 wall=40.1848 pk=200000/200000 void=
+r0  45/82 suricata gw_corp S_m1.pcap                  self=3.158 wall=30.238 pk=200000/200000 void=
+r0  46/82 suricata full   I23_Mirai-udpplain.pcap    self=2.923 wall=41.9814 pk=200000/200000 void=
+r0  47/82 suricata full   S_m20.pcap                 self=0.467 wall=39.5265 pk=50156/50156 void=
+r0  48/82 suricata full   D12_DrDoS_MSSQL.pcap       self=3.865 wall=45.6556 pk=200000/200000 void=
+r0  49/82 suricata full   S_h4.pcap                  self=0.57 wall=39.6088 pk=21664/21664 void=
+r0  50/82 suricata full   D12_DrDoS_DNS.pcap         self=4.61 wall=44.6728 pk=200000/200000 void=
+r0  51/82 suricata full   S_m36.pcap                 self=11.342 wall=50.4386 pk=200000/200000 void=
+r0  52/82 suricata gw_corp D12_DrDoS_MSSQL.pcap       self=3.465 wall=33.1797 pk=200000/200000 void=
+r0  53/82 suricata full   S_m1.pcap                  self=3.443 wall=42.4121 pk=200000/200000 void=
+r0  54/82 suricata gw_corp I23_DDoS-ACK_Fragmentation.pcap self=11.335 wall=39.3139 pk=200000/200000 void=
+r0  55/82 suricata gw_corp D12_Syn.pcap               self=5.61 wall=32.7447 pk=200000/200000 void=
+r0  56/82 suricata full   D12_DrDoS_NTP.pcap         self=3.089 wall=42.2184 pk=200000/200000 void=
+r0  57/82 suricata gw_corp I23_DDoS-SYN_Flood.pcap    self=10.096 wall=37.2855 pk=200000/200000 void=
+r0  58/82 suricata gw_corp S_m20.pcap                 self=0.446 wall=27.3924 pk=50156/50156 void=
+r0  59/82 suricata full   S_m39.pcap                 self=13.508 wall=52.793 pk=200000/200000 void=
+r0  60/82 suricata gw_corp S_m36.pcap                 self=11.025 wall=38.1102 pk=200000/200000 void=
+r0  61/82 suricata gw_corp S_m60.pcap                 self=1.086 wall=28.112 pk=200000/200000 void=
+r0  62/82 suricata full   I23_DDoS-UDP_Fragmentation.pcap self=8.391 wall=47.447 pk=200000/200000 void=
+r0  63/82 suricata gw_corp D12_TFTP.pcap              self=5.376 wall=32.9032 pk=200000/200000 void=
+r0  64/82 suricata gw_corp C17_Benign.pcap            self=11.826 wall=38.9348 pk=200000/200000 void=
+r0  65/82 suricata full   S_m17.pcap                 self=6.293 wall=45.2497 pk=200000/200000 void=
+r0  66/82 suricata gw_corp S_h5.pcap                  self=1.443 wall=28.447 pk=200000/200000 void=
+r0  67/82 suricata full   I23_Mirai-greip_flood.pcap self=5.912 wall=47.9003 pk=200000/200000 void=
+r0  68/82 suricata full   S_m44.pcap                 self=5.946 wall=45.0584 pk=200000/200000 void=
+r0  69/82 suricata gw_corp D12_Benign.pcap            self=11.537 wall=38.6614 pk=200000/200000 void=
+r0  70/82 suricata gw_corp S_h4.pcap                  self=0.541 wall=27.5634 pk=21664/21664 void=
+r0  71/82 suricata full   D12_TFTP.pcap              self=5.719 wall=45.1545 pk=200000/200000 void=
+r0  72/82 suricata gw_corp S_m17.pcap                 self=6.091 wall=33.1217 pk=200000/200000 void=
+r0  73/82 suricata full   S_m3.pcap                  self=6.174 wall=45.2848 pk=200000/200000 void=
+r0  74/82 suricata gw_corp I23_Mirai-greip_flood.pcap self=4.802 wall=35.9005 pk=200000/200000 void=
+r0  75/82 suricata gw_corp I23_DDoS-ICMP_Fragmentation.pcap self=3.889 wall=30.901 pk=200000/200000 void=
+r0  76/82 suricata gw_corp S_m3.pcap                  self=5.9 wall=32.8693 pk=200000/200000 void=
+r0  77/82 suricata gw_corp S_somfy02.pcap             self=2.139 wall=29.2784 pk=119638/119638 void=
+r0  78/82 suricata gw_corp C17_FTP-Patator.pcap       self=10.277 wall=37.3802 pk=200000/200000 void=
+r0  79/82 suricata gw_corp I23_DDoS-ICMP_Flood.pcap   self=0.728 wall=27.7278 pk=200000/200000 void=
+r0  80/82 suricata gw_corp I23_MITM-ArpSpoofing.pcap  self=2.703 wall=29.8374 pk=200000/200000 void=
+r0  81/82 suricata full   I23_DDoS-ICMP_Fragmentation.pcap self=4.22 wall=43.4246 pk=200000/200000 void=
+r0  82/82 suricata full   I23_MITM-ArpSpoofing.pcap  self=2.913 wall=41.938 pk=200000/200000 void=
+r1   1/82 suricata gw_corp I23_Mirai-greip_flood.pcap self=4.906 wall=35.4603 pk=200000/200000 void=
+r1   2/82 suricata gw_corp C17_DoS_Hulk.pcap          self=28.776 wall=55.9228 pk=200000/200000 void=
+r1   3/82 suricata gw_corp S_m48.pcap                 self=2.701 wall=29.7328 pk=200000/200000 void=
+r1   4/82 suricata gw_corp I23_Mirai-udpplain.pcap    self=2.73 wall=29.6861 pk=200000/200000 void=
+r1   5/82 suricata gw_corp S_m60.pcap                 self=1.084 wall=28.157 pk=200000/200000 void=
+r1   6/82 suricata gw_corp S_m20.pcap                 self=0.444 wall=27.447 pk=50156/50156 void=
+r1   7/82 suricata gw_corp I23_DoS-TCP_Flood.pcap     self=1.906 wall=31.7158 pk=200000/200000 void=
+r1   8/82 suricata gw_corp S_m39.pcap                 self=13.24 wall=40.3582 pk=200000/200000 void=
+r1   9/82 suricata full   C17_DoS_Hulk.pcap          self=32.4 wall=71.5955 pk=200000/200000 void=
+r1  10/82 suricata gw_corp C17_Portscan.pcap          self=7.145 wall=34.3964 pk=200000/200000 void=
+r1  11/82 suricata gw_corp S_m1.pcap                  self=3.234 wall=30.4215 pk=200000/200000 void=
+r1  12/82 suricata gw_corp I23_Benign_Final.pcap      self=7.926 wall=35.0691 pk=200000/200000 void=
+r1  13/82 suricata full   I23_DDoS-ICMP_Flood.pcap   self=0.73 wall=39.8171 pk=200000/200000 void=
+r1  14/82 suricata full   I23_Mirai-udpplain.pcap    self=2.938 wall=42.0931 pk=200000/200000 void=
+r1  15/82 suricata full   I23_DoS-TCP_Flood.pcap     self=2.069 wall=43.8377 pk=200000/200000 void=
+r1  16/82 suricata gw_corp S_h5.pcap                  self=1.451 wall=28.4794 pk=200000/200000 void=
+r1  17/82 suricata full   S_m42.pcap                 self=1.12 wall=40.1944 pk=24484/24484 void=
+r1  18/82 suricata gw_corp I23_DDoS-TCP_Flood.pcap    self=1.622 wall=34.9755 pk=200000/200000 void=
+r1  19/82 suricata full   S_m48.pcap                 self=2.875 wall=41.9166 pk=200000/200000 void=
+r1  20/82 suricata gw_corp S_somfy02.pcap             self=2.125 wall=29.2315 pk=119638/119638 void=
+r1  21/82 suricata gw_corp S_h4.pcap                  self=0.524 wall=27.6582 pk=21664/21664 void=
+r1  22/82 suricata gw_corp I23_DDoS-ICMP_Flood.pcap   self=0.715 wall=27.6626 pk=200000/200000 void=
+r1  23/82 suricata full   C17_FTP-Patator.pcap       self=11.03 wall=50.1525 pk=200000/200000 void=
+r1  24/82 suricata full   S_m39.pcap                 self=13.46 wall=52.6626 pk=200000/200000 void=
+r1  25/82 suricata full   D12_TFTP.pcap              self=5.764 wall=45.2093 pk=200000/200000 void=
+r1  26/82 suricata gw_corp I23_MITM-ArpSpoofing.pcap  self=2.72 wall=29.8344 pk=200000/200000 void=
+r1  27/82 suricata full   C17_Portscan.pcap          self=7.652 wall=46.788 pk=200000/200000 void=
+r1  28/82 suricata gw_corp I23_DDoS-UDP_Fragmentation.pcap self=3.769 wall=30.7862 pk=200000/200000 void=
+r1  29/82 suricata gw_corp I23_DDoS-UDP_Flood.pcap    self=0.911 wall=27.9655 pk=200000/200000 void=
+r1  30/82 suricata full   S_m20.pcap                 self=0.479 wall=39.4833 pk=50156/50156 void=
+r1  31/82 suricata full   I23_Recon-PortScan.pcap    self=8.631 wall=47.7653 pk=200000/200000 void=
+r1  32/82 suricata full   S_h4.pcap                  self=0.577 wall=39.5971 pk=21664/21664 void=
+r1  33/82 suricata gw_corp D12_DrDoS_NTP.pcap         self=2.347 wall=29.5109 pk=200000/200000 void=
+r1  34/82 suricata full   S_m34.pcap                 self=5.515 wall=44.6046 pk=200000/200000 void=
+r1  35/82 suricata gw_corp I23_Recon-PortScan.pcap    self=7.93 wall=35.0817 pk=200000/200000 void=
+r1  36/82 suricata full   D12_DrDoS_NTP.pcap         self=3.16 wall=42.3452 pk=200000/200000 void=
+r1  37/82 suricata full   D12_Benign.pcap            self=12.525 wall=51.5289 pk=200000/200000 void=
+r1  38/82 suricata full   D12_Syn.pcap               self=5.831 wall=45.0167 pk=200000/200000 void=
+r1  39/82 suricata full   S_h5.pcap                  self=1.469 wall=40.5402 pk=200000/200000 void=
+r1  40/82 suricata gw_corp D12_TFTP.pcap              self=5.342 wall=32.792 pk=200000/200000 void=
+r1  41/82 suricata full   D12_DrDoS_SNMP.pcap        self=2.625 wall=44.734 pk=200000/200000 void=
+r1  42/82 suricata gw_corp I23_DDoS-SYN_Flood.pcap    self=10.112 wall=37.4304 pk=200000/200000 void=
+r1  43/82 suricata full   I23_Mirai-greip_flood.pcap self=5.653 wall=48.0654 pk=200000/200000 void=
+r1  44/82 suricata gw_corp C17_FTP-Patator.pcap       self=10.297 wall=37.3044 pk=200000/200000 void=
+r1  45/82 suricata full   D12_DrDoS_DNS.pcap         self=4.609 wall=44.7354 pk=200000/200000 void=
+r1  46/82 suricata gw_corp S_m42.pcap                 self=1.057 wall=28.1594 pk=24484/24484 void=
+r1  47/82 suricata full   I23_MITM-ArpSpoofing.pcap  self=2.935 wall=42.0136 pk=200000/200000 void=
+r1  48/82 suricata full   D12_DrDoS_UDP.pcap         self=3.626 wall=43.2496 pk=200000/200000 void=
+r1  49/82 suricata full   I23_DDoS-TCP_Flood.pcap    self=1.763 wall=47.1537 pk=200000/200000 void=
+r1  50/82 suricata full   I23_DDoS-ICMP_Fragmentation.pcap self=4.191 wall=44.3321 pk=200000/200000 void=
+r1  51/82 suricata full   S_m1.pcap                  self=3.401 wall=42.6746 pk=200000/200000 void=
+r1  52/82 suricata full   S_m3.pcap                  self=6.144 wall=45.2164 pk=200000/200000 void=
+r1  53/82 suricata gw_corp I23_DDoS-ACK_Fragmentation.pcap self=11.302 wall=39.3494 pk=200000/200000 void=
+r1  54/82 suricata gw_corp D12_DrDoS_SNMP.pcap        self=2.015 wall=32.07 pk=200000/200000 void=
+r1  55/82 suricata gw_corp I23_DDoS-HTTP_Flood.pcap   self=22.927 wall=50.0418 pk=200000/200000 void=
+r1  56/82 suricata gw_corp I23_DDoS-ICMP_Fragmentation.pcap self=3.898 wall=30.9208 pk=200000/200000 void=
+r1  57/82 suricata full   I23_Benign_Final.pcap      self=9.099 wall=48.429 pk=200000/200000 void=
+r1  58/82 suricata full   I23_DDoS-ACK_Fragmentation.pcap self=11.764 wall=51.9563 pk=200000/200000 void=
+r1  59/82 suricata gw_corp S_m44.pcap                 self=5.353 wall=32.437 pk=200000/200000 void=
+r1  60/82 suricata full   I23_DoS-UDP_Flood.pcap     self=1.233 wall=42.4211 pk=200000/200000 void=
+r1  61/82 suricata full   D12_DrDoS_MSSQL.pcap       self=3.843 wall=45.6877 pk=200000/200000 void=
+r1  62/82 suricata full   I23_DDoS-UDP_Fragmentation.pcap self=8.397 wall=47.4694 pk=200000/200000 void=
+r1  63/82 suricata gw_corp D12_DrDoS_UDP.pcap         self=3.049 wall=30.9795 pk=200000/200000 void=
+r1  64/82 suricata full   S_m44.pcap                 self=6.068 wall=45.1538 pk=200000/200000 void=
+r1  65/82 suricata full   S_m60.pcap                 self=1.096 wall=40.2049 pk=200000/200000 void=
+r1  66/82 suricata gw_corp I23_DoS-UDP_Flood.pcap     self=1.112 wall=30.2114 pk=200000/200000 void=
+r1  67/82 suricata full   I23_DDoS-HTTP_Flood.pcap   self=23.5 wall=62.6429 pk=200000/200000 void=
+r1  68/82 suricata gw_corp S_m36.pcap                 self=11.16 wall=38.2977 pk=200000/200000 void=
+r1  69/82 suricata gw_corp D12_DrDoS_DNS.pcap         self=4.039 wall=32.2601 pk=200000/200000 void=
+r1  70/82 suricata gw_corp C17_Benign.pcap            self=11.783 wall=38.9064 pk=200000/200000 void=
+r1  71/82 suricata gw_corp S_m34.pcap                 self=5.074 wall=32.104 pk=200000/200000 void=
+r1  72/82 suricata gw_corp D12_Syn.pcap               self=5.648 wall=32.8229 pk=200000/200000 void=
+r1  73/82 suricata full   I23_DDoS-SYN_Flood.pcap    self=10.708 wall=50.139 pk=200000/200000 void=
+r1  74/82 suricata full   C17_Benign.pcap            self=12.863 wall=52.1206 pk=200000/200000 void=
+r1  75/82 suricata full   S_m36.pcap                 self=11.41 wall=50.466 pk=200000/200000 void=
+r1  76/82 suricata gw_corp D12_Benign.pcap            self=11.564 wall=38.6308 pk=200000/200000 void=
+r1  77/82 suricata gw_corp D12_DrDoS_MSSQL.pcap       self=3.47 wall=33.1262 pk=200000/200000 void=
+r1  78/82 suricata gw_corp S_m3.pcap                  self=5.841 wall=32.8732 pk=200000/200000 void=
+r1  79/82 suricata full   S_m17.pcap                 self=6.251 wall=45.347 pk=200000/200000 void=
+r1  80/82 suricata full   S_somfy02.pcap             self=2.656 wall=41.6108 pk=119638/119638 void=
+r1  81/82 suricata gw_corp S_m17.pcap                 self=6.095 wall=33.2184 pk=200000/200000 void=
+r1  82/82 suricata full   I23_DDoS-UDP_Flood.pcap    self=0.968 wall=39.9335 pk=200000/200000 void=
+r2   1/82 suricata full   S_m20.pcap                 self=0.482 wall=39.3882 pk=50156/50156 void=
+r2   2/82 suricata gw_corp I23_Mirai-udpplain.pcap    self=2.73 wall=29.7784 pk=200000/200000 void=
+r2   3/82 suricata full   S_m1.pcap                  self=3.357 wall=42.4407 pk=200000/200000 void=
+r2   4/82 suricata gw_corp S_somfy02.pcap             self=2.129 wall=29.1838 pk=119638/119638 void=
+r2   5/82 suricata gw_corp I23_DoS-UDP_Flood.pcap     self=1.12 wall=30.2298 pk=200000/200000 void=
+r2   6/82 suricata full   C17_Portscan.pcap          self=7.671 wall=46.8022 pk=200000/200000 void=
+r2   7/82 suricata full   S_m48.pcap                 self=2.884 wall=41.9733 pk=200000/200000 void=
+r2   8/82 suricata gw_corp C17_Portscan.pcap          self=7.119 wall=34.1605 pk=200000/200000 void=
+r2   9/82 suricata gw_corp S_m3.pcap                  self=5.878 wall=33.0159 pk=200000/200000 void=
+r2  10/82 suricata full   I23_DDoS-HTTP_Flood.pcap   self=23.538 wall=62.6288 pk=200000/200000 void=
+r2  11/82 suricata gw_corp D12_TFTP.pcap              self=5.349 wall=32.8859 pk=200000/200000 void=
+r2  12/82 suricata full   I23_DDoS-UDP_Flood.pcap    self=0.98 wall=40.0811 pk=200000/200000 void=
+r2  13/82 suricata gw_corp S_m20.pcap                 self=0.461 wall=27.5358 pk=50156/50156 void=
+r2  14/82 suricata gw_corp D12_DrDoS_NTP.pcap         self=2.356 wall=29.4578 pk=200000/200000 void=
+r2  15/82 suricata full   D12_DrDoS_NTP.pcap         self=3.172 wall=42.2854 pk=200000/200000 void=
+r2  16/82 suricata full   D12_DrDoS_DNS.pcap         self=4.657 wall=44.8392 pk=200000/200000 void=
+r2  17/82 suricata full   C17_FTP-Patator.pcap       self=10.989 wall=50.0045 pk=200000/200000 void=
+r2  18/82 suricata full   D12_Benign.pcap            self=12.537 wall=51.6416 pk=200000/200000 void=
+r2  19/82 suricata full   S_m3.pcap                  self=6.122 wall=45.1893 pk=200000/200000 void=
+r2  20/82 suricata gw_corp I23_DDoS-ACK_Fragmentation.pcap self=11.345 wall=39.4163 pk=200000/200000 void=
+r2  21/82 suricata gw_corp S_m44.pcap                 self=5.334 wall=32.5063 pk=200000/200000 void=
+r2  22/82 suricata gw_corp D12_Benign.pcap            self=11.549 wall=38.6099 pk=200000/200000 void=
+r2  23/82 suricata full   D12_DrDoS_UDP.pcap         self=3.444 wall=43.3869 pk=200000/200000 void=
+r2  24/82 suricata gw_corp I23_MITM-ArpSpoofing.pcap  self=2.72 wall=29.8188 pk=200000/200000 void=
+r2  25/82 suricata full   I23_DDoS-UDP_Fragmentation.pcap self=8.406 wall=47.467 pk=200000/200000 void=
+r2  26/82 suricata gw_corp D12_DrDoS_DNS.pcap         self=4.046 wall=32.1637 pk=200000/200000 void=
+r2  27/82 suricata gw_corp S_m17.pcap                 self=6.092 wall=33.2463 pk=200000/200000 void=
+r2  28/82 suricata gw_corp D12_Syn.pcap               self=5.574 wall=32.6751 pk=200000/200000 void=
+r2  29/82 suricata gw_corp I23_DDoS-SYN_Flood.pcap    self=10.118 wall=37.4197 pk=200000/200000 void=
+r2  30/82 suricata full   I23_DDoS-ICMP_Flood.pcap   self=0.721 wall=39.7218 pk=200000/200000 void=
+r2  31/82 suricata gw_corp S_h5.pcap                  self=1.447 wall=28.4565 pk=200000/200000 void=
+r2  32/82 suricata full   I23_Benign_Final.pcap      self=9.051 wall=48.206 pk=200000/200000 void=
+r2  33/82 suricata gw_corp I23_DoS-TCP_Flood.pcap     self=2.107 wall=31.5816 pk=200000/200000 void=
+r2  34/82 suricata gw_corp I23_Mirai-greip_flood.pcap self=5.052 wall=35.5636 pk=200000/200000 void=
+r2  35/82 suricata full   S_m17.pcap                 self=6.282 wall=45.4415 pk=200000/200000 void=
+r2  36/82 suricata gw_corp S_m1.pcap                  self=3.118 wall=30.2246 pk=200000/200000 void=
+r2  37/82 suricata gw_corp S_m60.pcap                 self=1.075 wall=28.1242 pk=200000/200000 void=
+r2  38/82 suricata full   I23_DDoS-SYN_Flood.pcap    self=10.523 wall=49.914 pk=200000/200000 void=
+r2  39/82 suricata gw_corp C17_Benign.pcap            self=11.81 wall=38.9837 pk=200000/200000 void=
+r2  40/82 suricata gw_corp S_h4.pcap                  self=0.534 wall=27.6312 pk=21664/21664 void=
+r2  41/82 suricata gw_corp D12_DrDoS_UDP.pcap         self=2.978 wall=30.9804 pk=200000/200000 void=
+r2  42/82 suricata full   I23_DDoS-ICMP_Fragmentation.pcap self=4.23 wall=43.3364 pk=200000/200000 void=
+r2  43/82 suricata gw_corp C17_FTP-Patator.pcap       self=10.305 wall=37.3515 pk=200000/200000 void=
+r2  44/82 suricata full   I23_DoS-UDP_Flood.pcap     self=1.239 wall=42.4565 pk=200000/200000 void=
+r2  45/82 suricata full   D12_DrDoS_SNMP.pcap        self=2.615 wall=44.8319 pk=200000/200000 void=
+r2  46/82 suricata gw_corp I23_DDoS-ICMP_Fragmentation.pcap self=3.912 wall=30.9868 pk=200000/200000 void=
+r2  47/82 suricata gw_corp S_m34.pcap                 self=5.061 wall=32.1113 pk=200000/200000 void=
+r2  48/82 suricata full   I23_Recon-PortScan.pcap    self=8.697 wall=47.7791 pk=200000/200000 void=
+r2  49/82 suricata full   I23_DoS-TCP_Flood.pcap     self=2.006 wall=43.8665 pk=200000/200000 void=
+r2  50/82 suricata full   S_h4.pcap                  self=0.572 wall=39.814 pk=21664/21664 void=
+r2  51/82 suricata gw_corp I23_Recon-PortScan.pcap    self=7.889 wall=34.97 pk=200000/200000 void=
+r2  52/82 suricata full   S_m34.pcap                 self=5.507 wall=44.6118 pk=200000/200000 void=
+r2  53/82 suricata gw_corp I23_DDoS-TCP_Flood.pcap    self=1.427 wall=34.7156 pk=200000/200000 void=
+r2  54/82 suricata full   I23_DDoS-ACK_Fragmentation.pcap self=11.803 wall=51.9516 pk=200000/200000 void=
+r2  55/82 suricata gw_corp I23_Benign_Final.pcap      self=7.898 wall=34.9663 pk=200000/200000 void=
+r2  56/82 suricata gw_corp S_m48.pcap                 self=2.649 wall=29.7633 pk=200000/200000 void=
+r2  57/82 suricata full   S_m60.pcap                 self=1.093 wall=40.1977 pk=200000/200000 void=
+r2  58/82 suricata full   D12_TFTP.pcap              self=5.788 wall=45.3728 pk=200000/200000 void=
+r2  59/82 suricata gw_corp I23_DDoS-ICMP_Flood.pcap   self=0.715 wall=27.8159 pk=200000/200000 void=
+r2  60/82 suricata full   S_m36.pcap                 self=11.337 wall=50.5319 pk=200000/200000 void=
+r2  61/82 suricata full   D12_DrDoS_MSSQL.pcap       self=3.847 wall=45.5745 pk=200000/200000 void=
+r2  62/82 suricata gw_corp D12_DrDoS_MSSQL.pcap       self=3.489 wall=33.2172 pk=200000/200000 void=
+r2  63/82 suricata full   I23_DDoS-TCP_Flood.pcap    self=1.713 wall=47.0074 pk=200000/200000 void=
+r2  64/82 suricata full   I23_MITM-ArpSpoofing.pcap  self=2.951 wall=42.0915 pk=200000/200000 void=
+r2  65/82 suricata gw_corp I23_DDoS-UDP_Fragmentation.pcap self=3.795 wall=30.9276 pk=200000/200000 void=
+r2  66/82 suricata gw_corp S_m42.pcap                 self=1.024 wall=28.0349 pk=24484/24484 void=
+r2  67/82 suricata full   S_m44.pcap                 self=5.901 wall=44.9897 pk=200000/200000 void=
+r2  68/82 suricata gw_corp C17_DoS_Hulk.pcap          self=28.764 wall=55.9808 pk=200000/200000 void=
+r2  69/82 suricata gw_corp S_m39.pcap                 self=13.276 wall=40.626 pk=200000/200000 void=
+r2  70/82 suricata full   C17_Benign.pcap            self=12.949 wall=52.1523 pk=200000/200000 void=
+r2  71/82 suricata full   S_h5.pcap                  self=1.471 wall=40.597 pk=200000/200000 void=
+r2  72/82 suricata gw_corp S_m36.pcap                 self=11.05 wall=38.0249 pk=200000/200000 void=
+r2  73/82 suricata full   C17_DoS_Hulk.pcap          self=32.435 wall=71.5044 pk=200000/200000 void=
+r2  74/82 suricata full   S_somfy02.pcap             self=2.659 wall=41.7263 pk=119638/119638 void=
+r2  75/82 suricata gw_corp I23_DDoS-UDP_Flood.pcap    self=0.919 wall=27.9714 pk=200000/200000 void=
+r2  76/82 suricata full   S_m39.pcap                 self=13.445 wall=52.7818 pk=200000/200000 void=
+r2  77/82 suricata full   I23_Mirai-greip_flood.pcap self=5.696 wall=47.8966 pk=200000/200000 void=
+r2  78/82 suricata gw_corp I23_DDoS-HTTP_Flood.pcap   self=23.003 wall=50.0962 pk=200000/200000 void=
+r2  79/82 suricata gw_corp D12_DrDoS_SNMP.pcap        self=2.03 wall=32.1368 pk=200000/200000 void=
+r2  80/82 suricata full   S_m42.pcap                 self=2.047 wall=41.151 pk=24484/24484 void=
+r2  81/82 suricata full   I23_Mirai-udpplain.pcap    self=2.902 wall=41.9596 pk=200000/200000 void=
+r2  82/82 suricata full   D12_Syn.pcap               self=5.823 wall=44.9034 pk=200000/200000 void=
+r3   1/82 suricata full   S_m48.pcap                 self=2.834 wall=41.9483 pk=200000/200000 void=
+r3   2/82 suricata full   I23_DDoS-UDP_Flood.pcap    self=0.977 wall=40.0513 pk=200000/200000 void=
+r3   3/82 suricata gw_corp S_m60.pcap                 self=1.074 wall=28.1382 pk=200000/200000 void=
+r3   4/82 suricata gw_corp C17_FTP-Patator.pcap       self=10.274 wall=37.3266 pk=200000/200000 void=
+r3   5/82 suricata gw_corp I23_MITM-ArpSpoofing.pcap  self=2.703 wall=29.7947 pk=200000/200000 void=
+r3   6/82 suricata gw_corp I23_DoS-TCP_Flood.pcap     self=1.849 wall=31.7246 pk=200000/200000 void=
+r3   7/82 suricata full   D12_Benign.pcap            self=12.496 wall=51.5418 pk=200000/200000 void=
+r3   8/82 suricata gw_corp C17_Portscan.pcap          self=7.135 wall=34.3371 pk=200000/200000 void=
+r3   9/82 suricata gw_corp S_m3.pcap                  self=5.882 wall=32.9337 pk=200000/200000 void=
+r3  10/82 suricata full   S_m1.pcap                  self=3.346 wall=42.5159 pk=200000/200000 void=
+r3  11/82 suricata full   D12_DrDoS_MSSQL.pcap       self=3.821 wall=45.5531 pk=200000/200000 void=
+r3  12/82 suricata full   I23_Mirai-udpplain.pcap    self=2.915 wall=41.967 pk=200000/200000 void=
+r3  13/82 suricata full   I23_DoS-TCP_Flood.pcap     self=2.139 wall=43.7725 pk=200000/200000 void=
+r3  14/82 suricata full   S_m60.pcap                 self=1.085 wall=40.129 pk=200000/200000 void=
+r3  15/82 suricata gw_corp C17_DoS_Hulk.pcap          self=29.005 wall=56.2247 pk=200000/200000 void=
+r3  16/82 suricata gw_corp S_m36.pcap                 self=11.026 wall=38.1549 pk=200000/200000 void=
+r3  17/82 suricata full   I23_DDoS-ACK_Fragmentation.pcap self=11.756 wall=51.8724 pk=200000/200000 void=
+r3  18/82 suricata full   D12_DrDoS_SNMP.pcap        self=2.594 wall=44.8604 pk=200000/200000 void=
+r3  19/82 suricata gw_corp I23_DDoS-ICMP_Flood.pcap   self=0.699 wall=27.7404 pk=200000/200000 void=
+r3  20/82 suricata full   D12_DrDoS_UDP.pcap         self=3.798 wall=43.1525 pk=200000/200000 void=
+r3  21/82 suricata full   D12_TFTP.pcap              self=5.717 wall=45.1879 pk=200000/200000 void=
+r3  22/82 suricata gw_corp S_m17.pcap                 self=6.114 wall=33.2155 pk=200000/200000 void=
+r3  23/82 suricata gw_corp S_m48.pcap                 self=2.667 wall=29.7454 pk=200000/200000 void=
+r3  24/82 suricata full   S_m36.pcap                 self=11.36 wall=50.3593 pk=200000/200000 void=
+r3  25/82 suricata full   I23_DDoS-TCP_Flood.pcap    self=1.772 wall=46.8772 pk=200000/200000 void=
+r3  26/82 suricata full   I23_Recon-PortScan.pcap    self=8.565 wall=47.5901 pk=200000/200000 void=
+r3  27/82 suricata full   S_h4.pcap                  self=0.572 wall=39.6687 pk=21664/21664 void=
+r3  28/82 suricata gw_corp C17_Benign.pcap            self=11.824 wall=38.8812 pk=200000/200000 void=
+r3  29/82 suricata gw_corp I23_Mirai-udpplain.pcap    self=2.718 wall=29.7257 pk=200000/200000 void=
+r3  30/82 suricata full   D12_Syn.pcap               self=5.841 wall=45.073 pk=200000/200000 void=
+r3  31/82 suricata full   S_h5.pcap                  self=1.452 wall=40.6415 pk=200000/200000 void=
+r3  32/82 suricata gw_corp I23_DDoS-SYN_Flood.pcap    self=10.164 wall=37.5249 pk=200000/200000 void=
+r3  33/82 suricata gw_corp I23_DDoS-TCP_Flood.pcap    self=1.46 wall=34.6837 pk=200000/200000 void=
+r3  34/82 suricata gw_corp I23_DDoS-HTTP_Flood.pcap   self=23.073 wall=50.1989 pk=200000/200000 void=
+r3  35/82 suricata full   I23_DoS-UDP_Flood.pcap     self=1.226 wall=42.3066 pk=200000/200000 void=
+r3  36/82 suricata gw_corp S_m44.pcap                 self=5.321 wall=32.3916 pk=200000/200000 void=
+r3  37/82 suricata gw_corp S_m20.pcap                 self=0.46 wall=27.6302 pk=50156/50156 void=
+r3  38/82 suricata full   I23_MITM-ArpSpoofing.pcap  self=2.885 wall=41.8621 pk=200000/200000 void=
+r3  39/82 suricata full   S_m17.pcap                 self=6.242 wall=45.4782 pk=200000/200000 void=
+r3  40/82 suricata full   S_somfy02.pcap             self=2.659 wall=41.7626 pk=119638/119638 void=
+r3  41/82 suricata full   S_m42.pcap                 self=1.129 wall=40.2698 pk=24484/24484 void=
+r3  42/82 suricata gw_corp S_somfy02.pcap             self=2.128 wall=29.2153 pk=119638/119638 void=
+r3  43/82 suricata gw_corp S_m39.pcap                 self=13.251 wall=40.4979 pk=200000/200000 void=
+r3  44/82 suricata gw_corp S_m34.pcap                 self=5.092 wall=32.0373 pk=200000/200000 void=
+r3  45/82 suricata full   S_m3.pcap                  self=6.138 wall=45.1505 pk=200000/200000 void=
+r3  46/82 suricata full   S_m39.pcap                 self=13.526 wall=52.7536 pk=200000/200000 void=
+r3  47/82 suricata full   I23_Benign_Final.pcap      self=9.13 wall=48.2092 pk=200000/200000 void=
+r3  48/82 suricata gw_corp S_h4.pcap                  self=0.527 wall=27.5824 pk=21664/21664 void=
+r3  49/82 suricata full   S_m44.pcap                 self=6.36 wall=45.4981 pk=200000/200000 void=
+r3  50/82 suricata gw_corp I23_DDoS-UDP_Fragmentation.pcap self=3.792 wall=30.7993 pk=200000/200000 void=
+r3  51/82 suricata gw_corp S_m42.pcap                 self=1.027 wall=28.1291 pk=24484/24484 void=
+r3  52/82 suricata full   I23_Mirai-greip_flood.pcap self=5.936 wall=47.8262 pk=200000/200000 void=
+r3  53/82 suricata gw_corp I23_Benign_Final.pcap      self=7.884 wall=34.9441 pk=200000/200000 void=
+r3  54/82 suricata gw_corp D12_DrDoS_SNMP.pcap        self=2.044 wall=32.2394 pk=200000/200000 void=
+r3  55/82 suricata full   I23_DDoS-SYN_Flood.pcap    self=10.568 wall=49.9588 pk=200000/200000 void=
+r3  56/82 suricata full   C17_Portscan.pcap          self=7.689 wall=46.8396 pk=200000/200000 void=
+r3  57/82 suricata gw_corp D12_DrDoS_UDP.pcap         self=3.134 wall=30.916 pk=200000/200000 void=
+r3  58/82 suricata full   S_m34.pcap                 self=5.512 wall=44.7057 pk=200000/200000 void=
+r3  59/82 suricata gw_corp D12_DrDoS_MSSQL.pcap       self=3.411 wall=33.0386 pk=200000/200000 void=
+r3  60/82 suricata full   C17_Benign.pcap            self=12.849 wall=51.9495 pk=200000/200000 void=
+r3  61/82 suricata gw_corp I23_DDoS-UDP_Flood.pcap    self=0.915 wall=28.0198 pk=200000/200000 void=
+r3  62/82 suricata full   I23_DDoS-ICMP_Fragmentation.pcap self=4.206 wall=43.2492 pk=200000/200000 void=
+r3  63/82 suricata gw_corp S_h5.pcap                  self=1.447 wall=28.5717 pk=200000/200000 void=
+r3  64/82 suricata full   C17_DoS_Hulk.pcap          self=32.496 wall=71.692 pk=200000/200000 void=
+r3  65/82 suricata full   C17_FTP-Patator.pcap       self=11.014 wall=50.0765 pk=200000/200000 void=
+r3  66/82 suricata full   D12_DrDoS_DNS.pcap         self=4.648 wall=44.7669 pk=200000/200000 void=
+r3  67/82 suricata full   I23_DDoS-UDP_Fragmentation.pcap self=8.425 wall=47.5816 pk=200000/200000 void=
+r3  68/82 suricata gw_corp I23_DDoS-ACK_Fragmentation.pcap self=11.374 wall=39.4385 pk=200000/200000 void=
+r3  69/82 suricata gw_corp I23_DoS-UDP_Flood.pcap     self=1.12 wall=30.2053 pk=200000/200000 void=
+r3  70/82 suricata gw_corp D12_TFTP.pcap              self=5.351 wall=32.8841 pk=200000/200000 void=
+r3  71/82 suricata gw_corp D12_Syn.pcap               self=5.576 wall=32.741 pk=200000/200000 void=
+r3  72/82 suricata full   D12_DrDoS_NTP.pcap         self=3.06 wall=42.2598 pk=200000/200000 void=
+r3  73/82 suricata gw_corp D12_Benign.pcap            self=11.534 wall=38.5683 pk=200000/200000 void=
+r3  74/82 suricata full   I23_DDoS-HTTP_Flood.pcap   self=23.593 wall=62.7167 pk=200000/200000 void=
+r3  75/82 suricata gw_corp I23_DDoS-ICMP_Fragmentation.pcap self=3.908 wall=31.0272 pk=200000/200000 void=
+r3  76/82 suricata full   I23_DDoS-ICMP_Flood.pcap   self=0.727 wall=39.8827 pk=200000/200000 void=
+r3  77/82 suricata gw_corp I23_Recon-PortScan.pcap    self=7.901 wall=34.9831 pk=200000/200000 void=
+r3  78/82 suricata gw_corp D12_DrDoS_NTP.pcap         self=2.354 wall=29.4535 pk=200000/200000 void=
+r3  79/82 suricata gw_corp I23_Mirai-greip_flood.pcap self=5.169 wall=35.5903 pk=200000/200000 void=
+r3  80/82 suricata gw_corp S_m1.pcap                  self=3.195 wall=30.3304 pk=200000/200000 void=
+r3  81/82 suricata full   S_m20.pcap                 self=0.476 wall=39.5783 pk=50156/50156 void=
+r3  82/82 suricata gw_corp D12_DrDoS_DNS.pcap         self=4.04 wall=32.1952 pk=200000/200000 void=
+--- pi_scen3_S 結束 rc=0  2026-10-31T18:55:11Z
+
+=================== 2026-10-31T18:55:11Z  開始 pi_scen3_anchor1 ===================
+jobs/round=1 rounds=4 (含 warm-up 1) -> /home/wnc/ids_throughput/results/pi_scen3_anchor1.csv
+r0   1/1 suricata full   C_somfy02.pcap             self=2.635 wall=41.7203 pk=119638/119638 void=
+r1   1/1 suricata full   C_somfy02.pcap             self=2.641 wall=41.6306 pk=119638/119638 void=
+r2   1/1 suricata full   C_somfy02.pcap             self=2.642 wall=41.7023 pk=119638/119638 void=
+r3   1/1 suricata full   C_somfy02.pcap             self=2.608 wall=41.6545 pk=119638/119638 void=
+--- pi_scen3_anchor1 結束 rc=0  2026-10-31T18:58:01Z
+
+=== 各批的彙總 ===
+rows: total=4 warmup=1 void(non-warmup)=0 used=3
+pcap                     engine   rules    n  self_med       pps   Mbps     cv%  diff_med   self-sm    d/s%   rss_mb alerts
+C_somfy02.pcap           suricata full     3     2.628   45524.0   95.0    0.4                                1356.0 0
+
+[檢查]
+(a) 決定性/封包數: 通過
+(e) self vs diff 差距 >10% 的組: 無
+rows: total=328 warmup=82 void(non-warmup)=0 used=246
+pcap                     engine   rules    n  self_med       pps   Mbps     cv%  diff_med   self-sm    d/s%   rss_mb alerts
+C17_Benign.pcap          suricata empty    3     5.537   36121.0  137.4    0.5      5.566      5.46     1.9     75.0 0
+C17_DoS_Hulk.pcap        suricata empty    3     9.288   21533.0  155.2    0.6      9.337      9.22     1.3    451.0 0
+C17_FTP-Patator.pcap     suricata empty    3     1.301  153728.0 1546.5    0.2      1.255     1.238     1.4     60.0 0
+C17_Portscan.pcap        suricata empty    3     2.388   83752.0  100.4    5.1!     4.216     2.327    81.2     97.0 0
+D12_Benign.pcap          suricata empty    3      4.17   47962.0  322.2    0.4      4.103     4.098     0.1     63.0 0
+D12_DrDoS_DNS.pcap       suricata empty    3     1.633  122474.0 1236.4    2.0      2.627     1.572    67.1     99.0 0
+D12_DrDoS_MSSQL.pcap     suricata empty    3     1.232  162338.0  821.2    1.0      3.877     1.171   231.1     84.0 0
+D12_DrDoS_NTP.pcap       suricata empty    3     0.674  296736.0 1139.9   45.2!     0.682     0.613    11.3     54.0 0
+D12_DrDoS_SNMP.pcap      suricata empty    3     0.926  215983.0  467.5    1.4       3.89     0.864   350.3     84.0 0
+D12_DrDoS_UDP.pcap       suricata empty    3     1.287  155400.0  512.2    2.5      2.397     1.226    95.5     72.0 0
+D12_Syn.pcap             suricata empty    3     1.185  168776.0   81.3    1.2      4.551     1.125   304.5    111.0 0
+D12_TFTP.pcap            suricata empty    3     1.275  156863.0  296.6    4.8       3.38     1.214   178.4     94.0 0
+I23_Benign_Final.pcap    suricata empty    3     3.445   58055.0  100.7    0.4      3.407     3.373     1.0     59.0 0
+I23_DDoS-ACK_Fragmentation.pcap suricata empty    3     2.828   70721.0  508.4    1.1      3.955     2.752    43.7     77.0 0
+I23_DDoS-HTTP_Flood.pcap suricata empty    3     9.626   20777.0   63.9    0.3      9.724     9.554     1.8    175.0 0
+I23_DDoS-ICMP_Flood.pcap suricata empty    3     0.536  373134.0  191.5    1.8      0.469     0.462     1.6     55.0 0
+I23_DDoS-ICMP_Fragmentation.pcap suricata empty    3     1.749  114351.0  900.8    1.5      1.699     1.676     1.4     57.0 0
+I23_DDoS-SYN_Flood.pcap  suricata empty    3     1.725  115942.0   62.5    0.3       8.35     1.649   406.4    163.0 0
+I23_DDoS-TCP_Flood.pcap  suricata empty    3     1.144  174825.0   85.5    1.3      7.254     1.087   567.3    108.0 0
+I23_DDoS-UDP_Flood.pcap  suricata empty    3     0.616  324675.0  169.8    0.8      0.548      0.54     1.5     55.0 0
+I23_DDoS-UDP_Fragmentation.pcap suricata empty    3     1.759  113701.0  830.7    0.4      1.693     1.691     0.1     56.0 0
+I23_DoS-TCP_Flood.pcap   suricata empty    3     1.807  110681.0   58.1    1.4      4.327     1.737   149.1     81.0 0
+I23_DoS-UDP_Flood.pcap   suricata empty    3     0.875  228571.0  113.3    1.3      2.838     0.802   253.9     74.0 0
+I23_MITM-ArpSpoofing.pcap suricata empty    3     1.019  196271.0 1065.3    0.4      0.962     0.956     0.6     56.0 0
+I23_Mirai-greip_flood.pcap suricata empty    3      2.54   78740.0  356.4    3.2      6.963     2.463   182.7    103.0 0
+I23_Mirai-udpplain.pcap  suricata empty    3     0.773  258732.0 1142.8    0.5      0.709     0.709     0.0     55.0 0
+I23_Recon-PortScan.pcap  suricata empty    3     3.143   63633.0   85.5    8.2!     3.628     3.072    18.1     73.0 0
+S_h4.pcap                suricata empty    3     0.285   76014.0  119.2    1.2      0.215     0.214     0.5     55.0 0
+S_h5.pcap                suricata empty    3     1.191  167926.0 1329.9    0.4      1.104      1.11    -0.5     56.0 0
+S_m1.pcap                suricata empty    3     2.327   85948.0   49.1    5.4!     2.501     2.263    10.5     65.0 0
+S_m17.pcap               suricata empty    3     1.723  116077.0   55.8    9.2!     4.561     1.652   176.1    108.0 0
+S_m20.pcap               suricata empty    3     0.318  157723.0   81.9    0.3      0.239     0.243    -1.8     54.0 0
+S_m3.pcap                suricata empty    3     1.709  117028.0   91.9   12.0!     2.051     1.636    25.4     64.0 0
+S_m34.pcap               suricata empty    3     1.308  152905.0  736.2    0.9      1.229     1.232    -0.2     56.0 0
+S_m36.pcap               suricata empty    3     3.064   65274.0   31.4    2.1      8.181     3.003   172.4    140.0 0
+S_m39.pcap               suricata empty    3     1.627  122926.0  121.8    0.8      8.514     1.555   447.5    166.0 0
+S_m42.pcap               suricata empty    3     0.527   46459.0   38.2    1.2      0.452      0.45     0.4     56.0 0
+S_m44.pcap               suricata empty    3     1.174  170358.0 1853.0    0.3      1.097     1.097     0.0     55.0 0
+S_m48.pcap               suricata empty    3     1.439  138985.0   94.3    5.7!     1.601     1.367    17.1     60.0 0
+S_m60.pcap               suricata empty    3     0.775  258065.0  125.0    0.8      0.699     0.702    -0.4     54.0 0
+S_somfy02.pcap           suricata empty    3     0.468  255637.0  533.2    2.3       0.41     0.397     3.4     55.0 0
+
+[檢查]
+(a) 決定性/封包數: 通過
+(e) self vs diff 差距 >10% 的組: [('C17_Portscan.pcap', 'suricata', 'empty', 81.2), ('D12_DrDoS_DNS.pcap', 'suricata', 'empty', 67.1), ('D12_DrDoS_MSSQL.pcap', 'suricata', 'empty', 231.1), ('D12_DrDoS_NTP.pcap', 'suricata', 'empty', 11.3), ('D12_DrDoS_SNMP.pcap', 'suricata', 'empty', 350.3), ('D12_DrDoS_UDP.pcap', 'suricata', 'empty', 95.5), ('D12_Syn.pcap', 'suricata', 'empty', 304.5), ('D12_TFTP.pcap', 'suricata', 'empty', 178.4), ('I23_DDoS-ACK_Fragmentation.pcap', 'suricata', 'empty', 43.7), ('I23_DDoS-SYN_Flood.pcap', 'suricata', 'empty', 406.4), ('I23_DDoS-TCP_Flood.pcap', 'suricata', 'empty', 567.3), ('I23_DoS-TCP_Flood.pcap', 'suricata', 'empty', 149.1), ('I23_DoS-UDP_Flood.pcap', 'suricata', 'empty', 253.9), ('I23_Mirai-greip_flood.pcap', 'suricata', 'empty', 182.7), ('I23_Recon-PortScan.pcap', 'suricata', 'empty', 18.1), ('S_m1.pcap', 'suricata', 'empty', 10.5), ('S_m17.pcap', 'suricata', 'empty', 176.1), ('S_m3.pcap', 'suricata', 'empty', 25.4), ('S_m36.pcap', 'suricata', 'empty', 172.4), ('S_m39.pcap', 'suricata', 'empty', 447.5), ('S_m48.pcap', 'suricata', 'empty', 17.1)]
+rows: total=328 warmup=82 void(non-warmup)=0 used=246
+pcap                     engine   rules    n  self_med       pps   Mbps     cv%  diff_med   self-sm    d/s%   rss_mb alerts
+C17_Benign.pcap          suricata full     3    12.863   15548.0   59.1    0.4                                1356.0 361
+C17_Benign.pcap          suricata gw_corp   3     11.81   16935.0   64.4    0.2                                1016.0 298
+C17_DoS_Hulk.pcap        suricata full     3    32.435    6166.0   44.4    0.1                                1671.0 0
+C17_DoS_Hulk.pcap        suricata gw_corp   3    28.776    6950.0   50.1    0.5                                1335.0 0
+C17_FTP-Patator.pcap     suricata full     3    11.014   18159.0  182.7    0.2                                1356.0 1
+C17_FTP-Patator.pcap     suricata gw_corp   3    10.297   19423.0  195.4    0.2                                1016.0 0
+C17_Portscan.pcap        suricata full     3     7.671   26072.0   31.2    0.2                                1356.0 3
+C17_Portscan.pcap        suricata gw_corp   3     7.135   28031.0   33.6    0.2                                1016.0 2
+D12_Benign.pcap          suricata full     3    12.525   15968.0  107.3    0.2                                1356.0 2
+D12_Benign.pcap          suricata gw_corp   3    11.549   17318.0  116.3    0.1                                1016.0 2
+D12_DrDoS_DNS.pcap       suricata full     3     4.648   43029.0  434.4    0.6                                1356.0 0
+D12_DrDoS_DNS.pcap       suricata gw_corp   3      4.04   49505.0  499.8    0.1                                1016.0 0
+D12_DrDoS_MSSQL.pcap     suricata full     3     3.843   52043.0  263.3    0.4                                1356.0 0
+D12_DrDoS_MSSQL.pcap     suricata gw_corp   3      3.47   57637.0  291.6    1.2                                1016.0 0
+D12_DrDoS_NTP.pcap       suricata full     3      3.16   63291.0  243.1    2.0                                1356.0 0
+D12_DrDoS_NTP.pcap       suricata gw_corp   3     2.354   84962.0  326.4    0.2                                1016.0 0
+D12_DrDoS_SNMP.pcap      suricata full     3     2.615   76482.0  165.6    0.6                                1356.0 0
+D12_DrDoS_SNMP.pcap      suricata gw_corp   3      2.03   98522.0  213.3    0.7                                1016.0 0
+D12_DrDoS_UDP.pcap       suricata full     3     3.626   55157.0  181.8    4.9                                1356.0 0
+D12_DrDoS_UDP.pcap       suricata gw_corp   3     3.049   65595.0  216.2    2.6                                1016.0 0
+D12_Syn.pcap             suricata full     3     5.831   34299.0   16.5    0.2                                1356.0 0
+D12_Syn.pcap             suricata gw_corp   3     5.576   35868.0   17.3    0.8                                1016.0 0
+D12_TFTP.pcap            suricata full     3     5.764   34698.0   65.6    0.6                                1356.0 0
+D12_TFTP.pcap            suricata gw_corp   3     5.349   37390.0   70.7    0.1                                1016.0 0
+I23_Benign_Final.pcap    suricata full     3     9.099   21980.0   38.1    0.4                                1356.0 2
+I23_Benign_Final.pcap    suricata gw_corp   3     7.898   25323.0   43.9    0.3                                1016.0 0
+I23_DDoS-ACK_Fragmentation.pcap suricata full     3    11.764   17001.0  122.2    0.2                                1356.0 0
+I23_DDoS-ACK_Fragmentation.pcap suricata gw_corp   3    11.345   17629.0  126.7    0.3                                1016.0 0
+I23_DDoS-HTTP_Flood.pcap suricata full     3    23.538    8497.0   26.1    0.2                                1404.0 0
+I23_DDoS-HTTP_Flood.pcap suricata gw_corp   3    23.003    8695.0   26.7    0.3                                1068.0 0
+I23_DDoS-ICMP_Flood.pcap suricata full     3     0.727  275103.0  141.2    0.6                                1356.0 0
+I23_DDoS-ICMP_Flood.pcap suricata gw_corp   3     0.715  279720.0  143.6    1.3                                1016.0 0
+I23_DDoS-ICMP_Fragmentation.pcap suricata full     3     4.206   47551.0  374.6    0.5                                1356.0 0
+I23_DDoS-ICMP_Fragmentation.pcap suricata gw_corp   3     3.908   51177.0  403.1    0.2                                1016.0 0
+I23_DDoS-SYN_Flood.pcap  suricata full     3    10.568   18925.0   10.2    0.9                                1384.0 0
+I23_DDoS-SYN_Flood.pcap  suricata gw_corp   3    10.118   19767.0   10.7    0.3                                1048.0 0
+I23_DDoS-TCP_Flood.pcap  suricata full     3     1.763  113443.0   55.5    1.8                                1356.0 0
+I23_DDoS-TCP_Flood.pcap  suricata gw_corp   3      1.46  136986.0   67.0    6.9!                               1016.0 0
+I23_DDoS-UDP_Flood.pcap  suricata full     3     0.977  204708.0  107.1    0.6                                1356.0 0
+I23_DDoS-UDP_Flood.pcap  suricata gw_corp   3     0.915  218579.0  114.3    0.4                                1016.0 0
+I23_DDoS-UDP_Fragmentation.pcap suricata full     3     8.406   23793.0  173.8    0.2                                1356.0 0
+I23_DDoS-UDP_Fragmentation.pcap suricata gw_corp   3     3.792   52743.0  385.3    0.4                                1016.0 0
+I23_DoS-TCP_Flood.pcap   suricata full     3     2.069   96665.0   50.8    3.2                                1356.0 0
+I23_DoS-TCP_Flood.pcap   suricata gw_corp   3     1.906  104932.0   55.1    6.9!                               1016.0 0
+I23_DoS-UDP_Flood.pcap   suricata full     3     1.233  162206.0   80.4    0.5                                1356.0 0
+I23_DoS-UDP_Flood.pcap   suricata gw_corp   3      1.12  178571.0   88.5    0.4                                1016.0 0
+I23_MITM-ArpSpoofing.pcap suricata full     3     2.935   68143.0  369.9    1.2                                1356.0 0
+I23_MITM-ArpSpoofing.pcap suricata gw_corp   3      2.72   73529.0  399.1    0.4                                1016.0 0
+I23_Mirai-greip_flood.pcap suricata full     3     5.696   35112.0  158.9    2.6                                1356.0 0
+I23_Mirai-greip_flood.pcap suricata gw_corp   3     5.052   39588.0  179.2    2.6                                1016.0 0
+I23_Mirai-udpplain.pcap  suricata full     3     2.915   68611.0  303.1    0.6                                1356.0 0
+I23_Mirai-udpplain.pcap  suricata gw_corp   3      2.73   73260.0  323.6    0.3                                1016.0 0
+I23_Recon-PortScan.pcap  suricata full     3     8.631   23172.0   31.1    0.8                                1356.0 0
+I23_Recon-PortScan.pcap  suricata gw_corp   3     7.901   25313.0   34.0    0.3                                1016.0 0
+S_h4.pcap                suricata full     3     0.572   37874.0   59.4    0.5                                1356.0 0
+S_h4.pcap                suricata gw_corp   3     0.527   41108.0   64.5    1.0                                1016.0 0
+S_h5.pcap                suricata full     3     1.469  136147.0 1078.2    0.7                                1356.0 3
+S_h5.pcap                suricata gw_corp   3     1.447  138217.0 1094.6    0.2                                1016.0 0
+S_m1.pcap                suricata full     3     3.357   59577.0   34.0    0.9                                1356.0 3
+S_m1.pcap                suricata gw_corp   3     3.195   62598.0   35.8    1.9                                1016.0 0
+S_m17.pcap               suricata full     3     6.251   31995.0   15.4    0.3                                1356.0 0
+S_m17.pcap               suricata gw_corp   3     6.095   32814.0   15.8    0.2                                1016.0 0
+S_m20.pcap               suricata full     3     0.479  104710.0   54.4    0.6                                1356.0 0
+S_m20.pcap               suricata gw_corp   3      0.46  109035.0   56.6    2.1                                1016.0 0
+S_m3.pcap                suricata full     3     6.138   32584.0   25.6    0.2                                1356.0 20876
+S_m3.pcap                suricata gw_corp   3     5.878   34025.0   26.7    0.4                                1016.0 20876
+S_m34.pcap               suricata full     3     5.512   36284.0  174.7    0.1                                1356.0 6919,6920  <-- NOT DETERMINISTIC
+S_m34.pcap               suricata gw_corp   3     5.074   39417.0  189.8    0.3                                1016.0 6905,6906  <-- NOT DETERMINISTIC
+S_m36.pcap               suricata full     3     11.36   17606.0    8.5    0.3                                1356.0 0
+S_m36.pcap               suricata gw_corp   3     11.05   18100.0    8.7    0.6                                1016.0 0
+S_m39.pcap               suricata full     3     13.46   14859.0   14.7    0.3                                1387.0 36461
+S_m39.pcap               suricata gw_corp   3    13.251   15093.0   14.9    0.1                                1051.0 36442
+S_m42.pcap               suricata full     3     1.129   21686.0   17.8   37.2!                               1356.0 2019
+S_m42.pcap               suricata gw_corp   3     1.027   23840.0   19.6    1.8                                1016.0 1994
+S_m44.pcap               suricata full     3     6.068   32960.0  358.5    3.8                                1356.0 22
+S_m44.pcap               suricata gw_corp   3     5.334   37495.0  407.8    0.3                                1016.0 11
+S_m48.pcap               suricata full     3     2.875   69565.0   47.2    0.9                                1356.0 22
+S_m48.pcap               suricata gw_corp   3     2.667   74991.0   50.9    1.0                                1016.0 11
+rows: total=4 warmup=1 void(non-warmup)=0 used=3
+pcap                     engine   rules    n  self_med       pps   Mbps     cv%  diff_med   self-sm    d/s%   rss_mb alerts
+C_somfy02.pcap           suricata full     3     2.641   45300.0   94.5    0.7                                1356.0 0
+
+[檢查]
+(a) 決定性/封包數: 通過
+(e) self vs diff 差距 >10% 的組: 無
+ALL DONE 2026-10-31T18:58:02Z

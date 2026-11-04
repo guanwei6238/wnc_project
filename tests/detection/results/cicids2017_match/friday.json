@@ -1,0 +1,428 @@
+{
+ "conn_log": "/home/sixsquare/datasets/cicids2017/conn/friday.conn.log.labeled",
+ "eve": "/home/sixsquare/datasets/detection/cicids2017/friday/eve.json",
+ "shards": 1,
+ "alerts": 1767,
+ "alerts_gw": 723,
+ "alerts_gwip": 723,
+ "alert_match": {
+  "in_time": 1766,
+  "by_flow_start": 1,
+  "unmatched": 0,
+  "multi_conn": 0,
+  "non_tcp_udp_icmp": 0
+ },
+ "unmatched_by_sid": {},
+ "labels": {
+  "Benign": {
+   "flows": 288251,
+   "flows_alert_full": 715,
+   "flows_alert_gw": 281,
+   "flows_alert_gwip": 281,
+   "alerts": 1562,
+   "sids": {
+    "2029340": 186,
+    "2027390": 113,
+    "2027757": 93,
+    "2027863": 52,
+    "2027758": 36,
+    "2067085": 33,
+    "2067086": 33,
+    "2067087": 33,
+    "2013504": 24,
+    "2016778": 24,
+    "2016149": 20,
+    "2047702": 18,
+    "2025275": 17,
+    "2036860": 15,
+    "2019512": 10,
+    "2047703": 10,
+    "2033078": 9,
+    "2012647": 9,
+    "2053892": 8,
+    "2012522": 6,
+    "2050736": 6,
+    "2019401": 5,
+    "2014169": 5,
+    "2071571": 5,
+    "2065070": 5,
+    "2053893": 4,
+    "2011540": 4,
+    "2018959": 3,
+    "2063117": 3,
+    "2100366": 3,
+    "2053894": 3,
+    "2016150": 2,
+    "2032987": 2,
+    "2100371": 2,
+    "2010937": 2,
+    "2036300": 2,
+    "2065081": 2,
+    "2014519": 1,
+    "2035593": 1,
+    "2013031": 1,
+    "2016360": 1
+   }
+  },
+  "Malicious Portscan": {
+   "flows": 159064,
+   "flows_alert_full": 185,
+   "flows_alert_gw": 185,
+   "flows_alert_gwip": 185,
+   "alerts": 185,
+   "sids": {
+    "2010935": 40,
+    "2010936": 40,
+    "2010939": 40,
+    "2010937": 38,
+    "2002910": 9,
+    "2001219": 7,
+    "2002995": 3,
+    "2002994": 3,
+    "2002992": 2,
+    "2002993": 2,
+    "2001972": 1
+   }
+  },
+  "Malicious DDoS": {
+   "flows": 95144,
+   "flows_alert_full": 20,
+   "flows_alert_gw": 20,
+   "flows_alert_gwip": 20,
+   "alerts": 20,
+   "sids": {
+    "2019348": 20
+   }
+  },
+  "Attempted Botnet": {
+   "flows": 4067,
+   "flows_alert_full": 0,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 0,
+   "sids": {}
+  },
+  "Malicious Botnet": {
+   "flows": 736,
+   "flows_alert_full": 0,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 0,
+   "sids": {}
+  }
+ },
+ "sids": {
+  "2013504": {
+   "msg": "ET INFO GNU/Linux APT User-Agent Outbound likely related to package management",
+   "alerts": 343,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2027390": {
+   "msg": "ET USER_AGENTS Microsoft Device Metadata Retrieval Client User-Agent",
+   "alerts": 192,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2029340": {
+   "msg": "ET INFO TLS Handshake Failure",
+   "alerts": 186,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2027757": {
+   "msg": "ET DNS Query for .to TLD",
+   "alerts": 181,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2027863": {
+   "msg": "ET INFO Observed DNS Query to .biz TLD",
+   "alerts": 98,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2016149": {
+   "msg": "ET INFO Session Traversal Utilities for NAT (STUN Binding Request)",
+   "alerts": 92,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2027758": {
+   "msg": "ET DNS Query for .cc TLD",
+   "alerts": 67,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2016778": {
+   "msg": "ET DNS Query to a *.pw domain - Likely Hostile",
+   "alerts": 56,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2010937": {
+   "msg": "ET SCAN Suspicious inbound to mySQL port 3306",
+   "alerts": 40,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2010935": {
+   "msg": "ET SCAN Suspicious inbound to MSSQL port 1433",
+   "alerts": 40,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2010936": {
+   "msg": "ET SCAN Suspicious inbound to Oracle SQL port 1521",
+   "alerts": 40,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2010939": {
+   "msg": "ET SCAN Suspicious inbound to PostgreSQL port 5432",
+   "alerts": 40,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2047702": {
+   "msg": "ET INFO External IP Lookup Domain (ipify .org) in DNS Lookup",
+   "alerts": 35,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2067085": {
+   "msg": "ET INFO NTLM Session Setup Request - Negotiate",
+   "alerts": 33,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2067086": {
+   "msg": "ET INFO NTLMv1 Session Setup Response - Challenge",
+   "alerts": 33,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2067087": {
+   "msg": "ET INFO NTLM Session Setup Request - Auth",
+   "alerts": 33,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2036860": {
+   "msg": "ET INFO External IP Lookup Domain (freegeiop .net in DNS lookup)",
+   "alerts": 32,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2019348": {
+   "msg": "ET DOS Terse HTTP GET Likely AnonMafiaIC DDoS tool",
+   "alerts": 20,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2025275": {
+   "msg": "ET INFO Windows OS Submitting USB Metadata to Microsoft",
+   "alerts": 17,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2012522": {
+   "msg": "ET INFO DNS Query For XXX Adult Site Top Level Domain",
+   "alerts": 14,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2014169": {
+   "msg": "ET DNS Query for .su TLD (Soviet Union) Often Malware Related",
+   "alerts": 12,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2033078": {
+   "msg": "ET INFO Session Traversal Utilities for NAT (STUN Binding Request On Non-Standard High Port)",
+   "alerts": 10,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2047703": {
+   "msg": "ET INFO External IP Address Lookup Domain (ipify .org) in TLS SNI",
+   "alerts": 10,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2019512": {
+   "msg": "ET INFO Possible IP Check api.ipify.org",
+   "alerts": 10,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2100371": {
+   "msg": "GPL ICMP PING Cisco Type.x",
+   "alerts": 10,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2071571": {
+   "msg": "ET INFO Observed Telegram Domain in DNS Lookup (telegram .me)",
+   "alerts": 10,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2065070": {
+   "msg": "ET INFO Observed RMM Domain in DNS Lookup (pubnub .com)",
+   "alerts": 10,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2012647": {
+   "msg": "ET INFO Dropbox.com Offsite File Backup in Use",
+   "alerts": 9,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2050736": {
+   "msg": "ET INFO Tencent Cloud Storage Domain in DNS Lookup (myqcloud .com)",
+   "alerts": 9,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2002910": {
+   "msg": "ET SCAN Potential VNC Scan 5800-5820",
+   "alerts": 9,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2053892": {
+   "msg": "ET INFO Suspicious Domain (polyfill .io) in DNS Lookup",
+   "alerts": 8,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2100366": {
+   "msg": "GPL ICMP PING *NIX",
+   "alerts": 8,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2063117": {
+   "msg": "ET INFO Abused Hosting Domain in DNS Lookup (azurewebsites .net)",
+   "alerts": 7,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2001219": {
+   "msg": "ET SCAN Potential SSH Scan",
+   "alerts": 7,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2053894": {
+   "msg": "ET INFO Pastebin-like Service Domain in DNS Lookup (jsfiddle .net)",
+   "alerts": 7,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2019401": {
+   "msg": "ET INFO Vulnerable Java Version 1.8.x Detected",
+   "alerts": 5,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2053893": {
+   "msg": "ET INFO Suspicious Domain (polyfill .io) in TLS SNI",
+   "alerts": 4,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2011540": {
+   "msg": "ET INFO OpenSSL Demo CA - Internet Widgits Pty (O)",
+   "alerts": 4,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2018959": {
+   "msg": "ET INFO PE EXE or DLL Windows file download HTTP",
+   "alerts": 3,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2002995": {
+   "msg": "ET SCAN Rapid IMAPS Connections - Possible Brute Force Attack",
+   "alerts": 3,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2002994": {
+   "msg": "ET SCAN Rapid IMAP Connections - Possible Brute Force Attack",
+   "alerts": 3,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2016150": {
+   "msg": "ET INFO Session Traversal Utilities for NAT (STUN Binding Response)",
+   "alerts": 2,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2032987": {
+   "msg": "ET INFO HTTP Request to a *.tw domain",
+   "alerts": 2,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2002992": {
+   "msg": "ET SCAN Rapid POP3 Connections - Possible Brute Force Attack",
+   "alerts": 2,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2002993": {
+   "msg": "ET SCAN Rapid POP3S Connections - Possible Brute Force Attack",
+   "alerts": 2,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2036300": {
+   "msg": "ET HUNTING [TW] Likely Javascript-Obfuscator Usage Observed M1",
+   "alerts": 2,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2065081": {
+   "msg": "ET INFO Observed RMM Domain in TLS SNI (pubnub .com)",
+   "alerts": 2,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2014519": {
+   "msg": "ET INFO EXE - Served Inline HTTP",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2035593": {
+   "msg": "ET INFO DropBox User Content Domain (dl .dropboxusercontent .com in TLS SNI)",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2013031": {
+   "msg": "ET INFO Python-urllib/ Suspicious User Agent",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2016360": {
+   "msg": "ET INFO JAVA - ClassID",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2001972": {
+   "msg": "ET SCAN Behavioral Unusually fast Terminal Server Traffic Potential Scan or Infection (Inbound)",
+   "alerts": 1,
+   "gw_corp": true,
+   "iplist": false
+  }
+ }
+}

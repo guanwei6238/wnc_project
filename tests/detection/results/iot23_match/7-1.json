@@ -1,0 +1,138 @@
+{
+ "conn_log": "/home/sixsquare/datasets/iot23/extracted/run1/opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-7-1/bro/conn.log.labeled",
+ "eve": "/home/sixsquare/datasets/detection/iot23/7-1/eve.json",
+ "shards": 1,
+ "alerts": 36,
+ "alerts_gw": 0,
+ "alerts_gwip": 36,
+ "alert_match": {
+  "in_time": 36,
+  "by_flow_start": 0,
+  "unmatched": 0,
+  "multi_conn": 0,
+  "non_tcp_udp_icmp": 0
+ },
+ "unmatched_by_sid": {},
+ "labels": {
+  "Malicious Okiru": {
+   "flows": 11333397,
+   "flows_alert_full": 32,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 32,
+   "alerts": 32,
+   "sids": {
+    "2400047": 14,
+    "2400004": 5,
+    "2400035": 5,
+    "2400065": 2,
+    "2400020": 1,
+    "2400024": 1,
+    "2400001": 1,
+    "2400023": 1,
+    "2400026": 1,
+    "2400031": 1
+   }
+  },
+  "Benign": {
+   "flows": 75955,
+   "flows_alert_full": 4,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 4,
+   "alerts": 4,
+   "sids": {
+    "2400032": 3,
+    "2400059": 1
+   }
+  },
+  "Malicious DDoS": {
+   "flows": 39584,
+   "flows_alert_full": 0,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 0,
+   "sids": {}
+  },
+  "Malicious C&C-HeartBeat": {
+   "flows": 5778,
+   "flows_alert_full": 0,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 0,
+   "sids": {}
+  }
+ },
+ "sids": {
+  "2400047": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 48",
+   "alerts": 14,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400004": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 5",
+   "alerts": 5,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400035": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 36",
+   "alerts": 5,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400032": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 33",
+   "alerts": 3,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400065": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 66",
+   "alerts": 2,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400020": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 21",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400024": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 25",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400001": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 2",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400023": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 24",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400026": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 27",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400031": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 32",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400059": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 60",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": true
+  }
+ }
+}

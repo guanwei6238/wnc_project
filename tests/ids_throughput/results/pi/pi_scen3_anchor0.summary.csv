@@ -1,0 +1,2 @@
+pcap,engine,rules,n,pkts,bytes,self_med,self_min,self_max,self_cv_pct,pps_med,mbps_med,diff_med,diff_cv_pct,self_minus_small_med,diff_vs_self_pct,pps_diff,mbps_diff,wall_med,cpu_raw_med,cpu_proc_med,maxrss_mb_max,alerts_set,suppressed_set,top_sids,pkts_match_all,bytes_match_all
+C_somfy02.pcap,suricata,full,3,119638,31190192,2.628,2.618,2.638,0.381,45524.0,94.95,,,,,,,41.614,44.07,,1355.9,0,0,,1,1

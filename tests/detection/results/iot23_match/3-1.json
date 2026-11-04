@@ -1,0 +1,100 @@
+{
+ "conn_log": "/home/sixsquare/datasets/iot23/extracted/run1/opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-3-1/bro/conn.log.labeled",
+ "eve": "/home/sixsquare/datasets/detection/iot23/3-1/eve.json",
+ "shards": 1,
+ "alerts": 50529,
+ "alerts_gw": 50488,
+ "alerts_gwip": 50529,
+ "alert_match": {
+  "in_time": 50525,
+  "by_flow_start": 4,
+  "unmatched": 0,
+  "multi_conn": 0,
+  "non_tcp_udp_icmp": 0
+ },
+ "unmatched_by_sid": {},
+ "labels": {
+  "Malicious PartOfAHorizontalPortScan": {
+   "flows": 145597,
+   "flows_alert_full": 45289,
+   "flows_alert_gw": 45289,
+   "flows_alert_gwip": 45289,
+   "alerts": 48620,
+   "sids": {
+    "2003068": 45289
+   }
+  },
+  "Malicious Attack": {
+   "flows": 5962,
+   "flows_alert_full": 1264,
+   "flows_alert_gw": 1264,
+   "flows_alert_gwip": 1264,
+   "alerts": 1289,
+   "sids": {
+    "2003068": 1264
+   }
+  },
+  "Benign": {
+   "flows": 4536,
+   "flows_alert_full": 594,
+   "flows_alert_gw": 560,
+   "flows_alert_gwip": 594,
+   "alerts": 602,
+   "sids": {
+    "2003068": 560,
+    "2400047": 40,
+    "2400029": 1
+   }
+  },
+  "Malicious C&C": {
+   "flows": 8,
+   "flows_alert_full": 6,
+   "flows_alert_gw": 6,
+   "flows_alert_gwip": 6,
+   "alerts": 18,
+   "sids": {
+    "2034743": 6,
+    "2029319": 6,
+    "2000348": 5
+   }
+  }
+ },
+ "sids": {
+  "2003068": {
+   "msg": "ET SCAN Potential SSH Scan OUTBOUND",
+   "alerts": 50470,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2400047": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 48",
+   "alerts": 40,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2029319": {
+   "msg": "ET MALWARE ELF/Muhstik - IRC CnC Checkin",
+   "alerts": 7,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2034743": {
+   "msg": "ET MALWARE ELF/Muhstik Botnet CnC Activity",
+   "alerts": 6,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2000348": {
+   "msg": "ET INFO IRC Channel JOIN on non-standard port",
+   "alerts": 5,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2400029": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 30",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": true
+  }
+ }
+}

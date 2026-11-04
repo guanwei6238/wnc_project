@@ -1,0 +1,130 @@
+sid	set	label	flows	msg
+2003068	gw_corp	Benign	311	ET SCAN Potential SSH Scan OUTBOUND
+2100366	-	Malicious TFTP	271	GPL ICMP PING *NIX
+2100366	-	Malicious DrDoS_DNS	143	GPL ICMP PING *NIX
+2100366	-	Malicious DrDoS_NTP	123	GPL ICMP PING *NIX
+2101411	gw_corp	Malicious DrDoS_SNMP	103	GPL SNMP public access udp
+2001219	gw_corp	Malicious TFTP	101	ET SCAN Potential SSH Scan
+2001219	gw_corp	Malicious Syn	94	ET SCAN Potential SSH Scan
+2100366	-	Malicious DrDoS_SNMP	91	GPL ICMP PING *NIX
+2100366	-	Malicious DrDoS_LDAP	64	GPL ICMP PING *NIX
+2010935	gw_corp	Malicious Syn	45	ET SCAN Suspicious inbound to MSSQL port 1433
+2001219	gw_corp	Malicious DrDoS_NTP	43	ET SCAN Potential SSH Scan
+2100366	-	Malicious DrDoS_UDP	34	GPL ICMP PING *NIX
+2010937	gw_corp	Malicious Syn	34	ET SCAN Suspicious inbound to mySQL port 3306
+2100366	-	Malicious DrDoS_MSSQL	33	GPL ICMP PING *NIX
+2010939	gw_corp	Malicious Syn	28	ET SCAN Suspicious inbound to PostgreSQL port 5432
+2010936	gw_corp	Malicious Syn	25	ET SCAN Suspicious inbound to Oracle SQL port 1521
+2100366	-	Malicious DrDoS_SSDP	22	GPL ICMP PING *NIX
+2100366	-	Malicious DrDoS_NetBIOS	14	GPL ICMP PING *NIX
+2010935	gw_corp	Malicious TFTP	13	ET SCAN Suspicious inbound to MSSQL port 1433
+2001219	gw_corp	Malicious DrDoS_DNS	13	ET SCAN Potential SSH Scan
+2001219	gw_corp	Malicious DrDoS_UDP	13	ET SCAN Potential SSH Scan
+2100366	-	Malicious UDP-lag	13	GPL ICMP PING *NIX
+2006546	gw_corp	Malicious TFTP	12	ET SCAN LibSSH Based Frequent SSH Connections Likely BruteForce Attack
+2002910	gw_corp	Malicious Syn	12	ET SCAN Potential VNC Scan 5800-5820
+2001219	gw_corp	Malicious UDP-lag	12	ET SCAN Potential SSH Scan
+2001219	gw_corp	Malicious DrDoS_SNMP	11	ET SCAN Potential SSH Scan
+2008578	gw_corp	Malicious Syn	9	ET SCAN Sipvicious Scan
+2001219	gw_corp	Malicious Portmap	9	ET SCAN Potential SSH Scan
+2011716	gw_corp	Malicious Syn	8	ET SCAN Sipvicious User-Agent Detected (friendly-scanner)
+2008578	gw_corp	Malicious TFTP	7	ET SCAN Sipvicious Scan
+2011716	gw_corp	Malicious TFTP	7	ET SCAN Sipvicious User-Agent Detected (friendly-scanner)
+2020306	gw_corp	Malicious MSSQL	7	ET DOS MC-SQLR Response Inbound Possible DDoS Target
+2101948	gw_corp	Malicious TFTP	6	GPL DNS zone transfer UDP
+2072593	-	Malicious TFTP	6	ET HUNTING X-Forward-For Header Set to localhost
+2001219	gw_corp	Malicious DrDoS_MSSQL	6	ET SCAN Potential SSH Scan
+2001219	gw_corp	Malicious DrDoS_NetBIOS	6	ET SCAN Potential SSH Scan
+2100368	-	Malicious DrDoS_UDP	6	GPL ICMP PING BSDtype
+2100369	-	Malicious DrDoS_UDP	6	GPL ICMP PING BayRS Router
+2100373	-	Malicious DrDoS_UDP	6	GPL ICMP PING Flowpoint2200 or Network Management Software
+2002993	gw_corp	Malicious Syn	6	ET SCAN Rapid POP3S Connections - Possible Brute Force Attack
+2010935	gw_corp	Malicious UDP-lag	6	ET SCAN Suspicious inbound to MSSQL port 1433
+2032987	-	Benign	6	ET INFO HTTP Request to a *.tw domain
+2010935	gw_corp	Malicious DrDoS_NetBIOS	5	ET SCAN Suspicious inbound to MSSQL port 1433
+2001219	gw_corp	Malicious DrDoS_SSDP	5	ET SCAN Potential SSH Scan
+2001219	gw_corp	Malicious DrDoS_LDAP	5	ET SCAN Potential SSH Scan
+2002995	gw_corp	Malicious Syn	5	ET SCAN Rapid IMAPS Connections - Possible Brute Force Attack
+2010935	gw_corp	Malicious DrDoS_NTP	5	ET SCAN Suspicious inbound to MSSQL port 1433
+2006546	gw_corp	Malicious DrDoS_NTP	5	ET SCAN LibSSH Based Frequent SSH Connections Likely BruteForce Attack
+2013504	-	Benign	5	ET INFO GNU/Linux APT User-Agent Outbound likely related to package management
+2001219	gw_corp	Malicious MSSQL	5	ET SCAN Potential SSH Scan
+2002994	gw_corp	Malicious Syn	5	ET SCAN Rapid IMAP Connections - Possible Brute Force Attack
+2001219	gw_corp	Malicious UDPLag	5	ET SCAN Potential SSH Scan
+2010937	gw_corp	Malicious TFTP	4	ET SCAN Suspicious inbound to mySQL port 3306
+2100371	-	Malicious DrDoS_UDP	4	GPL ICMP PING Cisco Type.x
+2002992	gw_corp	Malicious Syn	4	ET SCAN Rapid POP3 Connections - Possible Brute Force Attack
+2008578	gw_corp	Malicious DrDoS_NTP	4	ET SCAN Sipvicious Scan
+2011716	gw_corp	Malicious DrDoS_NTP	4	ET SCAN Sipvicious User-Agent Detected (friendly-scanner)
+2006546	gw_corp	Malicious DrDoS_NetBIOS	3	ET SCAN LibSSH Based Frequent SSH Connections Likely BruteForce Attack
+2072593	-	Malicious DrDoS_UDP	3	ET HUNTING X-Forward-For Header Set to localhost
+2100366	-	Malicious Syn	3	GPL ICMP PING *NIX
+2001972	gw_corp	Malicious Syn	3	ET SCAN Behavioral Unusually fast Terminal Server Traffic Potential Scan or Infection (Inbound)
+2017966	gw_corp	Malicious DrDoS_NTP	3	ET DOS Likely NTP DDoS In Progress MON_LIST Response to Non-Ephemeral Port IMPL 0x03
+2010936	gw_corp	Malicious UDP-lag	3	ET SCAN Suspicious inbound to Oracle SQL port 1521
+2010937	gw_corp	Malicious UDP-lag	3	ET SCAN Suspicious inbound to mySQL port 3306
+2008578	gw_corp	Malicious Portmap	3	ET SCAN Sipvicious Scan
+2010935	gw_corp	Malicious Portmap	3	ET SCAN Suspicious inbound to MSSQL port 1433
+2038967	-	Malicious TFTP	2	ET INFO SSH-2.0-Go version string Observed in Network Traffic
+2006546	gw_corp	Malicious DrDoS_SNMP	2	ET SCAN LibSSH Based Frequent SSH Connections Likely BruteForce Attack
+2100368	-	Malicious DrDoS_DNS	2	GPL ICMP PING BSDtype
+2100369	-	Malicious DrDoS_DNS	2	GPL ICMP PING BayRS Router
+2100373	-	Malicious DrDoS_DNS	2	GPL ICMP PING Flowpoint2200 or Network Management Software
+2006546	gw_corp	Malicious DrDoS_DNS	2	ET SCAN LibSSH Based Frequent SSH Connections Likely BruteForce Attack
+2010935	gw_corp	Malicious DrDoS_DNS	2	ET SCAN Suspicious inbound to MSSQL port 1433
+2008578	gw_corp	Malicious DrDoS_DNS	2	ET SCAN Sipvicious Scan
+2011716	gw_corp	Malicious DrDoS_DNS	2	ET SCAN Sipvicious User-Agent Detected (friendly-scanner)
+2010937	gw_corp	Malicious DrDoS_NetBIOS	2	ET SCAN Suspicious inbound to mySQL port 3306
+2010939	gw_corp	Malicious DrDoS_NetBIOS	2	ET SCAN Suspicious inbound to PostgreSQL port 5432
+2101411	gw_corp	Malicious DrDoS_NetBIOS	2	GPL SNMP public access udp
+2101411	gw_corp	Malicious DrDoS_SSDP	2	GPL SNMP public access udp
+2072593	-	Malicious DrDoS_LDAP	2	ET HUNTING X-Forward-For Header Set to localhost
+2010937	gw_corp	Malicious DrDoS_NTP	2	ET SCAN Suspicious inbound to mySQL port 3306
+2072593	-	Malicious DrDoS_NTP	2	ET HUNTING X-Forward-For Header Set to localhost
+2100227	gw_corp	Malicious DrDoS_NTP	2	GPL SNMP SNMP trap Format String detected
+2010939	gw_corp	Malicious UDP-lag	2	ET SCAN Suspicious inbound to PostgreSQL port 5432
+2019401	gw_corp	Benign	2	ET INFO Vulnerable Java Version 1.8.x Detected
+2060252	-	Malicious WebDDoS	2	ET INFO Go-http-client User-Agent Observed Inbound
+2001219	gw_corp	Malicious UDP	2	ET SCAN Potential SSH Scan
+2022506	gw_corp	Malicious NetBIOS	2	ET EXPLOIT Possible CVE-2016-1287 Invalid Fragment Size Inbound
+2001219	gw_corp	Malicious LDAP	2	ET SCAN Potential SSH Scan
+2010937	gw_corp	Malicious Portmap	2	ET SCAN Suspicious inbound to mySQL port 3306
+2027757	gw_corp	Benign	2	ET DNS Query for .to TLD
+2063117	-	Benign	2	ET INFO Abused Hosting Domain in DNS Lookup (azurewebsites .net)
+2063118	-	Benign	2	ET INFO Abused Hosting Domain (azurewebsites .net) in TLS SNI
+2100368	-	Malicious TFTP	1	GPL ICMP PING BSDtype
+2100369	-	Malicious TFTP	1	GPL ICMP PING BayRS Router
+2100373	-	Malicious TFTP	1	GPL ICMP PING Flowpoint2200 or Network Management Software
+2010939	gw_corp	Malicious TFTP	1	ET SCAN Suspicious inbound to PostgreSQL port 5432
+2010937	gw_corp	Malicious DrDoS_SNMP	1	ET SCAN Suspicious inbound to mySQL port 3306
+2060252	-	Malicious DrDoS_SNMP	1	ET INFO Go-http-client User-Agent Observed Inbound
+2010935	gw_corp	Malicious DrDoS_SNMP	1	ET SCAN Suspicious inbound to MSSQL port 1433
+2027126	gw_corp	Malicious DrDoS_DNS	1	ET MALWARE ELF/Mirai Variant UA Inbound (Yakuza)
+2010937	gw_corp	Malicious DrDoS_MSSQL	1	ET SCAN Suspicious inbound to mySQL port 3306
+2060252	-	Malicious DrDoS_NetBIOS	1	ET INFO Go-http-client User-Agent Observed Inbound
+2101411	gw_corp	Malicious DrDoS_UDP	1	GPL SNMP public access udp
+2100368	-	Malicious DrDoS_SSDP	1	GPL ICMP PING BSDtype
+2100369	-	Malicious DrDoS_SSDP	1	GPL ICMP PING BayRS Router
+2100373	-	Malicious DrDoS_SSDP	1	GPL ICMP PING Flowpoint2200 or Network Management Software
+2060252	-	Malicious DrDoS_SSDP	1	ET INFO Go-http-client User-Agent Observed Inbound
+2101948	gw_corp	Malicious DrDoS_LDAP	1	GPL DNS zone transfer UDP
+2010936	gw_corp	Malicious DrDoS_NTP	1	ET SCAN Suspicious inbound to Oracle SQL port 1521
+2038967	-	Malicious DrDoS_NTP	1	ET INFO SSH-2.0-Go version string Observed in Network Traffic
+2006546	gw_corp	Malicious UDP-lag	1	ET SCAN LibSSH Based Frequent SSH Connections Likely BruteForce Attack
+2008578	gw_corp	Malicious UDP-lag	1	ET SCAN Sipvicious Scan
+2011716	gw_corp	Malicious UDP-lag	1	ET SCAN Sipvicious User-Agent Detected (friendly-scanner)
+2002910	gw_corp	Malicious UDP-lag	1	ET SCAN Potential VNC Scan 5800-5820
+2101411	gw_corp	Malicious Syn	1	GPL SNMP public access udp
+2010935	gw_corp	Malicious UDP	1	ET SCAN Suspicious inbound to MSSQL port 1433
+2010939	gw_corp	Malicious NetBIOS	1	ET SCAN Suspicious inbound to PostgreSQL port 5432
+2010937	gw_corp	Malicious NetBIOS	1	ET SCAN Suspicious inbound to mySQL port 3306
+2010935	gw_corp	Malicious NetBIOS	1	ET SCAN Suspicious inbound to MSSQL port 1433
+2001219	gw_corp	Malicious NetBIOS	1	ET SCAN Potential SSH Scan
+2060252	-	Malicious NetBIOS	1	ET INFO Go-http-client User-Agent Observed Inbound
+2011716	gw_corp	Malicious Portmap	1	ET SCAN Sipvicious User-Agent Detected (friendly-scanner)
+2010939	gw_corp	Malicious Portmap	1	ET SCAN Suspicious inbound to PostgreSQL port 5432
+2527007	iplist	Benign	1	ET Threatview.io High Confidence Cobalt Strike C2 IP group 8
+2053893	-	Benign	1	ET INFO Suspicious Domain (polyfill .io) in TLS SNI
+2053892	-	Benign	1	ET INFO Suspicious Domain (polyfill .io) in DNS Lookup
+2008578	gw_corp	Malicious UDPLag	1	ET SCAN Sipvicious Scan
+2011716	gw_corp	Malicious UDPLag	1	ET SCAN Sipvicious User-Agent Detected (friendly-scanner)

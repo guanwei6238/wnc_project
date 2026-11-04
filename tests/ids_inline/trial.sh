@@ -8,7 +8,8 @@
 #   QUEUES=N（預設 1）：用 queue 0..N-1，Suricata 開 N 個 worker（wncgw 用 setting-<rules>-qN.toml；nfq 用 -q 0:N-1）
 #   SURI_CPUS（預設 2,3）：Suricata 綁的 CPU
 #   QHASH=symhash（只有 nfq）：用 queue to symhash mod N（含 port 的對稱 hash），預設是 queue num 0-(N-1)（kernel 只用位址做 hash）
-#   三者都綁 $SURI_CPUS；就緒後等 2 秒，tcpreplay（wtest 裡、綁 CPU 1）送整個 pcap，等處理完，讀計數器與 RSS，再停止
+#   RUNMODE=workers|autofp（afpacket 不支援）：改 yaml 的 runmode，預設照 yaml（make_configs.sh 設的是 workers）
+#   三者都綁 $SURI_CPUS；就緒後等 2 秒，tcpreplay（wtest 裡、綁 CPU 1、-T nano）送整個 pcap，等處理完，讀計數器與 RSS，再停止
 # 用法: sudo [IMPL=...] bash trial.sh <empty|full|gw_corp> <pcap 名稱，例如 S_m39> <pps 數字|top|cache> <輸出目錄>
 #   cache：只建 tcpprep 的 cache 就結束
 # 輸出: <輸出目錄>/result.kv（一行 key=value），run.log，tcpreplay.txt
@@ -18,13 +19,17 @@
 #   NFQ（wncgw、nfq）：/proc/net/netfilter/nfnetlink_queue 各 queue 加總；per_queue 是每個 queue 交給 Suricata 的封包數。to_queue = 進到 queue 規則；queue_drop = queue 滿被 kernel 丟掉；processed = 交給 Suricata 判決
 #   afpacket：processed = 測試端 t-lan、t-wan 收到的封包（Suricata 送出去的）；to_queue = gateway 端 g-lan、g-wan 收到的封包
 #   nflog：to_queue = log 規則前的 counter；queue_drop = 收複本的 netlink socket 的 Drops（/proc/net/netlink）；processed = 兩者相減
-#   machine_us_per_pkt：整台機器（/proc/stat）的 CPU ÷ 送出的封包，含 tcpreplay 和 kernel 轉送；NFQ 判決後的轉送算在 worker 裡，NFLOG 不會，所以兩者比這個
+#   cpu_us_per_pkt：所有 CPU 的 rq_cpu_time（/proc/schedstat）增加量 ÷ 送出的封包，含 tcpreplay 和 kernel 轉送；NFQ 判決後的轉送算在 worker 裡，NFLOG 不會，所以兩者比這個
+#     /proc/stat 是 tick 取樣，10,000 pps 的固定間隔和 tick 對齊時會多算一倍或算成 0；tcpreplay 預設的 gtod 會忙等吃滿 CPU 1，蓋掉 CPU 1 上的轉送
+#     nonidle_cpu_s：交叉檢查用，CPU 數 × 經過時間 − /proc/stat 的 idle（NO_HZ 下 idle 是精確的）
 # CPU：Suricata worker 執行緒（NFQ 是 W-NFQ#0；af-packet 是每張網卡一個 W#…）的 schedstat 執行時間（ns）加總，送之前和處理完之後相減
 #   us_per_pkt = worker CPU ÷ processed；cpu_kpps = 1000 ÷ us_per_pkt（對應 offline 的「packets ÷ engine 處理時間」）
+#   autofp 的 worker 是 W#01…，收封包另有 RX 執行緒（NFQ 是 RX-NFQ#…、NFLOG 是 RX#…），NFQ 送判決另有 TX#…：io_cpu_s 是 RX、TX 加總
+#   path_us_per_pkt =（worker + RX + TX）CPU ÷ processed，比較 runmode 用這個
 #   proc_kpps = processed ÷（開始送 → 處理完）的牆鐘時間
 set -u
 rs=$1; pc=$2; rate=$3; out=$4
-IMPL=${IMPL:-wncgw}; QUEUES=${QUEUES:-1}; SURI_CPUS=${SURI_CPUS:-2,3}
+IMPL=${IMPL:-wncgw}; QUEUES=${QUEUES:-1}; SURI_CPUS=${SURI_CPUS:-2,3}; RUNMODE=${RUNMODE:-}
 if [ "$QUEUES" -gt 1 ]; then qspec=0-$((QUEUES - 1)); qarg=0:$((QUEUES - 1)); qsuffix=-q$QUEUES; else qspec=0; qarg=0; qsuffix=; fi
 M=${M:-/tmp/wncgw/m}; GW=${GW:-/tmp/wncgw/wnc-gw}; PCAPS=${PCAPS:-/home/wnc/ids_throughput/data/pcaps}
 LOG=/var/log/wnc-gw/suricata
@@ -33,12 +38,20 @@ mkdir -p "$out"
 case $pc in S_h5) router=82:e6:50:12:14:64 ;; S_m3) router=a6:d1:8c:1f:ce:64 ;; *) router=78:8a:20:43:93:d5 ;; esac
 [ -f "$CACHE" ] || tcpprep --mac=$router --pcap="$PCAP" --cachefile="$CACHE" || exit 1
 [ "$rate" = cache ] && exit 0
+Y=$M/suricata-$rs.yaml; S=$M/setting-$rs$qsuffix.toml
+if [ -n "$RUNMODE" ]; then
+  [ $IMPL = afpacket ] && { echo "RUNMODE is not supported with IMPL=afpacket"; exit 2; }
+  sed "s/^runmode: .*/runmode: $RUNMODE/" $M/suricata-$rs.yaml > $out/suricata-base.yaml; Y=$out/suricata-base.yaml
+  sed "s|^config = .*|config = \"$Y\"|" $M/setting-$rs$qsuffix.toml > $out/setting.toml; S=$out/setting.toml
+fi
+runmode=$(awk '/^runmode:/{print $2}' $Y)
 nfq() { ip netns exec wgw cat /proc/net/netfilter/nfnetlink_queue; }
 nflsock() {  # 收複本的 netlink socket：<Rmem 總和> <Drops 總和>
   local ids; ids=$(ip netns exec wgw cat /proc/net/netfilter/nfnetlink_log | awk '{print $2}' | tr '\n' ' ')
   ip netns exec wgw awk -v ids=" $ids" '$2 == 12 && index(ids, " " $3 " ") {r += $5; d += $9} END{print r + 0, d + 0}' /proc/net/netlink
 }
-busy() { awk '/^cpu /{print $2 + $3 + $4 + $7 + $8 + $9}' /proc/stat; }
+busy() { awk '/^cpu[0-9]/{s += $8} END{printf "%d", s / 1000}' /proc/schedstat; }
+idle() { awk '/^cpu /{print $5 + $6}' /proc/stat; }
 rx() { local s=0 n; for l in "$@"; do n=$(ip netns exec ${l%%:*} cat /sys/class/net/${l#*:}/statistics/rx_packets); s=$((s + n)); done; echo $s; }
 ts() { echo "${EPOCHREALTIME/./}"; }
 thr() { vcgencmd get_throttled | cut -d= -f2; }
@@ -48,14 +61,14 @@ thr0=$(thr)
 tstart=$(ts)
 case $IMPL in
 wncgw)
-  setsid bash -c "taskset -c $SURI_CPUS ip netns exec wgw $GW -c $M/setting-$rs$qsuffix.toml run > $out/run.log 2>&1 & echo \$! > $out/run.pid; wait \$!; echo exit=\$? >> $out/run.log; touch $out/exited" < /dev/null > /dev/null 2>&1 &
+  setsid bash -c "taskset -c $SURI_CPUS ip netns exec wgw $GW -c $S run > $out/run.log 2>&1 & echo \$! > $out/run.pid; wait \$!; echo exit=\$? >> $out/run.log; touch $out/exited" < /dev/null > /dev/null 2>&1 &
   wait_log "traffic is inspected"
   sp=$(grep -o "suricata started pid=[0-9]*" "$out/run.log" | tail -1 | cut -d= -f2)
   startup=$(grep -o "startup_ms=[0-9]*" "$out/run.log" | head -1 | cut -d= -f2) ;;
 nfq|afpacket|nflog)
-  if [ $IMPL = nfq ]; then args=(-c $M/suricata-$rs.yaml -q $qarg)
+  if [ $IMPL = nfq ]; then args=(-c $Y -q $qarg)
   elif [ $IMPL = nflog ]; then
-    { awk '/^nflog:/{skip = 1; next} skip && /^[a-z#]/{skip = 0} !skip' $M/suricata-$rs.yaml
+    { awk '/^nflog:/{skip = 1; next} skip && /^[a-z#]/{skip = 0} !skip' $Y
       echo "nflog:"; for i in $(seq 0 $((QUEUES - 1))); do printf '  - group: %d\n    buffer-size: %d\n' $((10 + i)) ${NFLOG_BUF:-1048576}; done
       printf '  - group: default\n    qthreshold: %d\n    qtimeout: 100\n    max-size: %d\n' ${NFLOG_QT:-1} $((4 * ${NFLOG_BUF:-1048576})); } > $out/suricata.yaml
     args=(-c $out/suricata.yaml --nflog)
@@ -80,7 +93,9 @@ esac
 sleep 2
 workers=$(for t in /proc/$sp/task/*; do case "$(cat $t/comm)" in W-NFQ*|W#*) echo "$(cat $t/comm) ${t##*/}" ;; esac; done | sort | cut -d" " -f2)
 [ -n "$workers" ] || { echo "no worker thread in $sp"; exit 1; }
+ios=$(for t in /proc/$sp/task/*; do case "$(cat $t/comm)" in RX*|TX*) echo ${t##*/} ;; esac; done)
 wcpu() { local s=0 n; for t in $workers; do n=$(cut -d" " -f1 /proc/$sp/task/$t/schedstat); s=$((s + n)); done; echo $s; }
+iocpu() { local s=0 n; for t in $ios; do n=$(cut -d" " -f1 /proc/$sp/task/$t/schedstat); s=$((s + n)); done; echo $s; }
 weach() { for t in $workers; do cut -d" " -f1 /proc/$sp/task/$t/schedstat; done | tr '\n' ' '; }
 pq() {
   [ $IMPL = afpacket ] && return
@@ -96,10 +111,10 @@ counters() {  # 印出 to_queue queue_drop processed（累計值）
   else nfq | awk '{q += $8 + $6; d += $6; p += $8 - $7} END{print q, d, p}'; fi
 }
 
-read -r q0 qd0 p0 < <(counters); w0=$(wcpu); a0=$(acpu); we0=($(weach)); pq0=($(pq)); m0=$(busy)
+read -r q0 qd0 p0 < <(counters); w0=$(wcpu); io0=$(iocpu); a0=$(acpu); we0=($(weach)); pq0=($(pq)); m0=$(busy); i0=$(idle); mt0=$(ts)
 if [ "$rate" = top ]; then opt=--topspeed; else opt=--pps=$rate; fi
 t0=$(ts)
-ip netns exec wtest taskset -c 1 tcpreplay -i t-wan -I t-lan -c "$CACHE" $opt "$PCAP" > "$out/tcpreplay.txt" 2>&1
+ip netns exec wtest taskset -c 1 tcpreplay -T nano -i t-wan -I t-lan -c "$CACHE" $opt "$PCAP" > "$out/tcpreplay.txt" 2>&1
 t1=$(ts)
 if [ $IMPL = afpacket ]; then
   last=-1; while :; do cur=$(rx wtest:t-lan wtest:t-wan); [ "$cur" = "$last" ] && break; last=$cur; t2=$(ts); sleep 0.2; done
@@ -108,7 +123,7 @@ elif [ $IMPL = nflog ]; then
 else
   until [ "$(nfq | awk '{s += $3} END{print s}')" = 0 ]; do sleep 0.01; done; t2=$(ts)
 fi
-read -r q1 qd1 p1 < <(counters); w1=$(wcpu); a1=$(acpu); we1=($(weach)); pq1=($(pq)); m1=$(busy)
+read -r q1 qd1 p1 < <(counters); w1=$(wcpu); io1=$(iocpu); a1=$(acpu); we1=($(weach)); pq1=($(pq)); m1=$(busy); i1=$(idle); mt1=$(ts)
 each=; for i in "${!we1[@]}"; do each+=$(awk -v d=$((we1[i] - we0[i])) 'BEGIN{printf "%.3f", d / 1e9}')/; done
 perq=; for i in "${!pq1[@]}"; do perq+=$((pq1[i] - pq0[i]))/; done
 hwm=$(awk '/VmHWM/{print $2}' /proc/$sp/status); rss=$(awk '/VmRSS/{print $2}' /proc/$sp/status)
@@ -125,13 +140,14 @@ sent=$(grep -o "Actual: [0-9]* packets" "$out/tcpreplay.txt" | cut -d" " -f2)
 stopexit=$(grep -o 'suricata stopped pid=[0-9]* exit="[^"]*"' "$out/run.log" | sed 's/.*exit="//; s/"//; s/ /_/g')
 [ -n "$stopexit" ] || stopexit=$(grep -o "^exit=[0-9]*" "$out/run.log" | cut -d= -f2)
 awk -v impl=$IMPL -v rs=$rs -v pc=$pc -v rate=$rate -v sent=${sent:-0} -v q=$((q1 - q0)) -v qd=$((qd1 - qd0)) -v p=$((p1 - p0)) -v nw=$(echo $workers | wc -w) \
-    -v t0=$t0 -v t1=$t1 -v t2=$t2 -v w=$((w1 - w0)) -v a=$((a1 - a0)) -v st=${startup:-0} -v hwm=$hwm -v rss=$rss \
-    -v temp=$temp -v thr0=$thr0 -v thr1=$thr1 -v stopexit=${stopexit:-unknown} -v qh=${QHASH:-addr} -v nq=$QUEUES -v cpus=$SURI_CPUS -v each=${each%/} -v perq=${perq%/} -v m=$((m1 - m0)) -v hz=$(getconf CLK_TCK) 'BEGIN{
+    -v t0=$t0 -v t1=$t1 -v t2=$t2 -v w=$((w1 - w0)) -v io=$((io1 - io0)) -v nio=$(echo $ios | wc -w) -v rm=${runmode:-default} -v a=$((a1 - a0)) -v st=${startup:-0} -v hwm=$hwm -v rss=$rss \
+    -v temp=$temp -v thr0=$thr0 -v thr1=$thr1 -v stopexit=${stopexit:-unknown} -v qh=${QHASH:-addr} -v nq=$QUEUES -v cpus=$SURI_CPUS -v each=${each%/} -v perq=${perq%/} -v m=$((m1 - m0)) -v idle=$((i1 - i0)) -v mwall=$((mt1 - mt0)) -v ncpu=$(getconf _NPROCESSORS_ONLN) -v hz=$(getconf CLK_TCK) 'BEGIN{
   busy = (t2 - t0) / 1e6; us = (p > 0 ? w / 1e3 / p : 0)
   printf "impl=%s qhash=%s queues=%d cpus=%s rules=%s pcap=%s rate=%s sent=%d to_queue=%d queue_drop=%d processed=%d workers=%d send_s=%.3f busy_s=%.3f ", impl, qh, nq, cpus, rs, pc, rate, sent, q, qd, p, nw, (t1 - t0) / 1e6, busy
+  printf "runmode=%s io_threads=%d io_cpu_s=%.4f path_us_per_pkt=%.2f ", rm, nio, io / 1e9, (p > 0 ? (w + io) / 1e3 / p : 0)
   printf "worker_cpu_s=%.4f all_cpu_s=%.4f us_per_pkt=%.2f cpu_kpps=%.2f proc_kpps=%.2f loss_pct=%.3f ", w / 1e9, a / 1e9, us, (us > 0 ? 1000 / us : 0), p / busy / 1000, (q > 0 ? 100 * (q - p) / q : 0)
   printf "per_queue=%s worker_cpu_each_s=%s ", (perq == "" ? "-" : perq), each
-  printf "machine_cpu_s=%.2f machine_us_per_pkt=%.2f ", m / hz, (sent > 0 ? m / hz * 1e6 / sent : 0)
+  printf "cpu_s=%.2f cpu_us_per_pkt=%.2f nonidle_cpu_s=%.2f ", m / 1e6, (sent > 0 ? m / sent : 0), ncpu * mwall / 1e6 - idle / hz
   printf "startup_s=%.2f hwm_mb=%.1f rss_mb=%.1f temp_c=%s throttled_before=%s throttled_after=%s suricata_stop=%s\n", st / 1000, hwm / 1024, rss / 1024, temp, thr0, thr1, stopexit
 }' > "$out/result.kv"
 cat "$out/result.kv"

@@ -1,0 +1,34 @@
+category	attack	files	files_done	judgement	related_rules	note
+Web-based	BrowserHijacking	BrowserHijacking	1/1	✓	ET WEB_CLIENT BeEF（2038614–2038616、2024416、2018090）	gw_corp
+Web-based	CommandInjection	CommandInjection	1/1	✓	ET ATTACK_RESPONSE Possible /etc/passwd via HTTP（2002034）	gw_corp
+Web-based	SqlInjection	SqlInjection	1/1	✓	ET WEB_SERVER SQLi（2053467、2016935、2016672…）、ET SCAN Sqlmap（2008538）	gw_corp
+Web-based	XSS	XSS	1/1	✓	ET WEB_SERVER Script tag in URI（2009714），2 條 flow	gw_corp
+Web-based	Backdoor_Malware	Backdoor_Malware	1/1	✓	ET ATTACK_RESPONSE passwd／id command output（2002034、2025879、2019284）、ET WEB_SERVER PHP tags in POST（2011768）	gw_corp
+Web-based	Uploading_Attack	Uploading_Attack	1/1	✓	ET ATTACK_RESPONSE /etc/passwd（2002034、2025879）	gw_corp
+Brute Force	DictionaryBruteForce	DictionaryBruteForce	1/1	✓	ET SCAN SSH Scan（2003068、2001219）、LibSSH brute force（2006546）	gw_corp
+Recon	HostDiscovery	Recon-HostDiscovery	1/1	✓	ET SCAN（資料庫、SSH、VNC、Terminal Server 等 port）	gw_corp
+Recon	OSScan	Recon-OSScan	1/1	✓	ET SCAN NMAP OS Detection Probe（2018489）	gw_corp
+Recon	PortScan	Recon-PortScan	1/1	✓	ET SCAN（資料庫、VNC、SSH port）	gw_corp
+Recon	VulnerabilityScan	VulnerabilityScan	1/1	✓	ET SCAN Nmap Scripting Engine User-Agent（2009358、2024364）	gw_corp
+Recon	PingSweep	Recon-PingSweep	1/1	✗	—	做 sweep 的 .178 送了 138 個 ICMP echo 到 79 台主機，沒有觸發 alert；ICMP PING alert 都來自 .59 的背景流量
+DDoS	HTTP_Flood	DDoS-HTTP_Flood	1/1	△	ET HUNTING Chrome/0 in User-Agent（2041923）	只有 full（HUNTING 不在 gw_corp）；看的是 User-Agent，不是 flood
+DDoS	SlowLoris	DDoS-SlowLoris	1/1	△	ET WEB_SPECIFIC_APPS WordPress posts-layout（2045882）	rule 和 Slowloris 無關
+DDoS	ACK_Fragmentation	DDoS-ACK_Fragmentation（13 檔）	13/13	✗	—	只有背景（DNS TLD、External IP Lookup、403）；其他檔多出的 SID 都是背景類（403 Forbidden、Go HTTP client UA、.cc TLD、External IP Lookup、TLS Handshake Failure、STUN、Jabber 等），在不相干的 flood 檔也出現
+DDoS	ICMP_Flood	DDoS-ICMP_Flood（27 檔）	27/27	✗	—	沒有 Benign 以外的 SID；其他檔多出的 SID 都是背景類（403 Forbidden、Go HTTP client UA、.cc TLD、External IP Lookup、TLS Handshake Failure、STUN、Jabber 等），在不相干的 flood 檔也出現
+DDoS	ICMP_Fragmentation	DDoS-ICMP_Fragmentation（20 檔）	20/20	✗	—	沒有 Benign 以外的 SID；其他檔多出的 SID 都是背景類（403 Forbidden、Go HTTP client UA、.cc TLD、External IP Lookup、TLS Handshake Failure、STUN、Jabber 等），在不相干的 flood 檔也出現
+DDoS	PSHACK_Flood	DDoS-PSHACK_Flood（16 檔）	16/16	✗	—	只有背景；其他檔多出的 SID 都是背景類（403 Forbidden、Go HTTP client UA、.cc TLD、External IP Lookup、TLS Handshake Failure、STUN、Jabber 等），在不相干的 flood 檔也出現
+DDoS	RSTFINFlood	DDoS-RSTFINFlood（16 檔）	16/16	✗	—	只有背景；其他檔多出的 SID 都是背景類（403 Forbidden、Go HTTP client UA、.cc TLD、External IP Lookup、TLS Handshake Failure、STUN、Jabber 等），在不相干的 flood 檔也出現
+DDoS	SYN_Flood	DDoS-SYN_Flood（16 檔）	16/16	✗	—	只有背景；其他檔多出的 SID 都是背景類（403 Forbidden、Go HTTP client UA、.cc TLD、External IP Lookup、TLS Handshake Failure、STUN、Jabber 等），在不相干的 flood 檔也出現
+DDoS	SynonymousIP_Flood	DDoS-SynonymousIP_Flood（14 檔）	14/14	✗	—	只有背景；其他檔多出的 SID 都是背景類（403 Forbidden、Go HTTP client UA、.cc TLD、External IP Lookup、TLS Handshake Failure、STUN、Jabber 等），在不相干的 flood 檔也出現
+DDoS	TCP_Flood	DDoS-TCP_Flood（18 檔）	18/18	✗	—	只有背景；其他檔多出的 SID 都是背景類（403 Forbidden、Go HTTP client UA、.cc TLD、External IP Lookup、TLS Handshake Failure、STUN、Jabber 等），在不相干的 flood 檔也出現
+DDoS	UDP_Flood	DDoS-UDP_Flood（21 檔）	21/21	✗	—	只有背景；其他檔多出的 SID 都是背景類（403 Forbidden、Go HTTP client UA、.cc TLD、External IP Lookup、TLS Handshake Failure、STUN、Jabber 等），在不相干的 flood 檔也出現
+DDoS	UDP_Fragmentation	DDoS-UDP_Fragmentation（13 檔）	13/13	✗	—	沒有 Benign 以外的 SID；其他檔多出的 SID 都是背景類（403 Forbidden、Go HTTP client UA、.cc TLD、External IP Lookup、TLS Handshake Failure、STUN、Jabber 等），在不相干的 flood 檔也出現
+DoS	HTTP_Flood	DoS-HTTP_Flood（2 檔）	2/2	△	ET HUNTING Chrome/0 in User-Agent（2041923）、ET WEB_SERVER Fake Googlebot UA 2 Inbound（2015527，兩個檔合計 3 條）	看的是 User-Agent，不是 flood
+DoS	SYN_Flood	DoS-SYN_Flood（8 檔）	8/8	✗	—	只有背景；其他檔多出的 SID 都是背景類（403 Forbidden、Go HTTP client UA、.cc TLD、External IP Lookup、TLS Handshake Failure、STUN、Jabber 等），在不相干的 flood 檔也出現
+DoS	TCP_Flood	DoS-TCP_Flood（11 檔）	11/11	✗	—	只有背景；其他檔多出的 SID 都是背景類（403 Forbidden、Go HTTP client UA、.cc TLD、External IP Lookup、TLS Handshake Failure、STUN、Jabber 等），在不相干的 flood 檔也出現
+DoS	UDP_Flood	DoS-UDP_Flood（17 檔）	17/17	✗	—	只有背景；其他檔多出的 SID 都是背景類（403 Forbidden、Go HTTP client UA、.cc TLD、External IP Lookup、TLS Handshake Failure、STUN、Jabber 等），在不相干的 flood 檔也出現
+Mirai	greeth_flood	Mirai-greeth_flood（29 檔）	29/29	△	ET HUNTING Large non-DNS Packet on Port 53（2067113，29 檔 541 條）；GPL SNMP trap Format String（2100227，gw_corp，8 檔 10 條）；ET P2P Edonkey（2003319、2001298）	alert 落在 GRE 封裝的內層 packet（內層 IP 隨機）：flood 的亂數內容碰巧對上打到 53／162 port 的 rule，rule 和 greeth 無關
+Mirai	greip_flood	Mirai-greip_flood（22 檔）	22/22	△	ET HUNTING Large non-DNS Packet on Port 53（2067113，22 檔 486 條）；GPL SNMP trap Format String（2100227，gw_corp，5 檔 5 條）；ET TFTP Outbound TFTP ACK（2008118，gw_corp，1 條）；ET P2P Edonkey	alert 落在 GRE 封裝的內層 packet（內層 IP 隨機），rule 和 greip 無關；另有 Spamhaus DROP 的背景 IP
+Mirai	udpplain	Mirai-udpplain（25 檔）	25/25	△	ET P2P Edonkey Search Request（2003319，11 檔 14 條）	落在 flood 的 flow 上，rule 和 udpplain 無關
+Spoofing	DNS_Spoofing	DNS_Spoofing	1/1	✗	—	只有背景（STUN、Jabber、DNS TLD）
+Spoofing	MITM-ArpSpoofing	MITM-ArpSpoofing（2 檔）	2/2	✗	—	ARP 不是 IP，rule 看不到；只有背景；其他檔多出的 SID 都是背景類（403 Forbidden、Go HTTP client UA、.cc TLD、External IP Lookup、TLS Handshake Failure、STUN、Jabber 等），在不相干的 flood 檔也出現

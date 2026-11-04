@@ -1,0 +1,70 @@
+{
+ "pcap": "tuesday.pcap",
+ "log": "tuesday.conn.log.labeled",
+ "pcap_bytes": 10848634318,
+ "pcap_packets": 11551954,
+ "pcap_ip_packets": 11499288,
+ "pcap_truncated_tail": false,
+ "pcap_linktype": 1,
+ "pcap_covered_packets": 11468974,
+ "pcap_time_range": [
+  1499169212.364079,
+  1499198431.076755
+ ],
+ "log_time_range": [
+  1499169224.398274,
+  1499198431.076755
+ ],
+ "flows": 321767,
+ "aligned": 321767,
+ "unaligned": 0,
+ "skipped_flows_other_proto": {
+  "other": 311
+ },
+ "malformed_log_lines": 0,
+ "unaligned_kinds": {},
+ "unaligned_examples": [],
+ "shards": 1,
+ "labels": {
+  "Attempted FTP-Patator": {
+   "state -": 12,
+   "flows": 12,
+   "aligned": 12,
+   "pkts": 61,
+   "payload_pkts": 18,
+   "flows_with_payload": 12
+  },
+  "Attempted SSH-Patator": {
+   "state -": 27,
+   "flows": 27,
+   "aligned": 27,
+   "pkts": 173,
+   "payload_pkts": 19,
+   "flows_with_payload": 19
+  },
+  "Benign": {
+   "state -": 314795,
+   "flows": 314795,
+   "aligned": 314795,
+   "pkts": 11194575,
+   "payload_pkts": 5674214,
+   "flows_with_payload": 102051
+  },
+  "Malicious FTP-Patator": {
+   "state -": 3972,
+   "flows": 3972,
+   "aligned": 3972,
+   "pkts": 111018,
+   "payload_pkts": 55488,
+   "flows_with_payload": 3972
+  },
+  "Malicious SSH-Patator": {
+   "state -": 2961,
+   "flows": 2961,
+   "aligned": 2961,
+   "pkts": 163147,
+   "payload_pkts": 91595,
+   "flows_with_payload": 2961
+  }
+ }
+}

@@ -1,0 +1,193 @@
+15:41:24 sweep B4 I1 S_m17 round=1
+  ready protection=ips rules=full queues=3 trusted=0
+placement=I1 rps_cpus=0 irq29=1 eff=1 threaded=0 napi=[]
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=48.359  util0=40.1  util1=48.5  util2=34.4  util3=37.1  us_per_pkt=62.85  cpu0_us_per_pkt=15.75  temp=56.0 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=25.515  util0=42.6  util1=49.7  util2=37.9  util3=39.0  us_per_pkt=58.20  cpu0_us_per_pkt=14.65  temp=56.4 
+   actual_pps=55000  cap_loss_pct=0.000  loss_pct=26.935  util0=43.4  util1=52.2  util2=41.5  util3=42.0  us_per_pkt=58.20  cpu0_us_per_pkt=14.10  temp=56.4 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=27.578  util0=44.8  util1=53.7  util2=43.7  util3=44.2  us_per_pkt=57.60  cpu0_us_per_pkt=13.85  temp=56.9 
+   actual_pps=65000  cap_loss_pct=1.113  loss_pct=28.773  util0=46.5  util1=56.1  util2=45.1  util3=43.8  us_per_pkt=57.49  cpu0_us_per_pkt=13.96  temp=57.4 
+   actual_pps=70000  cap_loss_pct=8.629  loss_pct=33.123  util0=44.5  util1=53.3  util2=43.4  util3=42.5  us_per_pkt=57.18  cpu0_us_per_pkt=13.84  temp=56.9 
+15:43:00 sweep B4 T1 S_m17 round=1
+  ready protection=ips rules=full queues=3 trusted=0
+placement=T1 rps_cpus=0 irq29=0 eff=0 threaded=1 napi=[napi/eth0-0:1 napi/eth0-0:1 napi/eth0-0:1 napi/eth0-0:1 napi/eth0-0:1 napi/eth0-6:1 ]
+   actual_pps=40000  cap_loss_pct=0.004  loss_pct=48.683  util0=16.6  util1=19.3  util2=16.0  util3=16.6  us_per_pkt=65.70  cpu0_us_per_pkt=15.90  temp=56.9 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=25.316  util0=41.4  util1=51.5  util2=41.8  util3=40.5  us_per_pkt=59.90  cpu0_us_per_pkt=14.15  temp=57.4 
+   actual_pps=55000  cap_loss_pct=0.000  loss_pct=26.899  util0=44.2  util1=54.5  util2=42.4  util3=42.8  us_per_pkt=59.70  cpu0_us_per_pkt=14.35  temp=57.4 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=27.489  util0=45.5  util1=55.2  util2=44.5  util3=44.6  us_per_pkt=58.45  cpu0_us_per_pkt=14.00  temp=57.9 
+   actual_pps=65000  cap_loss_pct=1.956  loss_pct=29.254  util0=47.5  util1=54.2  util2=45.8  util3=44.4  us_per_pkt=57.93  cpu0_us_per_pkt=14.33  temp=58.4 
+   actual_pps=70000  cap_loss_pct=8.668  loss_pct=33.087  util0=44.0  util1=53.4  util2=44.1  util3=44.0  us_per_pkt=57.98  cpu0_us_per_pkt=13.74  temp=57.9 
+15:44:49 sweep B4 A0 S_m17 round=1
+  ready protection=ips rules=full queues=3 trusted=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=48.554  util0=51.5  util1=35.1  util2=36.8  util3=37.0  us_per_pkt=63.10  cpu0_us_per_pkt=20.25  temp=56.9 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=26.030  util0=50.9  util1=38.7  util2=40.6  util3=38.1  us_per_pkt=57.85  cpu0_us_per_pkt=17.50  temp=56.4 
+   actual_pps=55000  cap_loss_pct=0.000  loss_pct=27.354  util0=52.8  util1=40.4  util2=42.4  util3=41.2  us_per_pkt=57.30  cpu0_us_per_pkt=17.10  temp=57.9 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=27.596  util0=53.9  util1=44.4  util2=43.0  util3=42.2  us_per_pkt=57.00  cpu0_us_per_pkt=16.75  temp=57.9 
+   actual_pps=65000  cap_loss_pct=5.024  loss_pct=30.951  util0=55.8  util1=42.8  util2=42.8  util3=42.3  us_per_pkt=57.38  cpu0_us_per_pkt=17.43  temp=57.9 
+   actual_pps=70000  cap_loss_pct=11.784  loss_pct=34.824  util0=53.4  util1=42.3  util2=39.9  util3=42.9  us_per_pkt=57.36  cpu0_us_per_pkt=17.17  temp=57.9 
+15:46:24 sweep B5 T1 S_m17 round=1
+  ready protection=ips rules=full queues=4 trusted=0
+placement=T1 rps_cpus=0 irq29=0 eff=0 threaded=1 napi=[napi/eth0-0:1 napi/eth0-0:1 napi/eth0-0:1 napi/eth0-0:1 napi/eth0-0:1 napi/eth0-6:1 ]
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=48.258  util0=42.2  util1=48.2  util2=40.9  util3=39.1  us_per_pkt=66.65  cpu0_us_per_pkt=16.50  temp=57.9 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=26.127  util0=42.4  util1=53.4  util2=41.8  util3=41.9  us_per_pkt=61.65  cpu0_us_per_pkt=14.55  temp=57.4 
+   actual_pps=55000  cap_loss_pct=0.000  loss_pct=27.069  util0=46.7  util1=56.2  util2=41.0  util3=42.9  us_per_pkt=60.80  cpu0_us_per_pkt=15.20  temp=57.9 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=27.942  util0=45.1  util1=57.0  util2=43.5  util3=45.2  us_per_pkt=59.05  cpu0_us_per_pkt=13.95  temp=57.9 
+   actual_pps=65000  cap_loss_pct=5.743  loss_pct=31.520  util0=45.6  util1=55.6  util2=43.1  util3=43.4  us_per_pkt=59.15  cpu0_us_per_pkt=14.38  temp=58.4 
+   actual_pps=70000  cap_loss_pct=12.492  loss_pct=35.115  util0=43.5  util1=53.5  util2=43.0  util3=42.6  us_per_pkt=59.48  cpu0_us_per_pkt=14.17  temp=58.4 
+15:47:59 sweep B5 A0 S_m17 round=1
+  ready protection=ips rules=full queues=4 trusted=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=48.596  util0=65.7  util1=33.9  util2=33.5  util3=34.5  us_per_pkt=65.55  cpu0_us_per_pkt=25.70  temp=57.4 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=25.974  util0=53.3  util1=34.9  util2=34.3  util3=35.1  us_per_pkt=60.90  cpu0_us_per_pkt=20.60  temp=57.9 
+   actual_pps=55000  cap_loss_pct=0.000  loss_pct=27.503  util0=58.9  util1=42.6  util2=42.3  util3=42.3  us_per_pkt=60.50  cpu0_us_per_pkt=19.15  temp=57.9 
+   actual_pps=60000  cap_loss_pct=1.161  loss_pct=28.676  util0=57.4  util1=43.4  util2=43.6  util3=45.0  us_per_pkt=58.93  cpu0_us_per_pkt=17.86  temp=57.4 
+   actual_pps=65000  cap_loss_pct=8.868  loss_pct=33.234  util0=27.6  util1=20.7  util2=21.9  util3=22.1  us_per_pkt=60.68  cpu0_us_per_pkt=18.16  temp=56.4 
+15:49:52 sweep B5 I1 S_m17 round=1
+  ready protection=ips rules=full queues=4 trusted=0
+placement=I1 rps_cpus=0 irq29=1 eff=1 threaded=0 napi=[]
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=48.792  util0=34.3  util1=65.3  util2=31.6  util3=34.8  us_per_pkt=64.90  cpu0_us_per_pkt=13.40  temp=56.9 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=26.204  util0=40.2  util1=61.1  util2=37.4  util3=37.7  us_per_pkt=60.60  cpu0_us_per_pkt=13.80  temp=57.9 
+   actual_pps=55000  cap_loss_pct=0.000  loss_pct=27.462  util0=15.5  util1=18.8  util2=14.0  util3=13.8  us_per_pkt=61.70  cpu0_us_per_pkt=15.40  temp=56.4 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=28.031  util0=22.7  util1=26.7  util2=20.7  util3=22.1  us_per_pkt=59.80  cpu0_us_per_pkt=14.70  temp=56.4 
+   actual_pps=65000  cap_loss_pct=6.037  loss_pct=31.670  util0=9.8  util1=11.6  util2=8.8  util3=10.7  us_per_pkt=61.89  cpu0_us_per_pkt=14.90  temp=55.5 
+   actual_pps=70000  cap_loss_pct=12.768  loss_pct=35.300  util0=46.1  util1=52.8  util2=41.2  util3=40.9  us_per_pkt=59.15  cpu0_us_per_pkt=15.07  temp=56.4 
+EXP1B ROUND 1 DONE 2026-11-02T15:52:09Z
+15:52:13 sweep B4 I1 S_m17 round=2
+  ready protection=ips rules=full queues=3 trusted=0
+placement=I1 rps_cpus=0 irq29=1 eff=1 threaded=0 napi=[]
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=48.611  util0=38.3  util1=50.6  util2=35.1  util3=35.6  us_per_pkt=62.30  cpu0_us_per_pkt=14.95  temp=56.0 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=25.858  util0=17.9  util1=22.6  util2=17.2  util3=18.2  us_per_pkt=58.35  cpu0_us_per_pkt=13.75  temp=56.4 
+   actual_pps=55000  cap_loss_pct=0.000  loss_pct=27.152  util0=41.7  util1=52.2  util2=43.3  util3=41.4  us_per_pkt=57.60  cpu0_us_per_pkt=13.45  temp=57.4 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=27.625  util0=26.5  util1=29.7  util2=24.2  util3=24.1  us_per_pkt=57.45  cpu0_us_per_pkt=14.55  temp=55.5 
+   actual_pps=65000  cap_loss_pct=1.397  loss_pct=28.991  util0=45.8  util1=54.4  util2=44.6  util3=44.4  us_per_pkt=57.00  cpu0_us_per_pkt=13.79  temp=56.9 
+   actual_pps=70000  cap_loss_pct=8.565  loss_pct=33.200  util0=46.5  util1=53.2  util2=41.7  util3=43.1  us_per_pkt=57.31  cpu0_us_per_pkt=14.44  temp=56.9 
+15:54:16 sweep B4 T1 S_m17 round=2
+  ready protection=ips rules=full queues=3 trusted=0
+placement=T1 rps_cpus=0 irq29=0 eff=0 threaded=1 napi=[napi/eth0-0:1 napi/eth0-0:1 napi/eth0-0:1 napi/eth0-0:1 napi/eth0-0:1 napi/eth0-6:1 ]
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=48.332  util0=39.8  util1=46.4  util2=40.0  util3=38.2  us_per_pkt=64.30  cpu0_us_per_pkt=15.55  temp=56.9 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=26.332  util0=42.5  util1=51.1  util2=40.3  util3=39.5  us_per_pkt=59.20  cpu0_us_per_pkt=14.50  temp=57.9 
+   actual_pps=55000  cap_loss_pct=0.000  loss_pct=26.937  util0=44.0  util1=55.6  util2=42.2  util3=41.7  us_per_pkt=59.40  cpu0_us_per_pkt=14.25  temp=56.4 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=27.494  util0=45.8  util1=56.2  util2=43.5  util3=44.5  us_per_pkt=58.50  cpu0_us_per_pkt=14.10  temp=57.4 
+   actual_pps=65000  cap_loss_pct=1.282  loss_pct=28.831  util0=47.6  util1=55.9  util2=44.2  util3=43.7  us_per_pkt=57.23  cpu0_us_per_pkt=14.23  temp=57.4 
+   actual_pps=70000  cap_loss_pct=8.333  loss_pct=33.014  util0=44.6  util1=54.0  util2=43.3  util3=41.9  us_per_pkt=57.16  cpu0_us_per_pkt=13.85  temp=57.4 
+15:55:51 sweep B4 A0 S_m17 round=2
+  ready protection=ips rules=full queues=3 trusted=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=48.691  util0=27.0  util1=20.8  util2=19.2  util3=19.7  us_per_pkt=62.80  cpu0_us_per_pkt=19.55  temp=56.9 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=26.436  util0=51.5  util1=40.4  util2=38.2  util3=38.7  us_per_pkt=57.70  cpu0_us_per_pkt=17.60  temp=56.4 
+   actual_pps=55000  cap_loss_pct=0.000  loss_pct=26.985  util0=26.7  util1=21.6  util2=21.2  util3=21.9  us_per_pkt=58.05  cpu0_us_per_pkt=16.95  temp=56.4 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=27.542  util0=53.1  util1=44.0  util2=43.9  util3=43.0  us_per_pkt=56.85  cpu0_us_per_pkt=16.40  temp=56.9 
+   actual_pps=65000  cap_loss_pct=4.372  loss_pct=30.672  util0=21.5  util1=17.4  util2=17.6  util3=17.6  us_per_pkt=58.35  cpu0_us_per_pkt=16.94  temp=55.5 
+   actual_pps=70000  cap_loss_pct=11.329  loss_pct=34.428  util0=54.4  util1=41.7  util2=41.7  util3=41.2  us_per_pkt=57.35  cpu0_us_per_pkt=17.42  temp=55.5 
+15:58:00 sweep B5 A0 S_m17 round=2
+  ready protection=ips rules=full queues=4 trusted=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=48.645  util0=66.2  util1=34.8  util2=32.6  util3=32.9  us_per_pkt=65.35  cpu0_us_per_pkt=26.00  temp=56.9 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=25.910  util0=59.4  util1=40.7  util2=39.5  util3=39.1  us_per_pkt=61.05  cpu0_us_per_pkt=20.30  temp=56.9 
+   actual_pps=55000  cap_loss_pct=0.000  loss_pct=27.379  util0=60.0  util1=41.6  util2=42.9  util3=42.6  us_per_pkt=60.35  cpu0_us_per_pkt=19.35  temp=56.4 
+   actual_pps=60000  cap_loss_pct=1.145  loss_pct=28.849  util0=57.2  util1=43.1  util2=42.0  util3=46.4  us_per_pkt=59.08  cpu0_us_per_pkt=17.90  temp=56.4 
+   actual_pps=65000  cap_loss_pct=8.816  loss_pct=33.236  util0=11.5  util1=9.0  util2=9.4  util3=10.1  us_per_pkt=62.29  cpu0_us_per_pkt=17.93  temp=55.0 
+16:00:03 sweep B5 I1 S_m17 round=2
+  ready protection=ips rules=full queues=4 trusted=0
+placement=I1 rps_cpus=0 irq29=1 eff=1 threaded=0 napi=[]
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=48.898  util0=33.4  util1=64.8  util2=34.7  util3=33.4  us_per_pkt=65.00  cpu0_us_per_pkt=13.05  temp=56.9 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=26.041  util0=18.2  util1=26.4  util2=17.1  util3=17.2  us_per_pkt=61.60  cpu0_us_per_pkt=14.20  temp=56.0 
+   actual_pps=55000  cap_loss_pct=0.000  loss_pct=27.489  util0=43.1  util1=58.6  util2=42.1  util3=42.3  us_per_pkt=60.30  cpu0_us_per_pkt=13.95  temp=55.5 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=27.957  util0=47.1  util1=55.3  util2=44.3  util3=44.7  us_per_pkt=59.15  cpu0_us_per_pkt=14.55  temp=55.5 
+   actual_pps=65000  cap_loss_pct=5.837  loss_pct=31.591  util0=46.4  util1=55.8  util2=42.2  util3=43.5  us_per_pkt=59.15  cpu0_us_per_pkt=14.60  temp=56.4 
+   actual_pps=70000  cap_loss_pct=12.460  loss_pct=35.142  util0=23.2  util1=28.7  util2=22.1  util3=22.0  us_per_pkt=59.57  cpu0_us_per_pkt=14.39  temp=56.0 
+16:02:24 sweep B5 T1 S_m17 round=2
+  ready protection=ips rules=full queues=4 trusted=0
+placement=T1 rps_cpus=0 irq29=0 eff=0 threaded=1 napi=[napi/eth0-0:1 napi/eth0-0:1 napi/eth0-0:1 napi/eth0-0:1 napi/eth0-0:1 napi/eth0-6:1 ]
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=48.364  util0=41.7  util1=48.4  util2=40.4  util3=39.5  us_per_pkt=66.90  cpu0_us_per_pkt=16.40  temp=57.9 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=25.861  util0=43.5  util1=54.4  util2=41.2  util3=40.6  us_per_pkt=61.75  cpu0_us_per_pkt=14.95  temp=56.4 
+   actual_pps=55000  cap_loss_pct=0.000  loss_pct=27.103  util0=46.6  util1=56.7  util2=40.6  util3=43.5  us_per_pkt=61.15  cpu0_us_per_pkt=15.20  temp=56.9 
+   actual_pps=60000  cap_loss_pct=0.161  loss_pct=27.989  util0=46.3  util1=55.5  util2=44.5  util3=44.7  us_per_pkt=59.29  cpu0_us_per_pkt=14.37  temp=57.9 
+   actual_pps=65000  cap_loss_pct=5.793  loss_pct=31.619  util0=46.2  util1=55.0  util2=42.5  util3=43.8  us_per_pkt=59.02  cpu0_us_per_pkt=14.54  temp=56.4 
+   actual_pps=70000  cap_loss_pct=12.209  loss_pct=34.994  util0=43.5  util1=52.6  util2=43.2  util3=42.3  us_per_pkt=59.17  cpu0_us_per_pkt=14.18  temp=56.4 
+EXP1B ROUND 2 DONE 2026-11-02T16:04:00Z
+16:04:00 ai strategy=delta ai=mlp threads=1 pps=40000 round=1
+  ready protection=ips rules=full queues=2 trusted=0
+  pin: W-NFQ#0:2 W-NFQ#1:3 
+  burner pid=70428 policy= SCHED_OTHER
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=49.316  util0=100.0  util1=55.0  util2=61.2  util3=60.2  us_per_pkt=110.25  cpu0_us_per_pkt=39.90  ai_ops_per_s=180.17  temp=59.4 
+  util0=100.0 util1=4.8 util2=5.1 util3=5.1 ai_ops_per_s=183.56 ai_cpu_s_per_s=1.001 
+16:05:10 ai strategy=delta ai=cpu threads=1 pps=40000 round=1
+  ready protection=ips rules=full queues=2 trusted=0
+  pin: W-NFQ#0:2 W-NFQ#1:3 
+  burner pid=71077 policy= SCHED_OTHER
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=48.611  util0=100.0  util1=45.1  util2=53.9  util3=54.0  us_per_pkt=99.30  cpu0_us_per_pkt=39.25  ai_ops_per_s=140.60  temp=57.9 
+  util0=100.0 util1=3.9 util2=4.6 util3=3.7 ai_ops_per_s=141.64 ai_cpu_s_per_s=0.995 
+16:06:20 ai strategy=delta ai=none threads=1 pps=40000 round=1
+  ready protection=ips rules=full queues=2 trusted=0
+  pin: W-NFQ#0:2 W-NFQ#1:3 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=48.724  util0=7.5  util1=43.9  util2=50.9  util3=50.8  us_per_pkt=60.00  cpu0_us_per_pkt=2.95  temp=56.9 
+  util0=4.0 util1=2.5 util2=3.3 util3=2.4 
+16:07:26 ai strategy=delta ai=mem threads=1 pps=40000 round=1
+  ready protection=ips rules=full queues=2 trusted=0
+  pin: W-NFQ#0:2 W-NFQ#1:3 
+  burner pid=72318 policy= SCHED_OTHER
+   actual_pps=40000  cap_loss_pct=28.949  loss_pct=60.687  util0=100.0  util1=66.6  util2=68.0  util3=67.1  us_per_pkt=155.46  cpu0_us_per_pkt=51.53  ai_ops_per_s=3104.52  temp=59.9 
+  util0=100.0 util1=11.0 util2=9.9 util3=7.7 ai_ops_per_s=3554.22 ai_cpu_s_per_s=1.003 
+16:08:39 ai strategy=alpha ai=mlp threads=1 pps=40000 round=1
+  ready protection=ips rules=full queues=2 trusted=0
+  pin: W-NFQ#0:1 W-NFQ#1:2 
+  burner pid=72964 policy= SCHED_OTHER
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=49.415  util0=54.6  util1=62.6  util2=60.1  util3=100.0  us_per_pkt=110.50  cpu0_us_per_pkt=21.75  ai_ops_per_s=183.97  temp=59.4 
+  util0=5.0 util1=5.3 util2=5.1 util3=100.0 ai_ops_per_s=184.16 ai_cpu_s_per_s=1.002 
+16:09:50 ai strategy=alpha ai=mem threads=1 pps=40000 round=1
+  ready protection=ips rules=full queues=2 trusted=0
+  pin: W-NFQ#0:1 W-NFQ#1:2 
+  burner pid=73611 policy= SCHED_OTHER
+   actual_pps=40000  cap_loss_pct=0.960  loss_pct=49.763  util0=51.1  util1=58.1  util2=57.0  util3=31.5  us_per_pkt=79.51  cpu0_us_per_pkt=20.55  ai_ops_per_s=792.61  temp=59.9 
+  util0=5.9 util1=4.8 util2=4.1 util3=28.3 ai_ops_per_s=951.77 ai_cpu_s_per_s=0.280 
+16:11:01 ai strategy=alpha ai=mem threads=1 pps=40000 round=1
+  ready protection=ips rules=full queues=2 trusted=0
+  pin: W-NFQ#0:1 W-NFQ#1:2 
+  burner pid=74261 policy= SCHED_OTHER
+   actual_pps=40000  cap_loss_pct=5.228  loss_pct=51.966  util0=56.8  util1=62.9  util2=61.9  util3=55.3  us_per_pkt=101.51  cpu0_us_per_pkt=24.32  ai_ops_per_s=1598.87  temp=58.4 
+  util0=6.3 util1=4.4 util2=6.4 util3=53.7 ai_ops_per_s=1879.96 ai_cpu_s_per_s=0.528 
+EXP2B ROUND 1 DONE 2026-11-02T16:12:12Z
+16:12:12 ai strategy=alpha ai=mlp threads=1 pps=40000 round=2
+  ready protection=ips rules=full queues=2 trusted=0
+  pin: W-NFQ#0:1 W-NFQ#1:2 
+  burner pid=74908 policy= SCHED_OTHER
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=49.391  util0=55.1  util1=61.9  util2=59.5  util3=100.0  us_per_pkt=110.60  cpu0_us_per_pkt=22.05  ai_ops_per_s=183.54  temp=59.9 
+  util0=5.1 util1=5.7 util2=5.0 util3=100.0 ai_ops_per_s=183.71 ai_cpu_s_per_s=1.001 
+16:13:22 ai strategy=delta ai=mem threads=1 pps=40000 round=2
+  ready protection=ips rules=full queues=2 trusted=0
+  pin: W-NFQ#0:2 W-NFQ#1:3 
+  burner pid=75556 policy= SCHED_OTHER
+   actual_pps=40000  cap_loss_pct=29.561  loss_pct=61.141  util0=100.0  util1=64.9  util2=69.6  util3=66.6  us_per_pkt=156.68  cpu0_us_per_pkt=52.05  ai_ops_per_s=3011.46  temp=59.4 
+  util0=100.0 util1=8.3 util2=10.3 util3=9.8 ai_ops_per_s=3515.49 ai_cpu_s_per_s=1.003 
+16:14:36 ai strategy=delta ai=mlp threads=1 pps=40000 round=2
+  ready protection=ips rules=full queues=2 trusted=0
+  pin: W-NFQ#0:2 W-NFQ#1:3 
+  burner pid=76201 policy= SCHED_OTHER
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=49.313  util0=100.0  util1=55.3  util2=60.5  util3=60.4  us_per_pkt=109.80  cpu0_us_per_pkt=39.75  ai_ops_per_s=180.25  temp=59.4 
+  util0=100.0 util1=4.7 util2=5.9 util3=4.3 ai_ops_per_s=183.60 ai_cpu_s_per_s=1.002 
+16:15:46 ai strategy=delta ai=cpu threads=1 pps=40000 round=2
+  ready protection=ips rules=full queues=2 trusted=0
+  pin: W-NFQ#0:2 W-NFQ#1:3 
+  burner pid=76849 policy= SCHED_OTHER
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=48.775  util0=100.0  util1=45.7  util2=52.7  util3=52.9  us_per_pkt=98.50  cpu0_us_per_pkt=39.20  ai_ops_per_s=140.47  temp=59.9 
+  util0=100.0 util1=4.0 util2=4.6 util3=3.6 ai_ops_per_s=142.33 ai_cpu_s_per_s=1.001 
+16:16:56 ai strategy=delta ai=none threads=1 pps=40000 round=2
+  ready protection=ips rules=full queues=2 trusted=0
+  pin: W-NFQ#0:2 W-NFQ#1:3 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=49.023  util0=7.6  util1=42.4  util2=49.9  util3=51.8  us_per_pkt=59.60  cpu0_us_per_pkt=3.00  temp=57.4 
+  util0=3.1 util1=2.7 util2=4.0 util3=2.8 
+16:18:02 ai strategy=alpha ai=mem threads=1 pps=40000 round=2
+  ready protection=ips rules=full queues=2 trusted=0
+  pin: W-NFQ#0:1 W-NFQ#1:2 
+  burner pid=78097 policy= SCHED_OTHER
+   actual_pps=40000  cap_loss_pct=1.625  loss_pct=49.991  util0=51.8  util1=59.0  util2=60.9  util3=34.7  us_per_pkt=83.51  cpu0_us_per_pkt=20.94  ai_ops_per_s=956.84  temp=57.9 
+  util0=4.4 util1=3.1 util2=6.7 util3=29.4 ai_ops_per_s=1057.55 ai_cpu_s_per_s=0.283 
+16:19:13 ai strategy=alpha ai=mem threads=1 pps=40000 round=2
+  ready protection=ips rules=full queues=2 trusted=0
+  pin: W-NFQ#0:1 W-NFQ#1:2 
+  burner pid=78745 policy= SCHED_OTHER
+   actual_pps=40000  cap_loss_pct=5.782  loss_pct=52.404  util0=59.9  util1=64.5  util2=63.4  util3=57.9  us_per_pkt=105.87  cpu0_us_per_pkt=25.79  ai_ops_per_s=1779.02  temp=56.9 
+  util0=7.0 util1=5.1 util2=5.6 util3=56.0 ai_ops_per_s=2071.60 ai_cpu_s_per_s=0.555 
+EXP2B ROUND 2 DONE 2026-11-02T16:20:24Z
+EXT_DONE 2026-11-02T16:20:24Z

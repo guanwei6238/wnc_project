@@ -729,6 +729,18 @@ async fn main() -> io::Result<()> {
         check("all marks cleared after round", s.get(flow(N - 1))?.mark == Some(MARK_INIT));
     }
 
+    // ---------- 整表 dump（3d 讀每條連線的計數；nf_conntrack_acct=1 時每筆多 CTA_COUNTERS_ORIG／REPLY）----------
+    let acct = std::fs::read_to_string("/proc/sys/net/netfilter/nf_conntrack_acct").unwrap_or_default();
+    let mut total = std::time::Duration::ZERO;
+    for _ in 0..5 {
+        let t = Instant::now();
+        let got = w.list(0, 0).map_err(io::Error::other)?;
+        total += t.elapsed();
+        check("W list(0, 0) returns every entry", got.len() >= entries);
+    }
+    let ms = total.as_secs_f64() * 1000.0 / 5.0;
+    println!("  dump entries={entries:<6} acct={} mean={ms:>8.2} ms  per_entry={:>6.3} us", acct.trim(), ms * 1000.0 / entries as f64);
+
     // ---------- list：表裡有 entries 筆，其中 k 筆有信任 bit ----------
     for k in [0, 100, 10_000, entries] {
         set_bits(&mut s, 0..k, true)?;

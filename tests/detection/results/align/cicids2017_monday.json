@@ -1,0 +1,38 @@
+{
+ "pcap": "monday.pcap",
+ "log": "monday.conn.log.labeled",
+ "pcap_bytes": 10620455148,
+ "pcap_packets": 11709971,
+ "pcap_ip_packets": 11655546,
+ "pcap_truncated_tail": false,
+ "pcap_linktype": 1,
+ "pcap_covered_packets": 11625466,
+ "pcap_time_range": [
+  1499082958.598308,
+  1499112094.472889
+ ],
+ "log_time_range": [
+  1499082958.598308,
+  1499112094.472889
+ ],
+ "flows": 371319,
+ "aligned": 371319,
+ "unaligned": 0,
+ "skipped_flows_other_proto": {
+  "other": 305
+ },
+ "malformed_log_lines": 0,
+ "unaligned_kinds": {},
+ "unaligned_examples": [],
+ "shards": 1,
+ "labels": {
+  "Benign": {
+   "state -": 371319,
+   "flows": 371319,
+   "aligned": 371319,
+   "pkts": 11625466,
+   "payload_pkts": 5639265,
+   "flows_with_payload": 136008
+  }
+ }
+}

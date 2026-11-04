@@ -1,0 +1,94 @@
+sid	set	label	flows	msg
+2028795	gw_corp	Benign	4201	ET JA3 Hash - [Abuse.ch] Possible Adware
+2028780	gw_corp	Benign	1726	ET JA3 Hash - [Abuse.ch] Possible Adware
+2002383	gw_corp	Malicious FTP-Patator	1553	ET SCAN Potential FTP Brute-Force attempt response
+2029340	-	Benign	1067	ET INFO TLS Handshake Failure
+2027757	gw_corp	Benign	538	ET DNS Query for .to TLD
+2027863	-	Benign	387	ET INFO Observed DNS Query to .biz TLD
+2027758	gw_corp	Benign	348	ET DNS Query for .cc TLD
+2027390	gw_corp	Benign	333	ET USER_AGENTS Microsoft Device Metadata Retrieval Client User-Agent
+2032987	-	Benign	307	ET INFO HTTP Request to a *.tw domain
+2067085	-	Benign	187	ET INFO NTLM Session Setup Request - Negotiate
+2067086	-	Benign	187	ET INFO NTLMv1 Session Setup Response - Challenge
+2067087	-	Benign	187	ET INFO NTLM Session Setup Request - Auth
+2028782	gw_corp	Benign	165	ET JA3 Hash - [Abuse.ch] Possible Adware
+2016149	-	Benign	131	ET INFO Session Traversal Utilities for NAT (STUN Binding Request)
+2013504	-	Benign	96	ET INFO GNU/Linux APT User-Agent Outbound likely related to package management
+2024364	gw_corp	Malicious Infiltration_-_Portscan	96	ET SCAN Possible Nmap User-Agent Observed
+2036860	-	Benign	77	ET INFO External IP Lookup Domain (freegeiop .net in DNS lookup)
+2053892	-	Benign	67	ET INFO Suspicious Domain (polyfill .io) in DNS Lookup
+2047702	-	Benign	58	ET INFO External IP Lookup Domain (ipify .org) in DNS Lookup
+2016778	gw_corp	Benign	56	ET DNS Query to a *.pw domain - Likely Hostile
+2065070	-	Benign	55	ET INFO Observed RMM Domain in DNS Lookup (pubnub .com)
+2025275	-	Benign	49	ET INFO Windows OS Submitting USB Metadata to Microsoft
+2035466	-	Benign	42	ET INFO Observed Discord Domain in DNS Lookup (discordapp .com)
+2033078	-	Benign	42	ET INFO Session Traversal Utilities for NAT (STUN Binding Request On Non-Standard High Port)
+2010935	gw_corp	Malicious Portscan	40	ET SCAN Suspicious inbound to MSSQL port 1433
+2010936	gw_corp	Malicious Portscan	40	ET SCAN Suspicious inbound to Oracle SQL port 1521
+2010939	gw_corp	Malicious Portscan	40	ET SCAN Suspicious inbound to PostgreSQL port 5432
+2016150	-	Benign	39	ET INFO Session Traversal Utilities for NAT (STUN Binding Response)
+2063117	-	Benign	38	ET INFO Abused Hosting Domain in DNS Lookup (azurewebsites .net)
+2010937	gw_corp	Malicious Portscan	38	ET SCAN Suspicious inbound to mySQL port 3306
+2053893	-	Benign	36	ET INFO Suspicious Domain (polyfill .io) in TLS SNI
+2035464	-	Benign	34	ET INFO Observed Discord Domain (discordapp .com in TLS SNI)
+2019512	-	Benign	31	ET INFO Possible IP Check api.ipify.org
+2047703	-	Benign	31	ET INFO External IP Address Lookup Domain (ipify .org) in TLS SNI
+2001219	gw_corp	Malicious SSH-Patator	31	ET SCAN Potential SSH Scan
+2063137	-	Benign	30	ET INFO Anonymous File Sharing Service Domain in DNS Lookup (filemail .com)
+2071571	-	Benign	28	ET INFO Observed Telegram Domain in DNS Lookup (telegram .me)
+2019401	gw_corp	Benign	23	ET INFO Vulnerable Java Version 1.8.x Detected
+2014169	gw_corp	Benign	20	ET DNS Query for .su TLD (Soviet Union) Often Malware Related
+2050736	-	Benign	20	ET INFO Tencent Cloud Storage Domain in DNS Lookup (myqcloud .com)
+2019348	gw_corp	Malicious DDoS	20	ET DOS Terse HTTP GET Likely AnonMafiaIC DDoS tool
+2033077	-	Benign	18	ET INFO Session Traversal Utilities for NAT (STUN Binding Request On Non-Standard Low Port)
+2009714	gw_corp	Malicious Web_Attack_-_XSS	18	ET WEB_SERVER Script tag in URI Possible Cross Site Scripting Attempt
+2016360	-	Benign	17	ET INFO JAVA - ClassID
+2012522	-	Benign	15	ET INFO DNS Query For XXX Adult Site Top Level Domain
+2012647	-	Benign	15	ET INFO Dropbox.com Offsite File Backup in Use
+2023207	gw_corp	Malicious Infiltration	12	ET MALWARE Windows Microsoft Windows DOS prompt command Error not recognized
+2053894	-	Benign	9	ET INFO Pastebin-like Service Domain in DNS Lookup (jsfiddle .net)
+2002910	gw_corp	Malicious Portscan	9	ET SCAN Potential VNC Scan 5800-5820
+2013659	-	Benign	8	ET INFO Self Signed SSL Certificate (SomeOrganizationalUnit)
+2400067	iplist	Benign	7	ET DROP Spamhaus DROP Listed Traffic Inbound group 68
+2065081	-	Benign	7	ET INFO Observed RMM Domain in TLS SNI (pubnub .com)
+2100366	-	Benign	7	GPL ICMP PING *NIX
+2001219	gw_corp	Malicious Portscan	7	ET SCAN Potential SSH Scan
+2011540	-	Benign	6	ET INFO OpenSSL Demo CA - Internet Widgits Pty (O)
+2067085	-	Malicious Infiltration_-_Portscan	6	ET INFO NTLM Session Setup Request - Negotiate
+2067086	-	Malicious Infiltration_-_Portscan	6	ET INFO NTLMv1 Session Setup Response - Challenge
+2067087	-	Malicious Infiltration_-_Portscan	6	ET INFO NTLM Session Setup Request - Auth
+2036300	-	Benign	5	ET HUNTING [TW] Likely Javascript-Obfuscator Usage Observed M1
+2071569	-	Benign	5	ET INFO Observed Telegram Domain in DNS Lookup (t .me)
+2035593	-	Benign	5	ET INFO DropBox User Content Domain (dl .dropboxusercontent .com in TLS SNI)
+2034945	gw_corp	Malicious Infiltration	5	ET MALWARE Win32/Suspected Reverse Shell Connection
+2102123	gw_corp	Malicious Infiltration	5	GPL EXPLOIT Microsoft cmd.exe banner
+2018959	gw_corp	Benign	4	ET INFO PE EXE or DLL Windows file download HTTP
+2070079	-	Benign	4	ET HUNTING Javascript Mobile Device Check
+2032986	-	Benign	4	ET INFO HTTP Request to a *.asia domain
+2014103	gw_corp	Malicious DoS_Slowhttptest	4	ET WEB_SERVER Unusually Fast HTTP Requests With Referer Url Matching DoS Tool
+2001581	gw_corp	Malicious Infiltration_-_Portscan	4	ET SCAN Behavioral Unusual Port 135 traffic Potential Scan or Infection
+2023205	gw_corp	Malicious Infiltration	3	ET MALWARE Windows dir Microsoft Windows DOS prompt command exit OUTBOUND
+2016672	gw_corp	Malicious Web_Attack_-_SQL_Injection	3	ET WEB_SERVER SQL Errors in HTTP 200 Response (error in your SQL syntax)
+2017808	gw_corp	Malicious Web_Attack_-_SQL_Injection	3	ET WEB_SERVER Possible MySQL SQLi Attempt Information Schema Access
+2010963	gw_corp	Malicious Web_Attack_-_SQL_Injection	3	ET WEB_SERVER SELECT USER SQL Injection Attempt in URI
+2002995	gw_corp	Malicious Portscan	3	ET SCAN Rapid IMAPS Connections - Possible Brute Force Attack
+2002994	gw_corp	Malicious Portscan	3	ET SCAN Rapid IMAP Connections - Possible Brute Force Attack
+2023883	gw_corp	Benign	2	ET DNS Query to a *.top domain - Likely Hostile
+2030113	-	Benign	2	ET INFO Observed iesnare/iovation Tracking Activity
+2023638	gw_corp	Benign	2	ET PHISHING Possible Phishing Redirect Dec 13 2016
+2100371	-	Benign	2	GPL ICMP PING Cisco Type.x
+2010937	gw_corp	Benign	2	ET SCAN Suspicious inbound to mySQL port 3306
+2002992	gw_corp	Malicious Portscan	2	ET SCAN Rapid POP3 Connections - Possible Brute Force Attack
+2002993	gw_corp	Malicious Portscan	2	ET SCAN Rapid POP3S Connections - Possible Brute Force Attack
+2062715	-	Benign	1	ET INFO Observed UA-CPU Header
+2023882	-	Benign	1	ET INFO HTTP Request to a *.top domain
+2018377	gw_corp	Malicious Heartbleed	1	ET EXPLOIT Possible OpenSSL HeartBleed Large HeartBeat Response (Client Init Vuln Server)
+2014819	-	Benign	1	ET INFO Packed Executable Download
+2010937	gw_corp	Malicious Infiltration_-_Portscan	1	ET SCAN Suspicious inbound to mySQL port 3306
+2010939	gw_corp	Malicious Infiltration_-_Portscan	1	ET SCAN Suspicious inbound to PostgreSQL port 5432
+2010936	gw_corp	Malicious Infiltration_-_Portscan	1	ET SCAN Suspicious inbound to Oracle SQL port 1521
+2010935	gw_corp	Malicious Infiltration_-_Portscan	1	ET SCAN Suspicious inbound to MSSQL port 1433
+2002910	gw_corp	Malicious Infiltration_-_Portscan	1	ET SCAN Potential VNC Scan 5800-5820
+2014519	-	Benign	1	ET INFO EXE - Served Inline HTTP
+2013031	-	Benign	1	ET INFO Python-urllib/ Suspicious User Agent
+2001972	gw_corp	Malicious Portscan	1	ET SCAN Behavioral Unusually fast Terminal Server Traffic Potential Scan or Infection (Inbound)

@@ -6,7 +6,9 @@
 #   groups   group = "10-11"：ids chain 是 symhash vmap、ids_g10／ids_g11 各一條 log；8 條連線 8 個 alert
 #   ips      protection = "ips"：ids chain 是 queue、Suricata 帶 -q（和原本一樣）
 #   startup  ids：ping -f 持續送時啟動、停止 wnc-gw 10 次，Suricata 不能當（log 規則要等 READY=1 才裝）
-# 用法: bash protection_docker.sh <ids1|trust|kill|groups|ips|startup>；最後 bash protection_docker.sh clean
+#   missed   ids：UDP 送的同時 SIGSTOP Suricata 3 秒，轉送照常、複本被丟；wnc-gw 的 WARN 數字要等於 kernel 的 Drops
+#   runmode  ids、ips 各一個和多個 queue／group：Suricata 只有 W 執行緒（workers）、ICMP 有 alert；AUTOFP=1 時 yaml 明寫 runmode: autofp
+# 用法: bash protection_docker.sh <ids1|trust|kill|groups|ips|startup|missed|runmode>；最後 bash protection_docker.sh clean
 G="docker exec wnc-gw"; GI="docker exec -i wnc-gw"; C="docker exec wnc-cli"; S="docker exec wnc-srv"
 D=/tmp/wt; SLOG=/var/log/wnc-gw/suricata
 P=$((20000 + RANDOM % 20000))   # 來源 port 每次不同，避免撞到上一次的 TIME_WAIT
@@ -131,6 +133,32 @@ startup)
     $G grep -o 'suricata stopped pid=[0-9]* exit="[^"]*"' $D/run.log | sed "s/^/run $run: /"
   done
   $C pkill -x ping
+  ;;
+missed)
+  setup "" ""; start || exit 1
+  sp=$(suricata_pid)
+  inodes=$($G sh -c "ls -l /proc/$sp/fd | grep -o 'socket:\[[0-9]*\]' | tr -dc '0-9\n' | tr '\n' ' '")
+  $S sh -c "pkill -x iperf3; iperf3 -s -D"; sleep 0.5
+  $C iperf3 -u -b 200M -l 1400 -t 6 -c 10.0.2.2 > /tmp/wt-iperf.txt 2>&1 &
+  sleep 1; $G kill -STOP $sp; echo "suricata $sp stopped for 3 s"; sleep 3; $G kill -CONT $sp; wait
+  grep -E "receiver" /tmp/wt-iperf.txt | sed 's/^/   iperf3 /'; rm -f /tmp/wt-iperf.txt
+  for i in $(seq 1 30); do $G grep -q "missed packet copies" $D/run.log && break; sleep 0.5; done
+  echo "kernel drops on suricata's netfilter sockets: $($G awk -v ids=" $inodes" '$2 == 12 && index(ids, " " $10 " ") {d += $9} END{print d + 0}' /proc/net/netlink)"
+  $G grep -E "missed packet copies|nflog sockets" $D/run.log | cut -c29-200
+  stop; $S pkill -x iperf3
+  ;;
+runmode)
+  for c in 'ids|' 'ids|group = "10-11"' 'ips|' 'ips|queue = "0-3"'; do
+    p=${c%%|*}; extra=${c#*|}
+    setup "protection = \"$p\"" "$extra"
+    [ "$AUTOFP" = 1 ] && $G sh -c "echo 'runmode: autofp' >> $D/s.yaml"
+    start || exit 1
+    threads=$($G sh -c "cat /proc/$(suricata_pid)/task/*/comm" | grep -E "^(W|RX|TX)" | sort | tr '\n' ' ')
+    $C ping -c 3 -i 0.2 -W 1 10.0.2.2 > /dev/null
+    stop > /dev/null
+    echo "$p ${extra:-default}: $threads| icmp alerts: $(alerts 1000201)"
+  done
+  echo "yaml runmode: $($G sh -c "suricata --dump-config -c $D/s.yaml 2>/dev/null | grep '^runmode'")"
   ;;
 clean)
   $G rm -rf $D /run/wnc-gw/suricata-nflog.yaml; $S pkill -f wtsrv; true

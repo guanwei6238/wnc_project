@@ -1,0 +1,31 @@
+dataset	label	related_sids	rule_short	reason
+iot23	Malicious PartOfAHorizontalPortScan	2003068	SSH scan	label 是對 22 port 的水平掃描；rule 數同一來源送往 22 的 SYN
+iot23	Malicious Attack			觸發的 SSH scan（2003068）只數同一來源送往 22 的 SYN，描述的是 scan，不是這些連線嘗試本身，所以不算
+iot23	Malicious C&C	2027366,2034743,2029319	C&C checkin（Mirai、Muhstik）	只算 C&C 專屬的 rule：Mirai checkin、Muhstik CnC。IRC 指令（NICK、USER、JOIN 等）認的是有人在用 IRC，不是 C&C，不算；ELF 下載、curl User-Agent、.arm 下載也不算（屬於 FileDownload）
+iot23	Malicious C&C-FileDownload	2019240,2032973,2038656,2032924,2025126,2025123,2025125,2038657,2038659	ELF 下載	ELF／各 CPU 架構執行檔下載；HUNTING 的 curl User-Agent（2034567）只認得出下載工具，不算
+iot23	Malicious FileDownload	2019240,2032973,2038656,2032924,2025126,2025123,2025125,2038657,2038659	ELF 下載	同上
+iot23	Malicious C&C-HeartBeat-FileDownload	2019240,2032973,2038656,2032924,2025126,2025123,2025125,2038657,2038659	ELF 下載	同上
+cicids2017	Malicious Web_Attack_-_XSS	2009714	XSS	Script tag in URI
+cicids2017	Malicious Web_Attack_-_SQL_Injection	2016672,2017808,2010963	SQLi	SQL injection 的 request 與 SQL error 回應
+cicids2017	Malicious Infiltration	2023207,2034945,2102123,2023205	cmd.exe、reverse shell	入侵後的 Windows 命令列與 reverse shell
+cicids2017	Malicious FTP-Patator	2002383	FTP brute force	FTP 登入失敗回應的次數
+cicids2017	Malicious Heartbleed	2018377	Heartbleed	異常大的 HeartBeat 回應
+cicids2017	Malicious SSH-Patator			觸發的 SSH scan（2001219）只看 SYN（flags:S），不比對內容、也不需要連線建立，描述的是 scan，不是暴力破解（reference 雖然指向 brute force），所以不算
+cicids2017	Malicious Infiltration_-_Portscan	ET SCAN* -2002992,2002993,2002994,2002995	Nmap UA、SCAN	ET SCAN 類（Nmap User-Agent、port 135、資料庫 port 等）；NTLM 的 INFO rule 不算
+cicids2017	Malicious Portscan	ET SCAN* -2002992,2002993,2002994,2002995	SCAN（資料庫 port 等）	ET SCAN 類（資料庫 port、VNC、SSH）；IMAP／POP3 快速連線的 rule 名稱寫的是 Possible Brute Force，描述的不是 scan，不算
+cicids2017	Malicious DoS_Slowhttptest	2014103	DoS tool	Referer 符合 DoS 工具的快速 HTTP request
+cicids2017	Malicious DDoS	2019348	DDoS tool	LOIC 類 DDoS 工具的 HTTP GET
+cicddos2019	Malicious MSSQL (0311)	2020306	MC-SQLR	MSSQL 反射用的 MC-SQLR 回應
+cicddos2019	Malicious DrDoS_NTP (0112)	2017966	NTP MON_LIST	NTP 反射用的 MON_LIST 回應
+cicddos2019	Malicious DrDoS_SNMP (0112)			觸發的 GPL SNMP public access（2101411）只比對送往 161 的 SNMP request 裡的 community 字串 public（classtype attempted-recon，沒有速率條件），一般網管也會這樣用，也在其他 4 項攻擊觸發；認的是協定的使用，不是 DDoS，和 IRC 同型，不算
+ciciot2023	BrowserHijacking	2038614,2038615,2038616,2024416,2018090	BeEF	BeEF 的 cookie、request、回應
+ciciot2023	CommandInjection	2002034	/etc/passwd	回應裡出現 /etc/passwd 內容，代表注入的命令執行成功
+ciciot2023	SqlInjection	2053467,2016935,2008538,2016672,2017808,2011037,2006446,2009815,2014890	SQLi、Sqlmap	SQL injection 的 request、Sqlmap、SQL error 回應；同檔的 XSS、/etc/passwd in URI 不算
+ciciot2023	XSS	2009714	XSS	Script tag in URI
+ciciot2023	Backdoor_Malware	2002034,2025879,2019284,2011768	/etc/passwd、id 輸出	webshell 的命令輸出（passwd、id）與 PHP tag POST
+ciciot2023	Uploading_Attack	2002034,2025879	/etc/passwd	回應裡出現 /etc/passwd 內容，代表透過上傳的檔案在 server 上執行命令成功；和 CommandInjection、Backdoor_Malware 同一類（ATTACK_RESPONSE），流量也相同，三種一起算
+ciciot2023	DictionaryBruteForce	2006546	LibSSH brute force	連線已建立、比對 client 的 SSH-…libssh banner，同一來源 30 秒內 5 次才報，描述的是用工具反覆登入；只看 SYN 的 SSH scan（2003068、2001219）不算
+ciciot2023	Recon-HostDiscovery	ET SCAN* -2002992,2002993,2002994,2002995	SCAN（資料庫 port 等）	ET SCAN 類
+ciciot2023	Recon-OSScan	ET SCAN* -2002992,2002993,2002994,2002995	Nmap OS 偵測、SCAN	ET SCAN 類（含 NMAP OS Detection Probe）
+ciciot2023	Recon-PortScan	ET SCAN* -2002992,2002993,2002994,2002995	SCAN（資料庫 port 等）	ET SCAN 類
+ciciot2023	VulnerabilityScan	ET SCAN* -2002992,2002993,2002994,2002995	Nmap NSE、SCAN	ET SCAN 類（含 Nmap Scripting Engine User-Agent）

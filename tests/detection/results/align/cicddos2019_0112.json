@@ -1,0 +1,196 @@
+{
+ "pcap": "stdin",
+ "log": "0112.conn.log.labeled",
+ "pcap_packets": 250783287,
+ "pcap_ip_packets": 250761709,
+ "pcap_truncated_tail": false,
+ "pcap_linktype": 1,
+ "pcap_time_range": [
+  1543670230.711517,
+  1543698999.140675
+ ],
+ "skipped_flows_other_proto": {},
+ "malformed_log_lines": 0,
+ "pcap_covered_packets": 250748053,
+ "flows": 50063112,
+ "aligned": 50035937,
+ "unaligned": 27175,
+ "log_time_range": [
+  1543670231.18381,
+  1543698999.140675
+ ],
+ "unaligned_kinds": {
+  "more": 15282,
+  "zero": 11513,
+  "fewer": 380
+ },
+ "unaligned_examples": [
+  {
+   "line": 3,
+   "uid": "C2",
+   "ts": "1543675899.820842",
+   "proto": "udp",
+   "flow": "192.168.50.1:634 -> 172.16.0.5:60495",
+   "label": "Malicious DrDoS_DNS",
+   "conn_state": "-",
+   "found_pkts": 0,
+   "expect_pkts": 2
+  },
+  {
+   "line": 19,
+   "uid": "C18",
+   "ts": "1543675900.212271",
+   "proto": "other",
+   "flow": "172.16.0.5:0 -> 192.168.50.1:0",
+   "label": "Malicious DrDoS_DNS",
+   "conn_state": "-",
+   "found_pkts": 1446,
+   "expect_pkts": 1210
+  },
+  {
+   "line": 24,
+   "uid": "C23",
+   "ts": "1543675900.297483",
+   "proto": "tcp",
+   "flow": "192.168.50.1:22 -> 172.16.0.5:48621",
+   "label": "Malicious DrDoS_DNS",
+   "conn_state": "-",
+   "found_pkts": 18,
+   "expect_pkts": 17
+  },
+  {
+   "line": 46,
+   "uid": "C45",
+   "ts": "1543675900.823950",
+   "proto": "udp",
+   "flow": "192.168.50.1:634 -> 172.16.0.5:37082",
+   "label": "Malicious DrDoS_DNS",
+   "conn_state": "-",
+   "found_pkts": 0,
+   "expect_pkts": 2
+  },
+  {
+   "line": 62,
+   "uid": "C61",
+   "ts": "1543675901.819962",
+   "proto": "udp",
+   "flow": "192.168.50.1:634 -> 172.16.0.5:31895",
+   "label": "Malicious DrDoS_DNS",
+   "conn_state": "-",
+   "found_pkts": 0,
+   "expect_pkts": 2
+  }
+ ],
+ "shards": [
+  1,
+  1,
+  1
+ ],
+ "parts": 3,
+ "labels": {
+  "Benign": {
+   "state -": 56863,
+   "flows": 56863,
+   "aligned": 45667,
+   "pkts": 743889,
+   "payload_pkts": 332852,
+   "flows_with_payload": 18080
+  },
+  "Malicious DrDoS_DNS": {
+   "state -": 5071011,
+   "flows": 5071011,
+   "aligned": 5069062,
+   "pkts": 30492461,
+   "payload_pkts": 5857,
+   "flows_with_payload": 445
+  },
+  "Malicious DrDoS_LDAP": {
+   "state -": 2179930,
+   "flows": 2179930,
+   "aligned": 2179202,
+   "pkts": 9867077,
+   "payload_pkts": 587,
+   "flows_with_payload": 64
+  },
+  "Malicious DrDoS_MSSQL": {
+   "state -": 4522492,
+   "flows": 4522492,
+   "aligned": 4521542,
+   "pkts": 9460525,
+   "payload_pkts": 1523,
+   "flows_with_payload": 135
+  },
+  "Malicious DrDoS_NTP": {
+   "state -": 1202642,
+   "flows": 1202642,
+   "aligned": 1200983,
+   "pkts": 76782808,
+   "payload_pkts": 13169,
+   "flows_with_payload": 1082
+  },
+  "Malicious DrDoS_NetBIOS": {
+   "state -": 4093279,
+   "flows": 4093279,
+   "aligned": 4092177,
+   "pkts": 8218270,
+   "payload_pkts": 1913,
+   "flows_with_payload": 136
+  },
+  "Malicious DrDoS_SNMP": {
+   "state -": 5159870,
+   "flows": 5159870,
+   "aligned": 5158646,
+   "pkts": 18043573,
+   "payload_pkts": 3078,
+   "flows_with_payload": 273
+  },
+  "Malicious DrDoS_SSDP": {
+   "state -": 2610611,
+   "flows": 2610611,
+   "aligned": 2609606,
+   "pkts": 9746969,
+   "payload_pkts": 1440,
+   "flows_with_payload": 120
+  },
+  "Malicious DrDoS_UDP": {
+   "state -": 3134645,
+   "flows": 3134645,
+   "aligned": 3132797,
+   "pkts": 11821419,
+   "payload_pkts": 3213,
+   "flows_with_payload": 242
+  },
+  "Malicious Syn": {
+   "state -": 1582289,
+   "flows": 1582289,
+   "aligned": 1581769,
+   "pkts": 5200355,
+   "payload_pkts": 476,
+   "flows_with_payload": 30
+  },
+  "Malicious TFTP": {
+   "state -": 20082580,
+   "flows": 20082580,
+   "aligned": 20078647,
+   "pkts": 69214514,
+   "payload_pkts": 29334,
+   "flows_with_payload": 2045
+  },
+  "Malicious UDP-lag": {
+   "state -": 366461,
+   "flows": 366461,
+   "aligned": 365439,
+   "pkts": 1169451,
+   "payload_pkts": 2634,
+   "flows_with_payload": 114
+  },
+  "Malicious WebDDoS": {
+   "state -": 439,
+   "flows": 439,
+   "aligned": 400,
+   "pkts": 3151,
+   "payload_pkts": 744,
+   "flows_with_payload": 119
+  }
+ }
+}

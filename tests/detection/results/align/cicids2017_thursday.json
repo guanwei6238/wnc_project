@@ -1,0 +1,168 @@
+{
+ "pcap": "thursday.pcap",
+ "log": "thursday.conn.log.labeled",
+ "pcap_bytes": 8141786793,
+ "pcap_packets": 9322025,
+ "pcap_ip_packets": 9268753,
+ "pcap_truncated_tail": false,
+ "pcap_linktype": 1,
+ "pcap_covered_packets": 9238798,
+ "pcap_time_range": [
+  1499342338.492265,
+  1499371484.364012
+ ],
+ "log_time_range": [
+  1499342340.49014,
+  1499371484.356776
+ ],
+ "flows": 361795,
+ "aligned": 360576,
+ "unaligned": 1219,
+ "skipped_flows_other_proto": {
+  "other": 281
+ },
+ "malformed_log_lines": 0,
+ "unaligned_kinds": {
+  "more": 1219
+ },
+ "unaligned_examples": [
+  {
+   "line": 66845,
+   "uid": "C66844",
+   "ts": "1499364436.671217",
+   "proto": "tcp",
+   "flow": "192.168.10.8:45500 -> 192.168.10.9:4567",
+   "label": "Malicious Infiltration_-_Portscan",
+   "conn_state": "-",
+   "found_pkts": 3,
+   "expect_pkts": 2
+  },
+  {
+   "line": 66905,
+   "uid": "C66904",
+   "ts": "1499364437.788248",
+   "proto": "tcp",
+   "flow": "192.168.10.8:45500 -> 192.168.10.9:4444",
+   "label": "Malicious Infiltration_-_Portscan",
+   "conn_state": "-",
+   "found_pkts": 3,
+   "expect_pkts": 2
+  },
+  {
+   "line": 66921,
+   "uid": "C66920",
+   "ts": "1499364437.818232",
+   "proto": "tcp",
+   "flow": "192.168.10.8:45500 -> 192.168.10.9:5414",
+   "label": "Malicious Infiltration_-_Portscan",
+   "conn_state": "-",
+   "found_pkts": 4,
+   "expect_pkts": 2
+  },
+  {
+   "line": 66922,
+   "uid": "C66921",
+   "ts": "1499364437.833277",
+   "proto": "tcp",
+   "flow": "192.168.10.8:45500 -> 192.168.10.9:3013",
+   "label": "Malicious Infiltration_-_Portscan",
+   "conn_state": "-",
+   "found_pkts": 3,
+   "expect_pkts": 2
+  },
+  {
+   "line": 66937,
+   "uid": "C66936",
+   "ts": "1499364437.897675",
+   "proto": "tcp",
+   "flow": "192.168.10.8:45500 -> 192.168.10.9:555",
+   "label": "Malicious Infiltration_-_Portscan",
+   "conn_state": "-",
+   "found_pkts": 3,
+   "expect_pkts": 2
+  }
+ ],
+ "shards": 1,
+ "labels": {
+  "Attempted Infiltration": {
+   "state -": 45,
+   "flows": 45,
+   "aligned": 45,
+   "pkts": 117,
+   "payload_pkts": 10,
+   "flows_with_payload": 4
+  },
+  "Attempted Web_Attack_-_Brute_Force": {
+   "state -": 1292,
+   "flows": 1292,
+   "aligned": 1292,
+   "pkts": 8173,
+   "payload_pkts": 206,
+   "flows_with_payload": 78
+  },
+  "Attempted Web_Attack_-_SQL_Injection": {
+   "state -": 5,
+   "flows": 5,
+   "aligned": 5,
+   "pkts": 63,
+   "payload_pkts": 21,
+   "flows_with_payload": 4
+  },
+  "Attempted Web_Attack_-_XSS": {
+   "state -": 655,
+   "flows": 655,
+   "aligned": 655,
+   "pkts": 4008,
+   "payload_pkts": 39,
+   "flows_with_payload": 4
+  },
+  "Benign": {
+   "state -": 287891,
+   "flows": 287891,
+   "aligned": 287868,
+   "pkts": 8912218,
+   "payload_pkts": 4360810,
+   "flows_with_payload": 91874
+  },
+  "Malicious Infiltration": {
+   "state -": 36,
+   "flows": 36,
+   "aligned": 36,
+   "pkts": 74361,
+   "payload_pkts": 39514,
+   "flows_with_payload": 36
+  },
+  "Malicious Infiltration_-_Portscan": {
+   "state -": 71767,
+   "flows": 71767,
+   "aligned": 70571,
+   "pkts": 213177,
+   "payload_pkts": 5126,
+   "flows_with_payload": 698
+  },
+  "Malicious Web_Attack_-_Brute_Force": {
+   "state -": 73,
+   "flows": 73,
+   "aligned": 73,
+   "pkts": 22082,
+   "payload_pkts": 14425,
+   "flows_with_payload": 73
+  },
+  "Malicious Web_Attack_-_SQL_Injection": {
+   "state -": 13,
+   "flows": 13,
+   "aligned": 13,
+   "pkts": 140,
+   "payload_pkts": 30,
+   "flows_with_payload": 13
+  },
+  "Malicious Web_Attack_-_XSS": {
+   "state -": 18,
+   "flows": 18,
+   "aligned": 18,
+   "pkts": 5553,
+   "payload_pkts": 3612,
+   "flows_with_payload": 18
+  }
+ }
+}

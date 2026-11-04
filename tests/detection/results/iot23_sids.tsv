@@ -1,0 +1,86 @@
+sid	set	label	flows	msg
+2003068	gw_corp	Malicious PartOfAHorizontalPortScan	14757091	ET SCAN Potential SSH Scan OUTBOUND
+2002024	gw_corp	Malicious C&C	2555	ET CHAT IRC NICK command
+2002023	gw_corp	Malicious C&C	2517	ET CHAT IRC USER command
+2002027	gw_corp	Malicious C&C	1825	ET CHAT IRC PING command
+2002028	gw_corp	Malicious C&C	1825	ET CHAT IRC PONG response
+2000355	gw_corp	Malicious C&C	1590	ET CHAT IRC authorization message
+2003068	gw_corp	Malicious Attack	1385	ET SCAN Potential SSH Scan OUTBOUND
+2027366	gw_corp	Malicious C&C	1232	ET MALWARE Mirai Variant Checkin Response
+2003068	gw_corp	Benign	1150	ET SCAN Potential SSH Scan OUTBOUND
+2000345	gw_corp	Benign	1019	ET INFO IRC Nick change on non-standard port
+2000355	gw_corp	Benign	873	ET CHAT IRC authorization message
+2002025	gw_corp	Malicious C&C	853	ET CHAT IRC JOIN command
+2008581	-	Benign	214	ET P2P BitTorrent DHT ping request
+2025890	gw_corp	Benign	211	ET USER_AGENTS VPNFilter Related UA (Hakai/2.0)
+2029028	gw_corp	Benign	211	ET MALWARE Mirai Variant User-Agent (Outbound)
+2400047	iplist	Benign	57	ET DROP Spamhaus DROP Listed Traffic Inbound group 48
+2019240	gw_corp	Malicious C&C-FileDownload	50	ET INFO Executable and linking format (ELF) file download Over HTTP
+2032973	-	Malicious C&C-FileDownload	47	ET HUNTING Possible ELF executable sent when remote host claims to send a Text File
+2016778	gw_corp	Benign	36	ET DNS Query to a *.pw domain - Likely Hostile
+2008585	-	Benign	28	ET P2P BitTorrent DHT announce_peers request
+2016777	-	Benign	23	ET INFO HTTP Request to a *.pw domain
+2019240	gw_corp	Malicious FileDownload	16	ET INFO Executable and linking format (ELF) file download Over HTTP
+2013504	-	Benign	14	ET INFO GNU/Linux APT User-Agent Outbound likely related to package management
+2400047	iplist	Malicious Okiru	14	ET DROP Spamhaus DROP Listed Traffic Inbound group 48
+2034567	-	Malicious C&C-FileDownload	13	ET HUNTING curl User-Agent to Dotted Quad
+2032973	-	Malicious FileDownload	13	ET HUNTING Possible ELF executable sent when remote host claims to send a Text File
+2019240	gw_corp	Benign	12	ET INFO Executable and linking format (ELF) file download Over HTTP
+2032973	-	Benign	12	ET HUNTING Possible ELF executable sent when remote host claims to send a Text File
+2019240	gw_corp	Malicious C&C-HeartBeat-FileDownload	11	ET INFO Executable and linking format (ELF) file download Over HTTP
+2032973	-	Malicious C&C-HeartBeat-FileDownload	11	ET HUNTING Possible ELF executable sent when remote host claims to send a Text File
+2400047	iplist	Malicious PartOfAHorizontalPortScan	9	ET DROP Spamhaus DROP Listed Traffic Inbound group 48
+2400035	iplist	Benign	6	ET DROP Spamhaus DROP Listed Traffic Inbound group 36
+2034743	gw_corp	Malicious C&C	6	ET MALWARE ELF/Muhstik Botnet CnC Activity
+2029319	gw_corp	Malicious C&C	6	ET MALWARE ELF/Muhstik - IRC CnC Checkin
+2027504	gw_corp	Benign	6	ET USER_AGENTS Observed Suspicious UA (Hello-World)
+2027339	gw_corp	Benign	6	ET EXPLOIT Realtek SDK Miniigd UPnP SOAP Command Execution CVE-2014-8361 - Outbound
+2400035	iplist	Malicious Okiru	6	ET DROP Spamhaus DROP Listed Traffic Inbound group 36
+2038656	-	Malicious C&C-FileDownload	6	ET HUNTING Suspicious GET Request for .arm file File
+2000348	gw_corp	Malicious C&C	5	ET INFO IRC Channel JOIN on non-standard port
+2400032	iplist	Benign	5	ET DROP Spamhaus DROP Listed Traffic Inbound group 33
+2400004	iplist	Malicious Okiru	5	ET DROP Spamhaus DROP Listed Traffic Inbound group 5
+2400031	iplist	Benign	4	ET DROP Spamhaus DROP Listed Traffic Inbound group 32
+2400004	iplist	Benign	4	ET DROP Spamhaus DROP Listed Traffic Inbound group 5
+2027397	-	benign	3	ET INFO Spotify P2P Client
+2400005	iplist	Malicious PartOfAHorizontalPortScan	2	ET DROP Spamhaus DROP Listed Traffic Inbound group 6
+2400024	iplist	Benign	2	ET DROP Spamhaus DROP Listed Traffic Inbound group 25
+2400052	iplist	Benign	2	ET DROP Spamhaus DROP Listed Traffic Inbound group 53
+2400029	iplist	Benign	2	ET DROP Spamhaus DROP Listed Traffic Inbound group 30
+2400024	iplist	Malicious Okiru	2	ET DROP Spamhaus DROP Listed Traffic Inbound group 25
+2026897	-	Benign	2	ET INFO IP Logger Redirect Domain in SNI
+2038656	-	Malicious C&C	2	ET HUNTING Suspicious GET Request for .arm file File
+2034567	-	Malicious C&C	2	ET HUNTING curl User-Agent to Dotted Quad
+2032924	-	Malicious C&C-FileDownload	2	ET HUNTING Suspicious GET Request for .x86
+2025126	-	Malicious C&C-FileDownload	2	ET INFO x86 File Download Request from IP Address
+2025123	-	Malicious C&C-FileDownload	2	ET INFO MIPS File Download Request from IP Address
+2025125	-	Malicious C&C-FileDownload	2	ET INFO ARM7 File Download Request from IP Address
+2400035	iplist	Malicious Attack	2	ET DROP Spamhaus DROP Listed Traffic Inbound group 36
+2400065	iplist	Malicious Okiru	2	ET DROP Spamhaus DROP Listed Traffic Inbound group 66
+2400024	iplist	Malicious PartOfAHorizontalPortScan	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 25
+2400041	iplist	Malicious PartOfAHorizontalPortScan	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 42
+2400039	iplist	Malicious PartOfAHorizontalPortScan	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 40
+2400002	iplist	Malicious PartOfAHorizontalPortScan	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 3
+2400037	iplist	Benign	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 38
+2025890	gw_corp	Malicious Attack	1	ET USER_AGENTS VPNFilter Related UA (Hakai/2.0)
+2029028	gw_corp	Malicious Attack	1	ET MALWARE Mirai Variant User-Agent (Outbound)
+2400034	iplist	Benign	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 35
+2400038	iplist	Benign	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 39
+2400041	iplist	Benign	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 42
+2038657	-	Malicious C&C-FileDownload	1	ET HUNTING Suspicious GET Request for .ppc File
+2038659	-	Malicious C&C-FileDownload	1	ET HUNTING Suspicious GET Request for .sh4 File
+2400036	iplist	Malicious Attack	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 37
+2400070	iplist	Benign	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 71
+2400000	iplist	Malicious PartOfAHorizontalPortScan	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 1
+2400033	iplist	Malicious PartOfAHorizontalPortScan	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 34
+2019240	gw_corp	Malicious C&C	1	ET INFO Executable and linking format (ELF) file download Over HTTP
+2032973	-	Malicious C&C	1	ET HUNTING Possible ELF executable sent when remote host claims to send a Text File
+2400020	iplist	Malicious Okiru	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 21
+2400001	iplist	Malicious Okiru	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 2
+2400023	iplist	Malicious Okiru	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 24
+2400026	iplist	Malicious Okiru	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 27
+2400031	iplist	Malicious Okiru	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 32
+2400059	iplist	Benign	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 60
+2400005	iplist	Benign	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 6
+2400019	iplist	Benign	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 20
+2400002	iplist	Benign	1	ET DROP Spamhaus DROP Listed Traffic Inbound group 3

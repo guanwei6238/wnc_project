@@ -1,0 +1,104 @@
+{
+ "conn_log": "/home/sixsquare/datasets/iot23/extracted/run1/opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-1-1/bro/conn.log.labeled",
+ "eve": "/home/sixsquare/datasets/detection/iot23/1-1/eve.json",
+ "shards": 1,
+ "alerts": 17,
+ "alerts_gw": 3,
+ "alerts_gwip": 17,
+ "alert_match": {
+  "in_time": 17,
+  "by_flow_start": 0,
+  "unmatched": 0,
+  "multi_conn": 0,
+  "non_tcp_udp_icmp": 0
+ },
+ "unmatched_by_sid": {},
+ "labels": {
+  "Malicious PartOfAHorizontalPortScan": {
+   "flows": 539465,
+   "flows_alert_full": 11,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 11,
+   "alerts": 11,
+   "sids": {
+    "2400047": 6,
+    "2400024": 1,
+    "2400041": 1,
+    "2400039": 1,
+    "2400002": 1,
+    "2400005": 1
+   }
+  },
+  "Benign": {
+   "flows": 469275,
+   "flows_alert_full": 6,
+   "flows_alert_gw": 3,
+   "flows_alert_gwip": 6,
+   "alerts": 6,
+   "sids": {
+    "2003068": 3,
+    "2400024": 1,
+    "2400031": 1,
+    "2400047": 1
+   }
+  },
+  "Malicious C&C": {
+   "flows": 8,
+   "flows_alert_full": 0,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 0,
+   "sids": {}
+  }
+ },
+ "sids": {
+  "2400047": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 48",
+   "alerts": 7,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2003068": {
+   "msg": "ET SCAN Potential SSH Scan OUTBOUND",
+   "alerts": 3,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2400024": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 25",
+   "alerts": 2,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400041": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 42",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400039": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 40",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400002": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 3",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400005": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 6",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400031": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 32",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": true
+  }
+ }
+}

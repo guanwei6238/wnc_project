@@ -1,0 +1,20 @@
+label	scenarios	scenarios_with_alert	flows	full_flows	full_pct	gw_corp_flows	gw_corp_pct	gw_corp+iplist_flows	gw_corp+iplist_pct
+Malicious TFTP	1	1	20082580	422	0.00	144	0.00	144	0.00
+Malicious Syn	2	2	5995394	274	0.00	271	0.00	271	0.00
+Malicious MSSQL	1	1	5787453	12	0.00	12	0.00	12	0.00
+Malicious DrDoS_SNMP	1	1	5159870	210	0.00	118	0.00	118	0.00
+Malicious DrDoS_DNS	1	1	5071011	162	0.00	19	0.00	19	0.00
+Malicious DrDoS_MSSQL	1	1	4522492	40	0.00	7	0.00	7	0.00
+Malicious DrDoS_NetBIOS	1	1	4093279	35	0.00	20	0.00	20	0.00
+Malicious UDP	1	1	3867155	3	0.00	3	0.00	3	0.00
+Malicious NetBIOS	1	1	3657497	7	0.00	6	0.00	6	0.00
+Malicious DrDoS_UDP	1	1	3134645	51	0.00	14	0.00	14	0.00
+Malicious DrDoS_SSDP	1	1	2610611	30	0.00	7	0.00	7	0.00
+Malicious DrDoS_LDAP	1	1	2179930	72	0.00	6	0.00	6	0.00
+Malicious LDAP	1	1	1915122	2	0.00	2	0.00	2	0.00
+Malicious DrDoS_NTP	1	1	1202642	190	0.02	64	0.01	64	0.01
+Malicious UDP-lag	1	1	366461	42	0.01	29	0.01	29	0.01
+Malicious Portmap	1	1	186960	18	0.01	18	0.01	18	0.01
+Benign	2	2	109424	333	0.30	315	0.29	316	0.29
+Malicious UDPLag	1	1	1873	6	0.32	6	0.32	6	0.32
+Malicious WebDDoS	1	1	439	2	0.46	0	0.00	0	0.00

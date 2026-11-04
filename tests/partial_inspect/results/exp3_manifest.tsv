@@ -1,0 +1,50 @@
+h_full	209	HTTP keep-alive 20 個交易（tx15 GET /evil?q=EVIL、tx16 POST body offset 200 有 EVIL、tx17 response 有 BADRESP、tx18 GET /evil2），全部封包
+e1_i_req_start	66	從 tx15 request 的第一個封包開始
+e1_ii_srv_ack	75	從 server 對 tx14 request 的純 ACK 開始（方向可能顛倒）
+e1_iii_resp_start	74	從 tx14 response（HTTP/1.1 200）開始
+e1_iv_resp_mid	71	從 tx14 response 中間開始
+e1_v_post_mid	53	從 tx16 POST body 中間開始（之後還有 tx18 GET /evil2）
+e2_one	1	只有 tx15 request 一個封包
+e2_two	2	tx15 request + server 的 ACK
+e2_three	3	tx15 request + server ACK + response 第一段
+e2_tx15_all	10	tx15 整個交易（request、response、ACK）
+e3_c2s_hs	87	握手完整，之後只有 client→server（含純 ACK）；response 總共約 120 KB
+e3_c2s_hs_dataonly	26	握手完整，之後只有 client→server 的資料封包
+e3_c2s_mid	48	從 tx10 起只有 client→server（含純 ACK），沒有握手
+e3_bulk_full	6231	3 個交易、每個 response 2 MB，tx3 GET /evil
+e3_bulk_c2s	2081	同上，握手後只有 client→server
+e5_100k_gap10s	30	tx10–12 與 tx150–152 可見，中間跳過約 100k（每個 response 729 B），第二段前閒置 10 秒
+e5_100k_gap60s	30	tx10–12 與 tx150–152 可見，中間跳過約 100k（每個 response 729 B），第二段前閒置 60 秒
+e5_2m_gap10s	120	tx10–12 與 tx150–152 可見，中間跳過約 2m（每個 response 14598 B），第二段前閒置 10 秒
+e5_2m_gap60s	120	tx10–12 與 tx150–152 可見，中間跳過約 2m（每個 response 14598 B），第二段前閒置 60 秒
+e5_20m_gap10s	930	tx10–12 與 tx150–152 可見，中間跳過約 20m（每個 response 145985 B），第二段前閒置 10 秒
+e5_20m_gap60s	930	tx10–12 與 tx150–152 可見，中間跳過約 20m（每個 response 145985 B），第二段前閒置 60 秒
+e5b_100k_gap10s	66	tx1–12 完整可見，跳過約 100k，第二段 tx150–152 從 request 開頭（閒置 10 秒）
+e5b_100k_gap60s	66	tx1–12 完整可見，跳過約 100k，第二段 tx150–152 從 request 開頭（閒置 60 秒）
+e5b_2m_gap10s	291	tx1–12 完整可見，跳過約 2m，第二段 tx150–152 從 request 開頭（閒置 10 秒）
+e5c_2m_gap10s	306	同 e5b，但第二段從 tx149 response 中間開始（閒置 10 秒）
+e5b_2m_gap60s	291	tx1–12 完整可見，跳過約 2m，第二段 tx150–152 從 request 開頭（閒置 60 秒）
+e5c_2m_gap60s	306	同 e5b，但第二段從 tx149 response 中間開始（閒置 60 秒）
+e5b_20m_gap10s	2316	tx1–12 完整可見，跳過約 20m，第二段 tx150–152 從 request 開頭（閒置 10 秒）
+e5b_20m_gap60s	2316	tx1–12 完整可見，跳過約 20m，第二段 tx150–152 從 request 開頭（閒置 60 秒）
+e5d_2m_ack1	1306	同 e5b（2m、閒置 10 秒），但跳過期間每 1 個純 ACK 放 1 個
+e5d_2m_ack10	392	同 e5b（2m、閒置 10 秒），但跳過期間每 10 個純 ACK 放 1 個
+e5d_2m_ack50	311	同 e5b（2m、閒置 10 秒），但跳過期間每 50 個純 ACK 放 1 個
+e5d_20m_ack1	9856	同 e5b（20m、閒置 10 秒），但跳過期間每 1 個純 ACK 放 1 個
+e5d_20m_ack10	3070	同 e5b（20m、閒置 10 秒），但跳過期間每 10 個純 ACK 放 1 個
+e5d_20m_ack50	2466	同 e5b（20m、閒置 10 秒），但跳過期間每 50 個純 ACK 放 1 個
+e5w_2m_noack	291	window scale 7；tx1–12 可見，跳過約 2m（不給任何 ACK），tx150–152 可見
+e5w_20m_noack	2316	window scale 7；tx1–12 可見，跳過約 20m（不給任何 ACK），tx150–152 可見
+dpa_big_acks	5568	8 個交易、response 2 MB（tx6 GET /evil、tx7 POST EVIL、tx8 BADRESP），每個訊息前 2000 bytes，資料的純 ACK：acks
+dpa_big_noacks	31	8 個交易、response 2 MB（tx6 GET /evil、tx7 POST EVIL、tx8 BADRESP），每個訊息前 2000 bytes，資料的純 ACK：noacks
+dpa_big_ack10	584	8 個交易、response 2 MB（tx6 GET /evil、tx7 POST EVIL、tx8 BADRESP），每個訊息前 2000 bytes，資料的純 ACK：ack10
+e2b_insession_one	37	tx1–3 完整，之後只有 tx15 request 一個封包，最後 FIN
+e2b_insession_tx	46	tx1–3 完整，之後只有 tx15 整個交易，最後 FIN
+dpa_500_acks	127	每個訊息只給前 500 bytes 的段（含握手、FIN），保留資料的純 ACK
+dpa_500_noacks	46	每個訊息只給前 500 bytes 的段（含握手、FIN），去掉資料的純 ACK
+dpa_2000_acks	148	每個訊息只給前 2000 bytes 的段（含握手、FIN），保留資料的純 ACK
+dpa_2000_noacks	67	每個訊息只給前 2000 bytes 的段（含握手、FIN），去掉資料的純 ACK
+m_full	210	MQTT 3.1.1（port 1883）CONNECT + 100 個 PUBLISH，第 60 個含 EVIL
+m_mid	105	從第 50 個 PUBLISH 開始
+m_two_gap10s	22	PUBLISH 10–12 與 59–61 可見，中間跳過，第二段前閒置 10 秒
+m_two_gap60s	22	PUBLISH 10–12 與 59–61 可見，中間跳過，第二段前閒置 60 秒

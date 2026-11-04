@@ -1,0 +1,90 @@
+{
+ "conn_log": "/home/sixsquare/datasets/iot23/extracted/run1/opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-42-1/bro/conn.log.labeled",
+ "eve": "/home/sixsquare/datasets/detection/iot23/42-1/eve.json",
+ "shards": 1,
+ "alerts": 2019,
+ "alerts_gw": 1994,
+ "alerts_gwip": 1994,
+ "alert_match": {
+  "in_time": 1146,
+  "by_flow_start": 873,
+  "unmatched": 0,
+  "multi_conn": 0,
+  "non_tcp_udp_icmp": 0
+ },
+ "unmatched_by_sid": {},
+ "labels": {
+  "Benign": {
+   "flows": 4420,
+   "flows_alert_full": 1120,
+   "flows_alert_gw": 1095,
+   "flows_alert_gwip": 1095,
+   "alerts": 2013,
+   "sids": {
+    "2000345": 1019,
+    "2000355": 873,
+    "2016778": 36,
+    "2016777": 23,
+    "2026897": 2
+   }
+  },
+  "Malicious FileDownload": {
+   "flows": 3,
+   "flows_alert_full": 3,
+   "flows_alert_gw": 3,
+   "flows_alert_gwip": 3,
+   "alerts": 3,
+   "sids": {
+    "2019240": 3
+   }
+  },
+  "Malicious C&C-FileDownload": {
+   "flows": 3,
+   "flows_alert_full": 3,
+   "flows_alert_gw": 3,
+   "flows_alert_gwip": 3,
+   "alerts": 3,
+   "sids": {
+    "2019240": 3
+   }
+  }
+ },
+ "sids": {
+  "2000345": {
+   "msg": "ET INFO IRC Nick change on non-standard port",
+   "alerts": 1021,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2000355": {
+   "msg": "ET CHAT IRC authorization message",
+   "alerts": 873,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2016778": {
+   "msg": "ET DNS Query to a *.pw domain - Likely Hostile",
+   "alerts": 94,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2016777": {
+   "msg": "ET INFO HTTP Request to a *.pw domain",
+   "alerts": 23,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2019240": {
+   "msg": "ET INFO Executable and linking format (ELF) file download Over HTTP",
+   "alerts": 6,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2026897": {
+   "msg": "ET INFO IP Logger Redirect Domain in SNI",
+   "alerts": 2,
+   "gw_corp": false,
+   "iplist": false
+  }
+ }
+}

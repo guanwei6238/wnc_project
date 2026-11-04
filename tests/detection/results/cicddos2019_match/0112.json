@@ -1,0 +1,411 @@
+{
+ "conn_log": "/home/sixsquare/datasets/cicddos2019/conn/0112.conn.log.labeled",
+ "eve": "/home/sixsquare/datasets/detection/cicddos2019/0112/eve.json",
+ "shards": 1,
+ "alerts": 39472,
+ "alerts_gw": 902,
+ "alerts_gwip": 902,
+ "alert_match": {
+  "in_time": 39432,
+  "by_flow_start": 40,
+  "unmatched": 0,
+  "multi_conn": 0,
+  "non_tcp_udp_icmp": 0
+ },
+ "unmatched_by_sid": {},
+ "labels": {
+  "Malicious TFTP": {
+   "flows": 20082580,
+   "flows_alert_full": 422,
+   "flows_alert_gw": 144,
+   "flows_alert_gwip": 144,
+   "alerts": 19875,
+   "sids": {
+    "2100366": 271,
+    "2001219": 101,
+    "2010935": 13,
+    "2006546": 12,
+    "2008578": 7,
+    "2011716": 7,
+    "2101948": 6,
+    "2072593": 6,
+    "2010937": 4,
+    "2038967": 2,
+    "2100368": 1,
+    "2100369": 1,
+    "2100373": 1,
+    "2010939": 1
+   }
+  },
+  "Malicious DrDoS_SNMP": {
+   "flows": 5159870,
+   "flows_alert_full": 210,
+   "flows_alert_gw": 118,
+   "flows_alert_gwip": 118,
+   "alerts": 2424,
+   "sids": {
+    "2101411": 103,
+    "2100366": 91,
+    "2001219": 11,
+    "2006546": 2,
+    "2010937": 1,
+    "2060252": 1,
+    "2010935": 1
+   }
+  },
+  "Malicious DrDoS_DNS": {
+   "flows": 5071011,
+   "flows_alert_full": 162,
+   "flows_alert_gw": 19,
+   "flows_alert_gwip": 19,
+   "alerts": 3006,
+   "sids": {
+    "2100366": 143,
+    "2001219": 13,
+    "2100368": 2,
+    "2100369": 2,
+    "2100373": 2,
+    "2006546": 2,
+    "2010935": 2,
+    "2008578": 2,
+    "2011716": 2,
+    "2027126": 1
+   }
+  },
+  "Malicious DrDoS_MSSQL": {
+   "flows": 4522492,
+   "flows_alert_full": 40,
+   "flows_alert_gw": 7,
+   "flows_alert_gwip": 7,
+   "alerts": 1408,
+   "sids": {
+    "2100366": 33,
+    "2001219": 6,
+    "2010937": 1
+   }
+  },
+  "Malicious DrDoS_NetBIOS": {
+   "flows": 4093279,
+   "flows_alert_full": 35,
+   "flows_alert_gw": 20,
+   "flows_alert_gwip": 20,
+   "alerts": 1290,
+   "sids": {
+    "2100366": 14,
+    "2001219": 6,
+    "2010935": 5,
+    "2006546": 3,
+    "2010937": 2,
+    "2010939": 2,
+    "2101411": 2,
+    "2060252": 1
+   }
+  },
+  "Malicious DrDoS_UDP": {
+   "flows": 3134645,
+   "flows_alert_full": 51,
+   "flows_alert_gw": 14,
+   "flows_alert_gwip": 14,
+   "alerts": 4502,
+   "sids": {
+    "2100366": 34,
+    "2001219": 13,
+    "2100368": 6,
+    "2100369": 6,
+    "2100373": 6,
+    "2100371": 4,
+    "2072593": 3,
+    "2101411": 1
+   }
+  },
+  "Malicious DrDoS_SSDP": {
+   "flows": 2610611,
+   "flows_alert_full": 30,
+   "flows_alert_gw": 7,
+   "flows_alert_gwip": 7,
+   "alerts": 1332,
+   "sids": {
+    "2100366": 22,
+    "2001219": 5,
+    "2101411": 2,
+    "2100368": 1,
+    "2100369": 1,
+    "2100373": 1,
+    "2060252": 1
+   }
+  },
+  "Malicious DrDoS_LDAP": {
+   "flows": 2179930,
+   "flows_alert_full": 72,
+   "flows_alert_gw": 6,
+   "flows_alert_gwip": 6,
+   "alerts": 936,
+   "sids": {
+    "2100366": 64,
+    "2001219": 5,
+    "2072593": 2,
+    "2101948": 1
+   }
+  },
+  "Malicious Syn": {
+   "flows": 1582289,
+   "flows_alert_full": 47,
+   "flows_alert_gw": 44,
+   "flows_alert_gwip": 44,
+   "alerts": 463,
+   "sids": {
+    "2010935": 10,
+    "2010937": 9,
+    "2010939": 7,
+    "2010936": 6,
+    "2002910": 4,
+    "2100366": 3,
+    "2002993": 2,
+    "2001219": 2,
+    "2001972": 1,
+    "2008578": 1,
+    "2011716": 1,
+    "2002992": 1,
+    "2002995": 1
+   }
+  },
+  "Malicious DrDoS_NTP": {
+   "flows": 1202642,
+   "flows_alert_full": 190,
+   "flows_alert_gw": 64,
+   "flows_alert_gwip": 64,
+   "alerts": 1523,
+   "sids": {
+    "2100366": 123,
+    "2001219": 43,
+    "2010935": 5,
+    "2006546": 5,
+    "2008578": 4,
+    "2011716": 4,
+    "2017966": 3,
+    "2010937": 2,
+    "2072593": 2,
+    "2100227": 2,
+    "2010936": 1,
+    "2038967": 1
+   }
+  },
+  "Malicious UDP-lag": {
+   "flows": 366461,
+   "flows_alert_full": 42,
+   "flows_alert_gw": 29,
+   "flows_alert_gwip": 29,
+   "alerts": 2521,
+   "sids": {
+    "2100366": 13,
+    "2001219": 12,
+    "2010935": 6,
+    "2010936": 3,
+    "2010937": 3,
+    "2010939": 2,
+    "2006546": 1,
+    "2008578": 1,
+    "2011716": 1,
+    "2002910": 1
+   }
+  },
+  "Benign": {
+   "flows": 56863,
+   "flows_alert_full": 158,
+   "flows_alert_gw": 153,
+   "flows_alert_gwip": 153,
+   "alerts": 190,
+   "sids": {
+    "2003068": 151,
+    "2013504": 5,
+    "2019401": 2
+   }
+  },
+  "Malicious WebDDoS": {
+   "flows": 439,
+   "flows_alert_full": 2,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 2,
+   "sids": {
+    "2060252": 2
+   }
+  }
+ },
+ "sids": {
+  "2100366": {
+   "msg": "GPL ICMP PING *NIX",
+   "alerts": 37114,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2100368": {
+   "msg": "GPL ICMP PING BSDtype",
+   "alerts": 456,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2100369": {
+   "msg": "GPL ICMP PING BayRS Router",
+   "alerts": 456,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2100373": {
+   "msg": "GPL ICMP PING Flowpoint2200 or Network Management Software",
+   "alerts": 456,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2001219": {
+   "msg": "ET SCAN Potential SSH Scan",
+   "alerts": 217,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2101411": {
+   "msg": "GPL SNMP public access udp",
+   "alerts": 214,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2003068": {
+   "msg": "ET SCAN Potential SSH Scan OUTBOUND",
+   "alerts": 151,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2010935": {
+   "msg": "ET SCAN Suspicious inbound to MSSQL port 1433",
+   "alerts": 83,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2101948": {
+   "msg": "GPL DNS zone transfer UDP",
+   "alerts": 49,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2010937": {
+   "msg": "ET SCAN Suspicious inbound to mySQL port 3306",
+   "alerts": 45,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2013504": {
+   "msg": "ET INFO GNU/Linux APT User-Agent Outbound likely related to package management",
+   "alerts": 37,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2010939": {
+   "msg": "ET SCAN Suspicious inbound to PostgreSQL port 5432",
+   "alerts": 31,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2011716": {
+   "msg": "ET SCAN Sipvicious User-Agent Detected (friendly-scanner)",
+   "alerts": 30,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2100371": {
+   "msg": "GPL ICMP PING Cisco Type.x",
+   "alerts": 28,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2006546": {
+   "msg": "ET SCAN LibSSH Based Frequent SSH Connections Likely BruteForce Attack",
+   "alerts": 25,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2010936": {
+   "msg": "ET SCAN Suspicious inbound to Oracle SQL port 1521",
+   "alerts": 22,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2008578": {
+   "msg": "ET SCAN Sipvicious Scan",
+   "alerts": 15,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2072593": {
+   "msg": "ET HUNTING X-Forward-For Header Set to localhost",
+   "alerts": 15,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2060252": {
+   "msg": "ET INFO Go-http-client User-Agent Observed Inbound",
+   "alerts": 5,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2002910": {
+   "msg": "ET SCAN Potential VNC Scan 5800-5820",
+   "alerts": 5,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2100227": {
+   "msg": "GPL SNMP SNMP trap Format String detected",
+   "alerts": 4,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2038967": {
+   "msg": "ET INFO SSH-2.0-Go version string Observed in Network Traffic",
+   "alerts": 3,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2017966": {
+   "msg": "ET DOS Likely NTP DDoS In Progress MON_LIST Response to Non-Ephemeral Port IMPL 0x03",
+   "alerts": 3,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2019401": {
+   "msg": "ET INFO Vulnerable Java Version 1.8.x Detected",
+   "alerts": 2,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2002993": {
+   "msg": "ET SCAN Rapid POP3S Connections - Possible Brute Force Attack",
+   "alerts": 2,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2027126": {
+   "msg": "ET MALWARE ELF/Mirai Variant UA Inbound (Yakuza)",
+   "alerts": 1,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2001972": {
+   "msg": "ET SCAN Behavioral Unusually fast Terminal Server Traffic Potential Scan or Infection (Inbound)",
+   "alerts": 1,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2002992": {
+   "msg": "ET SCAN Rapid POP3 Connections - Possible Brute Force Attack",
+   "alerts": 1,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2002995": {
+   "msg": "ET SCAN Rapid IMAPS Connections - Possible Brute Force Attack",
+   "alerts": 1,
+   "gw_corp": true,
+   "iplist": false
+  }
+ }
+}

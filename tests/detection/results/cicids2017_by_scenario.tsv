@@ -1,0 +1,32 @@
+scenario	label	flows	full_flows	full_pct	gw_corp_flows	gw_corp_pct	gw_corp+iplist_flows	gw_corp+iplist_pct	top_sids
+monday	Benign	371319	7224	1.95	6371	1.72	6378	1.72	2028795:4201,2028780:1726,2029340:483,2028782:165,2027757:147
+tuesday	Benign	314795	715	0.23	195	0.06	195	0.06	2032987:105,2027390:77,2027863:60,2029340:53,2027757:52
+tuesday	Malicious FTP-Patator	3972	1553	39.10	1553	39.10	1553	39.10	2002383:1553
+tuesday	Malicious SSH-Patator	2961	31	1.05	31	1.05	31	1.05	2001219:31
+tuesday	Attempted SSH-Patator	27	0	0.00	0	0.00	0	0.00	
+tuesday	Attempted FTP-Patator	12	0	0.00	0	0.00	0	0.00	
+wednesday	Benign	318802	871	0.27	283	0.09	283	0.09	2029340:294,2027758:127,2027863:123,2027757:88,2027390:53
+wednesday	Malicious DoS_Hulk	158468	0	0.00	0	0.00	0	0.00	
+wednesday	Malicious DoS_GoldenEye	7567	0	0.00	0	0.00	0	0.00	
+wednesday	Malicious DoS_Slowloris	3859	0	0.00	0	0.00	0	0.00	
+wednesday	Attempted DoS_Slowhttptest	3368	0	0.00	0	0.00	0	0.00	
+wednesday	Attempted DoS_Slowloris	1847	0	0.00	0	0.00	0	0.00	
+wednesday	Malicious DoS_Slowhttptest	1740	4	0.23	4	0.23	4	0.23	2014103:4
+wednesday	Attempted DoS_Hulk	581	0	0.00	0	0.00	0	0.00	
+wednesday	Attempted DoS_GoldenEye	80	0	0.00	0	0.00	0	0.00	
+wednesday	Malicious Heartbleed	11	1	9.09	1	9.09	1	9.09	2018377:1
+thursday	Benign	287891	768	0.27	290	0.10	290	0.10	2027757:158,2032987:143,2027758:87,2027863:77,2067085:53
+thursday	Malicious Infiltration_-_Portscan	71767	111	0.15	105	0.15	105	0.15	2024364:96,2067085:6,2067086:6,2067087:6,2001581:4
+thursday	Attempted Web_Attack_-_Brute_Force	1292	0	0.00	0	0.00	0	0.00	
+thursday	Attempted Web_Attack_-_XSS	655	0	0.00	0	0.00	0	0.00	
+thursday	Malicious Web_Attack_-_Brute_Force	73	0	0.00	0	0.00	0	0.00	
+thursday	Attempted Infiltration	45	0	0.00	0	0.00	0	0.00	
+thursday	Malicious Infiltration	36	15	41.67	15	41.67	15	41.67	2023207:12,2034945:5,2102123:5,2023205:3
+thursday	Malicious Web_Attack_-_XSS	18	18	100.00	18	100.00	18	100.00	2009714:18
+thursday	Malicious Web_Attack_-_SQL_Injection	13	9	69.23	9	69.23	9	69.23	2016672:3,2017808:3,2010963:3
+thursday	Attempted Web_Attack_-_SQL_Injection	5	0	0.00	0	0.00	0	0.00	
+friday	Benign	288251	715	0.25	281	0.10	281	0.10	2029340:186,2027390:113,2027757:93,2027863:52,2027758:36
+friday	Malicious Portscan	159064	185	0.12	185	0.12	185	0.12	2010935:40,2010936:40,2010939:40,2010937:38,2002910:9
+friday	Malicious DDoS	95144	20	0.02	20	0.02	20	0.02	2019348:20
+friday	Attempted Botnet	4067	0	0.00	0	0.00	0	0.00	
+friday	Malicious Botnet	736	0	0.00	0	0.00	0	0.00	

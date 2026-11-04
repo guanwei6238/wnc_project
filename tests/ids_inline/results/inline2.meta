@@ -1,0 +1,6 @@
+tag=inline2 rate=10000 start=2026-11-03T14:32:13Z
+kernel=6.18.50+rpt-rpi-v8 model=Raspberry Pi 4 Model B Rev 1.4
+suricata=This is Suricata version 8.0.7 RELEASE
+tcpreplay=tcpreplay version: 4.5.1 (build git:v4.5.1) (debug)
+wnc_gw_sha256=d4bd5817cf35da28abfbc21dd601d96c5715c15bacb2f195f7e005da0db1e6b2
+mem_total_kb=3886840

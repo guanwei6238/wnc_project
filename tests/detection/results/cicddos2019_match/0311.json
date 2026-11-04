@@ -1,0 +1,284 @@
+{
+ "conn_log": "/home/sixsquare/datasets/cicddos2019/conn/0311.dedup.conn.log.labeled",
+ "eve": "/home/sixsquare/datasets/detection/cicddos2019/0311/eve.json",
+ "shards": 4,
+ "alerts": 657,
+ "alerts_gw": 635,
+ "alerts_gwip": 636,
+ "alert_match": {
+  "in_time": 657,
+  "by_flow_start": 0,
+  "unmatched": 0,
+  "multi_conn": 0,
+  "non_tcp_udp_icmp": 0
+ },
+ "unmatched_by_sid": {},
+ "labels": {
+  "Malicious MSSQL": {
+   "flows": 5787453,
+   "flows_alert_full": 12,
+   "flows_alert_gw": 12,
+   "flows_alert_gwip": 12,
+   "alerts": 12,
+   "sids": {
+    "2020306": 7,
+    "2001219": 5
+   }
+  },
+  "Malicious Syn": {
+   "flows": 4413105,
+   "flows_alert_full": 227,
+   "flows_alert_gw": 227,
+   "flows_alert_gwip": 227,
+   "alerts": 342,
+   "sids": {
+    "2001219": 92,
+    "2010935": 35,
+    "2010937": 25,
+    "2010939": 21,
+    "2010936": 19,
+    "2008578": 8,
+    "2002910": 8,
+    "2011716": 7,
+    "2002994": 5,
+    "2002995": 4,
+    "2002993": 4,
+    "2002992": 3,
+    "2001972": 2,
+    "2101411": 1
+   }
+  },
+  "Malicious UDP": {
+   "flows": 3867155,
+   "flows_alert_full": 3,
+   "flows_alert_gw": 3,
+   "flows_alert_gwip": 3,
+   "alerts": 4,
+   "sids": {
+    "2001219": 2,
+    "2010935": 1
+   }
+  },
+  "Malicious NetBIOS": {
+   "flows": 3657497,
+   "flows_alert_full": 7,
+   "flows_alert_gw": 6,
+   "flows_alert_gwip": 6,
+   "alerts": 12,
+   "sids": {
+    "2022506": 2,
+    "2010939": 1,
+    "2010937": 1,
+    "2010935": 1,
+    "2001219": 1,
+    "2060252": 1
+   }
+  },
+  "Malicious LDAP": {
+   "flows": 1915122,
+   "flows_alert_full": 2,
+   "flows_alert_gw": 2,
+   "flows_alert_gwip": 2,
+   "alerts": 2,
+   "sids": {
+    "2001219": 2
+   }
+  },
+  "Malicious Portmap": {
+   "flows": 186960,
+   "flows_alert_full": 18,
+   "flows_alert_gw": 18,
+   "flows_alert_gwip": 18,
+   "alerts": 26,
+   "sids": {
+    "2001219": 9,
+    "2008578": 3,
+    "2010935": 3,
+    "2010937": 2,
+    "2011716": 1,
+    "2010939": 1
+   }
+  },
+  "Benign": {
+   "flows": 52561,
+   "flows_alert_full": 175,
+   "flows_alert_gw": 162,
+   "flows_alert_gwip": 163,
+   "alerts": 251,
+   "sids": {
+    "2003068": 160,
+    "2032987": 6,
+    "2027757": 2,
+    "2063117": 2,
+    "2063118": 2,
+    "2527007": 1,
+    "2053893": 1,
+    "2053892": 1
+   }
+  },
+  "Malicious UDPLag": {
+   "flows": 1873,
+   "flows_alert_full": 6,
+   "flows_alert_gw": 6,
+   "flows_alert_gwip": 6,
+   "alerts": 8,
+   "sids": {
+    "2001219": 5,
+    "2008578": 1,
+    "2011716": 1
+   }
+  }
+ },
+ "sids": {
+  "2003068": {
+   "msg": "ET SCAN Potential SSH Scan OUTBOUND",
+   "alerts": 196,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2001219": {
+   "msg": "ET SCAN Potential SSH Scan",
+   "alerts": 116,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2010935": {
+   "msg": "ET SCAN Suspicious inbound to MSSQL port 1433",
+   "alerts": 79,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2010937": {
+   "msg": "ET SCAN Suspicious inbound to mySQL port 3306",
+   "alerts": 59,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2010939": {
+   "msg": "ET SCAN Suspicious inbound to PostgreSQL port 5432",
+   "alerts": 46,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2010936": {
+   "msg": "ET SCAN Suspicious inbound to Oracle SQL port 1521",
+   "alerts": 35,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2027757": {
+   "msg": "ET DNS Query for .to TLD",
+   "alerts": 34,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2011716": {
+   "msg": "ET SCAN Sipvicious User-Agent Detected (friendly-scanner)",
+   "alerts": 18,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2008578": {
+   "msg": "ET SCAN Sipvicious Scan",
+   "alerts": 12,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2063117": {
+   "msg": "ET INFO Abused Hosting Domain in DNS Lookup (azurewebsites .net)",
+   "alerts": 10,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2002910": {
+   "msg": "ET SCAN Potential VNC Scan 5800-5820",
+   "alerts": 8,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2020306": {
+   "msg": "ET DOS MC-SQLR Response Inbound Possible DDoS Target",
+   "alerts": 7,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2002994": {
+   "msg": "ET SCAN Rapid IMAP Connections - Possible Brute Force Attack",
+   "alerts": 6,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2032987": {
+   "msg": "ET INFO HTTP Request to a *.tw domain",
+   "alerts": 6,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2022506": {
+   "msg": "ET EXPLOIT Possible CVE-2016-1287 Invalid Fragment Size Inbound",
+   "alerts": 4,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2002993": {
+   "msg": "ET SCAN Rapid POP3S Connections - Possible Brute Force Attack",
+   "alerts": 4,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2002995": {
+   "msg": "ET SCAN Rapid IMAPS Connections - Possible Brute Force Attack",
+   "alerts": 4,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2002992": {
+   "msg": "ET SCAN Rapid POP3 Connections - Possible Brute Force Attack",
+   "alerts": 3,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2001972": {
+   "msg": "ET SCAN Behavioral Unusually fast Terminal Server Traffic Potential Scan or Infection (Inbound)",
+   "alerts": 2,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2063118": {
+   "msg": "ET INFO Abused Hosting Domain (azurewebsites .net) in TLS SNI",
+   "alerts": 2,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2101411": {
+   "msg": "GPL SNMP public access udp",
+   "alerts": 2,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2060252": {
+   "msg": "ET INFO Go-http-client User-Agent Observed Inbound",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2527007": {
+   "msg": "ET Threatview.io High Confidence Cobalt Strike C2 IP group 8",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2053892": {
+   "msg": "ET INFO Suspicious Domain (polyfill .io) in DNS Lookup",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2053893": {
+   "msg": "ET INFO Suspicious Domain (polyfill .io) in TLS SNI",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": false
+  }
+ }
+}

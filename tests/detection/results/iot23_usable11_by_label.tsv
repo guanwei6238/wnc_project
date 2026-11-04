@@ -1,0 +1,15 @@
+label	scenarios	scenarios_with_alert	flows	full_flows	full_pct	gw_corp_flows	gw_corp_pct	gw_corp+iplist_flows	gw_corp+iplist_pct
+Malicious PartOfAHorizontalPortScan	7	2	188522682	14711813	7.80	14711802	7.80	14711813	7.80
+Malicious Okiru	5	2	60990708	34	0.00	0	0.00	34	0.00
+Benign	11	8	30835484	2227	0.01	1902	0.01	1948	0.01
+Malicious DDoS	4	0	15945861	0	0.00	0	0.00	0	0.00
+Malicious C&C-HeartBeat	4	0	33578	0	0.00	0	0.00	0	0.00
+Malicious C&C	4	2	5117	1158	22.63	1156	22.59	1156	22.59
+Malicious Attack	4	3	3436	125	3.64	122	3.55	125	3.64
+Malicious C&C-PartOfAHorizontalPortScan	1	0	888	0	0.00	0	0.00	0	0.00
+Malicious C&C-HeartBeat-Attack	1	0	834	0	0.00	0	0.00	0	0.00
+Malicious C&C-FileDownload	3	3	29	28	96.55	28	96.55	28	96.55
+Malicious C&C-HeartBeat-FileDownload	1	1	11	11	100.00	11	100.00	11	100.00
+Malicious PartOfAHorizontalPortScan-Attack	1	0	5	0	0.00	0	0.00	0	0.00
+Malicious FileDownload	2	1	4	3	75.00	3	75.00	3	75.00
+Malicious Okiru-Attack	1	0	3	0	0.00	0	0.00	0	0.00

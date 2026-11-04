@@ -16,8 +16,14 @@
         每批各掃一次 pcap（用時間換記憶體）。結果跟不分批完全一樣。
 
 用法：
-  python3 -I align_stream.py <conn.log.labeled> <pcap> [--json 輸出.json] [--max-flows 3000000] [--text]
+  python3 -I align_stream.py <conn.log.labeled> <pcap> [--json 輸出.json] [--max-flows 3000000] [--part i/K] [--text]
   --text 會印出和 02_align.py 一模一樣格式的表格（用來比對兩版結果）
+  --cic      label 是原版 CICFlowMeter 的 CSV（CIC-DDoS2019，cic_to_conn.py 轉的）：CSV 的 Protocol 0 flow（conn 裡是 other、
+             port 0/0）也納入；packet 端把 IPv4 非 TCP/UDP、或 fragment offset > 0 的 packet（以及 IPv6 非 TCP/UDP）當成 Protocol 0。
+             這個 CSV 沒有 ICMP flow，ICMP 都在 Protocol 0 裡。CIC-IDS2017 修正版不要用：它有 ICMP flow，Protocol 0 是非 IP 的 frame
+  --part i/K 只處理第 i 份 flow（依五元組分成 K 份，同一個五元組一定在同一份），
+             所以各份的 flow、aligned、pcap_covered_packets 可以直接相加（tests/detection/merge_align.py）；
+             pcap 可以是 pipe（/dev/stdin），但只能掃一次，所以每份的 flow 數要 ≤ --max-flows
 """
 import argparse
 import array
@@ -34,6 +40,7 @@ PROTO = {'tcp': 6, 'udp': 17, 'icmp': 1}
 EPS = 1e-6
 CHUNK = 16 * 1024 * 1024      # 每次從 pcap 讀 16 MB
 N_EXAMPLES = 5                # 對不上的 flow 只留前幾個當例子
+CIC = False                   # --cic：label 是原版 CICFlowMeter 的 CSV（見 parse_packet）
 
 
 # ---------------------------------------------------------------- pcap 串流讀取
@@ -43,8 +50,8 @@ class PcapStream:
     def __init__(self, path):
         self.path = path
         self.truncated = False
-        with open(path, 'rb') as f:
-            magic = f.read(24)
+        self.f = open(path, 'rb')       # 第一次掃描直接接著讀，所以 pcap 也可以是 pipe（但只能掃一次）
+        magic = self.f.read(24)
         if len(magic) < 24:
             raise ValueError('pcap 檔頭不完整')
         kinds = {b'\xd4\xc3\xb2\xa1': ('<', 1e-6), b'\xa1\xb2\xc3\xd4': ('>', 1e-6),
@@ -62,8 +69,11 @@ class PcapStream:
         div = 1e6 if tick == 1e-6 else 1e9
         buf = b''
         pos = 0
-        with open(self.path, 'rb') as f:
-            f.seek(24)
+        if self.f is None:              # 第二批之後重新開檔
+            self.f = open(self.path, 'rb')
+            self.f.seek(24)
+        f, self.f = self.f, None
+        with f:
             while True:
                 chunk = f.read(CHUNK)
                 if chunk:
@@ -101,6 +111,11 @@ def parse_packet(pkt):
             proto, ihl = pkt[14 + ihl], ihl + (pkt[14 + ihl + 1] + 1) * 8
     else:
         return None
+    if CIC:
+        # 原版 CICFlowMeter 解不出 TCP/UDP header 的 packet（ICMP、後續 fragment、OSPF 等）都記成 Protocol 0、port 0/0
+        frag = ethertype == b'\x08\x00' and struct.unpack('!H', pkt[20:22])[0] & 0x1fff
+        if proto not in (6, 17) or frag:
+            return (0, *sorted([(src, 0), (dst, 0)]), 0)
     if proto == 58:                                            # ICMPv6 在 Zeek 記成 icmp
         proto = 1
     l4 = 14 + ihl
@@ -145,14 +160,14 @@ def flow_key(f):
     p = PROTO.get(proto)
     if p is None:
         return proto, None, ts, 0.0, expect, f[11], label
-    if p == 1:                              # ICMP 的 port 在 Zeek 是 type/code，封包這邊一律 0
+    if p in (0, 1):                         # ICMP 的 port 在 Zeek 是 type/code、CIC 的 Protocol 0 是 0，封包這邊一律 0
         op = rp = 0
     a, b = sorted([(ipaddress.ip_address(oh).packed, op), (ipaddress.ip_address(rh).packed, rp)])
     return proto, make_key(p, a, b), ts, ts + dur, expect, f[11], label
 
 
 # ---------------------------------------------------------------- 主流程
-def analyze(log_path, pcap_path, max_flows=3_000_000):
+def analyze(log_path, pcap_path, max_flows=3_000_000, part=None):
     if log_path is None:                     # 場景沒有 conn.log.labeled：只數封包
         pcap = PcapStream(pcap_path)
         n = ip = 0
@@ -172,10 +187,12 @@ def analyze(log_path, pcap_path, max_flows=3_000_000):
         if f is None:
             malformed += 1
         elif f[6] in PROTO:
-            n_tracked += 1
+            n_tracked += part is None or shard_of(f, part[1]) == part[0]
         else:
             skipped[f[6]] += 1
     shards = max(1, -(-n_tracked // max_flows))
+    if shards > 1 and not Path(pcap_path).is_file():
+        sys.exit(f'pcap 不是一般檔案（pipe？）只能掃一次，但 {n_tracked:,} 條 flow 要分 {shards} 批：加大 --max-flows 或用 --part')
 
     pcap = PcapStream(pcap_path)
     labels = {}                                     # label 字串 -> 編號
@@ -198,6 +215,8 @@ def analyze(log_path, pcap_path, max_flows=3_000_000):
         index = {}                  # key -> flow 編號（只有一條）或 list（多條）
         for lineno, f in iter_flows(log_path):
             if f is None or f[6] not in PROTO:
+                continue
+            if part and shard_of(f, part[1]) != part[0]:
                 continue
             if shards > 1 and shard_of(f, shards) != shard:
                 continue
@@ -313,7 +332,7 @@ def analyze(log_path, pcap_path, max_flows=3_000_000):
         'flows': flows, 'aligned': aligned, 'unaligned': flows - aligned,
         'skipped_flows_other_proto': dict(skipped), 'malformed_log_lines': malformed,
         'unaligned_kinds': dict(shortfall),     # zero=一個都找不到, fewer=找到但較少, more=找到較多
-        'unaligned_examples': ex_out, 'shards': shards,
+        'unaligned_examples': ex_out, 'shards': shards, 'part': list(part) if part else None,
         'labels': {k: {kk: vv for kk, vv in v.items()} for k, v in sorted(stats.items())},
     }
 
@@ -341,9 +360,16 @@ def main():
     ap.add_argument('pcap')
     ap.add_argument('--json')
     ap.add_argument('--max-flows', type=int, default=3_000_000)
+    ap.add_argument('--part')
+    ap.add_argument('--cic', action='store_true')
     ap.add_argument('--text', action='store_true')
     a = ap.parse_args()
-    r = analyze(None if a.log == '-' else a.log, a.pcap, a.max_flows)
+    global CIC
+    CIC = a.cic
+    if CIC:
+        PROTO['other'] = 0
+    part = tuple(int(x) for x in a.part.split('/')) if a.part else None
+    r = analyze(None if a.log == '-' else a.log, a.pcap, a.max_flows, part)
     if a.json:
         Path(a.json).write_text(json.dumps(r, ensure_ascii=False, indent=1))
     if a.text:

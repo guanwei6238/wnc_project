@@ -1,0 +1,153 @@
+{
+ "pcap": "0311.pcap",
+ "log": "0311.dedup.conn.log.labeled",
+ "pcap_bytes": 29069821199,
+ "pcap_packets": 61407883,
+ "pcap_ip_packets": 61384815,
+ "pcap_truncated_tail": false,
+ "pcap_linktype": 1,
+ "pcap_covered_packets": 61372112,
+ "pcap_time_range": [
+  1541247496.583626,
+  1541277416.349321
+ ],
+ "log_time_range": [
+  1541247496.964447,
+  1541277416.3493211
+ ],
+ "flows": 19881726,
+ "aligned": 19860617,
+ "unaligned": 21109,
+ "skipped_flows_other_proto": {},
+ "malformed_log_lines": 0,
+ "unaligned_kinds": {
+  "more": 13886,
+  "zero": 6778,
+  "fewer": 445
+ },
+ "unaligned_examples": [
+  {
+   "line": 15,
+   "uid": "C14",
+   "ts": "1541247506.989249",
+   "proto": "tcp",
+   "flow": "192.168.50.9:57658 -> 35.158.163.158:443",
+   "label": "Benign",
+   "conn_state": "-",
+   "found_pkts": 5,
+   "expect_pkts": 4
+  },
+  {
+   "line": 16,
+   "uid": "C15",
+   "ts": "1541247506.989253",
+   "proto": "tcp",
+   "flow": "192.168.50.9:37652 -> 54.192.55.39:443",
+   "label": "Benign",
+   "conn_state": "-",
+   "found_pkts": 6,
+   "expect_pkts": 5
+  },
+  {
+   "line": 17,
+   "uid": "C16",
+   "ts": "1541247506.989319",
+   "proto": "tcp",
+   "flow": "192.168.50.9:41488 -> 93.184.216.180:443",
+   "label": "Benign",
+   "conn_state": "-",
+   "found_pkts": 5,
+   "expect_pkts": 4
+  },
+  {
+   "line": 18,
+   "uid": "C17",
+   "ts": "1541247506.989425",
+   "proto": "tcp",
+   "flow": "192.168.50.9:37652 -> 54.192.55.39:443",
+   "label": "Benign",
+   "conn_state": "-",
+   "found_pkts": 5,
+   "expect_pkts": 4
+  },
+  {
+   "line": 19,
+   "uid": "C18",
+   "ts": "1541247506.989471",
+   "proto": "tcp",
+   "flow": "192.168.50.9:57658 -> 35.158.163.158:443",
+   "label": "Benign",
+   "conn_state": "-",
+   "found_pkts": 3,
+   "expect_pkts": 2
+  }
+ ],
+ "shards": 1,
+ "part": null,
+ "labels": {
+  "Benign": {
+   "state -": 52561,
+   "flows": 52561,
+   "aligned": 39683,
+   "pkts": 1052277,
+   "payload_pkts": 488996,
+   "flows_with_payload": 19386
+  },
+  "Malicious LDAP": {
+   "state -": 1915122,
+   "flows": 1915122,
+   "aligned": 1914448,
+   "pkts": 8734558,
+   "payload_pkts": 314,
+   "flows_with_payload": 26
+  },
+  "Malicious MSSQL": {
+   "state -": 5787453,
+   "flows": 5787453,
+   "aligned": 5786155,
+   "pkts": 11947744,
+   "payload_pkts": 1968,
+   "flows_with_payload": 101
+  },
+  "Malicious NetBIOS": {
+   "state -": 3657497,
+   "flows": 3657497,
+   "aligned": 3656887,
+   "pkts": 7338116,
+   "payload_pkts": 415,
+   "flows_with_payload": 23
+  },
+  "Malicious Portmap": {
+   "state -": 186960,
+   "flows": 186960,
+   "aligned": 186509,
+   "pkts": 380792,
+   "payload_pkts": 1280,
+   "flows_with_payload": 65
+  },
+  "Malicious Syn": {
+   "state -": 4413105,
+   "flows": 4413105,
+   "aligned": 4409569,
+   "pkts": 17387718,
+   "payload_pkts": 27378,
+   "flows_with_payload": 983
+  },
+  "Malicious UDP": {
+   "state -": 3867155,
+   "flows": 3867155,
+   "aligned": 3866145,
+   "pkts": 14539536,
+   "payload_pkts": 416,
+   "flows_with_payload": 24
+  },
+  "Malicious UDPLag": {
+   "state -": 1873,
+   "flows": 1873,
+   "aligned": 1221,
+   "pkts": 6548,
+   "payload_pkts": 1038,
+   "flows_with_payload": 34
+  }
+ }
+}

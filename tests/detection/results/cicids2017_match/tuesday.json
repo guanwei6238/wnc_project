@@ -1,0 +1,308 @@
+{
+ "conn_log": "/home/sixsquare/datasets/cicids2017/conn/tuesday.conn.log.labeled",
+ "eve": "/home/sixsquare/datasets/detection/cicids2017/tuesday/eve.json",
+ "shards": 1,
+ "alerts": 3926,
+ "alerts_gw": 2729,
+ "alerts_gwip": 2729,
+ "alert_match": {
+  "in_time": 3926,
+  "by_flow_start": 0,
+  "unmatched": 0,
+  "multi_conn": 0,
+  "non_tcp_udp_icmp": 0
+ },
+ "unmatched_by_sid": {},
+ "labels": {
+  "Benign": {
+   "flows": 314795,
+   "flows_alert_full": 715,
+   "flows_alert_gw": 195,
+   "flows_alert_gwip": 195,
+   "alerts": 1523,
+   "sids": {
+    "2032987": 105,
+    "2027390": 77,
+    "2027863": 60,
+    "2029340": 53,
+    "2027757": 52,
+    "2065070": 40,
+    "2027758": 37,
+    "2067085": 34,
+    "2067086": 34,
+    "2067087": 34,
+    "2035464": 34,
+    "2016149": 29,
+    "2035466": 29,
+    "2016778": 24,
+    "2053892": 21,
+    "2013504": 19,
+    "2036860": 19,
+    "2033078": 17,
+    "2063137": 13,
+    "2053893": 12,
+    "2025275": 10,
+    "2063117": 10,
+    "2012522": 9,
+    "2019401": 5,
+    "2016150": 5,
+    "2065081": 3,
+    "2013659": 3,
+    "2070079": 3,
+    "2053894": 2,
+    "2050736": 2,
+    "2036300": 1,
+    "2032986": 1,
+    "2016360": 1
+   }
+  },
+  "Malicious FTP-Patator": {
+   "flows": 3972,
+   "flows_alert_full": 1553,
+   "flows_alert_gw": 1553,
+   "flows_alert_gwip": 1553,
+   "alerts": 2372,
+   "sids": {
+    "2002383": 1553
+   }
+  },
+  "Malicious SSH-Patator": {
+   "flows": 2961,
+   "flows_alert_full": 31,
+   "flows_alert_gw": 31,
+   "flows_alert_gwip": 31,
+   "alerts": 31,
+   "sids": {
+    "2001219": 31
+   }
+  },
+  "Attempted SSH-Patator": {
+   "flows": 27,
+   "flows_alert_full": 0,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 0,
+   "sids": {}
+  },
+  "Attempted FTP-Patator": {
+   "flows": 12,
+   "flows_alert_full": 0,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 0,
+   "sids": {}
+  }
+ },
+ "sids": {
+  "2002383": {
+   "msg": "ET SCAN Potential FTP Brute-Force attempt response",
+   "alerts": 2372,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2013504": {
+   "msg": "ET INFO GNU/Linux APT User-Agent Outbound likely related to package management",
+   "alerts": 273,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2032987": {
+   "msg": "ET INFO HTTP Request to a *.tw domain",
+   "alerts": 206,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2027390": {
+   "msg": "ET USER_AGENTS Microsoft Device Metadata Retrieval Client User-Agent",
+   "alerts": 132,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2016149": {
+   "msg": "ET INFO Session Traversal Utilities for NAT (STUN Binding Request)",
+   "alerts": 126,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2027863": {
+   "msg": "ET INFO Observed DNS Query to .biz TLD",
+   "alerts": 109,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2027757": {
+   "msg": "ET DNS Query for .to TLD",
+   "alerts": 94,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2065070": {
+   "msg": "ET INFO Observed RMM Domain in DNS Lookup (pubnub .com)",
+   "alerts": 71,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2027758": {
+   "msg": "ET DNS Query for .cc TLD",
+   "alerts": 55,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2035466": {
+   "msg": "ET INFO Observed Discord Domain in DNS Lookup (discordapp .com)",
+   "alerts": 54,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2029340": {
+   "msg": "ET INFO TLS Handshake Failure",
+   "alerts": 53,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2016778": {
+   "msg": "ET DNS Query to a *.pw domain - Likely Hostile",
+   "alerts": 40,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2067085": {
+   "msg": "ET INFO NTLM Session Setup Request - Negotiate",
+   "alerts": 34,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2067086": {
+   "msg": "ET INFO NTLMv1 Session Setup Response - Challenge",
+   "alerts": 34,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2067087": {
+   "msg": "ET INFO NTLM Session Setup Request - Auth",
+   "alerts": 34,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2035464": {
+   "msg": "ET INFO Observed Discord Domain (discordapp .com in TLS SNI)",
+   "alerts": 34,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2001219": {
+   "msg": "ET SCAN Potential SSH Scan",
+   "alerts": 31,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2036860": {
+   "msg": "ET INFO External IP Lookup Domain (freegeiop .net in DNS lookup)",
+   "alerts": 29,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2063117": {
+   "msg": "ET INFO Abused Hosting Domain in DNS Lookup (azurewebsites .net)",
+   "alerts": 22,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2053892": {
+   "msg": "ET INFO Suspicious Domain (polyfill .io) in DNS Lookup",
+   "alerts": 21,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2063137": {
+   "msg": "ET INFO Anonymous File Sharing Service Domain in DNS Lookup (filemail .com)",
+   "alerts": 21,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2033078": {
+   "msg": "ET INFO Session Traversal Utilities for NAT (STUN Binding Request On Non-Standard High Port)",
+   "alerts": 17,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2012522": {
+   "msg": "ET INFO DNS Query For XXX Adult Site Top Level Domain",
+   "alerts": 14,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2053893": {
+   "msg": "ET INFO Suspicious Domain (polyfill .io) in TLS SNI",
+   "alerts": 12,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2025275": {
+   "msg": "ET INFO Windows OS Submitting USB Metadata to Microsoft",
+   "alerts": 10,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2016150": {
+   "msg": "ET INFO Session Traversal Utilities for NAT (STUN Binding Response)",
+   "alerts": 6,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2019401": {
+   "msg": "ET INFO Vulnerable Java Version 1.8.x Detected",
+   "alerts": 5,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2065081": {
+   "msg": "ET INFO Observed RMM Domain in TLS SNI (pubnub .com)",
+   "alerts": 3,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2050736": {
+   "msg": "ET INFO Tencent Cloud Storage Domain in DNS Lookup (myqcloud .com)",
+   "alerts": 3,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2013659": {
+   "msg": "ET INFO Self Signed SSL Certificate (SomeOrganizationalUnit)",
+   "alerts": 3,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2070079": {
+   "msg": "ET HUNTING Javascript Mobile Device Check",
+   "alerts": 3,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2053894": {
+   "msg": "ET INFO Pastebin-like Service Domain in DNS Lookup (jsfiddle .net)",
+   "alerts": 2,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2036300": {
+   "msg": "ET HUNTING [TW] Likely Javascript-Obfuscator Usage Observed M1",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2032986": {
+   "msg": "ET INFO HTTP Request to a *.asia domain",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2016360": {
+   "msg": "ET INFO JAVA - ClassID",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": false
+  }
+ }
+}

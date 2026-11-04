@@ -11,6 +11,8 @@
 #     信任的 ct mark 先 accept（和 wnc-gw 一樣用到 conntrack），其餘 log group 10..（多個 group 用 symhash 分）
 #     BUF（預設 1048576）是每個 group 的 netlink buffer；K（預設 none）是 Suricata 的 -k，K=all 會檢查 checksum
 #     stop 時印 Suricata 每個 group 收到的封包數、tcp.invalid_checksum、detect.alert
+#   PROTECTION=ips|ids（start，預設 ips）：wnc-gw 的 protection；ids 時 <queues> 是 group 數（10 起）
+#   counters 另外印 eth0 送出、收到的 PAUSE（pause_tx0、pause_rx0）
 GW=${GW:-/tmp/wncgw/wnc-gw}; M=${M:-/tmp/wncgw/m}; L=/tmp/wncgw/planb; CT=${CT:-/home/wnc/ctbench/root/usr/sbin/conntrack}
 LOG=/var/log/wnc-gw/suricata
 W="ip netns exec wgw"
@@ -56,8 +58,11 @@ start)
     echo "ready impl=nflog rules=$rs groups=$q k=${K:-none} buf=$BUF"
     exit 0
   fi
-  { printf 'mode = "bridge"\nxdp = "off"\n\n[ports]\nlan = "eth0"\nwan = "eth1.20"\n\n[suricata]\nconfig = "%s"\nwhen_unavailable = "drop"\n' "$M/suricata-$rs.yaml"
-    [ "$q" -gt 1 ] && printf 'queue = "0-%d"\n' $((q - 1)); } > $L/setting.toml
+  P=${PROTECTION:-ips}
+  { printf 'mode = "bridge"\nxdp = "off"\nprotection = "%s"\n\n[ports]\nlan = "eth0"\nwan = "eth1.20"\n\n[suricata]\nconfig = "%s"\nwhen_unavailable = "drop"\n' $P "$M/suricata-$rs.yaml"
+    if [ "$q" -gt 1 ]; then
+      if [ $P = ids ]; then printf 'group = "10-%d"\n' $((9 + q)); else printf 'queue = "0-%d"\n' $((q - 1)); fi
+    fi; } > $L/setting.toml
   rm -f $LOG/*
   $W $GW -c $L/setting.toml run > $L/run.out 2> $L/run.log &
   for i in $(seq 1 300); do grep -q "traffic is inspected" $L/run.log && break; sleep 1; done
@@ -67,7 +72,7 @@ start)
     $W nft add chain inet tmark pre '{ type filter hook prerouting priority 0; policy accept; }'
     $W nft add rule inet tmark pre ct mark set ct mark or 0x80000000
   fi
-  echo "ready rules=$rs queues=$q trusted=$trusted"
+  echo "ready protection=$P rules=$rs queues=$q trusted=$trusted"
   ;;
 stop)
   if [ -e $L/suricata.pid ]; then
@@ -90,11 +95,12 @@ counters)
   s() { $W cat /sys/class/net/$1/statistics/$2; }
   qd=$($W cat /proc/net/netfilter/nfnetlink_queue 2>/dev/null | awk '{d += $6 + $7} END{print d + 0}')
   ct=$($W $CT -S 2>/dev/null | awk '{for (i = 2; i <= NF; i++) { split($i, a, "="); s[a[1]] += a[2] }} END{printf "ct_insert_failed=%d ct_drop=%d", s["insert_failed"], s["drop"]}')
-  # NFLOG：log 規則送出的複本、收複本的 netlink socket 的 Drops（table inet sq 不在時都是 0）
-  nl=$($W nft list table inet sq 2>/dev/null | awk '/log group/{for (i = 1; i <= NF; i++) if ($i == "packets") s += $(i + 1)} END{print s + 0}')
+  # NFLOG：log 規則送出的複本（table inet sq，或 wnc-gw ids 模式的 table inet wnc_gw）、收複本的 netlink socket 的 Drops（都不在時是 0）
+  nl=$({ $W nft list table inet sq; $W nft list table inet wnc_gw; } 2>/dev/null | awk '/log group/{for (i = 1; i <= NF; i++) if ($i == "packets") s += $(i + 1)} END{print s + 0}')
   ids=$($W cat /proc/net/netfilter/nfnetlink_log 2>/dev/null | awk '{print $2}' | tr '\n' ' ')
   nd=$($W awk -v ids=" $ids" '$2 == 12 && index(ids, " " $3 " ") {d += $9} END{print d + 0}' /proc/net/netlink)
-  echo "rx0=$(s eth0 rx_packets) tx0=$(s eth0 tx_packets) rx1=$(s eth1.20 rx_packets) tx1=$(s eth1.20 tx_packets) miss0=$(s eth0 rx_missed_errors) drop0=$(s eth0 rx_dropped) drop1=$(s eth1.20 rx_dropped) nfq_drop=$qd $ct nfl_log=$nl nfl_drop=$nd"
+  pause=$($W ethtool -S eth0 | awk '/ tx_pause:/{t = $2} / rx_pause:/{r = $2} END{printf "pause_tx0=%d pause_rx0=%d", t, r}')
+  echo "rx0=$(s eth0 rx_packets) tx0=$(s eth0 tx_packets) rx1=$(s eth1.20 rx_packets) tx1=$(s eth1.20 tx_packets) miss0=$(s eth0 rx_missed_errors) drop0=$(s eth0 rx_dropped) drop1=$(s eth1.20 rx_dropped) nfq_drop=$qd $ct nfl_log=$nl nfl_drop=$nd $pause"
   ;;
-*) sed -n '2,11p' "$0"; exit 2 ;;
+*) sed -n '2,13p' "$0"; exit 2 ;;
 esac

@@ -1,0 +1,229 @@
+11:56:05 sweep B6 R123 S_m17 round=1
+  ready protection=ids rules=full queues=1 trusted=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.102  copy_loss_pct=0.000  util0=8.9  util1=23.2  util2=21.4  util3=19.8  us_per_pkt=47.10  cpu0_us_per_pkt=5.70  temp=56.4 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  util0=11.3  util1=23.3  util2=24.3  util3=29.0  us_per_pkt=41.80  cpu0_us_per_pkt=5.35  temp=56.0 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=0.000  util0=18.4  util1=25.4  util2=32.4  util3=30.4  us_per_pkt=41.75  cpu0_us_per_pkt=7.20  temp=56.0 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  util0=25.2  util1=32.9  util2=34.3  util3=28.9  us_per_pkt=41.60  cpu0_us_per_pkt=8.65  temp=56.0 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=15.809  util0=23.4  util1=36.9  util2=40.0  util3=27.7  us_per_pkt=39.70  cpu0_us_per_pkt=7.25  temp=56.9 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=34.641  util0=24.1  util1=32.3  util2=36.0  util3=38.8  us_per_pkt=37.55  cpu0_us_per_pkt=6.90  temp=56.9 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=45.188  util0=25.4  util1=40.3  util2=33.4  util3=34.1  us_per_pkt=35.70  cpu0_us_per_pkt=6.80  temp=56.4 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=62.533  util0=31.1  util1=35.3  util2=33.2  util3=38.6  us_per_pkt=33.50  cpu0_us_per_pkt=7.55  temp=58.4 
+   actual_pps=120001  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=68.803  util0=34.4  util1=35.0  util2=36.3  util3=36.6  us_per_pkt=32.30  cpu0_us_per_pkt=7.80  temp=57.4 
+   actual_pps=150001  cap_loss_pct=10.381  loss_pct=10.490  copy_loss_pct=73.217  util0=36.0  util1=35.6  util2=37.0  util3=39.4  us_per_pkt=31.00  cpu0_us_per_pkt=7.55  temp=57.4 
+   actual_pps=200001  cap_loss_pct=32.200  loss_pct=32.309  copy_loss_pct=86.783  util0=32.2  util1=30.6  util2=30.6  util3=31.2  us_per_pkt=24.00  cpu0_us_per_pkt=6.20  temp=56.9 
+11:58:19 sweep B6 I1 S_m17 round=1
+  ready protection=ids rules=full queues=1 trusted=0
+placement=I1 rps_cpus=0 irq29=1 eff=1 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=0.000  util0=11.7  util1=40.9  util2=25.8  util3=5.4  us_per_pkt=53.80  cpu0_us_per_pkt=7.50  temp=58.4 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=21.3  util1=51.9  util2=16.9  util3=11.0  us_per_pkt=48.20  cpu0_us_per_pkt=10.15  temp=57.4 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=16.8  util1=60.3  util2=34.7  util3=7.8  us_per_pkt=47.00  cpu0_us_per_pkt=6.60  temp=57.9 
+   actual_pps=50000  cap_loss_pct=17.968  loss_pct=18.076  copy_loss_pct=0.000  util0=8.2  util1=61.0  util2=43.8  util3=7.4  us_per_pkt=50.29  cpu0_us_per_pkt=3.41  temp=57.9 
+   actual_pps=60000  cap_loss_pct=30.776  loss_pct=30.884  copy_loss_pct=0.000  util0=14.4  util1=58.2  util2=31.0  util3=8.7  us_per_pkt=50.20  cpu0_us_per_pkt=6.43  temp=58.9 
+11:59:57 sweep B6 A0 S_m17 round=1
+  ready protection=ids rules=full queues=1 trusted=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=42.9  util1=18.1  util2=18.0  util3=4.6  us_per_pkt=53.80  cpu0_us_per_pkt=27.60  temp=57.9 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=54.6  util1=5.4  util2=29.2  util3=12.8  us_per_pkt=48.55  cpu0_us_per_pkt=26.00  temp=58.4 
+   actual_pps=40000  cap_loss_pct=0.108  loss_pct=0.217  copy_loss_pct=0.000  util0=65.6  util1=11.8  util2=45.2  util3=3.7  us_per_pkt=49.80  cpu0_us_per_pkt=25.88  temp=58.9 
+   actual_pps=50000  cap_loss_pct=19.715  loss_pct=19.823  copy_loss_pct=0.000  util0=61.2  util1=30.1  util2=20.8  util3=4.1  us_per_pkt=49.76  cpu0_us_per_pkt=26.22  temp=58.9 
+   actual_pps=60000  cap_loss_pct=32.672  loss_pct=32.780  copy_loss_pct=0.000  util0=57.7  util1=3.7  util2=45.4  util3=3.9  us_per_pkt=50.87  cpu0_us_per_pkt=26.51  temp=58.4 
+12:01:36 sweep B3 R123 S_m17 round=1
+  ready protection=ids rules=full queues=2 trusted=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=15.6  util1=21.9  util2=19.5  util3=22.7  us_per_pkt=51.25  cpu0_us_per_pkt=10.05  temp=58.9 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.104  copy_loss_pct=0.000  util0=10.8  util1=25.8  util2=31.7  util3=24.3  us_per_pkt=44.10  cpu0_us_per_pkt=5.15  temp=58.9 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  util0=21.0  util1=32.8  util2=33.2  util3=28.2  us_per_pkt=45.30  cpu0_us_per_pkt=8.25  temp=57.9 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  util0=19.2  util1=35.0  util2=35.8  util3=42.0  us_per_pkt=45.40  cpu0_us_per_pkt=6.60  temp=57.9 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=19.0  util1=42.0  util2=41.3  util3=41.5  us_per_pkt=44.70  cpu0_us_per_pkt=5.90  temp=59.9 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=0.000  util0=28.1  util1=42.8  util2=42.8  util3=40.2  us_per_pkt=43.85  cpu0_us_per_pkt=8.00  temp=58.9 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=13.511  util0=28.7  util1=47.1  util2=40.2  util3=39.3  us_per_pkt=41.70  cpu0_us_per_pkt=7.70  temp=58.9 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=38.039  util0=39.6  util1=36.9  util2=39.6  util3=41.0  us_per_pkt=38.10  cpu0_us_per_pkt=9.60  temp=59.4 
+   actual_pps=120001  cap_loss_pct=0.202  loss_pct=0.308  copy_loss_pct=54.637  util0=39.9  util1=41.2  util2=40.3  util3=41.6  us_per_pkt=37.00  cpu0_us_per_pkt=9.05  temp=59.9 
+   actual_pps=150001  cap_loss_pct=16.767  loss_pct=16.876  copy_loss_pct=67.922  util0=38.8  util1=35.0  util2=36.7  util3=36.7  us_per_pkt=30.90  cpu0_us_per_pkt=8.15  temp=59.9 
+   actual_pps=200001  cap_loss_pct=36.273  loss_pct=36.380  copy_loss_pct=83.385  util0=32.0  util1=31.3  util2=31.8  util3=30.7  us_per_pkt=24.35  cpu0_us_per_pkt=6.20  temp=59.9 
+12:03:49 sweep B3 I1 S_m17 round=1
+  ready protection=ids rules=full queues=2 trusted=0
+placement=I1 rps_cpus=0 irq29=1 eff=1 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  util0=14.1  util1=43.7  util2=14.8  util3=16.3  us_per_pkt=57.15  cpu0_us_per_pkt=9.05  temp=59.4 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.106  copy_loss_pct=0.000  util0=16.7  util1=55.9  util2=18.2  util3=18.3  us_per_pkt=51.95  cpu0_us_per_pkt=7.95  temp=58.9 
+   actual_pps=40000  cap_loss_pct=5.441  loss_pct=5.548  copy_loss_pct=0.000  util0=24.7  util1=66.1  util2=26.6  util3=9.5  us_per_pkt=52.77  cpu0_us_per_pkt=10.26  temp=59.4 
+   actual_pps=50000  cap_loss_pct=24.364  loss_pct=24.470  copy_loss_pct=0.000  util0=19.8  util1=60.7  util2=20.1  util3=18.9  us_per_pkt=54.27  cpu0_us_per_pkt=8.99  temp=59.9 
+12:05:20 sweep B3 A0 S_m17 round=1
+  ready protection=ids rules=full queues=2 trusted=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=44.8  util1=17.3  util2=14.5  util3=12.4  us_per_pkt=57.20  cpu0_us_per_pkt=28.80  temp=59.9 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=59.1  util1=17.7  util2=17.5  util3=15.9  us_per_pkt=52.60  cpu0_us_per_pkt=28.20  temp=60.3 
+   actual_pps=40000  cap_loss_pct=7.882  loss_pct=7.991  copy_loss_pct=0.000  util0=66.8  util1=12.5  util2=23.7  util3=21.8  us_per_pkt=53.19  cpu0_us_per_pkt=28.50  temp=59.9 
+   actual_pps=50000  cap_loss_pct=26.547  loss_pct=26.654  copy_loss_pct=0.000  util0=60.8  util1=22.3  util2=9.2  util3=23.9  us_per_pkt=54.25  cpu0_us_per_pkt=28.39  temp=60.3 
+12:06:51 sweep B7 A0 S_m17 round=1
+  ready protection=ids rules=full queues=3 trusted=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=44.6  util1=14.4  util2=16.4  util3=14.1  us_per_pkt=57.60  cpu0_us_per_pkt=28.70  temp=59.9 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=56.9  util1=18.2  util2=17.0  util3=18.3  us_per_pkt=52.70  cpu0_us_per_pkt=27.15  temp=59.9 
+   actual_pps=40000  cap_loss_pct=7.650  loss_pct=7.759  copy_loss_pct=0.000  util0=66.1  util1=19.6  util2=19.4  util3=21.0  us_per_pkt=53.71  cpu0_us_per_pkt=28.15  temp=59.4 
+   actual_pps=50000  cap_loss_pct=26.325  loss_pct=26.432  copy_loss_pct=0.000  util0=60.8  util1=18.9  util2=18.8  util3=18.6  us_per_pkt=54.63  cpu0_us_per_pkt=28.37  temp=58.9 
+12:08:22 sweep B7 I1 S_m17 round=1
+  ready protection=ids rules=full queues=3 trusted=0
+placement=I1 rps_cpus=0 irq29=1 eff=1 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=16.5  util1=43.5  util2=15.0  util3=15.2  us_per_pkt=57.95  cpu0_us_per_pkt=10.60  temp=59.4 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=18.1  util1=56.2  util2=16.9  util3=18.2  us_per_pkt=52.20  cpu0_us_per_pkt=8.65  temp=59.9 
+   actual_pps=40000  cap_loss_pct=5.434  loss_pct=5.543  copy_loss_pct=0.000  util0=22.1  util1=65.2  util2=20.2  util3=20.3  us_per_pkt=53.19  cpu0_us_per_pkt=9.20  temp=59.4 
+   actual_pps=50000  cap_loss_pct=24.367  loss_pct=24.477  copy_loss_pct=0.000  util0=20.6  util1=60.8  util2=19.0  util3=18.6  us_per_pkt=54.21  cpu0_us_per_pkt=9.39  temp=58.9 
+12:09:53 sweep B7 R123 S_m17 round=1
+  ready protection=ids rules=full queues=3 trusted=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.102  copy_loss_pct=0.000  util0=14.5  util1=22.7  util2=20.6  util3=23.0  us_per_pkt=51.95  cpu0_us_per_pkt=9.30  temp=59.9 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  util0=13.1  util1=27.3  util2=27.5  util3=27.5  us_per_pkt=45.45  cpu0_us_per_pkt=6.25  temp=59.4 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=0.000  util0=19.5  util1=33.1  util2=34.6  util3=33.1  us_per_pkt=47.45  cpu0_us_per_pkt=7.70  temp=59.9 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=0.000  util0=25.2  util1=39.3  util2=37.0  util3=37.1  us_per_pkt=47.60  cpu0_us_per_pkt=8.65  temp=59.4 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=27.0  util1=40.0  util2=44.9  util3=40.5  us_per_pkt=47.40  cpu0_us_per_pkt=8.40  temp=61.3 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.104  copy_loss_pct=0.000  util0=23.2  util1=46.9  util2=44.5  util3=44.0  us_per_pkt=45.45  cpu0_us_per_pkt=6.65  temp=59.4 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=0.000  util0=31.8  util1=44.8  util2=45.7  util3=44.4  us_per_pkt=44.85  cpu0_us_per_pkt=8.55  temp=59.4 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=32.716  util0=36.4  util1=45.2  util2=44.2  util3=39.1  us_per_pkt=40.30  cpu0_us_per_pkt=8.90  temp=59.4 
+   actual_pps=120001  cap_loss_pct=0.083  loss_pct=0.192  copy_loss_pct=51.884  util0=41.5  util1=39.8  util2=43.1  util3=40.4  us_per_pkt=37.50  cpu0_us_per_pkt=9.45  temp=60.3 
+   actual_pps=150001  cap_loss_pct=17.024  loss_pct=17.132  copy_loss_pct=63.732  util0=36.5  util1=37.2  util2=36.7  util3=37.7  us_per_pkt=31.25  cpu0_us_per_pkt=7.70  temp=59.9 
+   actual_pps=200001  cap_loss_pct=36.619  loss_pct=36.727  copy_loss_pct=80.772  util0=31.8  util1=30.0  util2=33.1  util3=31.8  us_per_pkt=24.50  cpu0_us_per_pkt=6.15  temp=59.9 
+12:12:07 sweep B8 R123 S_m17 round=1
+  ready protection=ids rules=full queues=4 trusted=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.102  copy_loss_pct=0.000  util0=18.8  util1=22.5  util2=22.2  util3=21.5  us_per_pkt=54.75  cpu0_us_per_pkt=12.10  temp=59.4 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  util0=21.8  util1=25.8  util2=26.4  util3=26.7  us_per_pkt=48.05  cpu0_us_per_pkt=10.40  temp=58.9 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=25.5  util1=33.6  util2=33.9  util3=32.2  us_per_pkt=49.35  cpu0_us_per_pkt=10.05  temp=59.4 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=0.000  util0=29.8  util1=36.9  util2=37.2  util3=38.4  us_per_pkt=48.95  cpu0_us_per_pkt=10.25  temp=58.9 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=32.2  util1=41.9  util2=41.4  util3=41.2  us_per_pkt=48.65  cpu0_us_per_pkt=10.00  temp=58.4 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=0.000  util0=34.0  util1=45.2  util2=44.5  util3=43.1  us_per_pkt=47.80  cpu0_us_per_pkt=9.75  temp=58.9 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=33.3  util1=46.3  util2=45.4  util3=47.8  us_per_pkt=46.45  cpu0_us_per_pkt=8.95  temp=58.9 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=19.867  util0=39.3  util1=46.5  util2=43.4  util3=45.5  us_per_pkt=42.65  cpu0_us_per_pkt=9.60  temp=60.3 
+   actual_pps=120001  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=54.407  util0=41.2  util1=42.3  util2=39.9  util3=40.1  us_per_pkt=37.30  cpu0_us_per_pkt=9.40  temp=59.9 
+   actual_pps=150001  cap_loss_pct=17.302  loss_pct=17.410  copy_loss_pct=65.790  util0=35.9  util1=35.6  util2=36.1  util3=39.2  us_per_pkt=30.90  cpu0_us_per_pkt=7.55  temp=59.9 
+   actual_pps=200001  cap_loss_pct=37.158  loss_pct=37.267  copy_loss_pct=77.677  util0=32.2  util1=31.7  util2=31.7  util3=31.2  us_per_pkt=24.60  cpu0_us_per_pkt=6.25  temp=60.3 
+12:14:20 sweep B8 A0 S_m17 round=1
+  ready protection=ids rules=full queues=4 trusted=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=44.9  util1=16.0  util2=13.5  util3=15.8  us_per_pkt=58.20  cpu0_us_per_pkt=29.00  temp=59.9 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=58.2  util1=16.4  util2=16.6  util3=20.4  us_per_pkt=53.35  cpu0_us_per_pkt=27.80  temp=58.9 
+   actual_pps=40000  cap_loss_pct=7.963  loss_pct=8.072  copy_loss_pct=0.000  util0=65.7  util1=21.1  util2=16.3  util3=22.7  us_per_pkt=53.78  cpu0_us_per_pkt=28.09  temp=59.4 
+   actual_pps=50000  cap_loss_pct=26.492  loss_pct=26.601  copy_loss_pct=0.000  util0=60.9  util1=18.4  util2=19.9  util3=19.3  us_per_pkt=55.57  cpu0_us_per_pkt=28.57  temp=59.9 
+12:15:51 sweep B8 I1 S_m17 round=1
+  ready protection=ids rules=full queues=4 trusted=0
+placement=I1 rps_cpus=0 irq29=1 eff=1 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=16.8  util1=43.5  util2=13.7  util3=16.4  us_per_pkt=58.35  cpu0_us_per_pkt=10.85  temp=58.4 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=19.8  util1=56.0  util2=17.2  util3=16.8  us_per_pkt=52.45  cpu0_us_per_pkt=9.45  temp=59.9 
+   actual_pps=40000  cap_loss_pct=5.625  loss_pct=5.734  copy_loss_pct=0.000  util0=20.2  util1=66.5  util2=21.3  util3=21.2  us_per_pkt=53.93  cpu0_us_per_pkt=8.42  temp=58.9 
+   actual_pps=50000  cap_loss_pct=24.332  loss_pct=24.440  copy_loss_pct=0.000  util0=19.3  util1=60.5  util2=19.3  util3=20.0  us_per_pkt=54.25  cpu0_us_per_pkt=8.79  temp=58.9 
+EXP1C ROUND 1 DONE 2026-11-03T12:17:22Z
+12:17:22 sweep B6 A0 S_m17 round=2
+  ready protection=ids rules=full queues=1 trusted=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=42.6  util1=7.1  util2=22.6  util3=11.3  us_per_pkt=53.70  cpu0_us_per_pkt=27.40  temp=60.3 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=53.6  util1=15.3  util2=21.0  util3=13.6  us_per_pkt=49.35  cpu0_us_per_pkt=25.55  temp=59.9 
+   actual_pps=40000  cap_loss_pct=4.428  loss_pct=4.537  copy_loss_pct=0.000  util0=65.9  util1=39.1  util2=33.3  util3=14.7  us_per_pkt=63.04  cpu0_us_per_pkt=27.15  temp=60.3 
+   actual_pps=50000  cap_loss_pct=19.387  loss_pct=19.488  copy_loss_pct=0.000  util0=60.8  util1=18.9  util2=9.5  util3=29.1  us_per_pkt=50.11  cpu0_us_per_pkt=25.74  temp=59.9 
+12:18:52 sweep B6 I1 S_m17 round=2
+  ready protection=ids rules=full queues=1 trusted=0
+placement=I1 rps_cpus=0 irq29=1 eff=1 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  util0=4.7  util1=41.2  util2=22.8  util3=14.3  us_per_pkt=53.45  cpu0_us_per_pkt=3.05  temp=59.4 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  util0=7.1  util1=53.0  util2=15.6  util3=24.6  us_per_pkt=47.90  cpu0_us_per_pkt=3.40  temp=59.9 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=11.1  util1=61.5  util2=16.6  util3=32.9  us_per_pkt=47.90  cpu0_us_per_pkt=4.35  temp=59.4 
+   actual_pps=50000  cap_loss_pct=17.843  loss_pct=17.945  copy_loss_pct=0.000  util0=4.8  util1=62.1  util2=15.7  util3=37.3  us_per_pkt=50.08  cpu0_us_per_pkt=2.01  temp=59.9 
+   actual_pps=60000  cap_loss_pct=31.020  loss_pct=31.127  copy_loss_pct=0.000  util0=4.8  util1=56.0  util2=24.5  util3=27.3  us_per_pkt=50.59  cpu0_us_per_pkt=2.17  temp=59.4 
+12:20:31 sweep B6 R123 S_m17 round=2
+  ready protection=ids rules=full queues=1 trusted=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=0.000  util0=11.1  util1=23.2  util2=22.5  util3=16.4  us_per_pkt=47.05  cpu0_us_per_pkt=7.15  temp=59.4 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=10.9  util1=30.3  util2=23.9  util3=21.8  us_per_pkt=41.45  cpu0_us_per_pkt=5.20  temp=59.9 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=0.000  util0=15.8  util1=31.5  util2=28.3  util3=30.7  us_per_pkt=41.85  cpu0_us_per_pkt=6.20  temp=59.4 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=26.7  util1=32.4  util2=28.7  util3=32.9  us_per_pkt=41.40  cpu0_us_per_pkt=9.15  temp=59.9 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=16.848  util0=20.1  util1=42.3  util2=28.9  util3=36.5  us_per_pkt=39.75  cpu0_us_per_pkt=6.25  temp=60.3 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=31.788  util0=24.8  util1=30.9  util2=41.3  util3=34.4  us_per_pkt=37.60  cpu0_us_per_pkt=7.10  temp=60.8 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=39.796  util0=30.5  util1=38.1  util2=33.3  util3=33.3  us_per_pkt=36.15  cpu0_us_per_pkt=8.15  temp=60.3 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=63.271  util0=31.1  util1=34.4  util2=38.1  util3=33.5  us_per_pkt=33.30  cpu0_us_per_pkt=7.55  temp=59.9 
+   actual_pps=120001  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=63.524  util0=40.4  util1=34.4  util2=35.5  util3=35.1  us_per_pkt=32.95  cpu0_us_per_pkt=9.15  temp=60.3 
+   actual_pps=150001  cap_loss_pct=10.334  loss_pct=10.443  copy_loss_pct=74.141  util0=37.7  util1=38.2  util2=36.0  util3=35.8  us_per_pkt=30.95  cpu0_us_per_pkt=7.90  temp=60.8 
+   actual_pps=200001  cap_loss_pct=31.547  loss_pct=31.657  copy_loss_pct=87.057  util0=32.8  util1=30.2  util2=31.8  util3=31.8  us_per_pkt=24.30  cpu0_us_per_pkt=6.30  temp=59.9 
+12:22:44 sweep B3 A0 S_m17 round=2
+  ready protection=ids rules=full queues=2 trusted=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=44.9  util1=13.4  util2=18.3  util3=12.4  us_per_pkt=57.35  cpu0_us_per_pkt=28.90  temp=59.4 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=58.6  util1=18.2  util2=14.9  util3=18.4  us_per_pkt=52.55  cpu0_us_per_pkt=27.95  temp=59.4 
+   actual_pps=40000  cap_loss_pct=7.422  loss_pct=7.531  copy_loss_pct=0.000  util0=66.0  util1=15.4  util2=19.0  util3=24.4  us_per_pkt=52.98  cpu0_us_per_pkt=28.03  temp=58.4 
+   actual_pps=50000  cap_loss_pct=26.116  loss_pct=26.223  copy_loss_pct=0.000  util0=60.3  util1=19.7  util2=22.4  util3=13.4  us_per_pkt=53.80  cpu0_us_per_pkt=28.02  temp=58.9 
+12:24:15 sweep B3 R123 S_m17 round=2
+  ready protection=ids rules=full queues=2 trusted=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=10.9  util1=21.4  util2=21.1  util3=25.1  us_per_pkt=50.50  cpu0_us_per_pkt=7.00  temp=58.9 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=11.2  util1=24.7  util2=29.3  util3=28.0  us_per_pkt=44.40  cpu0_us_per_pkt=5.35  temp=60.3 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=14.5  util1=38.3  util2=31.9  util3=30.0  us_per_pkt=45.10  cpu0_us_per_pkt=5.70  temp=59.9 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.110  copy_loss_pct=0.000  util0=14.9  util1=43.5  util2=40.6  util3=31.5  us_per_pkt=44.70  cpu0_us_per_pkt=5.10  temp=59.9 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=22.7  util1=44.2  util2=33.9  util3=43.7  us_per_pkt=44.80  cpu0_us_per_pkt=7.05  temp=58.4 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=28.6  util1=44.6  util2=38.5  util3=41.6  us_per_pkt=44.00  cpu0_us_per_pkt=8.20  temp=59.4 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=15.502  util0=25.8  util1=38.1  util2=44.9  util3=45.8  us_per_pkt=41.35  cpu0_us_per_pkt=6.90  temp=59.9 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=44.003  util0=34.2  util1=40.9  util2=38.5  util3=41.4  us_per_pkt=37.65  cpu0_us_per_pkt=8.30  temp=60.8 
+   actual_pps=120001  cap_loss_pct=0.070  loss_pct=0.179  copy_loss_pct=55.907  util0=41.2  util1=39.2  util2=42.5  util3=40.3  us_per_pkt=37.05  cpu0_us_per_pkt=9.35  temp=60.8 
+   actual_pps=150001  cap_loss_pct=16.547  loss_pct=16.656  copy_loss_pct=69.674  util0=35.4  util1=37.5  util2=36.3  util3=38.5  us_per_pkt=31.10  cpu0_us_per_pkt=7.45  temp=60.3 
+   actual_pps=200001  cap_loss_pct=36.627  loss_pct=36.736  copy_loss_pct=84.015  util0=31.6  util1=32.1  util2=30.3  util3=31.9  us_per_pkt=24.30  cpu0_us_per_pkt=6.10  temp=60.3 
+12:26:29 sweep B3 I1 S_m17 round=2
+  ready protection=ids rules=full queues=2 trusted=0
+placement=I1 rps_cpus=0 irq29=1 eff=1 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=14.2  util1=44.2  util2=13.2  util3=17.6  us_per_pkt=57.35  cpu0_us_per_pkt=9.15  temp=59.9 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.104  copy_loss_pct=0.000  util0=19.1  util1=57.4  util2=10.8  util3=22.4  us_per_pkt=52.35  cpu0_us_per_pkt=9.10  temp=59.9 
+   actual_pps=40000  cap_loss_pct=6.067  loss_pct=6.175  copy_loss_pct=0.000  util0=25.2  util1=66.9  util2=18.6  util3=16.9  us_per_pkt=53.39  cpu0_us_per_pkt=10.54  temp=60.8 
+   actual_pps=50000  cap_loss_pct=24.488  loss_pct=24.595  copy_loss_pct=0.000  util0=20.6  util1=61.6  util2=18.1  util3=18.0  us_per_pkt=53.63  cpu0_us_per_pkt=9.34  temp=59.4 
+12:28:00 sweep B7 R123 S_m17 round=2
+  ready protection=ids rules=full queues=3 trusted=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.106  copy_loss_pct=0.000  util0=16.6  util1=21.1  util2=21.2  util3=22.6  us_per_pkt=52.35  cpu0_us_per_pkt=10.65  temp=60.8 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.105  copy_loss_pct=0.000  util0=16.6  util1=26.0  util2=27.7  util3=26.2  us_per_pkt=46.00  cpu0_us_per_pkt=7.90  temp=59.9 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  util0=19.2  util1=32.5  util2=34.1  util3=34.3  us_per_pkt=47.25  cpu0_us_per_pkt=7.55  temp=59.9 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=25.5  util1=39.2  util2=34.4  util3=39.4  us_per_pkt=47.50  cpu0_us_per_pkt=8.75  temp=60.8 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  util0=25.4  util1=43.5  util2=39.0  util3=42.7  us_per_pkt=46.75  cpu0_us_per_pkt=7.90  temp=60.3 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=28.4  util1=44.3  util2=45.5  util3=42.5  us_per_pkt=46.10  cpu0_us_per_pkt=8.15  temp=59.9 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=0.000  util0=31.7  util1=43.3  util2=44.6  util3=46.3  us_per_pkt=44.45  cpu0_us_per_pkt=8.50  temp=59.4 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=33.788  util0=33.1  util1=43.3  util2=42.7  util3=43.5  us_per_pkt=39.60  cpu0_us_per_pkt=8.05  temp=59.4 
+   actual_pps=120001  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=52.953  util0=41.3  util1=41.5  util2=41.7  util3=39.3  us_per_pkt=37.10  cpu0_us_per_pkt=9.35  temp=61.3 
+   actual_pps=150001  cap_loss_pct=16.631  loss_pct=16.739  copy_loss_pct=65.475  util0=36.9  util1=37.9  util2=37.4  util3=36.2  us_per_pkt=31.15  cpu0_us_per_pkt=7.75  temp=60.8 
+   actual_pps=200001  cap_loss_pct=35.900  loss_pct=36.009  copy_loss_pct=79.369  util0=33.6  util1=30.2  util2=33.1  util3=30.2  us_per_pkt=24.60  cpu0_us_per_pkt=6.50  temp=60.8 
+12:30:13 sweep B7 I1 S_m17 round=2
+  ready protection=ids rules=full queues=3 trusted=0
+placement=I1 rps_cpus=0 irq29=1 eff=1 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=18.2  util1=44.1  util2=12.0  util3=15.2  us_per_pkt=57.70  cpu0_us_per_pkt=11.75  temp=60.3 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=19.0  util1=55.8  util2=17.1  util3=17.7  us_per_pkt=52.25  cpu0_us_per_pkt=9.05  temp=60.3 
+   actual_pps=40000  cap_loss_pct=5.317  loss_pct=5.426  copy_loss_pct=0.000  util0=22.8  util1=65.9  util2=19.5  util3=20.4  us_per_pkt=53.34  cpu0_us_per_pkt=9.45  temp=59.9 
+   actual_pps=50000  cap_loss_pct=24.573  loss_pct=24.680  copy_loss_pct=0.000  util0=20.1  util1=60.6  util2=18.9  util3=19.9  us_per_pkt=54.49  cpu0_us_per_pkt=9.15  temp=59.9 
+12:31:45 sweep B7 A0 S_m17 round=2
+  ready protection=ids rules=full queues=3 trusted=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=44.8  util1=13.6  util2=15.7  util3=15.4  us_per_pkt=57.65  cpu0_us_per_pkt=28.85  temp=59.4 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=57.7  util1=15.5  util2=18.8  util3=18.8  us_per_pkt=52.80  cpu0_us_per_pkt=27.50  temp=59.9 
+   actual_pps=40000  cap_loss_pct=7.491  loss_pct=7.600  copy_loss_pct=0.000  util0=65.6  util1=18.4  util2=21.5  util3=20.6  us_per_pkt=53.62  cpu0_us_per_pkt=27.89  temp=59.9 
+   actual_pps=50000  cap_loss_pct=26.192  loss_pct=26.300  copy_loss_pct=0.000  util0=61.6  util1=20.1  util2=16.2  util3=18.9  us_per_pkt=54.33  cpu0_us_per_pkt=28.66  temp=59.4 
+12:33:16 sweep B8 I1 S_m17 round=2
+  ready protection=ids rules=full queues=4 trusted=0
+placement=I1 rps_cpus=0 irq29=1 eff=1 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=15.8  util1=43.3  util2=14.6  util3=16.4  us_per_pkt=58.10  cpu0_us_per_pkt=10.20  temp=59.9 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=20.1  util1=56.1  util2=16.0  util3=17.2  us_per_pkt=52.25  cpu0_us_per_pkt=9.60  temp=58.9 
+   actual_pps=40000  cap_loss_pct=5.515  loss_pct=5.624  copy_loss_pct=0.000  util0=22.7  util1=65.4  util2=17.9  util3=22.4  us_per_pkt=53.61  cpu0_us_per_pkt=9.47  temp=59.9 
+   actual_pps=50000  cap_loss_pct=24.316  loss_pct=24.424  copy_loss_pct=0.000  util0=18.5  util1=60.4  util2=19.5  util3=20.8  us_per_pkt=54.11  cpu0_us_per_pkt=8.39  temp=59.9 
+12:34:47 sweep B8 R123 S_m17 round=2
+  ready protection=ids rules=full queues=4 trusted=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.106  copy_loss_pct=0.000  util0=20.0  util1=22.0  util2=22.2  util3=21.4  us_per_pkt=55.20  cpu0_us_per_pkt=12.90  temp=59.9 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=22.9  util1=24.9  util2=25.5  util3=25.7  us_per_pkt=47.30  cpu0_us_per_pkt=10.95  temp=59.9 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  util0=26.5  util1=32.2  util2=33.3  util3=33.0  us_per_pkt=49.30  cpu0_us_per_pkt=10.45  temp=59.9 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.106  copy_loss_pct=0.000  util0=29.5  util1=37.3  util2=37.8  util3=38.3  us_per_pkt=49.10  cpu0_us_per_pkt=10.15  temp=58.9 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.106  copy_loss_pct=0.000  util0=32.8  util1=40.2  util2=42.0  util3=41.8  us_per_pkt=48.75  cpu0_us_per_pkt=10.20  temp=60.8 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=0.000  util0=35.5  util1=43.4  util2=44.3  util3=43.2  us_per_pkt=47.75  cpu0_us_per_pkt=10.20  temp=61.3 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=34.3  util1=46.2  util2=45.3  util3=47.7  us_per_pkt=46.55  cpu0_us_per_pkt=9.20  temp=59.9 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=17.491  util0=42.5  util1=44.6  util2=44.4  util3=44.0  us_per_pkt=42.90  cpu0_us_per_pkt=10.40  temp=59.9 
+   actual_pps=120001  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=54.469  util0=41.9  util1=40.1  util2=41.0  util3=41.4  us_per_pkt=37.30  cpu0_us_per_pkt=9.50  temp=60.8 
+   actual_pps=150001  cap_loss_pct=16.222  loss_pct=16.331  copy_loss_pct=68.343  util0=36.4  util1=35.9  util2=39.0  util3=35.7  us_per_pkt=31.10  cpu0_us_per_pkt=7.70  temp=60.3 
+   actual_pps=200001  cap_loss_pct=37.112  loss_pct=37.221  copy_loss_pct=79.508  util0=33.3  util1=31.0  util2=30.2  util3=31.3  us_per_pkt=24.35  cpu0_us_per_pkt=6.45  temp=59.9 
+12:37:01 sweep B8 A0 S_m17 round=2
+  ready protection=ids rules=full queues=4 trusted=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=44.7  util1=15.4  util2=17.4  util3=12.6  us_per_pkt=58.10  cpu0_us_per_pkt=28.80  temp=59.4 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=57.5  util1=19.3  util2=18.0  util3=16.6  us_per_pkt=53.15  cpu0_us_per_pkt=27.45  temp=58.9 
+   actual_pps=40000  cap_loss_pct=7.790  loss_pct=7.899  copy_loss_pct=0.000  util0=66.9  util1=20.7  util2=20.0  util3=18.7  us_per_pkt=53.84  cpu0_us_per_pkt=28.52  temp=60.3 
+   actual_pps=50000  cap_loss_pct=26.564  loss_pct=26.672  copy_loss_pct=0.000  util0=61.4  util1=19.2  util2=19.2  util3=17.4  us_per_pkt=54.95  cpu0_us_per_pkt=28.80  temp=59.9 
+EXP1C ROUND 2 DONE 2026-11-03T12:38:32Z

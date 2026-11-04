@@ -1,0 +1,376 @@
+{
+ "conn_log": "/home/sixsquare/datasets/cicids2017/conn/wednesday.conn.log.labeled",
+ "eve": "/home/sixsquare/datasets/detection/cicids2017/wednesday/eve.json",
+ "shards": 1,
+ "alerts": 1461,
+ "alerts_gw": 470,
+ "alerts_gwip": 470,
+ "alert_match": {
+  "in_time": 1458,
+  "by_flow_start": 3,
+  "unmatched": 0,
+  "multi_conn": 0,
+  "non_tcp_udp_icmp": 0
+ },
+ "unmatched_by_sid": {},
+ "labels": {
+  "Benign": {
+   "flows": 318802,
+   "flows_alert_full": 871,
+   "flows_alert_gw": 283,
+   "flows_alert_gwip": 283,
+   "alerts": 1456,
+   "sids": {
+    "2029340": 294,
+    "2027758": 127,
+    "2027863": 123,
+    "2027757": 88,
+    "2027390": 53,
+    "2067085": 33,
+    "2067086": 33,
+    "2067087": 33,
+    "2036860": 19,
+    "2032987": 15,
+    "2013504": 11,
+    "2063117": 10,
+    "2053892": 10,
+    "2016149": 9,
+    "2025275": 8,
+    "2035466": 8,
+    "2014169": 8,
+    "2050736": 7,
+    "2033078": 6,
+    "2033077": 6,
+    "2071571": 5,
+    "2053893": 5,
+    "2071569": 5,
+    "2016778": 5,
+    "2065070": 5,
+    "2016150": 3,
+    "2035593": 3,
+    "2019401": 2,
+    "2011540": 2,
+    "2013659": 2,
+    "2016360": 2,
+    "2100366": 2,
+    "2047702": 2,
+    "2030113": 2,
+    "2019512": 1,
+    "2047703": 1,
+    "2065081": 1
+   }
+  },
+  "Malicious DoS_Hulk": {
+   "flows": 158468,
+   "flows_alert_full": 0,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 0,
+   "sids": {}
+  },
+  "Malicious DoS_GoldenEye": {
+   "flows": 7567,
+   "flows_alert_full": 0,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 0,
+   "sids": {}
+  },
+  "Malicious DoS_Slowloris": {
+   "flows": 3859,
+   "flows_alert_full": 0,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 0,
+   "sids": {}
+  },
+  "Attempted DoS_Slowhttptest": {
+   "flows": 3368,
+   "flows_alert_full": 0,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 0,
+   "sids": {}
+  },
+  "Attempted DoS_Slowloris": {
+   "flows": 1847,
+   "flows_alert_full": 0,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 0,
+   "sids": {}
+  },
+  "Malicious DoS_Slowhttptest": {
+   "flows": 1740,
+   "flows_alert_full": 4,
+   "flows_alert_gw": 4,
+   "flows_alert_gwip": 4,
+   "alerts": 4,
+   "sids": {
+    "2014103": 4
+   }
+  },
+  "Attempted DoS_Hulk": {
+   "flows": 581,
+   "flows_alert_full": 0,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 0,
+   "sids": {}
+  },
+  "Attempted DoS_GoldenEye": {
+   "flows": 80,
+   "flows_alert_full": 0,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 0,
+   "sids": {}
+  },
+  "Malicious Heartbleed": {
+   "flows": 11,
+   "flows_alert_full": 1,
+   "flows_alert_gw": 1,
+   "flows_alert_gwip": 1,
+   "alerts": 1,
+   "sids": {
+    "2018377": 1
+   }
+  }
+ },
+ "sids": {
+  "2029340": {
+   "msg": "ET INFO TLS Handshake Failure",
+   "alerts": 294,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2027863": {
+   "msg": "ET INFO Observed DNS Query to .biz TLD",
+   "alerts": 207,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2027758": {
+   "msg": "ET DNS Query for .cc TLD",
+   "alerts": 198,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2027757": {
+   "msg": "ET DNS Query for .to TLD",
+   "alerts": 157,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2013504": {
+   "msg": "ET INFO GNU/Linux APT User-Agent Outbound likely related to package management",
+   "alerts": 111,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2027390": {
+   "msg": "ET USER_AGENTS Microsoft Device Metadata Retrieval Client User-Agent",
+   "alerts": 88,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2032987": {
+   "msg": "ET INFO HTTP Request to a *.tw domain",
+   "alerts": 70,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2016149": {
+   "msg": "ET INFO Session Traversal Utilities for NAT (STUN Binding Request)",
+   "alerts": 35,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2067085": {
+   "msg": "ET INFO NTLM Session Setup Request - Negotiate",
+   "alerts": 33,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2067086": {
+   "msg": "ET INFO NTLMv1 Session Setup Response - Challenge",
+   "alerts": 33,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2067087": {
+   "msg": "ET INFO NTLM Session Setup Request - Auth",
+   "alerts": 33,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2036860": {
+   "msg": "ET INFO External IP Lookup Domain (freegeiop .net in DNS lookup)",
+   "alerts": 30,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2063117": {
+   "msg": "ET INFO Abused Hosting Domain in DNS Lookup (azurewebsites .net)",
+   "alerts": 18,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2033078": {
+   "msg": "ET INFO Session Traversal Utilities for NAT (STUN Binding Request On Non-Standard High Port)",
+   "alerts": 17,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2014169": {
+   "msg": "ET DNS Query for .su TLD (Soviet Union) Often Malware Related",
+   "alerts": 13,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2033077": {
+   "msg": "ET INFO Session Traversal Utilities for NAT (STUN Binding Request On Non-Standard Low Port)",
+   "alerts": 12,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2035466": {
+   "msg": "ET INFO Observed Discord Domain in DNS Lookup (discordapp .com)",
+   "alerts": 12,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2050736": {
+   "msg": "ET INFO Tencent Cloud Storage Domain in DNS Lookup (myqcloud .com)",
+   "alerts": 11,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2053892": {
+   "msg": "ET INFO Suspicious Domain (polyfill .io) in DNS Lookup",
+   "alerts": 10,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2071569": {
+   "msg": "ET INFO Observed Telegram Domain in DNS Lookup (t .me)",
+   "alerts": 10,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2025275": {
+   "msg": "ET INFO Windows OS Submitting USB Metadata to Microsoft",
+   "alerts": 8,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2071571": {
+   "msg": "ET INFO Observed Telegram Domain in DNS Lookup (telegram .me)",
+   "alerts": 8,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2016778": {
+   "msg": "ET DNS Query to a *.pw domain - Likely Hostile",
+   "alerts": 7,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2065070": {
+   "msg": "ET INFO Observed RMM Domain in DNS Lookup (pubnub .com)",
+   "alerts": 7,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2016150": {
+   "msg": "ET INFO Session Traversal Utilities for NAT (STUN Binding Response)",
+   "alerts": 5,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2053893": {
+   "msg": "ET INFO Suspicious Domain (polyfill .io) in TLS SNI",
+   "alerts": 5,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2100366": {
+   "msg": "GPL ICMP PING *NIX",
+   "alerts": 5,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2014103": {
+   "msg": "ET WEB_SERVER Unusually Fast HTTP Requests With Referer Url Matching DoS Tool",
+   "alerts": 4,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2035593": {
+   "msg": "ET INFO DropBox User Content Domain (dl .dropboxusercontent .com in TLS SNI)",
+   "alerts": 3,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2047702": {
+   "msg": "ET INFO External IP Lookup Domain (ipify .org) in DNS Lookup",
+   "alerts": 3,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2019401": {
+   "msg": "ET INFO Vulnerable Java Version 1.8.x Detected",
+   "alerts": 2,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2011540": {
+   "msg": "ET INFO OpenSSL Demo CA - Internet Widgits Pty (O)",
+   "alerts": 2,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2013659": {
+   "msg": "ET INFO Self Signed SSL Certificate (SomeOrganizationalUnit)",
+   "alerts": 2,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2016360": {
+   "msg": "ET INFO JAVA - ClassID",
+   "alerts": 2,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2030113": {
+   "msg": "ET INFO Observed iesnare/iovation Tracking Activity",
+   "alerts": 2,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2018377": {
+   "msg": "ET EXPLOIT Possible OpenSSL HeartBleed Large HeartBeat Response (Client Init Vuln Server)",
+   "alerts": 1,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2047703": {
+   "msg": "ET INFO External IP Address Lookup Domain (ipify .org) in TLS SNI",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2019512": {
+   "msg": "ET INFO Possible IP Check api.ipify.org",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2065081": {
+   "msg": "ET INFO Observed RMM Domain in TLS SNI (pubnub .com)",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": false
+  }
+ }
+}

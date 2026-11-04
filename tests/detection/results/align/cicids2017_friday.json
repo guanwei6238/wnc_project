@@ -1,0 +1,70 @@
+{
+ "pcap": "friday.pcap",
+ "log": "friday.conn.log.labeled",
+ "pcap_bytes": 8667370092,
+ "pcap_packets": 9997874,
+ "pcap_ip_packets": 9944187,
+ "pcap_truncated_tail": false,
+ "pcap_linktype": 1,
+ "pcap_covered_packets": 9914028,
+ "pcap_time_range": [
+  1499428779.599128,
+  1499457761.169108
+ ],
+ "log_time_range": [
+  1499428790.315195,
+  1499457761.169108
+ ],
+ "flows": 547262,
+ "aligned": 547262,
+ "unaligned": 0,
+ "skipped_flows_other_proto": {
+  "other": 295
+ },
+ "malformed_log_lines": 0,
+ "unaligned_kinds": {},
+ "unaligned_examples": [],
+ "shards": 1,
+ "labels": {
+  "Attempted Botnet": {
+   "state -": 4067,
+   "flows": 4067,
+   "aligned": 4067,
+   "pkts": 8297,
+   "payload_pkts": 0,
+   "flows_with_payload": 0
+  },
+  "Benign": {
+   "state -": 288251,
+   "flows": 288251,
+   "aligned": 288251,
+   "pkts": 8301148,
+   "payload_pkts": 4048666,
+   "flows_with_payload": 89315
+  },
+  "Malicious Botnet": {
+   "state -": 736,
+   "flows": 736,
+   "aligned": 736,
+   "pkts": 9871,
+   "payload_pkts": 2580,
+   "flows_with_payload": 736
+  },
+  "Malicious DDoS": {
+   "state -": 95144,
+   "flows": 95144,
+   "aligned": 95144,
+   "pkts": 1273386,
+   "payload_pkts": 347005,
+   "flows_with_payload": 95144
+  },
+  "Malicious Portscan": {
+   "state -": 159064,
+   "flows": 159064,
+   "aligned": 159064,
+   "pkts": 321326,
+   "payload_pkts": 546,
+   "flows_with_payload": 202
+  }
+ }
+}

@@ -233,6 +233,112 @@ python3 -I summarize.py results/pi_mem39_1gb.csv --out results/pi_mem39_1gb.summ
 **主要結果**：1 GB 時 Suricata `full` 15.5 → 13.4 kpps（慢約 13%），RSS 719 MB 是因為一部分被換進 zram（VmSwap 峰值約 794 MB），不是用得比較少；
 `gw_corp` 15.8 → 14.2 kpps（慢約 10%，VmSwap 約 466 MB）。Snort 3 三個等級都不受影響（`full` 0.38–0.39 kpps、376 MB；`gw_corp` 19.9–20.0 kpps、302 MB）。
 
+## 實驗 5：Suricata 8.0.7 × IoT-23＋CIC 三個 dataset（2026-10-31）
+
+目的：狀態表的「Pi 速度」補齊 CIC-IDS2017、CIC-DDoS2019、CICIoT2023，並用偵測測試同一個 engine 版本與 rule 重量 IoT-23 的 14 個切片，四個 dataset 可以直接比較。
+
+**和實驗 2 不同的地方**：Suricata 8.0.7（Debian trixie-backports，Pi 10/30 升級）；rule 是 2026-10-30 的 ET Open（`$BIG/rules_1030/`：`full` 52,798 條＝偵測測試的 `et_all.rules`，`gw_corp` 38,506 條＝依 `gw_corp_sids.txt` 篩），和 `tests/detection/` 同一份。只量 Suricata（10/18 決定以 Suricata 為 base）。其餘（量法、tmpfs、1000 MHz、single thread、`taskset -c 2,3`、Debian 預設 `suricata.yaml`、每格 1 warm-up + 3、throttled 閘門）和實驗 2 相同；Pi 上的 `measure.sh`、`run_matrix.py` 和 repo 只差註解。
+
+**挑切片**：依流量型態歸類，同一類只量一個。實驗 2 是特徵幾乎相同才只取一個；這次候選比較多，歸得比較粗，同一類裡的 packet 大小、protocol 比例可能不同（例如 03-11 Benign 538 B、UDP 36% 歸到 01-12 Benign 840 B、UDP 9%；DoS-HTTP_Flood 848 B 歸到 DDoS-HTTP_Flood 384 B），沒有另外量的攻擊速度可能不同。
+- 候選：CIC-IDS2017、CIC-DDoS2019 每種攻擊一個（攻擊是一天裡的一段時間，從「label 的 start ts 的 0.5% 分位」開始取 200,000 packets，含同時段的背景流量；時間在 `results/cic_slice_windows_*.tsv`），Benign 取沒有攻擊的時段（CIC-IDS2017 Monday 14:00 UTC 起、CIC-DDoS2019 01-12 13:20 UTC 起）；CICIoT2023 每種攻擊取偵測測試抽樣的那個檔的開頭 200,000 packets（Web 類的檔不足 200,000 就整檔）。共 71 個候選。
+- 特徵：`14_slice_features.py`（和 `10_scenario_features.py` 同一個 `features()`），結果與挑選在 `results/cic_slice_features.tsv`（`selected` 欄）。IP fragment 的後續片段沒有 L4 header，`dst_ports` 會被算成亂數 port，所以反射式 DDoS 的 `dst_ports` 很大，不代表真的打很多 port。
+- CIC-IDS2017 的低量攻擊（Slowloris、Slowhttptest、Heartbleed、Infiltration、SSH-Patator、Web Attack、Botnet）切到的主要是背景流量，歸到 Benign 這一類。
+
+| 切片 | dataset | 代表的流量型態 | 同型態、沒有另外量的 |
+|---|---|---|---|
+| `C17_Benign` | CIC-IDS2017 | 辦公室背景流量（TCP 85%、443 為主） | 低量攻擊時段（見上） |
+| `C17_DoS_Hulk` | CIC-IDS2017 | HTTP flood（port 80） | DDoS（LOIC）、DoS GoldenEye |
+| `C17_Portscan` | CIC-IDS2017 | SYN scan（SYN 42%、150 B） | — |
+| `C17_FTP-Patator` | CIC-IDS2017 | 大 packet、單一高 port 的大量傳輸（1,258 B） | Web Attack Brute Force |
+| `D12_Benign` | CIC-DDoS2019 | 背景流量（TCP 88%） | 03-11 Benign、Portmap |
+| `D12_DrDoS_DNS` | CIC-DDoS2019 | 大的 UDP 反射回應（約 1,260 B，IP fragment 多） | 兩天的 LDAP |
+| `D12_DrDoS_MSSQL` | CIC-DDoS2019 | 中型 UDP 反射（約 630 B） | 03-11 MSSQL、DrDoS_SSDP |
+| `D12_DrDoS_SNMP` | CIC-DDoS2019 | 小的 UDP 反射（約 270 B） | 03-11 NetBIOS |
+| `D12_DrDoS_NTP` | CIC-DDoS2019 | UDP 反射、目的 port 集中（480 B） | — |
+| `D12_DrDoS_UDP` | CIC-DDoS2019 | UDP flood（約 410 B） | 03-11 UDP、DrDoS_NetBIOS、UDP-lag |
+| `D12_Syn` | CIC-DDoS2019 | SYN flood（60 B、SYN 90%） | 03-11 Syn |
+| `D12_TFTP` | CIC-DDoS2019 | SYN 與 UDP 混合（TFTP 時段開頭接著 Syn） | 03-11 UDPLag、WebDDoS |
+| `I23_Benign_Final` | CICIoT2023 | 實驗網路的背景流量 | Web 類、DictionaryBruteForce、DNS_Spoofing、PingSweep、Backdoor_Malware 等 |
+| `I23_DDoS-ACK_Fragmentation` | CICIoT2023 | 大的 TCP fragment（899 B） | — |
+| `I23_DDoS-HTTP_Flood` | CICIoT2023 | HTTP flood | DoS-HTTP_Flood、DDoS-SlowLoris |
+| `I23_DDoS-ICMP_Flood` | CICIoT2023 | ICMP flood（64 B） | — |
+| `I23_DDoS-ICMP_Fragmentation` | CICIoT2023 | 大的 ICMP fragment（985 B） | — |
+| `I23_DDoS-TCP_Flood` | CICIoT2023 | 小 TCP、目的 port 集中（61 B） | DDoS-PSHACK_Flood、DDoS-RSTFINFlood |
+| `I23_DoS-TCP_Flood` | CICIoT2023 | 小 TCP、目的 port 分散（2.6 萬個） | — |
+| `I23_DDoS-SYN_Flood` | CICIoT2023 | SYN flood（SYN 90%） | DDoS-SynonymousIP_Flood、DoS-SYN_Flood |
+| `I23_DDoS-UDP_Flood` | CICIoT2023 | 小 UDP、目的 port 分散、有 payload | — |
+| `I23_DoS-UDP_Flood` | CICIoT2023 | 小 UDP、單一 port、幾乎沒有 payload | — |
+| `I23_DDoS-UDP_Fragmentation` | CICIoT2023 | 大的 UDP fragment（913 B） | — |
+| `I23_Mirai-udpplain` | CICIoT2023 | 中型 UDP flood（552 B） | — |
+| `I23_Mirai-greip_flood` | CICIoT2023 | GRE（非 TCP／UDP 97%） | Mirai-greeth_flood |
+| `I23_MITM-ArpSpoofing` | CICIoT2023 | 大 TCP 傳輸（1,128 B） | — |
+| `I23_Recon-PortScan` | CICIoT2023 | scan（SYN 27%） | Recon-HostDiscovery、VulnerabilityScan、OSScan |
+
+**切片**：`13_make_cic_slices.py`（從指定時間取 N 個 packet，同一個來源只讀一次；同時寫 `.small`）；01-12 從 zip 串流（`../detection/zip_pcap_concat.py`）。切片在 `$BIG/pcaps_cic/`，manifest 是 `manifest_cic.json`（`$BIG/slice_spec_cic.tsv` → `make_manifest.py`），和 IoT-23 的 `S_*`、`C_somfy02` 合併成 `manifest_scen3.json`。切片清單 `scen3_slices.txt`（14＋27＝41 個）。
+
+**批次**（`run_pi_scen3.sh`，tag 前綴 `pi_scen3_`）：`anchor0`（`C_somfy02` × `full`）→ `E`（`empty` × 41 切片，含 `.small`）→ `S`（`full`／`gw_corp` × 41 切片，同一批交錯）→ `anchor1`。
+
+**結果**（2026-10-31 14:28–18:58 UTC，正式量測 498 次、作廢 0；決定性與 packet 數檢查通過；錨點 `C_somfy02` × `full` 前後 45.5 → 45.3 kpps）。kpps 是 engine 自報處理時間算的中位數（`pps_med`）。`empty` 的差分法（`pps_diff`）含讀完 pcap 後的 flow 清理，flood 切片的 flow 多，`empty` 會比 `full` 還慢（例如 `I23_DDoS-TCP_Flood` 27.6 對 113.4），所以 `empty` 不放進表（在 `pi_scen3_E.summary.csv`）。
+
+| dataset | 切片數 | `full` 最慢 | 中位數 | 最快 | `gw_corp` 最慢 |
+|---|---|---|---|---|---|
+| IoT-23 | 14 | 14.9（`S_m39`） | 37.1 | 183.0（`S_m60`） | 15.1 |
+| CIC-IDS2017 | 4 | 6.2（`C17_DoS_Hulk`） | 16.9 | 26.1（`C17_Portscan`） | 7.0 |
+| CIC-DDoS2019 | 8 | 16.0（`D12_Benign`） | 47.5 | 76.5（`D12_DrDoS_SNMP`） | 17.3 |
+| CICIoT2023 | 15 | 8.5（`I23_DDoS-HTTP_Flood`） | 47.6 | 275.1（`I23_DDoS-ICMP_Flood`） | 8.7 |
+
+- 最慢的是 HTTP flood（CIC-IDS2017 DoS Hulk 6.2、CICIoT2023 DDoS-HTTP_Flood 8.5 kpps）：每個 packet 都要做 HTTP 解析與大量 app-layer rule 比對；這兩個的 RSS 也最大（1,671 MB、1,404 MB），其他都是 1,356–1,387 MB。
+- 反射式 DDoS 與 ICMP／UDP flood 比 IoT-23 的 SYN scan 快：UDP、ICMP 的 packet 沒有 TCP stream 與 app-layer 解析。
+- `gw_corp` 只快 2–122%（中位數 8%）；唯一差很多的是 `I23_DDoS-UDP_Fragmentation`（23.8 → 52.7），原因沒有查。
+- IoT-23 用 8.0.7 重量和 10/19 的 7.0.10 差不多（−4% 到 +10%），最慢都是 `S_m39`（14.9 對 15.5）。
+- load time（`wall − self`）中位數：`full` 39.1 s、`gw_corp` 27.1 s（7.0.10 是 34.9、24.7）。
+- 不畫 empty：有 6 個 flow 很多的切片 empty（差分法）比 `full` 慢（`D12_DrDoS_MSSQL`、`D12_DrDoS_SNMP`、`I23_DDoS-TCP_Flood`、`I23_DoS-TCP_Flood`、`I23_DoS-UDP_Flood`、`I23_Mirai-greip_flood`）。
+- 變異：`S_m42` × `full` 有一次 2.05 s（其他 1.12–1.13 s），CV 37%；其他組 CV ≤ 7%。
+
+| 切片 | `full` kpps | `gw_corp` kpps | RSS（`full`，MB） | 10/19 `full`（7.0.10） |
+|---|---|---|---|---|
+| `S_m17` | 32.0 | 32.8 | 1,356 | 33.0 |
+| `S_h5` | 136.1 | 138.2 | 1,356 | 123.3 |
+| `S_m3` | 32.6 | 34.0 | 1,356 | 32.5 |
+| `S_somfy02` | 45.0 | 56.2 | 1,356 | 41.3 |
+| `S_m36` | 17.6 | 18.1 | 1,356 | 18.1 |
+| `S_m48` | 69.6 | 75.0 | 1,356 | 67.1 |
+| `S_m39` | 14.9 | 15.1 | 1,387 | 15.5 |
+| `S_m60` | 183.0 | 186.0 | 1,356 | 175.6 |
+| `S_m44` | 33.0 | 37.5 | 1,356 | 33.4 |
+| `S_m1` | 59.6 | 62.6 | 1,356 | 58.7 |
+| `S_m34` | 36.3 | 39.4 | 1,356 | 35.7 |
+| `S_m20` | 104.7 | 109.0 | 1,356 | 102.2 |
+| `S_m42` | 21.7 | 23.8 | 1,356 | 20.6 |
+| `S_h4` | 37.9 | 41.1 | 1,356 | 37.1 |
+| `C17_Benign` | 15.5 | 16.9 | 1,356 | — |
+| `C17_DoS_Hulk` | 6.2 | 7.0 | 1,671 | — |
+| `C17_Portscan` | 26.1 | 28.0 | 1,356 | — |
+| `C17_FTP-Patator` | 18.2 | 19.4 | 1,356 | — |
+| `I23_Benign_Final` | 22.0 | 25.3 | 1,356 | — |
+| `I23_DDoS-ACK_Fragmentation` | 17.0 | 17.6 | 1,356 | — |
+| `I23_DDoS-HTTP_Flood` | 8.5 | 8.7 | 1,404 | — |
+| `I23_DDoS-ICMP_Flood` | 275.1 | 279.7 | 1,356 | — |
+| `I23_DDoS-ICMP_Fragmentation` | 47.6 | 51.2 | 1,356 | — |
+| `I23_DDoS-TCP_Flood` | 113.4 | 137.0 | 1,356 | — |
+| `I23_DoS-TCP_Flood` | 96.7 | 104.9 | 1,356 | — |
+| `I23_DDoS-SYN_Flood` | 18.9 | 19.8 | 1,384 | — |
+| `I23_DDoS-UDP_Flood` | 204.7 | 218.6 | 1,356 | — |
+| `I23_DoS-UDP_Flood` | 162.2 | 178.6 | 1,356 | — |
+| `I23_DDoS-UDP_Fragmentation` | 23.8 | 52.7 | 1,356 | — |
+| `I23_Mirai-udpplain` | 68.6 | 73.3 | 1,356 | — |
+| `I23_Mirai-greip_flood` | 35.1 | 39.6 | 1,356 | — |
+| `I23_MITM-ArpSpoofing` | 68.1 | 73.5 | 1,356 | — |
+| `I23_Recon-PortScan` | 23.2 | 25.3 | 1,356 | — |
+| `D12_Benign` | 16.0 | 17.3 | 1,356 | — |
+| `D12_DrDoS_DNS` | 43.0 | 49.5 | 1,356 | — |
+| `D12_DrDoS_MSSQL` | 52.0 | 57.6 | 1,356 | — |
+| `D12_DrDoS_SNMP` | 76.5 | 98.5 | 1,356 | — |
+| `D12_DrDoS_NTP` | 63.3 | 85.0 | 1,356 | — |
+| `D12_DrDoS_UDP` | 55.2 | 65.6 | 1,356 | — |
+| `D12_Syn` | 34.3 | 35.9 | 1,356 | — |
+| `D12_TFTP` | 34.7 | 37.4 | 1,356 | — |
+
 ## 在 Pi 上執行
 
 Pi 需要：bash、coreutils、python3（標準函式庫）、`/usr/bin/time`（Debian 套件 `time`）、`taskset`（util-linux）、`vcgencmd`、Suricata 7.0.10、Snort 3.12.2.0。不需要網路。
@@ -276,6 +382,11 @@ sudo systemctl disable --now suricata      # 系統的 Suricata 服務；實驗�
 | `RULE_CATEGORIES_corp.md` | `12` 產生的分類表：每個 category 的判斷、規則數、理由 |
 | `run_pi_main.sh` | 實驗 1 的 Pi 批次 |
 | `run_pi_scen2.sh` | 實驗 2 的 Pi 批次 |
+| `13_make_cic_slices.py` | 實驗 5：從指定時間（或檔案開頭）取 N 個 packet 的切片與 `.small`，同一個來源只讀一次（可讀 stdin） |
+| `14_slice_features.py` | 實驗 5：切片的流量特徵（同 `10` 的 `features()`）→ `results/cic_slice_features.tsv` |
+| `manifest_cic.json`、`manifest_scen3.json` | 實驗 5 的 CIC 切片 manifest；合併 IoT-23 `S_*`、`C_somfy02` 後給 `run_pi_scen3.sh` 用 |
+| `scen3_slices.txt` | 實驗 5 的 41 個切片 |
+| `run_pi_scen3.sh` | 實驗 5 的 Pi 批次 |
 | `run_pi_mem_scen.sh` | 實驗 4 的 Pi 批次（每個 memory 等級跑一次） |
 | `pi_set_total_mem.sh` | 在 Pi 上設定或移除 `total_mem`（需要 sudo，重開機生效；第一次會備份 `config.txt`） |
 | `pack.sh` | 把 Pi 要用的腳本、pcap、rule 檔打成 tar.gz + sha256 |
@@ -291,6 +402,9 @@ sudo systemctl disable --now suricata      # 系統的 Suricata 服務；實驗�
 | `pi/pi_{E,R1,R2a1,R2a2,R2b}.*` | 實驗 1 |
 | `pi/pi_scen2_*` | 實驗 2 |
 | `pi/pi_mem39_*` | 實驗 4 |
+| `pi/pi_scen3_*` | 實驗 5 |
+| `cic_slice_features.tsv` | 實驗 5 的 71 個候選切片的特徵與挑選（`selected`） |
+| `cic_slice_windows_{cicids2017,cicddos2019}.tsv` | 實驗 5 每種攻擊的時段（label start ts 的 0.5%／99.5% 分位） |
 | `pi/logs/` | 三個 Pi 批次的 driver log |
 
 每個 tag 有 `<tag>.csv`（每次量測一行）、`<tag>.env.json`（環境與參數）、`<tag>.summary.csv`（`summarize.py` 的彙總）。

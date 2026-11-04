@@ -1,0 +1,15 @@
+round=1 mode=none events=0 wall_s=2.90 suricata_cpu_s=2.890 machine_busy_s=2.905
+round=1 mode=regular events=99729 wall_s=13.23 suricata_cpu_s=13.216 machine_busy_s=13.243
+round=1 mode=unix events=99729 wall_s=12.36 suricata_cpu_s=12.348 machine_busy_s=17.937
+round=2 mode=none events=0 wall_s=2.91 suricata_cpu_s=2.898 machine_busy_s=2.885
+round=2 mode=regular events=99729 wall_s=13.24 suricata_cpu_s=13.225 machine_busy_s=13.252
+round=2 mode=unix events=99729 wall_s=12.32 suricata_cpu_s=12.307 machine_busy_s=18.739
+round=3 mode=none events=0 wall_s=2.85 suricata_cpu_s=2.842 machine_busy_s=2.833
+round=3 mode=regular events=99729 wall_s=13.23 suricata_cpu_s=13.217 machine_busy_s=13.248
+round=3 mode=unix events=99729 wall_s=12.27 suricata_cpu_s=12.261 machine_busy_s=17.879
+round=4 mode=regular events=99729 wall_s=13.22 suricata_cpu_s=13.206 machine_busy_s=13.233
+round=4 mode=unix events=99729 wall_s=12.40 suricata_cpu_s=12.388 machine_busy_s=18.572
+round=4 mode=none events=0 wall_s=2.92 suricata_cpu_s=2.907 machine_busy_s=2.913
+round=5 mode=regular events=99729 wall_s=13.18 suricata_cpu_s=13.168 machine_busy_s=13.193
+round=5 mode=unix events=99729 wall_s=12.37 suricata_cpu_s=12.358 machine_busy_s=18.242
+round=5 mode=none events=0 wall_s=2.89 suricata_cpu_s=2.879 machine_busy_s=2.863

@@ -1,0 +1,142 @@
+{
+ "conn_log": "/home/sixsquare/datasets/iot23/extracted/run1/opt/Malware-Project/BigDataset/IoTScenarios/CTU-IoT-Malware-Capture-39-1/bro/conn.log.labeled",
+ "eve": "/home/sixsquare/datasets/detection/iot23/39-1/eve.json",
+ "shards": 4,
+ "alerts": 14716875,
+ "alerts_gw": 14716849,
+ "alerts_gwip": 14716856,
+ "alert_match": {
+  "in_time": 14713392,
+  "by_flow_start": 3483,
+  "unmatched": 0,
+  "multi_conn": 0,
+  "non_tcp_udp_icmp": 0
+ },
+ "unmatched_by_sid": {},
+ "labels": {
+  "Malicious PartOfAHorizontalPortScan": {
+   "flows": 73559437,
+   "flows_alert_full": 14711802,
+   "flows_alert_gw": 14711802,
+   "flows_alert_gwip": 14711802,
+   "alerts": 14711802,
+   "sids": {
+    "2003068": 14711802
+   }
+  },
+  "Benign": {
+   "flows": 7337,
+   "flows_alert_full": 605,
+   "flows_alert_gw": 587,
+   "flows_alert_gwip": 591,
+   "alerts": 613,
+   "sids": {
+    "2003068": 587,
+    "2013504": 14,
+    "2400047": 3,
+    "2400029": 1,
+    "2400041": 1,
+    "2400032": 1,
+    "2400035": 1
+   }
+  },
+  "Malicious C&C": {
+   "flows": 1530,
+   "flows_alert_full": 1156,
+   "flows_alert_gw": 1156,
+   "flows_alert_gwip": 1156,
+   "alerts": 4339,
+   "sids": {
+    "2002024": 914,
+    "2002023": 876,
+    "2002025": 847,
+    "2002027": 847,
+    "2002028": 847
+   }
+  },
+  "Malicious Attack": {
+   "flows": 677,
+   "flows_alert_full": 121,
+   "flows_alert_gw": 121,
+   "flows_alert_gwip": 121,
+   "alerts": 121,
+   "sids": {
+    "2003068": 121
+   }
+  }
+ },
+ "sids": {
+  "2003068": {
+   "msg": "ET SCAN Potential SSH Scan OUTBOUND",
+   "alerts": 14712510,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2002024": {
+   "msg": "ET CHAT IRC NICK command",
+   "alerts": 914,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2002023": {
+   "msg": "ET CHAT IRC USER command",
+   "alerts": 876,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2002028": {
+   "msg": "ET CHAT IRC PONG response",
+   "alerts": 855,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2002027": {
+   "msg": "ET CHAT IRC PING command",
+   "alerts": 847,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2002025": {
+   "msg": "ET CHAT IRC JOIN command",
+   "alerts": 847,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2013504": {
+   "msg": "ET INFO GNU/Linux APT User-Agent Outbound likely related to package management",
+   "alerts": 19,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2400047": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 48",
+   "alerts": 3,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400032": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 33",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400029": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 30",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400041": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 42",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": true
+  },
+  "2400035": {
+   "msg": "ET DROP Spamhaus DROP Listed Traffic Inbound group 36",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": true
+  }
+ }
+}

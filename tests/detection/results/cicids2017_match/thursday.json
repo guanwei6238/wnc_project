@@ -1,0 +1,479 @@
+{
+ "conn_log": "/home/sixsquare/datasets/cicids2017/conn/thursday.conn.log.labeled",
+ "eve": "/home/sixsquare/datasets/detection/cicids2017/thursday/eve.json",
+ "shards": 1,
+ "alerts": 26430,
+ "alerts_gw": 25232,
+ "alerts_gwip": 25232,
+ "alert_match": {
+  "in_time": 26430,
+  "by_flow_start": 0,
+  "unmatched": 0,
+  "multi_conn": 0,
+  "non_tcp_udp_icmp": 0
+ },
+ "unmatched_by_sid": {},
+ "labels": {
+  "Benign": {
+   "flows": 287891,
+   "flows_alert_full": 768,
+   "flows_alert_gw": 290,
+   "flows_alert_gwip": 290,
+   "alerts": 1671,
+   "sids": {
+    "2027757": 158,
+    "2032987": 143,
+    "2027758": 87,
+    "2027863": 77,
+    "2067085": 53,
+    "2067086": 53,
+    "2067087": 53,
+    "2029340": 51,
+    "2027390": 34,
+    "2013504": 24,
+    "2016149": 21,
+    "2053892": 17,
+    "2063117": 15,
+    "2071571": 14,
+    "2053893": 9,
+    "2033078": 9,
+    "2025275": 6,
+    "2019401": 6,
+    "2033077": 6,
+    "2012647": 6,
+    "2050736": 5,
+    "2065070": 5,
+    "2063137": 4,
+    "2014169": 3,
+    "2053894": 3,
+    "2032986": 3,
+    "2016150": 3,
+    "2016360": 2,
+    "2047702": 2,
+    "2019512": 2,
+    "2047703": 2,
+    "2023638": 2,
+    "2100366": 2,
+    "2013659": 1,
+    "2014819": 1,
+    "2065081": 1,
+    "2035593": 1,
+    "2036300": 1
+   }
+  },
+  "Malicious Infiltration_-_Portscan": {
+   "flows": 71767,
+   "flows_alert_full": 111,
+   "flows_alert_gw": 105,
+   "flows_alert_gwip": 105,
+   "alerts": 123,
+   "sids": {
+    "2024364": 96,
+    "2067085": 6,
+    "2067086": 6,
+    "2067087": 6,
+    "2001581": 4,
+    "2010937": 1,
+    "2010939": 1,
+    "2010936": 1,
+    "2010935": 1,
+    "2002910": 1
+   }
+  },
+  "Attempted Web_Attack_-_Brute_Force": {
+   "flows": 1292,
+   "flows_alert_full": 0,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 0,
+   "sids": {}
+  },
+  "Attempted Web_Attack_-_XSS": {
+   "flows": 655,
+   "flows_alert_full": 0,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 0,
+   "sids": {}
+  },
+  "Malicious Web_Attack_-_Brute_Force": {
+   "flows": 73,
+   "flows_alert_full": 0,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 0,
+   "sids": {}
+  },
+  "Attempted Infiltration": {
+   "flows": 45,
+   "flows_alert_full": 0,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 0,
+   "sids": {}
+  },
+  "Malicious Infiltration": {
+   "flows": 36,
+   "flows_alert_full": 15,
+   "flows_alert_gw": 15,
+   "flows_alert_gwip": 15,
+   "alerts": 23736,
+   "sids": {
+    "2023207": 12,
+    "2034945": 5,
+    "2102123": 5,
+    "2023205": 3
+   }
+  },
+  "Malicious Web_Attack_-_XSS": {
+   "flows": 18,
+   "flows_alert_full": 18,
+   "flows_alert_gw": 18,
+   "flows_alert_gwip": 18,
+   "alerts": 891,
+   "sids": {
+    "2009714": 18
+   }
+  },
+  "Malicious Web_Attack_-_SQL_Injection": {
+   "flows": 13,
+   "flows_alert_full": 9,
+   "flows_alert_gw": 9,
+   "flows_alert_gwip": 9,
+   "alerts": 9,
+   "sids": {
+    "2016672": 3,
+    "2017808": 3,
+    "2010963": 3
+   }
+  },
+  "Attempted Web_Attack_-_SQL_Injection": {
+   "flows": 5,
+   "flows_alert_full": 0,
+   "flows_alert_gw": 0,
+   "flows_alert_gwip": 0,
+   "alerts": 0,
+   "sids": {}
+  }
+ },
+ "sids": {
+  "2023207": {
+   "msg": "ET MALWARE Windows Microsoft Windows DOS prompt command Error not recognized",
+   "alerts": 23723,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2009714": {
+   "msg": "ET WEB_SERVER Script tag in URI Possible Cross Site Scripting Attempt",
+   "alerts": 891,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2013504": {
+   "msg": "ET INFO GNU/Linux APT User-Agent Outbound likely related to package management",
+   "alerts": 339,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2027757": {
+   "msg": "ET DNS Query for .to TLD",
+   "alerts": 271,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2032987": {
+   "msg": "ET INFO HTTP Request to a *.tw domain",
+   "alerts": 233,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2027758": {
+   "msg": "ET DNS Query for .cc TLD",
+   "alerts": 151,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2027863": {
+   "msg": "ET INFO Observed DNS Query to .biz TLD",
+   "alerts": 144,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2024364": {
+   "msg": "ET SCAN Possible Nmap User-Agent Observed",
+   "alerts": 96,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2016149": {
+   "msg": "ET INFO Session Traversal Utilities for NAT (STUN Binding Request)",
+   "alerts": 94,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2067085": {
+   "msg": "ET INFO NTLM Session Setup Request - Negotiate",
+   "alerts": 59,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2067086": {
+   "msg": "ET INFO NTLMv1 Session Setup Response - Challenge",
+   "alerts": 59,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2067087": {
+   "msg": "ET INFO NTLM Session Setup Request - Auth",
+   "alerts": 59,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2027390": {
+   "msg": "ET USER_AGENTS Microsoft Device Metadata Retrieval Client User-Agent",
+   "alerts": 56,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2029340": {
+   "msg": "ET INFO TLS Handshake Failure",
+   "alerts": 51,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2071571": {
+   "msg": "ET INFO Observed Telegram Domain in DNS Lookup (telegram .me)",
+   "alerts": 25,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2063117": {
+   "msg": "ET INFO Abused Hosting Domain in DNS Lookup (azurewebsites .net)",
+   "alerts": 24,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2053892": {
+   "msg": "ET INFO Suspicious Domain (polyfill .io) in DNS Lookup",
+   "alerts": 17,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2033077": {
+   "msg": "ET INFO Session Traversal Utilities for NAT (STUN Binding Request On Non-Standard Low Port)",
+   "alerts": 12,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2053893": {
+   "msg": "ET INFO Suspicious Domain (polyfill .io) in TLS SNI",
+   "alerts": 9,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2033078": {
+   "msg": "ET INFO Session Traversal Utilities for NAT (STUN Binding Request On Non-Standard High Port)",
+   "alerts": 9,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2050736": {
+   "msg": "ET INFO Tencent Cloud Storage Domain in DNS Lookup (myqcloud .com)",
+   "alerts": 8,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2065070": {
+   "msg": "ET INFO Observed RMM Domain in DNS Lookup (pubnub .com)",
+   "alerts": 7,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2025275": {
+   "msg": "ET INFO Windows OS Submitting USB Metadata to Microsoft",
+   "alerts": 6,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2019401": {
+   "msg": "ET INFO Vulnerable Java Version 1.8.x Detected",
+   "alerts": 6,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2063137": {
+   "msg": "ET INFO Anonymous File Sharing Service Domain in DNS Lookup (filemail .com)",
+   "alerts": 6,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2012647": {
+   "msg": "ET INFO Dropbox.com Offsite File Backup in Use",
+   "alerts": 6,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2014169": {
+   "msg": "ET DNS Query for .su TLD (Soviet Union) Often Malware Related",
+   "alerts": 5,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2053894": {
+   "msg": "ET INFO Pastebin-like Service Domain in DNS Lookup (jsfiddle .net)",
+   "alerts": 5,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2100366": {
+   "msg": "GPL ICMP PING *NIX",
+   "alerts": 5,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2034945": {
+   "msg": "ET MALWARE Win32/Suspected Reverse Shell Connection",
+   "alerts": 5,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2102123": {
+   "msg": "GPL EXPLOIT Microsoft cmd.exe banner",
+   "alerts": 5,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2016150": {
+   "msg": "ET INFO Session Traversal Utilities for NAT (STUN Binding Response)",
+   "alerts": 4,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2001581": {
+   "msg": "ET SCAN Behavioral Unusual Port 135 traffic Potential Scan or Infection",
+   "alerts": 4,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2016672": {
+   "msg": "ET WEB_SERVER SQL Errors in HTTP 200 Response (error in your SQL syntax)",
+   "alerts": 3,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2017808": {
+   "msg": "ET WEB_SERVER Possible MySQL SQLi Attempt Information Schema Access",
+   "alerts": 3,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2010963": {
+   "msg": "ET WEB_SERVER SELECT USER SQL Injection Attempt in URI",
+   "alerts": 3,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2032986": {
+   "msg": "ET INFO HTTP Request to a *.asia domain",
+   "alerts": 3,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2047702": {
+   "msg": "ET INFO External IP Lookup Domain (ipify .org) in DNS Lookup",
+   "alerts": 3,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2023205": {
+   "msg": "ET MALWARE Windows dir Microsoft Windows DOS prompt command exit OUTBOUND",
+   "alerts": 3,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2016360": {
+   "msg": "ET INFO JAVA - ClassID",
+   "alerts": 2,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2047703": {
+   "msg": "ET INFO External IP Address Lookup Domain (ipify .org) in TLS SNI",
+   "alerts": 2,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2019512": {
+   "msg": "ET INFO Possible IP Check api.ipify.org",
+   "alerts": 2,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2023638": {
+   "msg": "ET PHISHING Possible Phishing Redirect Dec 13 2016",
+   "alerts": 2,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2013659": {
+   "msg": "ET INFO Self Signed SSL Certificate (SomeOrganizationalUnit)",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2014819": {
+   "msg": "ET INFO Packed Executable Download",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2010937": {
+   "msg": "ET SCAN Suspicious inbound to mySQL port 3306",
+   "alerts": 1,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2010939": {
+   "msg": "ET SCAN Suspicious inbound to PostgreSQL port 5432",
+   "alerts": 1,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2010936": {
+   "msg": "ET SCAN Suspicious inbound to Oracle SQL port 1521",
+   "alerts": 1,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2010935": {
+   "msg": "ET SCAN Suspicious inbound to MSSQL port 1433",
+   "alerts": 1,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2002910": {
+   "msg": "ET SCAN Potential VNC Scan 5800-5820",
+   "alerts": 1,
+   "gw_corp": true,
+   "iplist": false
+  },
+  "2065081": {
+   "msg": "ET INFO Observed RMM Domain in TLS SNI (pubnub .com)",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2035593": {
+   "msg": "ET INFO DropBox User Content Domain (dl .dropboxusercontent .com in TLS SNI)",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": false
+  },
+  "2036300": {
+   "msg": "ET HUNTING [TW] Likely Javascript-Obfuscator Usage Observed M1",
+   "alerts": 1,
+   "gw_corp": false,
+   "iplist": false
+  }
+ }
+}

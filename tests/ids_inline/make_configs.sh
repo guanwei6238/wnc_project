@@ -6,7 +6,7 @@
 #     capture.checksum-validation none（等同 offline 的 -k none）
 #     exception-policy ignore（IPS 模式的 auto 等於 drop-flow，會丟掉 midstream 的 flow；offline 是 IDS 模式，auto 等於 ignore）
 #     rule-files：full、gw_corp 用 offline 的同一份檔案；empty 用一條不會命中的 rule（doctor 不讓 0 條 rule 啟動）
-#   wnc-gw 設定：bridge 模式、when_unavailable = "drop"（跟不上時丟掉，不放行，丟失才算得出來）
+#   wnc-gw 設定：bridge 模式、protection = "ips"（NFQ；預設的 ids 是 NFLOG）、when_unavailable = "drop"（跟不上時丟掉，不放行，丟失才算得出來）
 # 用法: sh make_configs.sh   之後用 suricata --dump-config 和系統設定 diff，確認只差上面幾項
 M=${M:-/tmp/wncgw/m}
 RULES=${RULES:-/home/wnc/ids_throughput/data/rules}
@@ -21,7 +21,7 @@ for rs in empty full gw_corp; do
       -e "s|^exception-policy: auto|exception-policy: ignore|" \
       -e "s|^default-rule-path: .*|default-rule-path: $RULES|" -e "s|^  - suricata.rules\$|  - $rf|" \
       /etc/suricata/suricata.yaml > $M/suricata-$rs.yaml
-  printf 'mode = "bridge"\nxdp = "off"\n\n[ports]\nlan = "g-lan"\nwan = "g-wan"\n\n[suricata]\nconfig = "%s"\nwhen_unavailable = "drop"\n' \
+  printf 'mode = "bridge"\nxdp = "off"\nprotection = "ips"\n\n[ports]\nlan = "g-lan"\nwan = "g-wan"\n\n[suricata]\nconfig = "%s"\nwhen_unavailable = "drop"\n' \
     "$M/suricata-$rs.yaml" > $M/setting-$rs.toml
   for n in 2 3 4; do  # 多個 queue：setting-<rules>-qN.toml
     { cat $M/setting-$rs.toml; printf 'queue = "0-%d"\n' $((n - 1)); } > $M/setting-$rs-q$n.toml

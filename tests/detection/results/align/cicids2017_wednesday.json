@@ -1,0 +1,110 @@
+{
+ "pcap": "wednesday.pcap",
+ "log": "wednesday.conn.log.labeled",
+ "pcap_bytes": 13181414837,
+ "pcap_packets": 13788878,
+ "pcap_ip_packets": 13732433,
+ "pcap_truncated_tail": false,
+ "pcap_linktype": 1,
+ "pcap_covered_packets": 13704924,
+ "pcap_time_range": [
+  1499254962.084372,
+  1499285419.780725
+ ],
+ "log_time_range": [
+  1499254962.084372,
+  1499285414.560806
+ ],
+ "flows": 496323,
+ "aligned": 496323,
+ "unaligned": 0,
+ "skipped_flows_other_proto": {
+  "other": 318
+ },
+ "malformed_log_lines": 0,
+ "unaligned_kinds": {},
+ "unaligned_examples": [],
+ "shards": 1,
+ "labels": {
+  "Attempted DoS_GoldenEye": {
+   "state -": 80,
+   "flows": 80,
+   "aligned": 80,
+   "pkts": 170,
+   "payload_pkts": 0,
+   "flows_with_payload": 0
+  },
+  "Attempted DoS_Hulk": {
+   "state -": 581,
+   "flows": 581,
+   "aligned": 581,
+   "pkts": 2728,
+   "payload_pkts": 22,
+   "flows_with_payload": 4
+  },
+  "Attempted DoS_Slowhttptest": {
+   "state -": 3368,
+   "flows": 3368,
+   "aligned": 3368,
+   "pkts": 21894,
+   "payload_pkts": 706,
+   "flows_with_payload": 560
+  },
+  "Attempted DoS_Slowloris": {
+   "state -": 1847,
+   "flows": 1847,
+   "aligned": 1847,
+   "pkts": 6557,
+   "payload_pkts": 397,
+   "flows_with_payload": 212
+  },
+  "Benign": {
+   "state -": 318802,
+   "flows": 318802,
+   "aligned": 318802,
+   "pkts": 11216343,
+   "payload_pkts": 5586587,
+   "flows_with_payload": 102993
+  },
+  "Malicious DoS_GoldenEye": {
+   "state -": 7567,
+   "flows": 7567,
+   "aligned": 7567,
+   "pkts": 105874,
+   "payload_pkts": 26945,
+   "flows_with_payload": 7567
+  },
+  "Malicious DoS_Hulk": {
+   "state -": 158468,
+   "flows": 158468,
+   "aligned": 158468,
+   "pkts": 2243308,
+   "payload_pkts": 792308,
+   "flows_with_payload": 158468
+  },
+  "Malicious DoS_Slowhttptest": {
+   "state -": 1740,
+   "flows": 1740,
+   "aligned": 1740,
+   "pkts": 17745,
+   "payload_pkts": 7168,
+   "flows_with_payload": 1740
+  },
+  "Malicious DoS_Slowloris": {
+   "state -": 3859,
+   "flows": 3859,
+   "aligned": 3859,
+   "pkts": 41009,
+   "payload_pkts": 23684,
+   "flows_with_payload": 3859
+  },
+  "Malicious Heartbleed": {
+   "state -": 11,
+   "flows": 11,
+   "aligned": 11,
+   "pkts": 49296,
+   "payload_pkts": 20921,
+   "flows_with_payload": 11
+  }
+ }
+}

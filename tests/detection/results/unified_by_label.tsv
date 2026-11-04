@@ -1,0 +1,99 @@
+dataset	label	flows	alert_full	alert_gw	related	related_hi	exact	judgement	rule_short
+iot23	Malicious PartOfAHorizontalPortScan	213852924	14757108	14757091	14757091	14757091	yes	✓	SSH scan
+iot23	Benign	30858735	2834	2474	0	0	yes		
+iot23	Malicious C&C	21995	4165	4162	1238	1238	yes	✓	C&C checkin（Mirai、Muhstik）
+iot23	Malicious Okiru	60990708	34	0	0	0	yes	△	
+iot23	Malicious DDoS	19538713	0	0	0	0	yes	✗	
+iot23	Malicious C&C-HeartBeat	33673	0	0	0	0	yes	✗	
+iot23	Malicious PartOfAHorizontalPortScan-Attack	5	0	0	0	0	yes	✗	
+iot23	Malicious Attack	9398	1389	1386	0	0	yes	△	
+iot23	Malicious C&C-Torii	30	0	0	0	0	yes	✗	
+iot23	Malicious C&C-FileDownload	53	50	50	50	50	yes	✓	ELF 下載
+iot23	Malicious Okiru-Attack	3	0	0	0	0	yes	✗	
+iot23	Malicious FileDownload	18	16	16	16	16	yes	✓	ELF 下載
+iot23	Malicious C&C-PartOfAHorizontalPortScan	888	0	0	0	0	yes	✗	
+iot23	Malicious C&C-HeartBeat-Attack	834	0	0	0	0	yes	✗	
+iot23	Malicious C&C-HeartBeat-FileDownload	11	11	11	11	11	yes	✓	ELF 下載
+iot23	Malicious C&C-Mirai	2	0	0	0	0	yes	✗	
+iot23	benign	1956	3	0	0	0	yes		
+cicids2017	Benign	1581058	10293	7420	0	0	yes		
+cicids2017	Malicious FTP-Patator	3972	1553	1553	1553	1553	yes	✓	FTP brute force
+cicids2017	Malicious SSH-Patator	2961	31	31	0	0	yes	△	
+cicids2017	Attempted SSH-Patator	27	0	0	0	0	yes	✗	
+cicids2017	Attempted FTP-Patator	12	0	0	0	0	yes	✗	
+cicids2017	Malicious DoS_Hulk	158468	0	0	0	0	yes	✗	
+cicids2017	Malicious DoS_GoldenEye	7567	0	0	0	0	yes	✗	
+cicids2017	Malicious DoS_Slowloris	3859	0	0	0	0	yes	✗	
+cicids2017	Attempted DoS_Slowhttptest	3368	0	0	0	0	yes	✗	
+cicids2017	Attempted DoS_Slowloris	1847	0	0	0	0	yes	✗	
+cicids2017	Malicious DoS_Slowhttptest	1740	4	4	4	4	yes	✓	DoS tool
+cicids2017	Attempted DoS_Hulk	581	0	0	0	0	yes	✗	
+cicids2017	Attempted DoS_GoldenEye	80	0	0	0	0	yes	✗	
+cicids2017	Malicious Heartbleed	11	1	1	1	1	yes	✓	Heartbleed
+cicids2017	Malicious Infiltration_-_Portscan	71767	111	105	105	105	yes	✓	Nmap UA、SCAN
+cicids2017	Attempted Web_Attack_-_Brute_Force	1292	0	0	0	0	yes	✗	
+cicids2017	Attempted Web_Attack_-_XSS	655	0	0	0	0	yes	✗	
+cicids2017	Malicious Web_Attack_-_Brute_Force	73	0	0	0	0	yes	✗	
+cicids2017	Attempted Infiltration	45	0	0	0	0	yes	✗	
+cicids2017	Malicious Infiltration	36	15	15	15	15	yes	✓	cmd.exe、reverse shell
+cicids2017	Malicious Web_Attack_-_XSS	18	18	18	18	18	yes	✓	XSS
+cicids2017	Malicious Web_Attack_-_SQL_Injection	13	9	9	9	9	yes	✓	SQLi
+cicids2017	Attempted Web_Attack_-_SQL_Injection	5	0	0	0	0	yes	✗	
+cicids2017	Malicious Portscan	159064	185	185	175	175	yes	✓	SCAN（資料庫 port 等）
+cicids2017	Malicious DDoS	95144	20	20	20	20	yes	✓	DDoS tool
+cicids2017	Attempted Botnet	4067	0	0	0	0	yes	✗	
+cicids2017	Malicious Botnet	736	0	0	0	0	yes	✗	
+cicddos2019	Malicious MSSQL (0311)	5787453	12	12	7	7	yes	✓	MC-SQLR
+cicddos2019	Malicious Syn (0311)	4413105	227	227	0	0	yes	△	
+cicddos2019	Malicious UDP (0311)	3867155	3	3	0	0	yes	△	
+cicddos2019	Malicious NetBIOS (0311)	3657497	7	6	0	0	yes	△	
+cicddos2019	Malicious LDAP (0311)	1915122	2	2	0	0	yes	△	
+cicddos2019	Malicious Portmap (0311)	186960	18	18	0	0	yes	△	
+cicddos2019	Benign	109424	333	315	0	0	yes		
+cicddos2019	Malicious UDPLag (0311)	1873	6	6	0	0	yes	△	
+cicddos2019	Malicious TFTP (0112)	20082580	422	144	0	0	yes	△	
+cicddos2019	Malicious DrDoS_SNMP (0112)	5159870	210	118	0	0	yes	△	
+cicddos2019	Malicious DrDoS_DNS (0112)	5071011	162	19	0	0	yes	△	
+cicddos2019	Malicious DrDoS_MSSQL (0112)	4522492	40	7	0	0	yes	△	
+cicddos2019	Malicious DrDoS_NetBIOS (0112)	4093279	35	20	0	0	yes	△	
+cicddos2019	Malicious DrDoS_UDP (0112)	3134645	51	14	0	0	yes	△	
+cicddos2019	Malicious DrDoS_SSDP (0112)	2610611	30	7	0	0	yes	△	
+cicddos2019	Malicious DrDoS_LDAP (0112)	2179930	72	6	0	0	yes	△	
+cicddos2019	Malicious Syn (0112)	1582289	47	44	0	0	yes	△	
+cicddos2019	Malicious DrDoS_NTP (0112)	1202642	190	64	3	3	yes	✓	NTP MON_LIST
+cicddos2019	Malicious UDP-lag (0112)	366461	42	29	0	0	yes	△	
+cicddos2019	Malicious WebDDoS (0112)	439	2	0	0	0	yes	△	
+ciciot2023	Backdoor_Malware	2642	51	35	4	4	yes	✓	/etc/passwd、id 輸出
+ciciot2023	Benign	345984	5157	3676	0	0	yes		
+ciciot2023	BrowserHijacking	2951	65	48	16	16	yes	✓	BeEF
+ciciot2023	CommandInjection	3971	81	41	3	3	yes	✓	/etc/passwd
+ciciot2023	DDoS-ACK_Fragmentation	12352973	1185	825	0	0	yes	△	
+ciciot2023	DDoS-HTTP_Flood	485178	655	219	0	0	yes	△	
+ciciot2023	DDoS-ICMP_Flood	191557	2651	1521	0	0	yes	△	
+ciciot2023	DDoS-ICMP_Fragmentation	295597	2162	1590	0	0	yes	△	
+ciciot2023	DDoS-PSHACK_Flood	174961789	1281	809	0	0	yes	△	
+ciciot2023	DDoS-RSTFINFlood	145717527	1206	840	0	0	yes	△	
+ciciot2023	DDoS-SYN_Flood	226826621	1608	1170	0	0	yes	△	
+ciciot2023	DDoS-SlowLoris	117526	462	321	0	0	yes	△	
+ciciot2023	DDoS-SynonymousIP_Flood	4244549	1066	723	0	0	yes	△	
+ciciot2023	DDoS-TCP_Flood	180198984	1787	1235	0	0	yes	△	
+ciciot2023	DDoS-UDP_Flood	806191	2081	1469	0	0	yes	△	
+ciciot2023	DDoS-UDP_Fragmentation	144197	1557	1110	0	0	yes	△	
+ciciot2023	DNS_Spoofing	86708	1017	614	0	0	yes	△	
+ciciot2023	DictionaryBruteForce	7313	248	202	5	5	yes	✓	LibSSH brute force
+ciciot2023	DoS-HTTP_Flood	1330537	838	316	0	0	yes	△	
+ciciot2023	DoS-SYN_Flood	6129611	1677	1013	0	0	yes	△	
+ciciot2023	DoS-TCP_Flood	4702676	1605	1130	0	0	yes	△	
+ciciot2023	DoS-UDP_Flood	2036123	2395	1517	0	0	yes	△	
+ciciot2023	MITM-ArpSpoofing	74018	941	605	0	0	yes	△	
+ciciot2023	Mirai-greeth_flood	96839251	2246	1165	0	0	yes	△	
+ciciot2023	Mirai-greip_flood	72340258	1336	221	0	0	yes	△	
+ciciot2023	Mirai-udpplain	135664	1353	800	0	0	yes	△	
+ciciot2023	Recon-HostDiscovery	673022	1472	1175	399	399	yes	✓	SCAN（資料庫 port 等）
+ciciot2023	Recon-OSScan	190789	1124	984	614	614	yes	✓	Nmap OS 偵測、SCAN
+ciciot2023	Recon-PingSweep	1829	11	6	0	0	yes	△	
+ciciot2023	Recon-PortScan	218276	1103	979	638	638	yes	✓	SCAN（資料庫 port 等）
+ciciot2023	SqlInjection	5736	133	118	88	88	yes	✓	SQLi、Sqlmap
+ciciot2023	Uploading_Attack	1339	16	9	2	2	yes	✓	/etc/passwd
+ciciot2023	VulnerabilityScan	394740	3123	2142	196	196	yes	✓	Nmap NSE、SCAN
+ciciot2023	XSS	3430	64	43	2	2	yes	✓	XSS
