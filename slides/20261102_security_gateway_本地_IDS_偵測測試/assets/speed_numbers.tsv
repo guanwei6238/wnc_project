@@ -1,0 +1,42 @@
+slice	name	traffic	full_kpps	gw_corp_kpps	full_time_s	gw_corp_time_s	full_rss_mb	full_kpps_7010
+S_m17	17-1 (Kenjiro)	SYN scan 8081/80	32.0	32.8	6.251	6.095	1355.8	33.0
+S_m36	36-1 (Okiru)	SYN probe 37215	17.6	18.1	11.36	11.05	1355.8	18.1
+S_m48	48-1 (Mirai)	SYN scan 23	69.6	75.0	2.875	2.667	1355.8	67.1
+S_m39	39-1 (IRCBot)	SYN scan 22	14.9	15.1	13.46	13.251	1386.8	15.5
+S_m3	3-1 (Muhstik)	SSH scan + IRC	32.6	34.0	6.138	5.878	1355.7	32.5
+S_m1	1-1 (Hide and Seek)	multi-port + UDP	59.6	62.6	3.357	3.195	1355.8	58.7
+S_m34	34-1 (Mirai)	TCP/UDP mixed	36.3	39.4	5.512	5.074	1355.8	35.7
+S_m60	60-1 (Gafgyt)	UDP flood, small	183.0	186.0	1.093	1.075	1355.7	175.6
+S_m44	44-1 (Mirai)	UDP flood, large	33.0	37.5	6.068	5.334	1355.9	33.4
+S_h5	Honeypot-5-1 (Amazon Echo)	TLS download	136.1	138.2	1.469	1.447	1355.8	123.3
+S_somfy02	Honeypot-7-1 (door lock)	benign	45.0	56.2	2.659	2.128	1355.7	41.3
+S_m20	20-1 (Torii)	C2 443	104.7	109.0	0.479	0.46	1355.8	102.2
+S_m42	42-1 (Trojan)	file download	21.7	23.8	1.129	1.027	1355.8	20.6
+S_h4	Honeypot-4-1 (Philips HUE)	benign	37.9	41.1	0.572	0.527	1355.8	37.1
+C17_Benign	CIC-IDS2017 Benign	benign	15.5	16.9	12.863	11.81	1355.8	
+C17_DoS_Hulk	CIC-IDS2017 DoS Hulk	HTTP flood	6.2	7.0	32.435	28.776	1671.3	
+C17_Portscan	CIC-IDS2017 Portscan	SYN scan	26.1	28.0	7.671	7.135	1355.8	
+C17_FTP-Patator	CIC-IDS2017 FTP-Patator	large-packet transfer	18.2	19.4	11.014	10.297	1355.8	
+D12_Benign	CIC-DDoS2019 Benign	benign	16.0	17.3	12.525	11.549	1355.8	
+D12_DrDoS_DNS	CIC-DDoS2019 DrDoS_DNS	UDP reflection, large	43.0	49.5	4.648	4.04	1355.8	
+D12_DrDoS_MSSQL	CIC-DDoS2019 DrDoS_MSSQL	UDP reflection, medium	52.0	57.6	3.843	3.47	1355.8	
+D12_DrDoS_SNMP	CIC-DDoS2019 DrDoS_SNMP	UDP reflection, small	76.5	98.5	2.615	2.03	1355.9	
+D12_DrDoS_NTP	CIC-DDoS2019 DrDoS_NTP	UDP reflection, few ports	63.3	85.0	3.16	2.354	1355.8	
+D12_DrDoS_UDP	CIC-DDoS2019 DrDoS_UDP	UDP flood	55.2	65.6	3.626	3.049	1355.8	
+D12_Syn	CIC-DDoS2019 Syn	SYN flood	34.3	35.9	5.831	5.576	1355.8	
+D12_TFTP	CIC-DDoS2019 TFTP	SYN + UDP mixed	34.7	37.4	5.764	5.349	1355.8	
+I23_Benign_Final	Benign	benign	22.0	25.3	9.099	7.898	1355.8	
+I23_MITM-ArpSpoofing	MITM-ArpSpoofing	large TCP transfer	68.1	73.5	2.935	2.72	1355.8	
+I23_Recon-PortScan	Recon-PortScan	scan	23.2	25.3	8.631	7.901	1355.8	
+I23_DDoS-HTTP_Flood	DDoS-HTTP_Flood	HTTP flood	8.5	8.7	23.538	23.003	1403.7	
+I23_DDoS-SYN_Flood	DDoS-SYN_Flood	SYN flood	18.9	19.8	10.568	10.118	1384.2	
+I23_DDoS-TCP_Flood	DDoS-TCP_Flood	TCP flood, 1 port	113.4	137.0	1.763	1.46	1355.8	
+I23_DoS-TCP_Flood	DoS-TCP_Flood	TCP flood, many ports	96.7	104.9	2.069	1.906	1355.9	
+I23_DDoS-UDP_Flood	DDoS-UDP_Flood	UDP flood, many ports	204.7	218.6	0.977	0.915	1355.8	
+I23_DoS-UDP_Flood	DoS-UDP_Flood	UDP flood, 1 port	162.2	178.6	1.233	1.12	1355.8	
+I23_Mirai-udpplain	Mirai-udpplain	UDP flood, medium	68.6	73.3	2.915	2.73	1355.8	
+I23_DDoS-ICMP_Flood	DDoS-ICMP_Flood	ICMP flood	275.1	279.7	0.727	0.715	1355.8	
+I23_Mirai-greip_flood	Mirai-greip_flood	GRE flood	35.1	39.6	5.696	5.052	1355.8	
+I23_DDoS-ACK_Fragmentation	DDoS-ACK_Fragmentation	TCP fragments, large	17.0	17.6	11.764	11.345	1355.8	
+I23_DDoS-UDP_Fragmentation	DDoS-UDP_Fragmentation	UDP fragments, large	23.8	52.7	8.406	3.792	1355.9	
+I23_DDoS-ICMP_Fragmentation	DDoS-ICMP_Fragmentation	ICMP fragments, large	47.6	51.2	4.206	3.908	1355.8	
