@@ -307,7 +307,7 @@ wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 std
 
 ### O17. 信任狀態放在哪裡、怎麼寫進 kernel（N5）
 
-背景：階段 1 要讓已信任的 flow 不再進 Suricata（SYNTHESIS §4.2–4.4）。成本已量過：ctnetlink 改 mark 每筆約 13 µs、`conntrack -U` 每筆讀整張表不能用（專案記憶 `pi-ctmark-cost-20261025`）；spawn nft 一次約 7.7 ms（`pi-nft-write-cost-20261025`）。
+背景：階段 1 要讓已信任的 flow 不再進 Suricata（SYNTHESIS §4.2–4.4）。成本已量過：ctnetlink 改 mark 每筆約 13 µs、`conntrack -U` 每筆讀整張表不能用（下面 3c-1、`security_gateway/DECISIONS.md` §7）；spawn nft 一次約 7.7 ms（O4）。
 
 | | (a) ct mark，用 ctnetlink 寫入 | (b) nft set，key 是五元組，元素帶 TTL |
 |---|---|---|
@@ -533,3 +533,30 @@ wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 std
 | (d) ips 下取消信任時，等下一個 server→client 的封包才開始送 | 第一個 request 也抓得到（實驗 3 E1 ii、iii） | [推測] 還沒在真的連線測過；要多一條 nft 規則 |
 
 - 只在 Docker 用 10 秒測過，Pi 上沒量。
+
+### O22. 3d：wnc-gw 怎麼拿到 Suricata 的 alert（2026-11-04）
+
+背景：3d 要做到「有 alert 的連線不信任、已信任的撤銷」（O18 已決定有 alert 的連線不信任）。2026-11-04 開發者決定 11/09 的報告以「3d 最小版」為目標：1 讀 EVE 的 alert → 2 定期讀 conntrack 計數建觀察表 → 3 自動信任加 TTL、alert 撤銷 → 4 Pi 驗證與 demo。
+
+**[已決定] 2026-11-04：**
+- 觀察期間的封包數和 bytes 用 conntrack 計數（`nf_conntrack_acct`，每個封包多 0.1–1.3 µs，`tests/cpu_alloc` 實驗 3）；EVE 只拿來讀 alert。EVE 的 flow 事件要等連線結束或逾時才輸出，長連線等不到。
+- alert 從 suricata.yaml 裡設定的 eve-log 檔讀（enabled、filetype regular、types 有 alert）。不強制 Suricata 另外輸出：`--include` 會蓋掉整個 `outputs` 清單，`--set` 指定清單位置又很脆弱。不用 unix_stream：live 模式讀取端跟不上時事件被默默丟掉，執行中也沒有計數（`tests/eve_output/README.md`）。
+- 只讀檔案新增的部分，每 `[suricata] eve_interval` 秒（預設 0.5、範圍 0.05–10，可以有小數）讀一次；原本是 `eve_interval_ms`，2026-11-04 開發者要求和其他時間設定一樣用秒（「統一改秒好了，這樣比較直觀」）。開發者：「放在 setting 更有彈性，先定 0.5 秒，使用者可以依效能調整或用 inotify」；原本也做了 `eve_watch = "inotify"`，Pi 量測後刪掉（下面 Pi 那行；開發者 2026-11-04：「poll 是最佳解，沒理由用 inotify」），連帶拿掉唯一的 `unsafe`（`kernel/inotify.rs`）。
+- wnc-gw 的 log 只放重要資訊和出事時能定位的資訊：每筆 alert 是 DEBUG（加 `--log-level debug` 才印），每 60 秒有 alert 時記一行 INFO 摘要；講到連線的 log 帶五元組和 Suricata 的 `flow_id`，可以回 eve.json 找完整紀錄。
+
+**實作（步驟 1，2026-11-04）**：`ids/eve.rs`（EveFile、parse_alert、EveInterval）、`monitor/alerts.rs`（AlertMonitor、AlertWatch）、`ids/suricata.rs` 的 `alert_file()`；`run` 在 Suricata 第一次就緒時才開始讀（之前不會有 alert，也避免檔案還沒建立時記 WARN），停止時讀完最後一段並記摘要；doctor 的 Suricata 設定表多一列 eve-log，沒有寫 alert 的輸出時給 warning；CLI 加 `--log-level`。
+- Docker 驗證（`tests/ids_inline/protection_docker.sh alerts`，刪掉 inotify 前後都跑過）：fast.log 的 5 筆 alert 和 wnc-gw 的 DEBUG 筆數相同；`mv eve.json` 後對 Suricata 送 SIGHUP（輪替）、`: > eve.json`（截斷）都接著讀，各記一行 INFO；停止時 `suricata raised alerts alerts=5 connections=4`。
+- 檔案被移走時：Suricata 重開檔案之前仍寫在舊檔（改了名的那個），所以 wnc-gw 繼續讀手上的舊檔，等新檔出現才讀完舊檔、切到新檔。
+- Pi（2026-11-04，鎖 1000 MHz，`autotrust_cost_pi.sh eve|latency`）：wnc-gw 讀 EVE，poll 每筆 alert 16 µs、沒有 alert 時 0.37 ms／秒；inotify 每筆 51 µs、0.20 ms／秒。inotify 貴是因為監看整個目錄，eve.json 和 fast.log 交替寫入時 kernel 合併不起來，每次寫入都叫醒（每秒 1000 筆時被叫醒 1966 次）。延遲：poll 0–500 ms；inotify 在 alert 稀疏時中位數 2.5 ms，每秒 10 筆時和 poll 一樣受 500 ms 間隔限制。因此刪掉 inotify（程式留在 `~/datasets/throughput/func_20261104/worktree_with_inotify.diff`）。
+
+**步驟 2、3（2026-11-04，開發者：「先完成 3d 的四個步驟，我再一起看」，所以下面的數值都是 [建議]，待開發者確認）**：
+- 設定 `[trust]`：`auto`（預設 false）、`min_packets`（10）、`min_age`（5 秒）、`ttl`（900 秒）、`check_interval`（5 秒），都有上下限。Suricata 在檢查的期間，兩個方向都有 `min_packets` 個封包、觀察滿 `min_age`、沒有 alert 就信任；只信任 TCP（已建立）和 UDP；有 alert 不信任或立刻撤銷；TTL 到期回到檢查，再觀察一次才會再信任；Suricata 停止時觀察重來。
+- forward chain 多一條 `ct mark & 0x40000000 == 0 ct mark set ct mark | 0x40000000`（連線第一次經過時設 forwarded 位元，只寫一次），wnc-gw 用 ctnetlink 依這個位元列連線，gateway 自己的連線不算進來。ct mark 的位元：`0x80000000` 信任、`0x40000000` 經過 forward，其他位元留給別的程式。
+- `src/agent/`：`TrustAgent`（狀態機）、`Privd` trait（`forwarded_connections`、`trust`、`untrust`）和同一個 process 的 `LocalPrivd`；`kernel/conntrack.rs` 多讀 `CTA_COUNTERS_ORIG／REPLY`。
+- doctor：開著時一律 warning；`nf_conntrack_acct` 不是 1、讀不到 alert 時是 error；ips 模式下 `ttl` 不比 Suricata 的 `flow-timeouts.tcp.established` 長時 warning（O21）。wnc-gw 執行中發現連線沒有計數時記一次 WARN。
+- Docker 驗證（`protection_docker.sh autotrust`）：乾淨的長連線約 3 秒信任、ids chain 計數停住、TTL 到期後再信任、結束時 FIN 的 alert 撤銷；**ids 模式下帶攻擊標記的連線先被信任、結束時才撤銷，ips 一開始就不信任**。[推測] ids 的 raw stream 比對要等重組累積到 `toserver-chunk-size`（2560 bytes）或連線結束，所以低流量連線的 alert 比 `min_age` 晚。待決的做法：ids 時要求送往 server 的資料超過 chunk 才信任、調小 chunk、加大 `min_age`。
+- Pi 驗證（2026-11-04）：`protection_pi.sh autotrust` 和 Docker 相同（含 ids 的 alert 晚到）；routed 模式（veth）也正常；demo 全流程（`tests/demo/README.md`）。
+- Pi 成本（`autotrust_cost_pi.sh saving|check`）：8 條 TCP、4,000 封包／秒，Suricata 100.5 → 13.6 ms／秒、wnc-gw 0.5 → 1.9 ms／秒，每個封包省 21 µs。每次讀 conntrack 固定約 7 ms（kernel 掃全機共用的 65,536 個 bucket）＋每條經過 gateway 的連線 9.4 µs；讀表是同步的，期間事件迴圈停住（1 萬條約 0.1 秒）。
+
+**待決**：自動信任的預設值（上面的 [建議]）、ids 模式 alert 晚到的處理；讀 conntrack 要不要移出事件迴圈（另一個執行緒或改用 conntrack 事件）；log 保存多少——wnc-gw 自己的 log 要等 systemd unit（O15 的 journald namespace，`SystemMaxUse`），Suricata 的 eve.json、fast.log、stats.log 目前沒有上限（Pi 的 SD 卡），做法待選：限制 eve 的事件種類、Suricata 輪替加上 wnc-gw 刪舊檔、logrotate。
+

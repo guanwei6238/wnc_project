@@ -23,26 +23,31 @@ security_gateway/
 ├── src/
 │   ├── main.rs             #[tokio::main(flavor = "current_thread")]，只呼叫 cli::run()
 │   ├── cli/                ← bin：只放參數與膠水
-│   │   ├── mod.rs          Cli（全域參數 -c/--config、--lan、--wan、--log-format）、Command、run()
+│   │   ├── mod.rs          Cli（全域參數 -c/--config、--lan、--wan、--log-format、--log-level）、Command、run()
 │   │   ├── doctor.rs       doctor：載入設定 → passes()（各項檢查、印報告，沒有 error 才回傳 true）→ 結束碼
-│   │   ├── logging.rs      LogFormat（text、json）、init()：tracing 的輸出設定（stderr、UTC 時間、text 在終端機才上色、寫入失敗不回報，否則 stderr 斷掉時會 panic），run 和 trust add/del 會呼叫
+│   │   ├── logging.rs      LogFormat（text、json）、LogLevel（預設 info）、init()：tracing 的輸出設定（stderr、UTC 時間、text 在終端機才上色、寫入失敗不回報，否則 stderr 斷掉時會 panic），run 和 trust add/del 會呼叫
 │   │   ├── trust.rs        trust add/del/list：用 ctnetlink 直接設、清信任 bit，或列出有信任 bit 的連線；不需要 run，但沒有 run 時沒有 table 看這個 bit，Pi 上也沒有 entry；add、del 記 log 事件
-│   │   ├── run.rs          run：開 log → 載入設定 → instance::lock()（已有 wnc-gw 在跑就不啟動）→ doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM/SIGHUP → 清掉上一次留下的信任 bit（firewall::untrust_all，清不掉照常啟動、記 ERROR）→ 安裝 table（ids chain 是沒就緒狀態）→ 啟動 Suricata（SpawnedSuricata）→ Ready 時 start_inspection、Stopped 時 stop_inspection 再 allow_restart；每 10 秒用新的 ctnetlink socket 讀 conntrack 統計交給 ConntrackMonitor；ids 時 Suricata 就緒後每 10 秒讀它的 NFLOG socket 交給 CopyMonitor → 收到訊號：stop_inspection → 停止 Suricata → 移除 table；沒檢查的時段都記成 log 事件
+│   │   ├── run.rs          run：開 log → 載入設定 → instance::lock()（已有 wnc-gw 在跑就不啟動）→ doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM/SIGHUP → 清掉上一次留下的信任 bit（firewall::untrust_all，清不掉照常啟動、記 ERROR）→ 安裝 table（ids chain 是沒就緒狀態）→ 從 suricata.yaml 找出寫 alert 的 eve-log 檔（dump-config）→ 啟動 Suricata（SpawnedSuricata）→ Ready 時 start_inspection（第一次 Ready 時開始讀 EVE 的 alert：AlertWatch）、Stopped 時 stop_inspection 再 allow_restart；每 10 秒用新的 ctnetlink socket 讀 conntrack 統計交給 ConntrackMonitor；ids 時 Suricata 就緒後每 10 秒讀它的 NFLOG socket 交給 CopyMonitor → 收到訊號：stop_inspection → 停止 Suricata → 讀完 EVE 最後一段並記摘要 → 移除 table；沒檢查的時段都記成 log 事件
 │   │   └── show/           show 的巢狀子命令（mod.rs 分派，interfaces.rs 列介面）
-│   ├── lib.rs              只宣告功能模組：access、config、datapath、firewall、forwarding、ids、instance、kernel、monitor、platform、ports、protection
+│   ├── lib.rs              只宣告功能模組：access、agent、config、datapath、firewall、forwarding、ids、instance、kernel、monitor、platform、ports、protection
 │   ├── command.rs          執行外部程式的共用部分：逾時 5 秒、kill_on_drop、寫 stdin、收 stdout 和 stderr（output()、run()、CommandError）
+│   ├── agent/              3d：wnc-gw 自己判斷信任（之後拆成無特權的 agent process）
+│   │   ├── mod.rs          trait Privd（forwarded_connections、trust、untrust；之後由有權限的 process 實作）、LocalPrivd（同一個 process，ctnetlink socket 壞了就下次重連）
+│   │   └── trust.rs        TrustAgent：TrustPolicy（min_packets、min_age、ttl）；每個連線（五元組不分方向，配 conntrack id）的狀態 Watching（開始時間和當時的計數）→ Trusted（到期時間）→ 或 Refused（有 alert）；observe()（純函式，輸入連線清單和時間，輸出 Decision：Trust、Expire、Revoke）、alert()；check()、on_alert() 經 Privd 寫入並記 log（信任 INFO、撤銷 WARN、到期 DEBUG、有變動時每 60 秒摘要）；Suricata 停止時（set_inspecting）觀察中的連線全部重來；連線沒有計數時記一次 WARN
 │   ├── access.rs           除了 root 之外誰能改某個路徑（檔案本身、每一層目錄、跟著 symlink 之後的實際位置）；/etc/passwd、/etc/group 查名稱
 │   ├── config.rs           setting.toml + CLI 覆寫 → Config（每個值帶 Source）；AbsolutePath（路徑設定必須是絕對路徑）；delivery()：依 protection 選 queue 或 group
 │   ├── datapath/           核心 eBPF 程式在每個 port 掛在哪、怎麼掛（mod.rs 只放 pub mod / pub use）
 │   │   └── hook.rs         XdpPolicy（xdp 設定）、CoreHook、core_hook() 選擇規則
-│   ├── firewall.rs         我們自己的 nft table（inet wnc_gw）：forward chain 依序是 counter、純 SYN（有 SYN 沒 ACK）而且有 TRUSTED_MARK 時清掉 bit（同一組五元組的新連線可能被 conntrack 重新同步到舊 entry，一定在任何判決之前）、SYN/FIN/RST jump ids（L2）、ct mark 有 TRUSTED_MARK 就 accept、最後 jump ids；ids 依 Suricata 狀態換成送檢查或沒就緒的規則（WhenUnavailable、Inspection），每種狀態都要以判決結尾，否則控制封包會回到 forward 再進一次 ids；送檢查依 Delivery：Queue 是 `queue`（accept 時加 bypass），Copy 是 `log group N accept`，多個 group 時 ids 是 `symhash mod N vmap` 跳到 ids_g<group>（這些 chain 一直在，各一條 log … accept）；install()、start_inspection()、stop_inspection()、remove()；trust()、untrust()、trusted() 用 kernel::conntrack 改、列 TRUSTED_MARK；untrust_all() 清掉全部（Untrusted：cleared、gone、failed）
+│   ├── firewall.rs         我們自己的 nft table（inet wnc_gw）：forward chain 依序是 counter、純 SYN（有 SYN 沒 ACK）而且有 TRUSTED_MARK 時清掉 bit（同一組五元組的新連線可能被 conntrack 重新同步到舊 entry，一定在任何判決之前）、連線第一次經過時設 FORWARDED_MARK（0x40000000，3d 只看有這個位元的連線）、SYN/FIN/RST jump ids（L2）、ct mark 有 TRUSTED_MARK 就 accept、最後 jump ids；ids 依 Suricata 狀態換成送檢查或沒就緒的規則（WhenUnavailable、Inspection），每種狀態都要以判決結尾，否則控制封包會回到 forward 再進一次 ids；送檢查依 Delivery：Queue 是 `queue`（accept 時加 bypass），Copy 是 `log group N accept`，多個 group 時 ids 是 `symhash mod N vmap` 跳到 ids_g<group>（這些 chain 一直在，各一條 log … accept）；install()、start_inspection()、stop_inspection()、remove()；trust()、untrust()、trusted() 用 kernel::conntrack 改、列 TRUSTED_MARK，forwarded() 列有 FORWARDED_MARK 的連線；untrust_all() 清掉全部（Untrusted：cleared、gone、failed）
 │   ├── ids/                跟 IDS engine 打交道的薄模組（mod.rs 只放 pub mod）
+│   │   ├── eve.rs          EVE 檔（只讀新增的部分）：EveFile（啟動時從檔尾開始；半行等寫完；被換掉時先讀完舊檔再從頭讀新檔；被截斷從頭讀；超過 1 MiB 的行丟掉；一次最多讀 32 MiB）、parse_alert()（先用字串判斷 event_type 是不是 alert 才解析，typed struct）、Alert、EveInterval（設定寫秒、可以有小數，0.05–10，預設 0.5；內部取到毫秒）
 │   │   ├── delivery.rs     Delivery：Queue(QueueRange)（ips，等 Suricata 判決）或 Copy(GroupRange)（ids，NFLOG 送複本、kernel 照常轉送）；firewall 和 spawned 共用
 │   │   ├── lifecycle.rs    Suricata 生命週期的介面：trait Lifecycle（next_event、allow_restart、stop）、Event（Ready、Stopped）、Exit；DEFAULT_READY_TIMEOUT
 │   │   ├── spawned.rs      O14 的 (b)：wnc-gw 自己啟動 Suricata（NOTIFY_SOCKET 收 READY=1、輸出轉成 log、Stopped 之後等 allow_restart 再退避重啟、ready_timeout、stop_timeout（SIGTERM 後等多久才 SIGKILL，每 10 秒記一次 still stopping）、PR_SET_PDEATHSIG；--set 強制 runmode=workers、detect.delayed-detect=no、coredump.max-dump=0、stream.midstream=true、stream.midstream-policy=ignore、engine.init-failure-fatal=no（FORCED_SETTINGS）；Delivery::Queue 用 -q、強制 nfq.fail-open，exception policy 跟著 when_unavailable（exception_policies()）；Delivery::Copy 用 --nflog，每次啟動前在 runtime_dir 寫 suricata-nflog.yaml（每個 group 1 MB buffer、上限 4 MB）再 --include（會整個取代使用者 yaml 的 nflog 清單），強制 capture.checksum-validation=none（GRO 合併的封包 checksum 不完整），exception policy 一律 ignore；加 -v，Suricata 回報有規則載入失敗時記 WARN；工作目錄是 log 目錄）
 │   │   └── suricata.rs     Suricata（路徑由設定決定）：--build-info → SuricataInfo（NFQueue、NFLOG、Systemd 支援）；--dump-config -c（可以帶 --set）→ SuricataConfig（規則路徑）；check_rule_files()；scan()：正在跑的 Suricata（RunningSuricata：Capture、Owner、是否同一個 network namespace；hidepid 時 others_hidden）
 │   ├── instance.rs         同一台機器只跑一個 wnc-gw：flock <runtime_dir>/wnc-gw.lock 並寫入 pid；InstanceError::AlreadyRunning 帶持有者的 pid
 │   ├── monitor/            執行中定期檢查、決定要不要記 log（mod.rs 只放 pub mod）
+│   │   ├── alerts.rs       AlertMonitor：每筆 alert 記 DEBUG（連線、flow_id、sid、規則名稱、action），每 60 秒有 alert 時記一行 INFO 摘要（筆數、flow 數、最多的前 5 個 sid）；讀不到 EVE（只記第一次和恢復）、被換掉、被截斷、讀不完、壞掉或超長的行；AlertWatch：EveFile＋每 eve_interval 秒的計時＋摘要計時，run 的事件迴圈呼叫 next()
 │   │   ├── conntrack.rs    ConntrackMonitor（INTERVAL 10 秒）：第一次讀到時記筆數和上限；到上限 90% 記 WARN、降到 80% 以下記 INFO（中間不重複記）；drop、insert_failed 有增加記 WARN「conntrack dropped packets」，early_drop 有增加記 WARN「evicted」（每個 CPU 的 u32 計數用 wrapping_sub，只算兩次都有的 CPU）；讀取失敗只記第一次，恢復時記一次。判斷（observe）是純函式，記 log 另外一層
 │   │   └── nflog.rs        CopyMonitor（INTERVAL 10 秒）：ids 時 Suricata 漏掉的複本（它的 NFLOG socket 的 Drops）增加就記 WARN「suricata missed packet copies; that traffic was forwarded without inspection」；換 pid（重啟）從 0 算起，找不到 socket、讀不到都只記第一次
 │   ├── ports.rs            Role、PortSelector（名稱或 MAC）、resolve()
@@ -54,13 +59,13 @@ security_gateway/
 │   └── kernel/             跟 Linux kernel 打交道的薄模組
 │       ├── mod.rs
 │       ├── netif.rs        rtnetlink 列介面、sysfs 讀 driver、MacAddr、LinkStatus
-│       ├── conntrack.rs    手寫 ctnetlink（netlink-sys 的同步 Socket，non-blocking）：set_mark（只動 mask 內的位元）、set_marks（一次 100 筆，只有最後一筆要 ACK，回傳失敗的那幾筆）、get、list（kernel 依 mark 過濾）、stats（IPCTNL_MSG_CT_GET_STATS 的筆數和上限，加上 GET_STATS_CPU 每個 CPU 的 drop、early_drop、insert_failed；筆電 kernel 沒有 /proc/net/stat/nf_conntrack，所以不讀 procfs）；Stats、CpuStats；FiveTuple（兩個位址要同一版本）、Protocol、TcpState、Connection；任一方向的五元組都找到同一筆
+│       ├── conntrack.rs    手寫 ctnetlink（netlink-sys 的同步 Socket，non-blocking）：set_mark（只動 mask 內的位元）、set_marks（一次 100 筆，只有最後一筆要 ACK，回傳失敗的那幾筆）、get、list（kernel 依 mark 過濾）、stats（IPCTNL_MSG_CT_GET_STATS 的筆數和上限，加上 GET_STATS_CPU 每個 CPU 的 drop、early_drop、insert_failed；筆電 kernel 沒有 /proc/net/stat/nf_conntrack，所以不讀 procfs）；Stats、CpuStats；FiveTuple（兩個位址要同一版本）、Protocol、TcpState、Connection（含兩個方向的 Counters：封包數、bytes，要 nf_conntrack_acct = 1 才有）；任一方向的五元組都找到同一筆
 │       ├── modules.rs      /proc/modules + modules.{builtin,dep} → ModuleState；RequiredModule
 │       ├── netdev.rs       netdev genetlink：每個介面的 native XDP 功能（XdpFeatures）
 │       ├── nflog.rs        GroupRange（[suricata] group：NFLOG 的 group 編號，不能是 0，預設 10）；netfilter_sockets(pid)：程序的 netfilter netlink socket 和它的 Drops（/proc/<pid>/fd 的 socket inode 對 /proc/net/netlink；nfnetlink_log 只有 root 讀得到）
 │       ├── nfqueue.rs      QueueRange（queue 設定：0 或 "0-3"）
 │       ├── procs.rs        /proc 裡 comm 符合的程序：State、PPid、cmdline、VmRSS、cgroup、network namespace（Process）；讀不到 status 就當成已經結束；others_hidden()：hidepid 而且不是 root
-│       ├── nft.rs          Nft（路徑由設定決定）：自己的 Table/BaseChain/RegularChain/Statement（Counter、Jump、Queue、Drop、Accept、CtMarkHas、CtMarkClear、TcpFlagsAny、TcpFlagsEq）型別，queue 範圍產生 symhash → nftables crate 的 JSON → nft -j -f -（有逾時）；replace_table、replace_rules（同一個 transaction 裡 flush chain 再加規則）、delete_table；nft -V → NftInfo
+│       ├── nft.rs          Nft（路徑由設定決定）：自己的 Table/BaseChain/RegularChain/Statement（Counter、Jump、Queue、Drop、Accept、CtMarkHas、CtMarkLacks、CtMarkSet、CtMarkClear、TcpFlagsAny、TcpFlagsEq、Log、JumpBySymhash）型別，queue 範圍產生 symhash → nftables crate 的 JSON → nft -j -f -（有逾時）；replace_table、replace_rules（同一個 transaction 裡 flush chain 再加規則）、delete_table；nft -V → NftInfo
 │       └── sysctl.rs       讀 /proc/sys（key 不存在時回傳 None）
 └── tests/unit/             白箱單元測試，路徑鏡像 src/（見 §3.7）
 ```
@@ -79,13 +84,14 @@ security_gateway/
 | `firewall.rs` | 我們的 nft table 要長什麼樣子（table 名稱、chain、hook、priority、policy、規則），以及安裝、移除、切換 queue。信任（ct mark）的規則在這裡，L2 規則一定要在它前面；之後的黑名單 set 也加在這裡，放在 `jump ids` 前面。只用 `kernel::nft` 自己的型別。動態內容（之後的 set）會被 `replace_table` 清掉，所以執行中只用 `replace_rules` 換單一 chain | 產生 JSON、執行 nft（`kernel/nft.rs`）；依 bridge/routed 而不同的部分（`forwarding/`）|
 | `access.rs` | 檔案存取權的事實：哪些非 root 的帳號（擁有者、群組、所有人）能改某個路徑，包含每一層目錄和 symlink 的實際位置；sticky 目錄只算擁有者 | 判斷好壞（doctor 決定給 warning）；要檢查哪些檔案（doctor 決定） |
 | `kernel/` | 在 user space 跟 kernel 溝通：netlink、sysfs、procfs；之後的 nft、conntrack、bpf 載入、sysctl | 判斷好壞或嚴重程度；LAN/WAN 等 gateway 概念；讀設定檔 |
-| `ids/` | 跟 IDS engine 打交道：執行 Suricata、解析它的輸出，之後的 EVE、unix socket 也放這裡。整合方式是 A（2026-10-25 決定）：Suricata 是獨立的 process，不內嵌 libsuricata。`suricata.rs` 是探測（`--build-info`、`--dump-config`、規則檔，給 doctor 用）。`lifecycle.rs` 是 O14 的生命週期介面，對外只有「已就緒」「已停止」兩種事件；`spawned.rs` 是 wnc-gw 自己啟動 Suricata 的實作，之後 systemd 管理的實作也實作同一個 trait。實作自己記 log（啟動、就緒、結束、退避），用介面的一方（`run`、之後的 queue 管理）只依事件行動，不重複記錄 | 判斷好壞或嚴重程度（由 doctor 決定）；把封包導進 queue 的 nft 規則（`firewall.rs`） |
-| `monitor/` | `run` 執行中定期讀 kernel 的計數，判斷要不要記 log、用什麼等級（目前是 conntrack；之後 Suricata 跟不上被 fail-open 放行的封包數、3d 的狀態表大小也放這裡）。判斷寫成純函式（輸入上一次和這一次的數字，輸出發現的事），記 log 另外一層 | 讀取本身（`kernel/`）；doctor 的一次性檢查（表滿不滿是執行中的狀態，不是「能不能運作」） |
+| `ids/` | 跟 IDS engine 打交道：執行 Suricata、解析它的輸出，之後的 EVE、unix socket 也放這裡。整合方式是 A（2026-10-25 決定）：Suricata 是獨立的 process，不內嵌 libsuricata。`suricata.rs` 是探測（`--build-info`、`--dump-config`、規則檔、寫 alert 的 eve-log 檔，給 doctor 和 run 用）。`eve.rs` 讀 EVE 檔並解析 alert（EVE 是不可信的輸入：壞掉的行跳過並計數，字串只在 log 裡用 Debug 格式跳脫）。`lifecycle.rs` 是 O14 的生命週期介面，對外只有「已就緒」「已停止」兩種事件；`spawned.rs` 是 wnc-gw 自己啟動 Suricata 的實作，之後 systemd 管理的實作也實作同一個 trait。實作自己記 log（啟動、就緒、結束、退避），用介面的一方（`run`、之後的 queue 管理）只依事件行動，不重複記錄 | 判斷好壞或嚴重程度（由 doctor 決定）；把封包導進 queue 的 nft 規則（`firewall.rs`） |
+| `agent/` | 3d 的判斷：讀連線和 alert、決定信任或撤銷；判斷寫成純函式（`observe()`、`alert()` 輸出 Decision），寫入經 `Privd` trait，記 log 另外一層。之後拆成無特權的 agent process 時，`Privd` 換成跨 process 的實作 | 直接碰 ctnetlink 或 nft（經 `Privd`）；讀 EVE 檔（`ids/eve.rs`） |
+| `monitor/` | `run` 執行中定期讀 kernel 的計數，判斷要不要記 log、用什麼等級（目前是 conntrack、ids 漏掉的複本、Suricata 的 alert 摘要；之後 Suricata 跟不上被 fail-open 放行的封包數、3d 的狀態表大小也放這裡）。判斷寫成純函式（輸入上一次和這一次的數字，輸出發現的事），記 log 另外一層 | 讀取本身（`kernel/`）；doctor 的一次性檢查（表滿不滿是執行中的狀態，不是「能不能運作」） |
 | `platform/` | 真正因 OS 而異的東西：設定怎麼在開機後保留、服務管理（systemd 對 procd）、設定來源（檔案對 UCI）。每種差異定一個 trait，每個 OS 一個 struct 實作全部 trait；`Current` 在編譯時指向目前的 OS。目前有 `BootConfig`（kernel 模組和 sysctl 寫在哪裡才會在開機後保留，給 doctor 的修法提示用）、`Dirs`（wnc-gw 自己的執行期目錄和 log 目錄：使用者不能改，但不同 OS 不同，例如 OpenWrt 的 `/var` 在記憶體裡）和 `Debian`。每個 OS 的實作一律編譯（`pub mod`），只有 `Current` 依 feature 選，所以每次建置都會測到所有 OS。新增 OS：加 `<os>.rs`、`tests/unit/platform/<os>.rs`、一個 cargo feature，再讓 `Current` 依 feature 選 | netlink、nft、eBPF、`modprobe`、`sysctl -w`、`ip link` 這類 kernel 介面和立即生效的指令：在每個 OS 上都一樣，屬於 `kernel/` 或直接寫在呼叫端；不是由 OS 決定的選擇（fast path 後端依 probe、IDS engine 依 O6）也不放這裡 |
 
 規則：
 
-- **依賴方向單向**：`cli → config → forwarding / ports / firewall / monitor → kernel`（`config` 只用到 `forwarding::Mode` 和 `PortSelector` 這類值型別，以及 `kernel::nft`、`ids::suricata` 的預設路徑）。`platform`、`ids`、`access` 和 `kernel` 一樣在最底層，不依賴其他模組。下層不認識上層的概念。
+- **依賴方向單向**：`cli → config → agent → forwarding / ports / firewall / monitor → kernel`（`agent` 用 `firewall` 的 mark 和寫入、`ids::eve` 的 Alert）（`config` 只用到 `forwarding::Mode` 和 `PortSelector` 這類值型別，以及 `kernel::nft`、`ids::suricata` 的預設路徑）。`platform`、`ids`、`access` 和 `kernel` 一樣在最底層，不依賴其他模組。下層不認識上層的概念。
 - **薄模組**：外部 crate 的型別（`rtnetlink`、`netlink-packet-route`，之後的 aya 等）不出現在模組對外的介面上，對外一律用自己的型別。升級或替換 crate 時只動那個模組。需要轉換時寫私有函式（例如 `from_link_message()`），不要對外實作 `From<外部型別>`。
 - **kernel 層只翻譯、不判斷**：例如 `Interface::link_status()` 把 admin 與 oper 狀態翻成 `AdminDown`、`NoCarrier` 等原因；「NoCarrier 算 warning」是 doctor 的判斷。
 - **lib 與 bin 分開**：功能模組只在 `lib.rs` 宣告，`main.rs` 只宣告 `mod cli;`，bin 用 `security_gateway::…` 引用 lib。同一個模組若被兩邊各宣告一次，會被編譯兩次，變成兩個不同的型別。
@@ -125,7 +131,7 @@ security_gateway/
 ### 3.4 相依套件與執行環境
 
 - async 用 tokio，單執行緒 runtime；feature 只開用得到的（目前是 `rt`、`macros`、`process`、`time`、`io-util`、`signal`、`sync`、`net`）。**`ids/spawned.rs` 依賴單執行緒 runtime**：`PR_SET_PDEATHSIG` 是在 fork 子程序的那個執行緒結束時觸發，改成多執行緒 runtime 時要重新檢查。
-- `unsafe` 只用在沒有安全 API 的系統呼叫，目前只有 `ids/spawned.rs` 的兩處：`pre_exec` 裡的 `prctl(PR_SET_PDEATHSIG)`（fork 之後不能配置記憶體，錯誤只用 errno），以及送 SIGTERM 的 `kill`（送之前先 `try_wait`，避免 pid 已被回收再被別的程序使用）。透過 `libc` crate 呼叫。新增 `unsafe` 前先跟開發者確認。
+- `unsafe` 只用在沒有安全 API 的系統呼叫，目前是 `ids/spawned.rs` 的兩處：`pre_exec` 裡的 `prctl(PR_SET_PDEATHSIG)`（fork 之後不能配置記憶體，錯誤只用 errno），以及送 SIGTERM 的 `kill`（送之前先 `try_wait`，避免 pid 已被回收再被別的程序使用）。透過 `libc` crate 呼叫。新增 `unsafe` 前先跟開發者確認。
 - netlink 用 rust-netlink 系列（`rtnetlink` 等）。這一系列的版本必須彼此對齊（共用同一個 `netlink-packet-core`），升級時整組一起升，並用 `Cargo.lock` 鎖住。netdev family 用 `genetlink` + `netlink-packet-generic` 自己實作在 `kernel/netdev.rs`。**netdev 這類新 family 不要用 dump**：kernel 的 dump 回應不帶 `NLM_F_MULTI`，netlink-proto 收到第一則就認定請求結束，其他裝置會被默默漏掉；改成每個介面各送一次帶 ifindex 的請求。其他缺口：`ethtool` crate 只能讀 feature。**ctnetlink 是例外，手寫在 `kernel/conntrack.rs`**（2026-10-28，O17）：Pi 上 netlink-proto 設一筆 51 µs、netlink-packet-netfilter 編碼 20 µs、手寫 13 µs，讀一筆 crate 解碼 74 µs、手寫 20 µs（musl 的記憶體配置慢）。netlink-packet-netfilter 只放 dev-dependency，測試比對兩邊的位元組。之後頻繁呼叫的 netlink 操作也要先量，不要直接假設 crate 夠快。
 - 呼叫外部程式用 `Command::new().arg()`，不組 shell 字串，並加逾時。用 tokio 的 `Command`，設 `kill_on_drop(true)`，再用 `tokio::time::timeout` 包住，逾時時子行程才會被砍掉。這些都集中在共用的 `command.rs`：`run()`（結束碼不是 0 就是 `Failed`）、`output()`（結束碼本身就是答案時用，例如 `systemctl is-enabled`）、`CommandError`（錯誤帶執行檔的路徑；`NftError`、`SuricataError` 是它的別名）。2026-10-27 有了第三個呼叫者（platform 的 systemctl）之後抽出來，新的外部程式一律用它，不要再寫一份 spawn 加逾時。執行檔用絕對路徑，不從 PATH 找：之後由有權限的 process 執行時，PATH 可能被換掉，而且 Pi 上一般帳號的 PATH 沒有 `/usr/sbin`。
 - 新增 crate 前，用全域需求評估（之後是否還會用到、是否純 Rust、能否編 musl/aarch64、維護狀態、授權）。
