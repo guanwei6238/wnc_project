@@ -11,12 +11,14 @@
 #       bash planb_run.sh nflog     2026-10-29 ids 候選 B：IMPL=nflog、full、S_m1／S_m17／S_m60、1–2 個 group，結果寫 nflog.kvl
 #   IMPL=nflog（K、BUF 一起傳給 planb_pi.sh）：結果多 copy_loss_pct = netlink 丟掉的複本 ÷ log 規則送出的複本；停止條件仍只看 cap_loss
 #   KVL：結果檔名（預設 planb.kvl）
+#       bash planb_run.sh routed_pcap <pcap 名稱...>   planb_pi.sh 的 MODE=routed 用：把目的 MAC 改成 Pi 的介面（路由器那側 → eth1.20、
+#           其他 → eth0），寫 /out/<名稱>.rt.pcap 和 .rt.cache；PI_LAN_MAC、PI_WAN_MAC 預設是 Pi 的 eth0、eth1
 LAN=${LAN:-enx9c69d3241bd9}; WAN=${WAN:-eno2}; PI=${PI:-wnc@10.254.254.2}
 PCAPS=${PCAPS:-/home/sixsquare/datasets/throughput/pcaps}; OUT=${OUT:-/home/sixsquare/datasets/throughput/planb}
 G="docker exec wnc-gen"
 SSH="ssh -o ConnectTimeout=20 -o ServerAliveInterval=5 -o ServerAliveCountMax=6 $PI"
 IMPL=${IMPL:-wncgw}; ENV="IMPL=$IMPL K=${K:-none} BUF=${BUF:-1048576}"; KVL=${KVL:-planb.kvl}
-router() { case $1 in S_h5) echo 82:e6:50:12:14:64 ;; S_m3) echo a6:d1:8c:1f:ce:64 ;; *) echo 78:8a:20:43:93:d5 ;; esac; }
+router() { case $1 in S_h5) echo 82:e6:50:12:14:64 ;; S_m3) echo a6:d1:8c:1f:ce:64 ;; bulk_fixed) echo 02:00:00:00:01:01 ;; *) echo 78:8a:20:43:93:d5 ;; esac; }
 case "$1" in
 setup)
   mkdir -p $OUT
@@ -26,6 +28,13 @@ setup)
   $G ip link set $WAN.20 up
   shift
   for pc in "$@"; do $G tcpprep --mac=$(router $pc) --pcap=/pcaps/$pc.pcap --cachefile=/out/$pc.cache; done
+  ;;
+routed_pcap)
+  shift
+  for pc in "$@"; do
+    $G tcprewrite --enet-dmac=${PI_WAN_MAC:-9c:69:d3:2a:11:54},${PI_LAN_MAC:-e4:5f:01:2d:03:bf} -c /out/$pc.cache -i /pcaps/$pc.pcap -o /out/$pc.rt.pcap
+    $G tcpprep --mac=$(router $pc) --pcap=/out/$pc.rt.pcap --cachefile=/out/$pc.rt.cache
+  done
   ;;
 teardown)
   $G ip link del $WAN.20

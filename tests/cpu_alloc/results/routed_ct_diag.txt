@@ -1,0 +1,13 @@
+# 2026-11-04 16:25 UTC，scratchpad ct_diag.sh：routed、B7（ids 3 group）、S_m17.rt，每點前後讀 wgw 的 conntrack -S 和 planb counters
+=== B7 A0 routed
+before 20000:  count=1 max=65536 buckets=65536
+after 20000: insert_failed=83732 drop=83733 early_drop=34161 invalid=36  count=65534 max=65536 buckets=65536
+  in 200000 out 116210 ct_insert_failed 83732 ct_drop 83733 nfl_log 199942
+after 30000: insert_failed=130060 drop=130061 early_drop=87627 invalid=73  count=65530 max=65536 buckets=65536
+  in 200000 out 153615 ct_insert_failed 46328 ct_drop 46328 nfl_log 199943
+=== B7 R123 routed（計數接續上面）
+after 20000: insert_failed=130060 drop=130061 early_drop=121785 invalid=110  count=65535
+  in 200000 out 199943 ct_insert_failed 0 ct_drop 0 nfl_log 199943
+after 30000: insert_failed=130060 drop=130061 early_drop=174820 invalid=146  count=65534
+  in 200000 out 199943 ct_insert_failed 0 ct_drop 0 nfl_log 199943
+# S_m17.rt.pcap：200,000 個封包裡 100,098 個（50.0%）和前一個封包的 5-tuple 相同（IoT-23 擷取的重複，相隔約 12 µs）；99,744 條不同的 tuple

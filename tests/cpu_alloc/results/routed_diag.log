@@ -1,0 +1,78 @@
+16:18:59 topology -> routed
+lo               UNKNOWN        127.0.0.1/8 
+eth0             DOWN           10.99.1.1/24 
+eth1.20@if3      UP             10.99.2.1/24 
+  Pause parameters for eth0: Autonegotiate:	on RX:		off TX:		off RX negotiated: off TX negotiated: off  
+  	Speed: 1000Mb/s 	Link detected: yes 
+=== B7 A0 routed @20k
+sh: 1: echo: echo: I/O error
+cat: /proc/net/stat/nf_conntrack: No such file or directory
+16:19:09 sweep B7 A0 S_m17 round=0 mode=routed
+  ready mode=routed protection=ids rules=full queues=3 trusted=0 copies=0 fanout=0 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=41.903  copy_loss_pct=0.000  util0=37.9  util1=13.8  util2=13.1  util3=15.0  us_per_pkt=51.90  cpu0_us_per_pkt=24.65  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=23.289  copy_loss_pct=0.000  util0=46.7  util1=16.0  util2=16.5  util3=15.8  us_per_pkt=46.05  cpu0_us_per_pkt=22.65  reader_us_per_pkt=0.00  temp=63.7 
+--- trace
+cat: /sys/kernel/tracing/events/skb/kfree_skb/hist: No such file or directory
+  24405 location=dev_kfree_skb_any_reason reason: NOT_SPECIFIED
+   8381 location=nf_hook_slow reason: NETFILTER_DROP
+     42 location=__udp4_lib_rcv reason: NO_SOCKET
+     42 location=inet_sock_destruct reason: QUEUE_PURGE
+      1 location=__udp4_lib_rcv reason: NOT_SPECIFIED
+--- nstat
+sh: 1: echo: echo: I/O error
+#kernel
+IpInReceives                    399893             0.0
+IpForwDatagrams                 399886             0.0
+IpInDelivers                    7                  0.0
+IpOutTransmits                  269617             0.0
+UdpIgnoredMulti                 7                  0.0
+IpExtInBcastPkts                7                  0.0
+IpExtInOctets                   18422226           0.0
+IpExtOutOctets                  10814380           0.0
+IpExtInBcastOctets              2254               0.0
+IpExtInNoECTPkts                399621             0.0
+IpExtInECT0Pkts                 272                0.0
+--- ct
+cat: /proc/net/stat/nf_conntrack: No such file or directory
+=== B7 R123 routed @20k
+sh: 1: echo: echo: I/O error
+cat: /proc/net/stat/nf_conntrack: No such file or directory
+16:20:26 sweep B7 R123 S_m17 round=0 mode=routed
+  ready mode=routed protection=ids rules=full queues=3 trusted=0 copies=0 fanout=0 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=0.000  util0=15.0  util1=21.5  util2=22.7  util3=23.3  us_per_pkt=53.75  cpu0_us_per_pkt=9.75  reader_us_per_pkt=0.00  temp=62.3 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=0.000  util0=14.8  util1=27.9  util2=27.4  util3=26.9  us_per_pkt=46.90  cpu0_us_per_pkt=7.15  reader_us_per_pkt=0.00  temp=62.8 
+--- trace
+cat: /sys/kernel/tracing/events/skb/kfree_skb/hist: No such file or directory
+  97732 location=dev_kfree_skb_any_reason reason: NOT_SPECIFIED
+     80 location=__udp4_lib_rcv reason: NO_SOCKET
+     80 location=inet_sock_destruct reason: QUEUE_PURGE
+      6 location=__udp4_lib_rcv reason: NOT_SPECIFIED
+      1 location=tcp_v4_rcv reason: NO_SOCKET
+--- nstat
+sh: 1: echo: echo: I/O error
+#kernel
+IpInReceives                    399896             0.0
+IpForwDatagrams                 399886             0.0
+IpInDelivers                    10                 0.0
+IpOutTransmits                  399886             0.0
+UdpIgnoredMulti                 10                 0.0
+IpExtInBcastPkts                10                 0.0
+IpExtInOctets                   18423192           0.0
+IpExtOutOctets                  16025744           0.0
+IpExtInBcastOctets              3220               0.0
+IpExtInNoECTPkts                399624             0.0
+IpExtInECT0Pkts                 272                0.0
+--- ct
+cat: /proc/net/stat/nf_conntrack: No such file or directory
+16:21:45 topology -> bridge
+lo               UNKNOWN        127.0.0.1/8 
+eth0             DOWN           
+br0              DOWN           
+eth1.20@if3      UP             
+  Pause parameters for eth0: Autonegotiate:	on RX:		off TX:		off RX negotiated: off TX negotiated: off  
+  	Speed: 1000Mb/s 	Link detected: yes 
+  Pause parameters for eth0: Autonegotiate:	on RX:		on TX:		on RX negotiated: on TX negotiated: on  
+  	Speed: 1000Mb/s 	Link detected: yes 
+ROUTED DIAG DONE 2026-11-04T16:22:02Z

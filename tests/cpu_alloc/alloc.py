@@ -5,12 +5,15 @@
   python3 alloc.py diff "<snap0>" "<snap1>" <tcpreplay 輸出檔|-> [k=v ...]   兩次 snap 相減，印一行結果（k=v 原樣放在前面）
   python3 alloc.py cap <kvl> [篩選 k=v ...]                                  實驗 1：每個（workload, placement, round）的容量與同速率的 CPU
   python3 alloc.py ai <kvl>                                                  實驗 2：每個（strategy, ai, round）的丟包、µs／封包、AI 吞吐
+  python3 alloc.py modes <kvl>                                               exp4：routed 對 bridge
+  python3 alloc.py copies <kvl>                                              exp5–8：ids 複製多份（exp5 的 K2h、exp6 的 K0g3／K2g3 不算，用 exp7、exp8 重跑的）
 
 忙碌時間＝經過時間 − idle − iowait（USER_HZ = 100）。
 cap_loss＝處理不過來而丟：nfq queue 滿 + qdisc 丟（含 eth1 tx 丟）+ max(沒收到 + softnet backlog 丟, 網卡 miss + rx_dropped)。
 網卡的 rx_dropped 已含 backlog 丟的，miss 的封包也不在 rx_packets 裡，所以兩邊取大的。loss_pct 是端到端（送出 − 轉送出去）。
 容量＝cap_loss ≤ 0.1% 的最高實際速率（tcpreplay 的 Rated pps）。
 ids（NFLOG）另外算 copy_loss＝Suricata 的 NFLOG socket 丟掉的複本 ÷ log 規則送出的複本；檢查容量＝copy_loss ≤ 0.1% 的最高實際速率。
+額外複本（COPIES）另外算 xcopy_loss＝讀取端丟掉的複本 ÷ 送出的額外複本；讀取端容量＝xcopy_loss ≤ 0.1% 的最高實際速率。
 """
 import re
 import sys
@@ -60,6 +63,16 @@ def diff(s0, s1, tr, meta):
     copies = d("nfl_log")
     if copies:
         out.update(copies=int(copies), copy_drop=int(d("nfl_drop")), copy_loss_pct=f"{100 * d('nfl_drop') / copies:.3f}")
+    xcopies = d("nfl_xlog")
+    readers = int(num(b, "fo_readers"))
+    if xcopies and readers:
+        # user space 分發（planb_pi.sh FANOUT）：kernel 一份，再分給 N 個讀取端；kernel 丟的算 N 份，加上環狀緩衝滿丟的
+        eff, drop = xcopies * readers, d("nfl_xdrop") * readers + d("fo_drop")
+        out.update(xcopies=int(eff), xcopy_drop=int(drop), xcopy_loss_pct=f"{100 * drop / eff:.3f}",
+                   fo_in=int(d("fo_in")), fo_drop=int(d("fo_drop")), fo_kernel_drop=int(d("nfl_xdrop")))
+    elif xcopies:
+        # 額外複本（planb_pi.sh COPIES）：每個封包 N 份，丟失率用全部讀取端合計
+        out.update(xcopies=int(xcopies), xcopy_drop=int(d("nfl_xdrop")), xcopy_loss_pct=f"{100 * d('nfl_xdrop') / xcopies:.3f}")
     busy = []
     for c in CPUS:
         bc = dt - (d(f"idle{c}") + d(f"iow{c}")) / HZ
@@ -75,6 +88,7 @@ def diff(s0, s1, tr, meta):
         out["us_per_pkt"] = f"{1e6 * sum(busy) / pi_in:.2f}"
         out["cpu0_us_per_pkt"] = f"{1e6 * busy[0] / pi_in:.2f}"
         out["sur_w_us_per_pkt"] = f"{d('sur_w_ns') / 1e3 / pi_in:.2f}"
+        out["reader_us_per_pkt"] = f"{d('reader_ns') / 1e3 / pi_in:.2f}"
     bt = d("burner_t")
     if bt > 0:
         out["ai_ops_per_s"] = f"{d('burner_ops') / bt:.2f}"
@@ -123,6 +137,40 @@ def cap(path, filt):
             print(f"| {k[0]} | {k[1]} | {k[2]} | < {float(rs[0]['actual_pps']) / 1000:.0f} | {insp} | - | - | - | - | - | {why} |")
 
 
+def capacity(rs, key):
+    """第一次 key（cap_loss_pct、copy_loss_pct、xcopy_loss_pct）> 0.1% 之前的最後一個實際速率（kpps 字串；↑ 表示掃到最後都沒超過）"""
+    if not any(key in r for r in rs):
+        return "-"
+    last = None
+    for r in rs:
+        if float(r.get(key, 0)) > 0.1:
+            return f"{float(last['actual_pps']) / 1000:.0f}" if last else f"< {float(r['actual_pps']) / 1000:.0f}"
+        last = r
+    return f"{float(last['actual_pps']) / 1000:.0f} ↑"
+
+
+def at(rs, pps, k):
+    r = next((r for r in rs if int(r["pps"]) == pps and float(r["cap_loss_pct"]) <= 0.1), None)
+    return r.get(k, "-") if r else "-"
+
+
+def summary(path, exps, keys, ref, skip=lambda r: False):
+    """exp4（routed 對 bridge）、exp5／exp6（多份複本）：每組的轉送、Suricata、讀取端容量，和參考速率下的 µs/封包"""
+    groups = defaultdict(list)
+    for r in read(path, {}):
+        if r.get("exp") in exps and not skip(r):
+            groups[tuple(r.get(k, "-") for k in keys)].append(r)
+    print("| " + " | ".join(keys) + " | 轉送容量 kpps | Suricata 容量 kpps | 讀取端容量 kpps | 參考速率 | µs/pkt 全機 | CPU0 µs/pkt | Suricata W µs/pkt | 讀取端 µs/pkt |")
+    print("|" + "---|" * (len(keys) + 8))
+    for k in sorted(groups):
+        rs = sorted(groups[k], key=lambda r: float(r["pps"]))
+        g = dict(zip(keys, k))
+        pps = ref.get((g.get("workload"), g.get("pcap")), ref.get(g.get("workload"), ref.get(g.get("pcap"), 0)))
+        print(f"| {' | '.join(k)} | {capacity(rs, 'cap_loss_pct')} | {capacity(rs, 'copy_loss_pct')} | {capacity(rs, 'xcopy_loss_pct')} | "
+              f"{pps // 1000}k | {at(rs, pps, 'us_per_pkt')} | {at(rs, pps, 'cpu0_us_per_pkt')} | {at(rs, pps, 'sur_w_us_per_pkt')} | "
+              f"{at(rs, pps, 'reader_us_per_pkt')} |")
+
+
 def ai(path):
     print("| strategy | ai | threads | round | traffic | loss % | µs/pkt 全機 | Suricata W µs/pkt | AI ops/s | AI CPU 秒/秒 | AI ops/CPU 秒 | util0-3 |")
     print("|---|---|---|---|---|---|---|---|---|---|---|---|")
@@ -140,6 +188,12 @@ if __name__ == "__main__":
         print(diff(sys.argv[2], sys.argv[3], sys.argv[4], meta))
     elif sys.argv[1] == "cap":
         cap(sys.argv[2], dict(p.split("=", 1) for p in sys.argv[3:]))
+    elif sys.argv[1] == "modes":
+        summary(sys.argv[2], {"4"}, ["workload", "pcap", "placement", "mode", "round"],
+                {"B0": 100000, "B2": 50000, "B1": 40000, "B7": 30000})
+    elif sys.argv[1] == "copies":
+        summary(sys.argv[2], {"5", "6", "7", "8"}, ["pcap", "placement", "workload", "round"], {"S_m17": 30000, "bulk_fixed": 20000},
+                lambda r: (r.get("exp"), r.get("workload")) in {("5", "K2h"), ("6", "K0g3"), ("6", "K2g3")})
     elif sys.argv[1] == "ai":
         ai(sys.argv[2])
     else:

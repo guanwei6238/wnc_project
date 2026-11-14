@@ -1,7 +1,8 @@
 #!/bin/bash
 # alloc_pi.sh — CPU 分配實驗的 Pi 端工具（拓樸、wnc-gw 啟停沿用 ~/ids_inline/planb_pi.sh）
 # 用法（都要 sudo）:
-#   alloc_pi.sh snap                 印一行 key=value：各 CPU 的忙碌時間、softnet、中斷、qdisc 丟包、方案 B 的計數、Suricata worker 與 burner 的 CPU
+#   alloc_pi.sh snap                 印一行 key=value：各 CPU 的忙碌時間、softnet、中斷、qdisc 丟包、方案 B 的計數、Suricata worker 與 burner 的 CPU、
+#                                    額外 NFLOG 複本讀取端（tcpdump）的 CPU
 #   alloc_pi.sh place <名稱>         A0 預設 | R1 RPS→CPU1 | R123 RPS→CPU1–3 | I1 eth0 的 IRQ 29→CPU1 | T1 threaded NAPI 綁 CPU1
 #   alloc_pi.sh pin_suricata <cpu,...>  Suricata 的 worker（W#、W-NFQ#、W-NFLOG#）執行緒依序綁到這些 CPU（none = 不綁）
 #   alloc_pi.sh pause <on|off>       eth0 的 Ethernet PAUSE，改完等 link 回到 1000 Mb/s
@@ -27,12 +28,13 @@ snap)
   pb=$(bash /home/wnc/ids_inline/planb_pi.sh counters 2>/dev/null)
   sp=$(pgrep -x Suricata-Main | head -1)
   sw=0; [ -n "$sp" ] && sw=$(for t in /proc/$sp/task/*; do grep -qE '^W[-#]' $t/comm 2>/dev/null && cut -d' ' -f1 $t/schedstat; done | awk '{s += $1} END{print s + 0}')
+  rd=$(for p in $(pgrep -x tcpdump; pgrep -x fanout); do cat /proc/$p/task/*/schedstat 2>/dev/null; done | awk '{s += $1} END{print s + 0}')
   bp=$(pgrep -x burner | head -1)
   bc=0; [ -n "$bp" ] && bc=$(cat /proc/$bp/task/*/schedstat 2>/dev/null | awk '{s += $1} END{print s + 0}')
   read -r bo bt < $OPS 2>/dev/null
   t=$(vcgencmd measure_temp | tr -dc '0-9.'); th=$(vcgencmd get_throttled | cut -d= -f2); clk=$(vcgencmd measure_clock arm | cut -d= -f2)
   sw_=$(awk '/SwapTotal/{t = $2} /SwapFree/{f = $2} END{print t - f}' /proc/meminfo)
-  echo "up=$now $stat$rq$sn$irq$nr qd_eth0=$q0 qd_eth120=$q1 qd_eth1=$qr txdrop_eth1=$e1 $pb sur_w_ns=$sw burner_ns=$bc burner_ops=${bo:-0} burner_t=${bt:-0} temp=$t throttled=$th arm_hz=$clk swap_kb=$sw_"
+  echo "up=$now $stat$rq$sn$irq$nr qd_eth0=$q0 qd_eth120=$q1 qd_eth1=$qr txdrop_eth1=$e1 $pb sur_w_ns=$sw reader_ns=$rd $(cat /dev/shm/fanout.stats 2> /dev/null) burner_ns=$bc burner_ops=${bo:-0} burner_t=${bt:-0} temp=$t throttled=$th arm_hz=$clk swap_kb=$sw_"
   ;;
 place)
   rps=0; irq=1; thr=0

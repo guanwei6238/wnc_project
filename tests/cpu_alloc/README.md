@@ -38,11 +38,12 @@
 | 檔案 | 用途 |
 |---|---|
 | `alloc_pi.sh` | Pi 端：snap、place、pin_suricata、pause、burner_start／stop |
-| `alloc_run.sh` | 筆電端：sweep（實驗 1）、ai（實驗 2）、exp1、exp2、exp1b、exp2b、exp1c、exp1d、exp3（acctpt） |
-| `alloc.py` | 兩次 snap 相減、彙整成表（`cap`、`ai`）；ids 另算複本丟失（copy_loss）和檢查容量 |
+| `alloc_run.sh` | 筆電端：sweep（實驗 1）、ai（實驗 2）、exp1、exp2、exp1b、exp2b、exp1c、exp1d、exp3（acctpt）、exp4（routed 對 bridge）、exp5–exp8（多份複本） |
+| `alloc.py` | 兩次 snap 相減、彙整成表（`cap`、`ai`、`modes`、`copies`）；ids 另算複本丟失（copy_loss）和檢查容量，多份複本另算讀取端的丟失（xcopy_loss） |
 | `burner.c` | edge AI 替身：cpu（L1 內運算）、mem（STREAM triad，每執行緒 3×8 MiB）、mlp（float32 MLP 256-1024-1024-256，權重約 6 MiB） |
+| `fanout/` | 實驗 5 的 user space 分發程式（Rust）：從一個 NFLOG group 收複本，分給 N 個讀取執行緒（各一個 8 MiB 環狀緩衝，每 1 ms 讀一次），統計寫在 `/dev/shm/fanout.stats` |
 
-原始資料：筆電 `~/datasets/throughput/cpu_alloc/alloc.kvl`（每點一行，含 exp1b、exp2b、exp1c、exp1d、exp3）、`main.log`、`ext.log`、`exp1c.log`、`exp1d.log`、`night_laptop.log`（exp3）；複本在 `results/`。
+原始資料：筆電 `~/datasets/throughput/cpu_alloc/alloc.kvl`（每點一行，含 exp1b、exp2b、exp1c、exp1d、exp3）、`main.log`、`ext.log`、`exp1c.log`、`exp1d.log`、`night_laptop.log`（exp3）；實驗 4、5 在 `night1104.kvl`、`night1104.log`、`night1104b.log`、`night1104d.log`，routed 丟包的診斷在 `routed_diag.log`、`routed_ct_diag.txt`、`diag.kvl`；複本在 `results/`。
 
 ## 實驗 1 結果（2 輪，數字是「輪 1／輪 2」）
 
@@ -197,6 +198,112 @@ CPU0 每個封包：ids A0 約 26–30 µs、ids R123 5–11（S_m17）／15–1
 
 解讀：開 conntrack 計數每個封包多 0.1–1.3 µs（≤ 2%），轉送成本上可以開。讀出來的成本（ctnetlink 整表 dump）在 `tests/ctnetlink/bench`。
 
+## 實驗 4：routed 對 bridge（`exp4`，2 輪，2026-11-04）
+
+問題（開發者 11/04）：10/24 在 veth 上量到 routed 比 bridge 便宜 35%，預設是不是該用 routed？這次用實體網卡量。
+
+- routed 的拓樸（`planb_pi.sh up` 加 `MODE=routed`）：eth0（10.99.1.1/24）、eth1.20（10.99.2.1/24）不接 bridge，Pi 做 IP 轉送。下一跳是假的 MAC，筆電的網卡不收，轉送出去的封包不會被筆電再轉送。pcap 裡的 LAN 網段經 eth0，其餘走 eth1.20。送進來的封包目的 MAC 先改成 Pi 的（`planb_run.sh routed_pcap`）。wnc-gw 設 `mode = "routed"`。
+- 工作負載、放置同實驗 1：B0（只轉送）、B1（ips 2 queue）、B2（ips、全部信任、S_m60）、B7（ids 3 group）× A0、R123。兩種模式的先後每輪對調。
+
+**容量（kpps；ids 是「轉送（檢查）」；兩輪不同時寫「輪 1／輪 2」）**
+
+| 工作負載 | A0 bridge | A0 routed | R123 bridge | R123 routed |
+|---|---|---|---|---|
+| B0 只轉送 | 100 | **150** | 300 | 300 |
+| B2 ips 信任、S_m60 | 50 | 50 | 80／50 | 80 |
+| B1 ips 2 queue | 60／55 | 60 | 45 | 45 |
+| B7 ids 3 group | 30（≥50） | 50（≥70）＊ | 120／100（80） | 120（80） |
+
+**每個封包的 CPU（µs，全機，兩輪平均；兩種模式都不丟包的速率）**
+
+| 工作負載 | bridge | routed | 差 |
+|---|---|---|---|
+| B0 A0 @100k | 9.97（CPU0 8.99） | 8.02（CPU0 7.08） | −20% |
+| B0 R123 @100k／@300k | 11.79／10.18 | 9.99／8.54 | −15%／−16% |
+| B2 A0 @50k | 13.98（CPU0 12.07） | 11.13（CPU0 9.17） | −20% |
+| B2 R123 @50k | 14.60 | 13.51 | −7% |
+| B1 A0 @30k／@40k | 56.58／56.52 | 51.75／55.20 | −9%／−2% |
+| B1 R123 @30k／@40k | 63.12／63.00 | 60.70／59.52 | −4%／−6% |
+| B7 R123 @30k／@80k | 45.77／45.08 | 44.42／43.97 | −3%／−2% |
+| B7 A0 @30k | 52.65 | 43.23＊ | 不能比 |
+
+解讀：
+1. **routed 的轉送每個封包少約 2 µs。** 只轉送（B0）時是 15–20%，省的主要是收封包那顆 CPU：A0 下 CPU0 每個封包從 9.0 降到 7.1 µs，所以 A0 的只轉送容量從 100 提高到 150 kpps。R123 兩種模式都到 300（350 時都丟）。veth 上量到的 35%，在實體網卡上是 15–20%。
+2. **有 Suricata 時差距變小、容量一樣。** ips 少 2–9%、ids R123 少 2–3%，因為大部分 CPU 花在 Suricata 上。
+3. **routed 不轉送非 IP 的封包。** S_m60 有 0.38% 是 ARP 等非 IP 封包，所以 routed 的端到端 loss 比 bridge 多約 0.4%；bridge 照常轉送。
+4. **＊ B7 A0 routed 少送了 21–42%，但沒有一個丟包計數器有記到。**
+   - 丟在哪：kfree_skb 顯示是 POSTROUTING 的 `NETFILTER_DROP`。`IpForwDatagrams` 399,886 但 `IpOutTransmits` 只有 269,617。conntrack 的 `insert_failed` 和丟掉的數量一樣（@20k：83,732 對 83,790）。
+   - 為什麼：S_m17 有 **50% 的封包和前一個一模一樣**（IoT-23 擷取時重複記錄，相隔約 12 µs）。[推測] 沒開 RPS 時，網卡收進來的封包是整批（list）送進 IP 層。同一批裡同一條新連線的兩個副本都先過 PREROUTING、各自建了 conntrack；第二個在 confirm 時撞上第一個，TCP 沒有 clash resolution，就被丟掉。
+   - 為什麼只有這個組合：R123 時 RPS 逐個處理，bridge 的路徑也是逐個，所以都沒有（實測 0）。ips（B1）的重複副本在 bridge 下也會被 Suricata 丟掉，所以 B1 兩種模式的 loss 一樣（26–48%）。
+   - 影響：丟的都是重複的那一份，每條連線的第一個封包都有轉送，對真實流量沒有影響。但 B7 A0 routed 少送、少做了 2–4 成，它的容量和 µs/封包不能拿來和 bridge 比。
+5. 對預設的意涵（還沒決定）：
+   - routed 省的是轉送的那約 2 µs，在只轉送、信任的流量上最明顯；有檢查時只差 2–9%。
+   - 代價在部署面：兩個 port 要有各自的 IP 網段和路由，不轉送非 IP 的封包，和既有網路的接法不同。
+
+## 實驗 5：ids 一個封包複製多份（`exp5`–`exp8`，bridge，2 輪，2026-11-04）
+
+問題（老師 11/04）：Suricata、edge AI、雲端特徵各要一份複本時，Pi 撐得住嗎？三種做法都量：
+- (a) **kernel 多送幾份 NFLOG**：wnc-gw 照常送 Suricata 一份（group 10..）。另一個 table `inet wnc_copy`（forward priority 10，在 wnc-gw 之後）對每個封包再 `log group 20..`。
+- (b) 同 (a)，每份**只複製前 128 bytes**（規則的 `snaplen 128`）。
+- (c) kernel 只多送一份給 **user space 的分發程式**（`fanout/`），它再分給 2 個讀取端。
+
+讀取端只收、不處理：(a)(b) 是 `tcpdump -i nflog:N -s 0 -w /dev/null`（buffer 1 MiB，和 Suricata 一樣），(c) 是 fanout 的讀取執行緒。
+
+| 代號 | 內容 |
+|---|---|
+| K0 | 只有 Suricata（ids、1 group） |
+| K1／K2 | ＋ kernel 1／2 份 |
+| K2h | ＋ kernel 2 份，每份前 128 bytes |
+| U2 | ＋ kernel 1 份，fanout 分成 2 份 |
+| K0g3、K2g3、U2g3 | 同上，Suricata 3 group（實驗 1 裡 ids 最好的組合，只量 R123） |
+
+- pcap：
+  - S_m17：掃描，小封包、很多 flow。
+  - bulk_fixed：一條 iperf3 TCP 連線，1454-byte 的封包。網卡的 GRO 會把同一條 TCP 平均約 6.8 個封包合成一個再交給 nft，所以每份複本的數量約是封包數的 15%。
+- 讀取端容量：讀取端漏掉的複本 ≤ 0.1% 的最高速率。漏掉的算法：netlink socket 滿了被 kernel 丟的，加上 fanout 的環狀緩衝滿了丟的。
+- **K2h、K0g3、K2g3 是重跑的數字**，第一次的數據不算：
+  - 第一次 K2h 的讀取端用 `tcpdump -s 128`。libpcap 的接收緩衝只有 snaplen + 128 bytes，kernel 一批送來的複本會被截掉：小封包只收到約 1 成，大封包時 tcpdump 直接結束（Docker 重現過）。重跑時改成 tcpdump `-s 0`、截短交給規則的 snaplen（exp7）。
+  - 第一次 K0g3、K2g3 時 fanout 沒結束，一直佔著 group 20：背景啟動的程式會忽略 SIGINT，fanout 自己又沒處理。結果 K2g3 的第一份複本進了 fanout，K0g3 多了 fanout 空轉的 CPU。重跑時改用 SIGTERM，啟動前也會檢查有沒有殘留的讀取端（exp8）。
+  - 順帶量到：fanout 空轉時（2 個讀取執行緒每 1 ms 醒來一次）每秒用掉約 70 ms CPU。
+
+**容量（kpps，轉送（讀取端）；兩輪不同時寫「輪 1／輪 2」；「≥」表示掃到最高速率都沒丟）**
+
+| 工作負載 | S_m17 A0 | S_m17 R123 | bulk A0 | bulk R123 |
+|---|---|---|---|---|
+| K0 | 40 | 120 | 60 | ≥88 |
+| K1 | 30（≥50） | 120（100） | 50（40） | ≥88（80／70） |
+| K2 | 30（≥50） | 100（100） | 40（30） | 80／70（70／60） |
+| K2h | 30（≥50） | 100（100） | 50／60（≥70） | ≥88（≥88） |
+| U2 | 30（≥50） | 120／100（100） | 40（30） | 70（60） |
+| K0g3 | | 120／100 | | ≥88 |
+| K2g3 | | 100（80） | | 70（60） |
+| U2g3 | | 100（100／120） | | 70（50／60） |
+
+Suricata 自己的檢查容量（Suricata 漏掉的複本 ≤ 0.1%）：
+- S_m17 R123：1 group 40–50 kpps，3 group 70–80 kpps，和實驗 1 一致。
+- bulk_fixed：所有組合都 < 10 kpps。這是單一 TCP 連線，3 group 也只有一個 worker 在做；10 kpps（約 116 Mbps）時那個 worker 已經 100% 忙，漏掉 15%。
+
+**每個封包多花的 CPU（µs，全機，兩輪平均；括號是讀取端自己的部分）**
+
+| 比較基準 | K1 | K2 | K2h | U2 |
+|---|---|---|---|---|
+| S_m17 A0 @30k，K0 = 48.6 | +5.1（1.8） | +10.6（3.8） | +11.2（3.6） | **+5.8**（3.1） |
+| S_m17 R123 @30k，K0 = 41.8 | +3.4（5.2） | +6.5（9.6） | +7.0（8.9） | +6.0（8.0） |
+| S_m17 R123 @30k，K0g3 = 46.7 | | +9.5（6.6）（K2g3） | | +7.4（4.8）（U2g3） |
+| bulk A0 @20k，K0 = 81.4 | +7.8（6.6） | +12.8（10.7） | **+3.6**（1.6） | +16.2（11.5） |
+| bulk R123 @20k，K0 = 81.2 | +8.7（6.9） | +14.8（14.5） | **+3.4**（2.0） | +17.8（14.7） |
+| bulk R123 @20k，K0g3 = 82.3 | | +15.1（14.4）（K2g3） | | +18.1（13.4）（U2g3） |
+
+（bulk 的 µs 是每個線上的封包。R123 下讀取端的時間比 A0 多，[推測] 是因為 R123 時 CPU1–3 也在跑 RPS 的 softirq，被算進當時正在跑的讀取端。所以讀取端那欄只當參考，比較時看全機。）
+
+解讀：
+1. **每多一份 kernel 複本：小封包約 +3–5 µs，大封包約 +7–8 µs**，大致和份數成正比。加 2 份讓整機每個封包貴 13–22%。轉送容量少約 2 成：S_m17 R123 120 → 100、bulk R123 ≥88 → 70–80、A0 40 → 30。
+2. **只要 header 就用 snaplen。** S_m17 的封包本來就小於 128 bytes，K2h 和 K2 一樣。bulk 就差很多：2 份只多 +3.4–3.6 µs（整份是 +12.8–14.8），轉送容量和沒有複本時一樣。注意 GRO 合併過的封包只有一份複本，128 bytes 只看得到第一段的 header。
+3. **user space 分發（c）在小封包時比較省，大封包時比較貴。**
+   - 小封包：A0 +5.8 對 kernel 2 份的 +10.6；R123 差不多（+6.0 對 +6.5；3 group +7.4 對 +9.5）。
+   - 大封包：+16–18 對 +13–15，因為 fanout 在 user space 又把資料複製了兩次（每個環狀緩衝一次）。改成共用一份緩衝可能更省，沒有做。
+4. 讀取端只收不處理時，跟得上 100 kpps（S_m17 R123）、60–70 kpps（bulk）。真正的 edge AI 或特徵程式還要加上自己的處理時間，而且會和 Suricata 搶 CPU（實驗 2）。
+
 ## 整體結論（給設計用）
 
 | 問題 | 答案 |
@@ -208,7 +315,9 @@ CPU0 每個封包：ids A0 約 26–30 µs、ids R123 5–11（S_m17）／15–1
 | edge AI 的 CPU 從哪來？ | 幾乎全部來自信任：信任的封包約 14 µs、檢查的約 55 µs。 |
 | 怎麼放 edge AI？ | 綁在 Suricata 以外的核心（α 或 δ）；不要和 Suricata 共用核心，SCHED_IDLE 也不行。 |
 | 綁核心就夠了嗎？ | 不夠。記憶體頻寬是共用的：真實大小的模型讓 Suricata 貴 15–17%，吃記憶體的負載讓它貴到 2 倍。要依 Suricata 的負載調整 AI 的工作比例。 |
+| routed 還是 bridge？ | routed 的轉送每個封包少約 2 µs：只轉送少 15–20%（A0 容量 100 → 150 kpps），有檢查時只少 2–9%、容量一樣。預設用哪個還沒決定（部署面的取捨）。 |
+| 一個封包複製 2–3 份撐得住嗎？ | 撐得住：kernel 多 2 份讓每個封包貴 13–22%、轉送容量少約 2 成。只要 header 時用 snaplen（大封包幾乎不加成本）；小封包多時 user space 分發比較省，大封包時 kernel 複製比較省。 |
 
-品質檢查：312 個量測點全部 `throttled=0x0`（量測前後）、時脈 1000 MHz、swap 0、最高溫 63.3°C；沒有 ssh 讀取失敗的點。exp1c、exp1d 的 392 個點和 exp3 的 18 個點也都是 `throttled=0x0`、1000 MHz、swap 0、PAUSE 0 個，最高溫 67.6°C。實驗 3b（Docker）在實驗 1 第二輪的 B1 期間跑過約 6 分鐘，B1 兩輪的容量在 5 kpps 的速率間隔內一致。
+品質檢查：312 個量測點全部 `throttled=0x0`（量測前後）、時脈 1000 MHz、swap 0、最高溫 63.3°C；沒有 ssh 讀取失敗的點。exp1c、exp1d 的 392 個點和 exp3 的 18 個點也都是 `throttled=0x0`、1000 MHz、swap 0、PAUSE 0 個，最高溫 67.6°C。實驗 3b（Docker）在實驗 1 第二輪的 B1 期間跑過約 6 分鐘，B1 兩輪的容量在 5 kpps 的速率間隔內一致。實驗 4、5 的 776 個點（含重跑）也都是 `throttled=0x0`、1000 MHz、swap 0、PAUSE 0 個、沒有 ssh 讀取失敗，最高溫 68.1°C。
 
 限制：Pi 4 鎖 1000 MHz；流量是 IoT-23 切片重播（S_m17 掃描、S_m60 單一 UDP flow）；edge AI 是替身，不是合作方的模型；實驗 2 只量 40 kpps 一個速率；`µs/封包（全機）` 在有 AI 時包含 AI 的 CPU，那一欄只在沒有 AI 時有意義。

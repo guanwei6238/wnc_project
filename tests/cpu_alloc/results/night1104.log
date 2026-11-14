@@ -1,0 +1,733 @@
+13:00:15 topology -> bridge
+lo               UNKNOWN        127.0.0.1/8 
+eth0             DOWN           
+br0              DOWN           
+eth1.20@if3      UP             
+  Pause parameters for eth0: Autonegotiate:	on RX:		off TX:		off RX negotiated: off TX negotiated: off  
+  	Speed: 1000Mb/s 	Link detected: yes 
+13:00:25 sweep K1 R123 S_m17 round=1 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=1 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.102  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=11.3  util1=22.2  util2=20.2  util3=25.6  us_per_pkt=51.30  cpu0_us_per_pkt=7.30  reader_us_per_pkt=4.64  temp=62.8 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=14.8  util1=33.4  util2=20.0  util3=25.9  us_per_pkt=45.20  cpu0_us_per_pkt=7.10  reader_us_per_pkt=5.21  temp=62.8 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=17.2  util1=34.5  util2=29.3  util3=33.5  us_per_pkt=45.50  cpu0_us_per_pkt=6.85  reader_us_per_pkt=5.22  temp=62.8 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=23.7  util1=33.2  util2=43.3  util3=31.2  us_per_pkt=45.50  cpu0_us_per_pkt=8.20  reader_us_per_pkt=4.75  temp=63.3 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.104  copy_loss_pct=18.604  xcopy_loss_pct=0.000  util0=27.9  util1=33.2  util2=43.4  util3=34.9  us_per_pkt=43.70  cpu0_us_per_pkt=8.75  reader_us_per_pkt=4.73  temp=63.7 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=34.258  xcopy_loss_pct=0.000  util0=30.0  util1=33.1  util2=45.5  util3=34.0  us_per_pkt=41.35  cpu0_us_per_pkt=8.70  reader_us_per_pkt=5.03  temp=64.2 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=48.954  xcopy_loss_pct=0.000  util0=28.5  util1=35.1  util2=37.9  util3=43.4  us_per_pkt=39.40  cpu0_us_per_pkt=7.75  reader_us_per_pkt=5.02  temp=63.7 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=51.851  xcopy_loss_pct=0.000  util0=38.9  util1=37.7  util2=37.7  util3=40.3  us_per_pkt=38.35  cpu0_us_per_pkt=9.65  reader_us_per_pkt=5.36  temp=63.3 
+   actual_pps=120001  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=65.552  xcopy_loss_pct=0.332  util0=40.9  util1=40.4  util2=42.2  util3=40.9  us_per_pkt=37.80  cpu0_us_per_pkt=9.40  reader_us_per_pkt=2.10  temp=63.7 
+   actual_pps=150001  cap_loss_pct=18.427  loss_pct=18.535  copy_loss_pct=76.110  xcopy_loss_pct=0.000  util0=37.5  util1=36.5  util2=36.1  util3=37.7  us_per_pkt=31.55  cpu0_us_per_pkt=8.00  reader_us_per_pkt=1.99  temp=65.2 
+   actual_pps=200001  cap_loss_pct=37.267  loss_pct=37.376  copy_loss_pct=89.525  xcopy_loss_pct=0.424  util0=31.2  util1=31.5  util2=31.5  util3=32.7  us_per_pkt=25.00  cpu0_us_per_pkt=6.15  reader_us_per_pkt=1.74  temp=64.2 
+  reader20: 2062952 packets captured 2062952 packets received by filter 3 packets dropped by kernel 
+13:02:44 sweep K1 A0 S_m17 round=1 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=1 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=45.6  util1=4.3  util2=28.5  util3=12.7  us_per_pkt=58.90  cpu0_us_per_pkt=29.50  reader_us_per_pkt=1.17  temp=63.3 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=55.8  util1=14.2  util2=11.2  util3=30.7  us_per_pkt=53.85  cpu0_us_per_pkt=26.85  reader_us_per_pkt=1.83  temp=64.2 
+   actual_pps=40000  cap_loss_pct=7.029  loss_pct=7.137  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=66.9  util1=4.3  util2=40.6  util3=17.0  us_per_pkt=54.96  cpu0_us_per_pkt=28.56  reader_us_per_pkt=1.08  temp=65.2 
+   actual_pps=50000  cap_loss_pct=25.532  loss_pct=25.640  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=60.7  util1=6.2  util2=18.7  util3=34.9  us_per_pkt=56.13  cpu0_us_per_pkt=28.27  reader_us_per_pkt=1.08  temp=63.7 
+  reader20: 733798 packets captured 733798 packets received by filter 0 packets dropped by kernel 
+13:04:18 sweep K2h R123 S_m17 round=1 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=2 snaplen=128
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=15.3  util1=22.4  util2=23.0  util3=22.5  us_per_pkt=53.80  cpu0_us_per_pkt=9.90  reader_us_per_pkt=7.78  temp=64.2 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=17.7  util1=30.6  util2=28.3  util3=22.1  us_per_pkt=47.45  cpu0_us_per_pkt=8.50  reader_us_per_pkt=7.84  temp=64.2 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=27.2  util1=35.6  util2=28.3  util3=30.4  us_per_pkt=48.25  cpu0_us_per_pkt=10.80  reader_us_per_pkt=8.46  temp=64.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=33.9  util1=34.5  util2=33.0  util3=37.4  us_per_pkt=48.30  cpu0_us_per_pkt=11.80  reader_us_per_pkt=8.53  temp=64.7 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=16.691  xcopy_loss_pct=0.000  util0=36.1  util1=39.5  util2=35.2  util3=37.1  us_per_pkt=46.45  cpu0_us_per_pkt=11.35  reader_us_per_pkt=8.61  temp=64.7 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=39.084  xcopy_loss_pct=0.000  util0=29.0  util1=44.4  util2=36.5  util3=36.9  us_per_pkt=42.80  cpu0_us_per_pkt=8.45  reader_us_per_pkt=8.77  temp=64.7 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=49.698  xcopy_loss_pct=0.000  util0=34.2  util1=41.2  util2=38.8  util3=39.5  us_per_pkt=41.80  cpu0_us_per_pkt=9.30  reader_us_per_pkt=8.12  temp=64.7 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=49.289  xcopy_loss_pct=0.000  util0=43.5  util1=41.5  util2=41.1  util3=40.3  us_per_pkt=41.10  cpu0_us_per_pkt=10.75  reader_us_per_pkt=8.17  temp=65.7 
+   actual_pps=120001  cap_loss_pct=8.058  loss_pct=8.167  copy_loss_pct=79.239  xcopy_loss_pct=0.000  util0=41.7  util1=41.9  util2=39.3  util3=41.0  us_per_pkt=37.95  cpu0_us_per_pkt=9.65  reader_us_per_pkt=3.76  temp=65.2 
+   actual_pps=150001  cap_loss_pct=24.988  loss_pct=25.096  copy_loss_pct=86.779  xcopy_loss_pct=0.000  util0=35.9  util1=38.0  util2=37.8  util3=37.3  us_per_pkt=31.75  cpu0_us_per_pkt=7.65  reader_us_per_pkt=3.16  temp=64.7 
+  reader20: 203304 packets captured 203304 packets received by filter 0 packets dropped by kernel 
+  reader21: 203304 packets captured 203304 packets received by filter 0 packets dropped by kernel 
+13:06:32 sweep K0 A0 S_m17 round=1 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=0 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=41.0  util1=19.6  util2=6.9  util3=15.8  us_per_pkt=53.85  cpu0_us_per_pkt=26.50  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=54.1  util1=19.4  util2=14.7  util3=12.1  us_per_pkt=48.20  cpu0_us_per_pkt=26.00  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=62.8  util1=25.3  util2=15.0  util3=18.6  us_per_pkt=48.35  cpu0_us_per_pkt=24.95  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=50000  cap_loss_pct=18.498  loss_pct=18.606  copy_loss_pct=0.000  util0=61.6  util1=34.1  util2=18.6  util3=4.2  us_per_pkt=50.49  cpu0_us_per_pkt=26.26  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=60000  cap_loss_pct=31.793  loss_pct=31.900  copy_loss_pct=0.000  util0=55.8  util1=11.0  util2=32.1  util3=11.8  us_per_pkt=51.02  cpu0_us_per_pkt=25.73  reader_us_per_pkt=0.00  temp=65.2 
+13:08:11 sweep K0 R123 S_m17 round=1 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=0 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=0.000  util0=13.2  util1=19.9  util2=17.6  util3=22.4  us_per_pkt=47.15  cpu0_us_per_pkt=8.50  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.102  copy_loss_pct=0.000  util0=11.3  util1=27.1  util2=19.7  util3=28.9  us_per_pkt=41.90  cpu0_us_per_pkt=5.45  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  util0=15.1  util1=31.5  util2=29.0  util3=29.4  us_per_pkt=41.80  cpu0_us_per_pkt=6.00  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=22.4  util1=34.4  util2=31.5  util3=31.5  us_per_pkt=41.65  cpu0_us_per_pkt=7.80  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=10.716  util0=31.6  util1=34.3  util2=30.9  util3=33.0  us_per_pkt=40.70  cpu0_us_per_pkt=9.90  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=37.843  util0=16.6  util1=27.9  util2=45.9  util3=36.6  us_per_pkt=36.80  cpu0_us_per_pkt=4.80  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=29.929  util0=41.5  util1=29.4  util2=32.5  util3=35.6  us_per_pkt=37.85  cpu0_us_per_pkt=11.30  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.104  copy_loss_pct=70.670  util0=23.5  util1=36.6  util2=35.8  util3=37.2  us_per_pkt=32.90  cpu0_us_per_pkt=5.80  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=120001  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=74.656  util0=30.7  util1=36.3  util2=34.6  util3=36.3  us_per_pkt=31.70  cpu0_us_per_pkt=7.05  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=150001  cap_loss_pct=8.937  loss_pct=9.044  copy_loss_pct=76.754  util0=37.2  util1=35.6  util2=37.5  util3=35.8  us_per_pkt=31.20  cpu0_us_per_pkt=7.95  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=200001  cap_loss_pct=30.547  loss_pct=30.656  copy_loss_pct=87.298  util0=32.6  util1=30.3  util2=31.6  util3=31.3  us_per_pkt=24.90  cpu0_us_per_pkt=6.45  reader_us_per_pkt=0.00  temp=64.7 
+13:10:26 sweep K2 R123 S_m17 round=1 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=2 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=16.6  util1=25.6  util2=23.2  util3=19.6  us_per_pkt=55.10  cpu0_us_per_pkt=10.75  reader_us_per_pkt=9.31  temp=64.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=14.8  util1=24.5  util2=31.1  util3=30.0  us_per_pkt=48.20  cpu0_us_per_pkt=7.10  reader_us_per_pkt=9.43  temp=64.7 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=21.7  util1=29.1  util2=28.6  util3=44.4  us_per_pkt=49.35  cpu0_us_per_pkt=8.65  reader_us_per_pkt=9.00  temp=65.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=1.170  xcopy_loss_pct=0.000  util0=30.1  util1=42.8  util2=34.3  util3=35.2  us_per_pkt=49.60  cpu0_us_per_pkt=10.50  reader_us_per_pkt=8.42  temp=64.2 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=26.723  xcopy_loss_pct=0.000  util0=27.7  util1=47.9  util2=34.7  util3=37.3  us_per_pkt=46.35  cpu0_us_per_pkt=8.70  reader_us_per_pkt=9.31  temp=65.2 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=47.215  xcopy_loss_pct=0.000  util0=27.1  util1=44.8  util2=36.0  util3=41.7  us_per_pkt=43.40  cpu0_us_per_pkt=7.85  reader_us_per_pkt=9.29  temp=64.7 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=31.127  xcopy_loss_pct=0.000  util0=44.3  util1=40.8  util2=39.6  util3=39.7  us_per_pkt=44.90  cpu0_us_per_pkt=12.10  reader_us_per_pkt=11.07  temp=66.7 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=48.146  xcopy_loss_pct=0.000  util0=46.7  util1=41.8  util2=41.8  util3=42.2  us_per_pkt=42.70  cpu0_us_per_pkt=11.55  reader_us_per_pkt=12.64  temp=65.7 
+   actual_pps=120001  cap_loss_pct=7.718  loss_pct=7.827  copy_loss_pct=66.414  xcopy_loss_pct=0.647  util0=41.4  util1=42.3  util2=40.6  util3=41.2  us_per_pkt=38.15  cpu0_us_per_pkt=9.55  reader_us_per_pkt=3.75  temp=65.7 
+   actual_pps=150001  cap_loss_pct=25.143  loss_pct=25.252  copy_loss_pct=75.815  xcopy_loss_pct=1.026  util0=36.2  util1=37.4  util2=37.6  util3=37.1  us_per_pkt=31.75  cpu0_us_per_pkt=7.75  reader_us_per_pkt=3.11  temp=65.2 
+  reader20: 1877433 packets captured 1877433 packets received by filter 7 packets dropped by kernel 
+  reader21: 1882107 packets captured 1882107 packets received by filter 6 packets dropped by kernel 
+13:12:40 sweep K2 A0 S_m17 round=1 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=2 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=47.6  util1=12.4  util2=25.1  util3=12.3  us_per_pkt=63.00  cpu0_us_per_pkt=30.80  reader_us_per_pkt=2.46  temp=65.2 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=61.5  util1=10.4  util2=26.9  util3=24.5  us_per_pkt=59.10  cpu0_us_per_pkt=29.45  reader_us_per_pkt=3.95  temp=66.7 
+   actual_pps=40000  cap_loss_pct=15.200  loss_pct=15.309  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=65.5  util1=6.7  util2=23.0  util3=35.2  us_per_pkt=61.14  cpu0_us_per_pkt=30.72  reader_us_per_pkt=2.20  temp=65.2 
+   actual_pps=50000  cap_loss_pct=31.855  loss_pct=31.963  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=60.4  util1=8.1  util2=15.3  util3=37.8  us_per_pkt=62.00  cpu0_us_per_pkt=30.82  reader_us_per_pkt=2.24  temp=66.2 
+  reader20: 704807 packets captured 704807 packets received by filter 0 packets dropped by kernel 
+  reader21: 704807 packets captured 704807 packets received by filter 0 packets dropped by kernel 
+13:14:15 sweep K2h A0 S_m17 round=1 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=2 snaplen=128
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=47.3  util1=18.3  util2=11.6  util3=19.0  us_per_pkt=62.25  cpu0_us_per_pkt=30.60  reader_us_per_pkt=1.59  temp=64.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=61.9  util1=12.1  util2=17.2  util3=31.2  us_per_pkt=58.70  cpu0_us_per_pkt=29.70  reader_us_per_pkt=2.66  temp=65.7 
+   actual_pps=40000  cap_loss_pct=15.723  loss_pct=15.832  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=65.3  util1=6.3  util2=21.5  util3=36.1  us_per_pkt=60.93  cpu0_us_per_pkt=30.79  reader_us_per_pkt=1.42  temp=65.2 
+   actual_pps=50000  cap_loss_pct=32.312  loss_pct=32.420  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=61.6  util1=10.8  util2=17.4  util3=30.5  us_per_pkt=61.83  cpu0_us_per_pkt=31.69  reader_us_per_pkt=1.40  temp=65.7 
+  reader20: 73991 packets captured 73991 packets received by filter 0 packets dropped by kernel 
+  reader21: 73991 packets captured 73991 packets received by filter 0 packets dropped by kernel 
+13:15:50 sweep K2h A0 bulk_fixed round=1 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=2 snaplen=128
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=10000  cap_loss_pct=0.000  loss_pct=-0.005  copy_loss_pct=15.616  xcopy_loss_pct=0.000  util0=23.8  util1=15.8  util2=26.2  util3=33.3  us_per_pkt=145.54  cpu0_us_per_pkt=34.99  reader_us_per_pkt=-0.48  temp=64.7 
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=59.927  xcopy_loss_pct=0.000  util0=33.7  util1=24.7  util2=38.0  util3=14.9  us_per_pkt=82.00  cpu0_us_per_pkt=24.81  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=-0.002  copy_loss_pct=73.506  xcopy_loss_pct=0.000  util0=44.2  util1=20.0  util2=31.8  util3=22.0  us_per_pkt=61.14  cpu0_us_per_pkt=22.91  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=-0.004  copy_loss_pct=81.042  xcopy_loss_pct=0.000  util0=54.1  util1=2.8  util2=3.6  util3=68.1  us_per_pkt=49.35  cpu0_us_per_pkt=20.77  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=-0.002  copy_loss_pct=84.721  xcopy_loss_pct=0.000  util0=59.5  util1=7.5  util2=12.3  util3=54.1  us_per_pkt=42.35  cpu0_us_per_pkt=18.89  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=-0.001  copy_loss_pct=85.193  xcopy_loss_pct=0.000  util0=66.5  util1=3.4  util2=54.2  util3=16.0  us_per_pkt=36.46  cpu0_us_per_pkt=17.31  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=70000  cap_loss_pct=9.780  loss_pct=9.776  copy_loss_pct=86.849  xcopy_loss_pct=0.000  util0=67.4  util1=4.2  util2=30.5  util3=40.0  us_per_pkt=34.82  cpu0_us_per_pkt=16.51  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=80000  cap_loss_pct=23.467  loss_pct=23.467  copy_loss_pct=86.429  xcopy_loss_pct=0.000  util0=65.5  util1=3.7  util2=9.5  util3=61.5  us_per_pkt=36.00  cpu0_us_per_pkt=16.82  reader_us_per_pkt=0.00  temp=65.2 
+13:17:53 sweep K2 A0 bulk_fixed round=1 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=2 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=10000  cap_loss_pct=0.000  loss_pct=-0.021  copy_loss_pct=21.025  xcopy_loss_pct=0.000  util0=28.0  util1=11.6  util2=19.6  util3=50.4  us_per_pkt=161.10  cpu0_us_per_pkt=41.19  reader_us_per_pkt=11.81  temp=65.2 
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=-0.002  copy_loss_pct=65.569  xcopy_loss_pct=0.000  util0=46.1  util1=34.0  util2=29.1  util3=17.5  us_per_pkt=92.81  cpu0_us_per_pkt=33.80  reader_us_per_pkt=10.93  temp=64.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=76.862  xcopy_loss_pct=0.000  util0=54.4  util1=31.7  util2=43.0  util3=13.8  us_per_pkt=74.25  cpu0_us_per_pkt=28.25  reader_us_per_pkt=10.97  temp=65.7 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=-0.001  copy_loss_pct=83.200  xcopy_loss_pct=1.657  util0=64.5  util1=47.8  util2=12.3  util3=33.3  us_per_pkt=60.54  cpu0_us_per_pkt=24.72  reader_us_per_pkt=12.85  temp=66.2 
+   actual_pps=50000  cap_loss_pct=4.234  loss_pct=4.234  copy_loss_pct=83.936  xcopy_loss_pct=0.000  util0=65.4  util1=24.1  util2=15.6  util3=54.6  us_per_pkt=53.07  cpu0_us_per_pkt=21.72  reader_us_per_pkt=5.72  temp=66.7 
+   actual_pps=60000  cap_loss_pct=22.806  loss_pct=22.806  copy_loss_pct=83.453  xcopy_loss_pct=0.028  util0=66.5  util1=39.1  util2=27.8  util3=30.3  us_per_pkt=55.27  cpu0_us_per_pkt=22.46  reader_us_per_pkt=6.15  temp=66.2 
+  reader20: 124960 packets captured 124960 packets received by filter 3 packets dropped by kernel 
+  reader21: 124510 packets captured 124510 packets received by filter 3 packets dropped by kernel 
+13:19:39 sweep K2 R123 bulk_fixed round=1 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=2 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=10000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=20.346  xcopy_loss_pct=0.000  util0=18.3  util1=21.4  util2=11.1  util3=60.1  us_per_pkt=162.57  cpu0_us_per_pkt=26.88  reader_us_per_pkt=12.06  temp=65.2 
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=63.207  xcopy_loss_pct=0.000  util0=22.8  util1=28.9  util2=53.4  util3=25.9  us_per_pkt=96.24  cpu0_us_per_pkt=16.78  reader_us_per_pkt=14.06  temp=65.2 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=76.563  xcopy_loss_pct=0.000  util0=26.5  util1=41.4  util2=23.6  util3=52.1  us_per_pkt=74.83  cpu0_us_per_pkt=13.81  reader_us_per_pkt=14.40  temp=64.7 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=83.356  xcopy_loss_pct=0.000  util0=37.8  util1=51.8  util2=30.6  util3=50.4  us_per_pkt=65.58  cpu0_us_per_pkt=14.54  reader_us_per_pkt=13.85  temp=65.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=86.842  xcopy_loss_pct=0.000  util0=41.2  util1=56.4  util2=44.6  util3=36.6  us_per_pkt=56.75  cpu0_us_per_pkt=13.08  reader_us_per_pkt=11.98  temp=66.2 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=89.486  xcopy_loss_pct=0.000  util0=50.5  util1=57.8  util2=27.0  util3=56.5  us_per_pkt=49.92  cpu0_us_per_pkt=13.14  reader_us_per_pkt=11.78  temp=66.2 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=90.071  xcopy_loss_pct=0.093  util0=57.4  util1=64.0  util2=62.5  util3=21.6  us_per_pkt=45.47  cpu0_us_per_pkt=12.70  reader_us_per_pkt=13.68  temp=66.2 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=90.535  xcopy_loss_pct=3.890  util0=66.0  util1=68.4  util2=70.9  util3=26.6  us_per_pkt=45.69  cpu0_us_per_pkt=12.99  reader_us_per_pkt=12.52  temp=67.6 
+   actual_pps=87952  cap_loss_pct=0.327  loss_pct=9.399  copy_loss_pct=90.312  xcopy_loss_pct=2.270  util0=70.0  util1=72.4  util2=65.4  util3=35.1  us_per_pkt=42.76  cpu0_us_per_pkt=12.32  reader_us_per_pkt=9.98  temp=67.2 
+  reader20: 238746 packets captured 238746 packets received by filter 13 packets dropped by kernel 
+  reader21: 235716 packets captured 235716 packets received by filter 48 packets dropped by kernel 
+13:21:52 sweep K1 A0 bulk_fixed round=1 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=1 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=10000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=18.599  xcopy_loss_pct=0.000  util0=27.0  util1=20.4  util2=4.0  util3=53.6  us_per_pkt=154.14  cpu0_us_per_pkt=39.61  reader_us_per_pkt=6.19  temp=65.2 
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=62.316  xcopy_loss_pct=0.000  util0=39.7  util1=21.8  util2=31.9  util3=27.8  us_per_pkt=89.16  cpu0_us_per_pkt=29.19  reader_us_per_pkt=6.66  temp=66.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=75.284  xcopy_loss_pct=0.000  util0=51.8  util1=26.6  util2=37.4  util3=15.1  us_per_pkt=68.21  cpu0_us_per_pkt=26.98  reader_us_per_pkt=5.03  temp=66.2 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=82.266  xcopy_loss_pct=0.000  util0=61.5  util1=11.8  util2=10.9  util3=60.9  us_per_pkt=55.76  cpu0_us_per_pkt=23.63  reader_us_per_pkt=4.83  temp=65.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=83.891  xcopy_loss_pct=0.346  util0=64.0  util1=5.5  util2=66.0  util3=11.9  us_per_pkt=46.73  cpu0_us_per_pkt=20.28  reader_us_per_pkt=2.73  temp=65.2 
+   actual_pps=60000  cap_loss_pct=25.587  loss_pct=9.950  copy_loss_pct=85.353  xcopy_loss_pct=0.000  util0=66.9  util1=41.3  util2=15.6  util3=28.7  us_per_pkt=44.09  cpu0_us_per_pkt=19.32  reader_us_per_pkt=2.46  temp=66.7 
+   actual_pps=70000  cap_loss_pct=39.356  loss_pct=26.321  copy_loss_pct=86.188  xcopy_loss_pct=0.000  util0=67.7  util1=10.6  util2=18.9  util3=56.4  us_per_pkt=45.95  cpu0_us_per_pkt=20.26  reader_us_per_pkt=2.75  temp=66.7 
+  reader20: 160738 packets captured 160738 packets received by filter 1 packet dropped by kernel 
+13:23:46 sweep K2h R123 bulk_fixed round=1 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=2 snaplen=128
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=10000  cap_loss_pct=0.000  loss_pct=-0.006  copy_loss_pct=15.253  xcopy_loss_pct=0.000  util0=13.2  util1=18.4  util2=16.2  util3=51.6  us_per_pkt=146.33  cpu0_us_per_pkt=19.41  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=60.453  xcopy_loss_pct=0.000  util0=21.2  util1=22.4  util2=24.8  util3=42.7  us_per_pkt=81.68  cpu0_us_per_pkt=15.59  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=-0.002  copy_loss_pct=73.570  xcopy_loss_pct=0.000  util0=23.4  util1=25.0  util2=33.9  util3=36.7  us_per_pkt=61.84  cpu0_us_per_pkt=12.15  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=81.523  xcopy_loss_pct=0.000  util0=31.2  util1=32.6  util2=24.5  util3=42.1  us_per_pkt=49.99  cpu0_us_per_pkt=11.95  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=-0.006  copy_loss_pct=85.807  xcopy_loss_pct=0.000  util0=35.2  util1=38.7  util2=33.5  util3=29.6  us_per_pkt=43.30  cpu0_us_per_pkt=11.13  reader_us_per_pkt=0.00  temp=67.2 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=-0.001  copy_loss_pct=87.825  xcopy_loss_pct=0.000  util0=41.3  util1=42.7  util2=52.1  util3=16.3  us_per_pkt=39.54  cpu0_us_per_pkt=10.72  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=88.736  xcopy_loss_pct=0.000  util0=46.0  util1=45.7  util2=41.4  util3=27.7  us_per_pkt=35.34  cpu0_us_per_pkt=10.10  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=-0.000  copy_loss_pct=89.902  xcopy_loss_pct=0.000  util0=50.9  util1=46.2  util2=44.9  util3=23.5  us_per_pkt=32.72  cpu0_us_per_pkt=10.06  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=87944  cap_loss_pct=0.000  loss_pct=-0.000  copy_loss_pct=91.285  xcopy_loss_pct=0.000  util0=59.5  util1=59.2  util2=42.4  util3=29.6  us_per_pkt=33.57  cpu0_us_per_pkt=10.48  reader_us_per_pkt=0.00  temp=66.7 
+13:25:59 sweep K0 A0 bulk_fixed round=1 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=0 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=10000  cap_loss_pct=0.000  loss_pct=-0.017  copy_loss_pct=15.493  util0=22.5  util1=26.0  util2=20.0  util3=29.1  us_per_pkt=143.45  cpu0_us_per_pkt=33.08  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=-0.002  copy_loss_pct=59.598  util0=35.0  util1=29.0  util2=21.3  util3=25.4  us_per_pkt=81.28  cpu0_us_per_pkt=25.69  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=-0.001  copy_loss_pct=73.591  util0=43.6  util1=17.1  util2=41.2  util3=15.1  us_per_pkt=60.83  cpu0_us_per_pkt=22.65  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=-0.001  copy_loss_pct=81.006  util0=53.2  util1=24.3  util2=29.1  util3=21.0  us_per_pkt=49.08  cpu0_us_per_pkt=20.45  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=-0.001  copy_loss_pct=85.024  util0=60.0  util1=16.6  util2=8.7  util3=47.1  us_per_pkt=41.91  cpu0_us_per_pkt=19.01  reader_us_per_pkt=0.00  temp=67.2 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=85.470  util0=66.2  util1=7.4  util2=59.6  util3=6.2  us_per_pkt=36.39  cpu0_us_per_pkt=17.27  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=70000  cap_loss_pct=11.754  loss_pct=11.754  copy_loss_pct=86.094  util0=66.7  util1=4.4  util2=67.8  util3=4.0  us_per_pkt=35.78  cpu0_us_per_pkt=16.70  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=80000  cap_loss_pct=24.559  loss_pct=24.559  copy_loss_pct=86.861  util0=66.1  util1=11.2  util2=4.7  util3=58.5  us_per_pkt=36.69  cpu0_us_per_pkt=17.26  reader_us_per_pkt=0.00  temp=66.7 
+13:27:59 sweep K1 R123 bulk_fixed round=1 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=1 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=10000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=17.950  xcopy_loss_pct=0.000  util0=17.9  util1=17.1  util2=42.1  util3=28.2  us_per_pkt=154.46  cpu0_us_per_pkt=26.25  reader_us_per_pkt=7.06  temp=66.7 
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=62.242  xcopy_loss_pct=0.000  util0=20.7  util1=25.8  util2=13.1  util3=62.6  us_per_pkt=89.64  cpu0_us_per_pkt=15.19  reader_us_per_pkt=7.19  temp=65.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=75.218  xcopy_loss_pct=0.000  util0=27.2  util1=31.0  util2=38.3  util3=36.4  us_per_pkt=69.29  cpu0_us_per_pkt=14.19  reader_us_per_pkt=5.68  temp=65.7 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=82.646  xcopy_loss_pct=0.000  util0=32.0  util1=42.2  util2=45.2  util3=27.7  us_per_pkt=56.49  cpu0_us_per_pkt=12.27  reader_us_per_pkt=6.04  temp=66.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=-0.000  copy_loss_pct=86.512  xcopy_loss_pct=0.000  util0=36.6  util1=46.9  util2=25.3  util3=50.3  us_per_pkt=50.46  cpu0_us_per_pkt=11.61  reader_us_per_pkt=4.74  temp=66.2 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=88.778  xcopy_loss_pct=0.000  util0=43.5  util1=54.8  util2=33.5  util3=43.1  us_per_pkt=45.46  cpu0_us_per_pkt=11.29  reader_us_per_pkt=6.15  temp=67.2 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=88.902  xcopy_loss_pct=0.000  util0=50.2  util1=50.7  util2=49.3  util3=32.0  us_per_pkt=40.19  cpu0_us_per_pkt=11.08  reader_us_per_pkt=3.25  temp=67.2 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=90.486  xcopy_loss_pct=0.000  util0=55.5  util1=52.6  util2=22.3  util3=59.7  us_per_pkt=37.49  cpu0_us_per_pkt=10.94  reader_us_per_pkt=3.97  temp=66.7 
+   actual_pps=87944  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=91.747  xcopy_loss_pct=1.562  util0=60.1  util1=65.8  util2=28.3  util3=60.6  us_per_pkt=37.82  cpu0_us_per_pkt=10.58  reader_us_per_pkt=3.13  temp=66.2 
+  reader20: 248001 packets captured 248001 packets received by filter 9 packets dropped by kernel 
+  reader21: 0 packets captured 0 packets received by filter 0 packets dropped by kernel 
+13:30:12 sweep K0 R123 bulk_fixed round=1 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=0 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=10000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=17.285  util0=16.7  util1=15.5  util2=21.5  util3=44.6  us_per_pkt=144.28  cpu0_us_per_pkt=24.50  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=60.267  util0=18.1  util1=22.1  util2=29.7  util3=41.1  us_per_pkt=81.52  cpu0_us_per_pkt=13.28  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=76.466  util0=24.8  util1=33.0  util2=38.9  util3=15.4  us_per_pkt=58.41  cpu0_us_per_pkt=12.92  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=81.272  util0=30.5  util1=31.0  util2=37.5  util3=30.5  us_per_pkt=49.77  cpu0_us_per_pkt=11.73  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=84.937  util0=34.4  util1=36.6  util2=29.9  util3=38.1  us_per_pkt=43.98  cpu0_us_per_pkt=10.90  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=88.038  util0=40.6  util1=40.6  util2=28.4  util3=41.7  us_per_pkt=39.35  cpu0_us_per_pkt=10.56  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=89.084  util0=45.8  util1=44.6  util2=35.9  util3=32.4  us_per_pkt=34.97  cpu0_us_per_pkt=10.10  reader_us_per_pkt=0.00  temp=67.2 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=89.929  util0=49.3  util1=48.7  util2=21.5  util3=43.3  us_per_pkt=32.01  cpu0_us_per_pkt=9.69  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=87948  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=91.811  util0=58.2  util1=59.9  util2=5.5  util3=65.2  us_per_pkt=33.30  cpu0_us_per_pkt=10.27  reader_us_per_pkt=0.00  temp=66.7 
+EXP5 ROUND 1 DONE 2026-11-04T13:32:21Z
+13:32:21 topology -> bridge
+lo               UNKNOWN        127.0.0.1/8 
+eth0             DOWN           
+br0              DOWN           
+eth1.20@if3      UP             
+  Pause parameters for eth0: Autonegotiate:	on RX:		off TX:		off RX negotiated: off TX negotiated: off  
+  	Speed: 1000Mb/s 	Link detected: yes 
+13:32:30 sweep B1 A0 S_m17 round=1 mode=bridge
+  ready mode=bridge protection=ips rules=full queues=2 trusted=0 copies=0 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=47.531  util0=29.9  util1=18.1  util2=31.7  util3=19.9  us_per_pkt=64.40  cpu0_us_per_pkt=19.35  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=25.976  util0=35.0  util1=30.2  util2=36.3  util3=16.2  us_per_pkt=56.55  cpu0_us_per_pkt=16.80  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=27.256  util0=43.6  util1=35.3  util2=30.5  util3=33.1  us_per_pkt=56.55  cpu0_us_per_pkt=17.30  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=45000  cap_loss_pct=0.000  loss_pct=27.532  util0=44.5  util1=29.1  util2=43.7  util3=34.2  us_per_pkt=56.00  cpu0_us_per_pkt=16.45  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=27.712  util0=47.9  util1=32.9  util2=38.8  util3=40.5  us_per_pkt=55.50  cpu0_us_per_pkt=16.60  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=55000  cap_loss_pct=0.000  loss_pct=28.059  util0=50.8  util1=41.8  util2=35.0  util3=38.8  us_per_pkt=54.90  cpu0_us_per_pkt=16.75  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=60000  cap_loss_pct=0.021  loss_pct=28.143  util0=57.8  util1=38.7  util2=42.2  util3=33.0  us_per_pkt=53.91  cpu0_us_per_pkt=18.15  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=70000  cap_loss_pct=14.130  loss_pct=36.544  util0=53.9  util1=16.2  util2=49.9  util3=42.0  us_per_pkt=54.79  cpu0_us_per_pkt=18.23  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=80000  cap_loss_pct=24.845  loss_pct=42.684  util0=50.6  util1=41.7  util2=45.2  util3=17.1  us_per_pkt=55.95  cpu0_us_per_pkt=18.30  reader_us_per_pkt=0.00  temp=66.2 
+13:34:39 sweep B7 R123 S_m17 round=1 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=3 trusted=0 copies=0 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=0.000  util0=13.4  util1=22.2  util2=23.0  util3=21.6  us_per_pkt=52.00  cpu0_us_per_pkt=8.70  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=14.9  util1=27.3  util2=27.1  util3=26.0  us_per_pkt=45.75  cpu0_us_per_pkt=7.15  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=22.4  util1=33.9  util2=32.0  util3=31.3  us_per_pkt=47.60  cpu0_us_per_pkt=8.90  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=21.1  util1=38.1  util2=38.4  util3=37.7  us_per_pkt=47.20  cpu0_us_per_pkt=7.35  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=24.9  util1=41.1  util2=40.7  util3=42.6  us_per_pkt=46.80  cpu0_us_per_pkt=7.80  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=29.8  util1=39.0  util2=43.3  util3=45.5  us_per_pkt=46.05  cpu0_us_per_pkt=8.70  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=34.0  util1=41.9  util2=43.9  util3=45.4  us_per_pkt=44.95  cpu0_us_per_pkt=9.25  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=31.133  util0=36.5  util1=43.2  util2=43.6  util3=40.4  us_per_pkt=40.35  cpu0_us_per_pkt=9.00  reader_us_per_pkt=0.00  temp=67.2 
+   actual_pps=120001  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=49.938  util0=41.1  util1=40.0  util2=40.9  util3=41.6  us_per_pkt=37.80  cpu0_us_per_pkt=9.50  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=150001  cap_loss_pct=15.316  loss_pct=15.425  copy_loss_pct=67.597  util0=37.5  util1=36.6  util2=37.3  util3=36.8  us_per_pkt=31.80  cpu0_us_per_pkt=8.05  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=200001  cap_loss_pct=34.855  loss_pct=34.964  copy_loss_pct=81.860  util0=33.2  util1=30.7  util2=31.7  util3=31.4  us_per_pkt=25.25  cpu0_us_per_pkt=6.60  reader_us_per_pkt=0.00  temp=66.7 
+13:36:55 sweep B0 R123 S_m17 round=1 mode=bridge
+bridge only
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.109  util0=16.5  util1=14.4  util2=11.8  util3=12.4  us_per_pkt=15.95  cpu0_us_per_pkt=4.77  reader_us_per_pkt=0.00  temp=67.2 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.109  util0=24.5  util1=18.0  util2=18.5  util3=18.9  us_per_pkt=11.85  cpu0_us_per_pkt=3.63  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=150000  cap_loss_pct=0.000  loss_pct=0.109  util0=34.3  util1=24.9  util2=25.4  util3=26.0  us_per_pkt=11.43  cpu0_us_per_pkt=3.54  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=200000  cap_loss_pct=0.000  loss_pct=0.109  util0=43.9  util1=31.6  util2=31.6  util3=33.2  us_per_pkt=11.10  cpu0_us_per_pkt=3.47  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=250000  cap_loss_pct=0.000  loss_pct=0.109  util0=56.6  util1=39.9  util2=39.8  util3=38.8  us_per_pkt=10.63  cpu0_us_per_pkt=3.44  reader_us_per_pkt=0.00  temp=67.2 
+   actual_pps=300000  cap_loss_pct=0.000  loss_pct=0.109  util0=62.5  util1=45.1  util2=45.3  util3=45.1  us_per_pkt=10.18  cpu0_us_per_pkt=3.21  reader_us_per_pkt=0.00  temp=67.6 
+   actual_pps=350000  cap_loss_pct=2.979  loss_pct=3.065  util0=67.0  util1=49.8  util2=49.4  util3=49.1  us_per_pkt=9.90  cpu0_us_per_pkt=3.08  reader_us_per_pkt=0.00  temp=67.2 
+   actual_pps=400000  cap_loss_pct=15.045  loss_pct=15.112  util0=66.9  util1=49.3  util2=48.7  util3=48.7  us_per_pkt=9.92  cpu0_us_per_pkt=3.11  reader_us_per_pkt=0.00  temp=68.1 
+13:38:14 sweep B0 A0 S_m17 round=1 mode=bridge
+bridge only
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.109  util0=34.2  util1=4.3  util2=4.0  util3=6.6  us_per_pkt=14.28  cpu0_us_per_pkt=9.95  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.109  util0=60.7  util1=2.1  util2=2.6  util3=2.0  us_per_pkt=10.00  cpu0_us_per_pkt=9.00  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=150000  cap_loss_pct=18.340  loss_pct=18.423  util0=67.8  util1=2.3  util2=1.6  util3=2.4  us_per_pkt=9.34  cpu0_us_per_pkt=8.54  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=200000  cap_loss_pct=38.705  loss_pct=38.770  util0=66.4  util1=2.3  util2=1.9  util3=2.8  us_per_pkt=9.46  cpu0_us_per_pkt=8.57  reader_us_per_pkt=0.00  temp=66.2 
+13:38:57 sweep B1 R123 S_m17 round=1 mode=bridge
+  ready mode=bridge protection=ips rules=full queues=2 trusted=0 copies=0 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=47.891  util0=32.5  util1=26.8  util2=20.9  util3=30.4  us_per_pkt=71.60  cpu0_us_per_pkt=21.00  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=26.192  util0=35.4  util1=31.7  util2=27.1  util3=37.0  us_per_pkt=63.25  cpu0_us_per_pkt=17.05  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=27.836  util0=43.0  util1=45.8  util2=36.2  util3=36.1  us_per_pkt=64.05  cpu0_us_per_pkt=17.10  reader_us_per_pkt=0.00  temp=67.6 
+   actual_pps=45000  cap_loss_pct=0.000  loss_pct=28.520  util0=34.1  util1=52.4  util2=43.2  util3=32.1  us_per_pkt=59.95  cpu0_us_per_pkt=12.65  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=50000  cap_loss_pct=13.548  loss_pct=37.633  util0=32.3  util1=44.6  util2=39.0  util3=44.9  us_per_pkt=56.05  cpu0_us_per_pkt=11.25  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=55000  cap_loss_pct=22.316  loss_pct=42.477  util0=39.6  util1=40.0  util2=37.1  util3=42.0  us_per_pkt=52.15  cpu0_us_per_pkt=13.00  reader_us_per_pkt=0.00  temp=67.2 
+13:40:45 sweep B2 A0 S_m60 round=1 mode=bridge
+  ready mode=bridge protection=ips rules=full queues=1 trusted=1 copies=0 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.070  util0=44.4  util1=3.1  util2=1.8  util3=1.7  us_per_pkt=13.98  cpu0_us_per_pkt=12.15  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=80000  cap_loss_pct=0.597  loss_pct=0.633  util0=60.8  util1=3.4  util2=2.4  util3=4.0  us_per_pkt=14.11  cpu0_us_per_pkt=12.15  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=100000  cap_loss_pct=10.652  loss_pct=10.667  util0=69.8  util1=2.9  util2=3.5  util3=2.1  us_per_pkt=13.09  cpu0_us_per_pkt=11.67  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=120000  cap_loss_pct=24.803  loss_pct=24.796  util0=65.5  util1=3.4  util2=3.4  util3=3.4  us_per_pkt=13.31  cpu0_us_per_pkt=11.52  reader_us_per_pkt=0.00  temp=65.7 
+13:42:09 sweep B7 A0 S_m17 round=1 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=3 trusted=0 copies=0 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  util0=43.9  util1=12.5  util2=15.8  util3=16.6  us_per_pkt=57.55  cpu0_us_per_pkt=28.45  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  util0=56.6  util1=19.0  util2=14.2  util3=19.6  us_per_pkt=52.70  cpu0_us_per_pkt=27.25  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=40000  cap_loss_pct=5.880  loss_pct=5.989  copy_loss_pct=0.000  util0=64.6  util1=20.8  util2=20.1  util3=20.6  us_per_pkt=53.39  cpu0_us_per_pkt=27.36  reader_us_per_pkt=0.00  temp=67.2 
+   actual_pps=50000  cap_loss_pct=24.788  loss_pct=24.895  copy_loss_pct=0.000  util0=61.0  util1=20.1  util2=19.6  util3=19.7  us_per_pkt=55.64  cpu0_us_per_pkt=28.19  reader_us_per_pkt=0.00  temp=65.7 
+13:43:41 sweep B2 R123 S_m60 round=1 mode=bridge
+  ready mode=bridge protection=ips rules=full queues=1 trusted=1 copies=0 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.088  util0=14.6  util1=32.8  util2=3.1  util3=2.8  us_per_pkt=14.60  cpu0_us_per_pkt=4.00  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=80000  cap_loss_pct=0.094  loss_pct=0.140  util0=20.3  util1=44.3  util2=2.9  util3=3.1  us_per_pkt=14.04  cpu0_us_per_pkt=4.03  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=100000  cap_loss_pct=0.390  loss_pct=0.436  util0=25.7  util1=57.0  util2=3.5  util3=3.2  us_per_pkt=13.39  cpu0_us_per_pkt=3.85  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=120000  cap_loss_pct=4.526  loss_pct=4.559  util0=29.6  util1=64.8  util2=2.6  util3=3.0  us_per_pkt=13.33  cpu0_us_per_pkt=3.94  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=150000  cap_loss_pct=23.463  loss_pct=23.457  util0=34.8  util1=65.5  util2=3.4  util3=4.0  us_per_pkt=11.26  cpu0_us_per_pkt=3.64  reader_us_per_pkt=0.00  temp=66.2 
+13:45:14 topology -> routed
+lo               UNKNOWN        127.0.0.1/8 
+eth0             DOWN           10.99.1.1/24 
+eth1.20@if3      UP             10.99.2.1/24 
+  Pause parameters for eth0: Autonegotiate:	on RX:		off TX:		off RX negotiated: off TX negotiated: off  
+  	Speed: 1000Mb/s 	Link detected: yes 
+13:45:23 sweep B0 A0 S_m17 round=1 mode=routed
+bridge only
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.029  util0=28.1  util1=3.4  util2=3.7  util3=6.9  us_per_pkt=12.22  cpu0_us_per_pkt=8.17  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.029  util0=48.1  util1=3.0  util2=1.5  util3=1.5  us_per_pkt=8.00  cpu0_us_per_pkt=7.12  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=150000  cap_loss_pct=0.000  loss_pct=0.029  util0=64.0  util1=2.8  util2=1.9  util3=1.6  us_per_pkt=7.22  cpu0_us_per_pkt=6.57  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=200000  cap_loss_pct=18.076  loss_pct=18.102  util0=66.5  util1=2.2  util2=2.2  util3=2.0  us_per_pkt=7.02  cpu0_us_per_pkt=6.41  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=250000  cap_loss_pct=34.967  loss_pct=34.990  util0=68.0  util1=3.5  util2=2.0  util3=1.9  us_per_pkt=7.03  cpu0_us_per_pkt=6.34  reader_us_per_pkt=0.00  temp=65.2 
+13:46:15 sweep B7 R123 S_m17 round=1 mode=routed
+  ready mode=routed protection=ids rules=full queues=3 trusted=0 copies=0 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=0.000  util0=16.6  util1=20.1  util2=21.0  util3=21.6  us_per_pkt=51.35  cpu0_us_per_pkt=10.75  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=0.000  util0=14.8  util1=25.6  util2=27.1  util3=25.2  us_per_pkt=44.50  cpu0_us_per_pkt=7.10  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=0.000  util0=23.0  util1=30.6  util2=31.4  util3=31.2  us_per_pkt=46.15  cpu0_us_per_pkt=9.15  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=0.000  util0=20.6  util1=35.5  util2=37.2  util3=37.7  us_per_pkt=45.40  cpu0_us_per_pkt=7.15  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=0.000  util0=22.1  util1=39.3  util2=41.5  util3=40.2  us_per_pkt=45.00  cpu0_us_per_pkt=6.95  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=0.000  util0=28.3  util1=40.6  util2=44.2  util3=42.1  us_per_pkt=44.95  cpu0_us_per_pkt=8.20  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=0.000  util0=31.1  util1=42.7  util2=44.1  util3=41.9  us_per_pkt=43.65  cpu0_us_per_pkt=8.50  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=23.483  util0=30.2  util1=41.2  util2=45.3  util3=44.5  us_per_pkt=40.05  cpu0_us_per_pkt=7.50  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=120001  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=46.379  util0=41.0  util1=38.6  util2=38.6  util3=40.6  us_per_pkt=36.60  cpu0_us_per_pkt=9.45  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=150001  cap_loss_pct=10.020  loss_pct=10.048  copy_loss_pct=72.787  util0=36.7  util1=36.0  util2=36.4  util3=37.6  us_per_pkt=31.40  cpu0_us_per_pkt=7.85  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=200001  cap_loss_pct=32.295  loss_pct=32.322  copy_loss_pct=83.625  util0=32.2  util1=30.4  util2=32.2  util3=31.1  us_per_pkt=24.85  cpu0_us_per_pkt=6.35  reader_us_per_pkt=0.00  temp=66.2 
+13:48:31 sweep B1 R123 S_m17 round=1 mode=routed
+  ready mode=routed protection=ips rules=full queues=2 trusted=0 copies=0 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=47.822  util0=24.5  util1=25.1  util2=20.1  util3=35.2  us_per_pkt=67.85  cpu0_us_per_pkt=15.85  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=26.213  util0=29.5  util1=27.8  util2=28.5  util3=40.1  us_per_pkt=60.25  cpu0_us_per_pkt=14.10  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=27.802  util0=44.6  util1=30.3  util2=36.5  util3=38.3  us_per_pkt=59.25  cpu0_us_per_pkt=17.65  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=45000  cap_loss_pct=0.000  loss_pct=28.294  util0=42.8  util1=44.0  util2=34.8  util3=36.0  us_per_pkt=58.00  cpu0_us_per_pkt=15.75  reader_us_per_pkt=0.00  temp=67.2 
+   actual_pps=50000  cap_loss_pct=5.769  loss_pct=32.805  util0=38.0  util1=47.8  util2=34.5  util3=40.0  us_per_pkt=55.30  cpu0_us_per_pkt=13.10  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=55000  cap_loss_pct=15.496  loss_pct=38.797  util0=37.0  util1=37.1  util2=38.8  util3=43.7  us_per_pkt=51.45  cpu0_us_per_pkt=12.15  reader_us_per_pkt=0.00  temp=66.2 
+13:50:19 sweep B1 A0 S_m17 round=1 mode=routed
+  ready mode=routed protection=ips rules=full queues=2 trusted=0 copies=0 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=47.712  util0=22.8  util1=14.9  util2=22.6  util3=27.8  us_per_pkt=57.05  cpu0_us_per_pkt=14.75  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=26.114  util0=28.8  util1=17.0  util2=24.2  util3=37.9  us_per_pkt=52.00  cpu0_us_per_pkt=13.90  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=27.491  util0=38.8  util1=36.0  util2=20.7  util3=50.1  us_per_pkt=58.30  cpu0_us_per_pkt=15.55  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=45000  cap_loss_pct=0.000  loss_pct=27.630  util0=38.4  util1=34.6  util2=32.7  util3=34.5  us_per_pkt=51.45  cpu0_us_per_pkt=14.10  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=27.938  util0=39.8  util1=34.8  util2=36.2  util3=36.1  us_per_pkt=51.10  cpu0_us_per_pkt=13.85  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=55000  cap_loss_pct=0.000  loss_pct=27.960  util0=44.2  util1=33.7  util2=36.6  util3=38.1  us_per_pkt=50.25  cpu0_us_per_pkt=14.55  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=28.140  util0=44.0  util1=42.6  util2=36.3  util3=34.2  us_per_pkt=49.10  cpu0_us_per_pkt=13.75  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=70000  cap_loss_pct=8.405  loss_pct=33.934  util0=51.2  util1=53.8  util2=44.7  util3=16.9  us_per_pkt=48.30  cpu0_us_per_pkt=14.85  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=80000  cap_loss_pct=20.403  loss_pct=41.565  util0=50.8  util1=37.5  util2=37.9  util3=34.0  us_per_pkt=47.18  cpu0_us_per_pkt=14.97  reader_us_per_pkt=0.00  temp=67.2 
+13:52:28 sweep B7 A0 S_m17 round=1 mode=routed
+  ready mode=routed protection=ids rules=full queues=3 trusted=0 copies=0 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=41.928  copy_loss_pct=0.000  util0=35.1  util1=13.7  util2=12.5  util3=14.5  us_per_pkt=48.95  cpu0_us_per_pkt=22.70  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=23.308  copy_loss_pct=0.000  util0=42.3  util1=16.2  util2=15.3  util3=16.2  us_per_pkt=43.25  cpu0_us_per_pkt=20.30  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=24.005  copy_loss_pct=0.000  util0=56.4  util1=17.9  util2=17.4  util3=17.4  us_per_pkt=43.30  cpu0_us_per_pkt=22.40  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=21.501  copy_loss_pct=0.000  util0=59.4  util1=21.9  util2=22.4  util3=21.4  us_per_pkt=43.50  cpu0_us_per_pkt=20.65  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=60000  cap_loss_pct=15.248  loss_pct=34.940  copy_loss_pct=0.000  util0=55.5  util1=20.5  util2=20.5  util3=21.6  us_per_pkt=43.83  cpu0_us_per_pkt=20.59  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=70000  cap_loss_pct=26.945  loss_pct=42.952  copy_loss_pct=0.000  util0=52.5  util1=19.6  util2=19.4  util3=19.6  us_per_pkt=44.21  cpu0_us_per_pkt=20.87  reader_us_per_pkt=0.00  temp=66.2 
+13:54:14 sweep B2 R123 S_m60 round=1 mode=routed
+  ready mode=routed protection=ips rules=full queues=1 trusted=1 copies=0 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.464  util0=14.4  util1=30.0  util2=2.7  util3=2.1  us_per_pkt=13.42  cpu0_us_per_pkt=3.92  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=80000  cap_loss_pct=0.029  loss_pct=0.444  util0=20.0  util1=39.3  util2=3.8  util3=3.5  us_per_pkt=13.18  cpu0_us_per_pkt=3.95  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=100000  cap_loss_pct=0.320  loss_pct=0.662  util0=24.4  util1=50.7  util2=3.8  util3=3.4  us_per_pkt=12.27  cpu0_us_per_pkt=3.64  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=120000  cap_loss_pct=0.575  loss_pct=0.893  util0=27.6  util1=56.9  util2=2.6  util3=4.7  us_per_pkt=12.20  cpu0_us_per_pkt=3.67  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=150000  cap_loss_pct=12.973  loss_pct=13.252  util0=34.9  util1=65.5  util2=4.1  util3=3.5  us_per_pkt=11.26  cpu0_us_per_pkt=3.64  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=180000  cap_loss_pct=27.732  loss_pct=27.949  util0=40.7  util1=66.9  util2=3.5  util3=3.6  us_per_pkt=9.89  cpu0_us_per_pkt=3.51  reader_us_per_pkt=0.00  temp=65.7 
+13:55:57 sweep B0 R123 S_m17 round=1 mode=routed
+bridge only
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.029  util0=15.3  util1=9.8  util2=13.2  util3=11.0  us_per_pkt=14.35  cpu0_us_per_pkt=4.45  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.029  util0=23.3  util1=13.7  util2=15.7  util3=14.2  us_per_pkt=10.00  cpu0_us_per_pkt=3.48  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=150000  cap_loss_pct=0.000  loss_pct=0.029  util0=34.0  util1=19.7  util2=18.7  util3=20.9  us_per_pkt=9.65  cpu0_us_per_pkt=3.51  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=200000  cap_loss_pct=0.009  loss_pct=0.038  util0=44.1  util1=24.0  util2=24.3  util3=25.1  us_per_pkt=9.40  cpu0_us_per_pkt=3.53  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=250000  cap_loss_pct=0.028  loss_pct=0.056  util0=55.3  util1=30.9  util2=29.6  util3=30.4  us_per_pkt=9.05  cpu0_us_per_pkt=3.42  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=300000  cap_loss_pct=0.058  loss_pct=0.087  util0=61.3  util1=35.2  util2=34.5  util3=34.6  us_per_pkt=8.59  cpu0_us_per_pkt=3.18  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=350000  cap_loss_pct=2.358  loss_pct=2.385  util0=66.3  util1=38.9  util2=37.4  util3=38.4  us_per_pkt=8.28  cpu0_us_per_pkt=3.03  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=400000  cap_loss_pct=14.779  loss_pct=14.804  util0=65.1  util1=38.5  util2=37.2  util3=38.9  us_per_pkt=8.33  cpu0_us_per_pkt=3.02  reader_us_per_pkt=0.00  temp=67.6 
+13:57:17 sweep B2 A0 S_m60 round=1 mode=routed
+  ready mode=routed protection=ips rules=full queues=1 trusted=1 copies=0 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.494  util0=33.0  util1=2.6  util2=3.2  util3=1.8  us_per_pkt=11.10  cpu0_us_per_pkt=9.02  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=80000  cap_loss_pct=0.276  loss_pct=0.665  util0=44.4  util1=3.4  util2=4.0  util3=2.3  us_per_pkt=10.75  cpu0_us_per_pkt=8.82  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=100000  cap_loss_pct=0.665  loss_pct=1.012  util0=58.2  util1=3.9  util2=3.1  util3=2.4  us_per_pkt=10.12  cpu0_us_per_pkt=8.71  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=120000  cap_loss_pct=1.029  loss_pct=1.340  util0=62.1  util1=2.0  util2=4.4  util3=3.4  us_per_pkt=9.58  cpu0_us_per_pkt=8.27  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=150000  cap_loss_pct=14.293  loss_pct=14.556  util0=67.0  util1=3.0  util2=4.0  util3=2.8  us_per_pkt=9.26  cpu0_us_per_pkt=8.08  reader_us_per_pkt=0.00  temp=65.7 
+EXP4 ROUND 1 DONE 2026-11-04T13:58:50Z
+13:58:50 topology -> routed
+lo               UNKNOWN        127.0.0.1/8 
+eth0             DOWN           10.99.1.1/24 
+eth1.20@if3      UP             10.99.2.1/24 
+  Pause parameters for eth0: Autonegotiate:	on RX:		off TX:		off RX negotiated: off TX negotiated: off  
+  	Speed: 1000Mb/s 	Link detected: yes 
+13:59:00 sweep B1 R123 S_m17 round=2 mode=routed
+  ready mode=routed protection=ips rules=full queues=2 trusted=0 copies=0 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=47.831  util0=30.8  util1=19.6  util2=19.1  util3=35.7  us_per_pkt=68.15  cpu0_us_per_pkt=19.95  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=26.158  util0=38.2  util1=26.8  util2=36.4  util3=25.5  us_per_pkt=61.15  cpu0_us_per_pkt=18.40  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=27.657  util0=42.1  util1=35.1  util2=34.9  util3=38.2  us_per_pkt=59.80  cpu0_us_per_pkt=16.75  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=45000  cap_loss_pct=0.000  loss_pct=28.110  util0=39.0  util1=41.0  util2=37.5  util3=39.8  us_per_pkt=58.10  cpu0_us_per_pkt=14.40  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=50000  cap_loss_pct=7.757  loss_pct=34.072  util0=29.8  util1=48.8  util2=40.0  util3=40.6  us_per_pkt=55.50  cpu0_us_per_pkt=10.40  reader_us_per_pkt=0.00  temp=66.7 
+   actual_pps=55000  cap_loss_pct=16.959  loss_pct=39.544  util0=29.7  util1=37.2  util2=43.9  util3=44.8  us_per_pkt=51.25  cpu0_us_per_pkt=9.80  reader_us_per_pkt=0.00  temp=66.7 
+14:00:48 sweep B1 A0 S_m17 round=2 mode=routed
+  ready mode=routed protection=ips rules=full queues=2 trusted=0 copies=0 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=47.718  util0=21.4  util1=26.0  util2=25.4  util3=15.4  us_per_pkt=57.30  cpu0_us_per_pkt=13.90  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=26.131  util0=27.5  util1=28.3  util2=32.8  util3=18.4  us_per_pkt=51.50  cpu0_us_per_pkt=13.25  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=27.416  util0=38.6  util1=26.7  util2=37.5  util3=28.3  us_per_pkt=52.10  cpu0_us_per_pkt=15.35  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=45000  cap_loss_pct=0.000  loss_pct=27.622  util0=37.7  util1=39.8  util2=32.9  util3=29.8  us_per_pkt=52.00  cpu0_us_per_pkt=14.00  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=27.370  util0=39.4  util1=37.6  util2=38.8  util3=31.7  us_per_pkt=51.25  cpu0_us_per_pkt=13.70  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=55000  cap_loss_pct=0.000  loss_pct=27.991  util0=42.1  util1=32.2  util2=38.4  util3=40.3  us_per_pkt=50.65  cpu0_us_per_pkt=13.95  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=27.997  util0=42.5  util1=37.1  util2=37.3  util3=38.9  us_per_pkt=49.10  cpu0_us_per_pkt=13.40  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=70000  cap_loss_pct=10.251  loss_pct=34.967  util0=51.7  util1=53.3  util2=52.9  util3=7.4  us_per_pkt=48.10  cpu0_us_per_pkt=15.05  reader_us_per_pkt=0.00  temp=66.2 
+   actual_pps=80000  cap_loss_pct=20.430  loss_pct=41.297  util0=50.5  util1=46.7  util2=20.7  util3=42.5  us_per_pkt=46.20  cpu0_us_per_pkt=14.56  reader_us_per_pkt=0.00  temp=66.2 
+14:02:58 sweep B0 A0 S_m17 round=2 mode=routed
+bridge only
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.029  util0=27.1  util1=3.7  util2=6.9  util3=4.8  us_per_pkt=12.30  cpu0_us_per_pkt=7.85  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.029  util0=47.5  util1=3.6  util2=1.6  util3=1.5  us_per_pkt=8.03  cpu0_us_per_pkt=7.05  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=150000  cap_loss_pct=0.000  loss_pct=0.029  util0=63.3  util1=3.2  util2=1.9  util3=2.1  us_per_pkt=7.26  cpu0_us_per_pkt=6.52  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=200000  cap_loss_pct=17.999  loss_pct=18.025  util0=64.9  util1=2.8  util2=4.2  util3=1.4  us_per_pkt=7.06  cpu0_us_per_pkt=6.26  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=250000  cap_loss_pct=34.198  loss_pct=34.219  util0=68.6  util1=2.8  util2=1.9  util3=1.6  us_per_pkt=6.91  cpu0_us_per_pkt=6.33  reader_us_per_pkt=0.00  temp=64.2 
+14:03:50 sweep B2 R123 S_m60 round=2 mode=routed
+  ready mode=routed protection=ips rules=full queues=1 trusted=1 copies=0 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.465  util0=15.0  util1=30.0  util2=2.4  util3=2.4  us_per_pkt=13.60  cpu0_us_per_pkt=4.10  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=80000  cap_loss_pct=0.047  loss_pct=0.455  util0=20.1  util1=39.6  util2=3.1  util3=3.3  us_per_pkt=13.18  cpu0_us_per_pkt=4.00  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=100000  cap_loss_pct=0.319  loss_pct=0.657  util0=25.1  util1=50.5  util2=2.4  util3=4.3  us_per_pkt=12.27  cpu0_us_per_pkt=3.75  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=120000  cap_loss_pct=0.575  loss_pct=0.887  util0=27.1  util1=57.2  util2=4.0  util3=3.4  us_per_pkt=12.19  cpu0_us_per_pkt=3.60  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=150000  cap_loss_pct=12.862  loss_pct=13.088  util0=34.5  util1=67.2  util2=3.0  util3=3.4  us_per_pkt=11.28  cpu0_us_per_pkt=3.60  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=180000  cap_loss_pct=27.801  loss_pct=28.019  util0=39.8  util1=67.5  util2=4.0  util3=3.4  us_per_pkt=9.87  cpu0_us_per_pkt=3.42  reader_us_per_pkt=0.00  temp=64.7 
+14:05:33 sweep B2 A0 S_m60 round=2 mode=routed
+  ready mode=routed protection=ips rules=full queues=1 trusted=1 copies=0 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.497  util0=34.1  util1=1.9  util2=2.2  util3=2.7  us_per_pkt=11.17  cpu0_us_per_pkt=9.32  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=80000  cap_loss_pct=0.271  loss_pct=0.652  util0=46.2  util1=2.3  util2=2.8  util3=3.9  us_per_pkt=10.98  cpu0_us_per_pkt=9.20  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=100000  cap_loss_pct=0.632  loss_pct=0.990  util0=58.7  util1=3.2  util2=3.0  util3=2.2  us_per_pkt=10.06  cpu0_us_per_pkt=8.79  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=120000  cap_loss_pct=1.083  loss_pct=1.384  util0=62.0  util1=3.5  util2=3.8  util3=2.9  us_per_pkt=9.65  cpu0_us_per_pkt=8.29  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=150000  cap_loss_pct=14.339  loss_pct=14.573  util0=67.0  util1=3.1  util2=3.4  util3=3.6  us_per_pkt=9.31  cpu0_us_per_pkt=8.08  reader_us_per_pkt=0.00  temp=63.7 
+14:07:06 sweep B7 A0 S_m17 round=2 mode=routed
+  ready mode=routed protection=ids rules=full queues=3 trusted=0 copies=0 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=41.908  copy_loss_pct=0.000  util0=35.0  util1=14.5  util2=13.0  util3=13.0  us_per_pkt=48.95  cpu0_us_per_pkt=22.65  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=23.122  copy_loss_pct=0.000  util0=43.2  util1=15.2  util2=15.9  util3=15.5  us_per_pkt=43.20  cpu0_us_per_pkt=20.80  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=23.894  copy_loss_pct=0.000  util0=53.2  util1=18.7  util2=18.9  util3=17.6  us_per_pkt=43.20  cpu0_us_per_pkt=21.20  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=21.561  copy_loss_pct=0.000  util0=59.6  util1=21.9  util2=22.5  util3=21.1  us_per_pkt=43.35  cpu0_us_per_pkt=20.65  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=60000  cap_loss_pct=15.146  loss_pct=33.900  copy_loss_pct=0.000  util0=56.5  util1=20.8  util2=18.9  util3=22.4  us_per_pkt=44.02  cpu0_us_per_pkt=20.98  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=70000  cap_loss_pct=27.236  loss_pct=43.605  copy_loss_pct=0.000  util0=52.1  util1=19.9  util2=18.9  util3=19.6  us_per_pkt=44.18  cpu0_us_per_pkt=20.82  reader_us_per_pkt=0.00  temp=64.7 
+14:08:53 sweep B0 R123 S_m17 round=2 mode=routed
+bridge only
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.029  util0=16.1  util1=10.4  util2=9.9  util3=13.1  us_per_pkt=14.32  cpu0_us_per_pkt=4.65  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.029  util0=24.5  util1=13.6  util2=14.5  util3=14.7  us_per_pkt=9.98  cpu0_us_per_pkt=3.63  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=150000  cap_loss_pct=0.000  loss_pct=0.029  util0=34.2  util1=18.9  util2=19.6  util3=20.2  us_per_pkt=9.59  cpu0_us_per_pkt=3.52  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=200000  cap_loss_pct=0.000  loss_pct=0.029  util0=43.7  util1=25.9  util2=24.2  util3=25.2  us_per_pkt=9.40  cpu0_us_per_pkt=3.45  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=250000  cap_loss_pct=0.000  loss_pct=0.029  util0=55.6  util1=31.9  util2=30.3  util3=30.7  us_per_pkt=9.01  cpu0_us_per_pkt=3.37  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=300000  cap_loss_pct=0.002  loss_pct=0.031  util0=62.5  util1=33.7  util2=33.9  util3=35.2  us_per_pkt=8.49  cpu0_us_per_pkt=3.21  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=350000  cap_loss_pct=1.860  loss_pct=1.887  util0=66.0  util1=37.5  util2=39.0  util3=38.4  us_per_pkt=8.24  cpu0_us_per_pkt=3.01  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=400000  cap_loss_pct=14.351  loss_pct=14.376  util0=65.7  util1=37.8  util2=38.0  util3=38.3  us_per_pkt=8.28  cpu0_us_per_pkt=3.02  reader_us_per_pkt=0.00  temp=65.7 
+14:10:12 sweep B7 R123 S_m17 round=2 mode=routed
+  ready mode=routed protection=ids rules=full queues=3 trusted=0 copies=0 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=0.000  util0=13.1  util1=21.6  util2=20.9  util3=23.0  us_per_pkt=50.75  cpu0_us_per_pkt=8.45  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=0.000  util0=15.3  util1=24.0  util2=26.2  util3=26.3  us_per_pkt=44.35  cpu0_us_per_pkt=7.40  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=0.000  util0=16.2  util1=32.4  util2=31.4  util3=33.8  us_per_pkt=45.15  cpu0_us_per_pkt=6.45  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=0.000  util0=23.5  util1=33.8  util2=37.0  util3=37.8  us_per_pkt=46.10  cpu0_us_per_pkt=8.20  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=0.000  util0=21.0  util1=40.4  util2=41.0  util3=39.0  us_per_pkt=44.45  cpu0_us_per_pkt=6.60  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=0.000  util0=21.1  util1=43.5  util2=44.5  util3=43.6  us_per_pkt=44.45  cpu0_us_per_pkt=6.15  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=0.000  util0=32.1  util1=41.2  util2=43.0  util3=46.0  us_per_pkt=44.30  cpu0_us_per_pkt=8.75  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=21.826  util0=34.5  util1=42.7  util2=42.9  util3=41.7  us_per_pkt=40.15  cpu0_us_per_pkt=8.55  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=120001  cap_loss_pct=0.000  loss_pct=0.029  copy_loss_pct=46.045  util0=39.9  util1=40.6  util2=39.7  util3=38.2  us_per_pkt=36.50  cpu0_us_per_pkt=9.20  reader_us_per_pkt=0.00  temp=65.7 
+   actual_pps=150001  cap_loss_pct=9.795  loss_pct=9.822  copy_loss_pct=71.241  util0=36.6  util1=38.7  util2=36.1  util3=36.1  us_per_pkt=31.65  cpu0_us_per_pkt=7.85  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=200001  cap_loss_pct=30.637  loss_pct=30.663  copy_loss_pct=86.245  util0=33.2  util1=30.5  util2=32.0  util3=30.5  us_per_pkt=24.85  cpu0_us_per_pkt=6.55  reader_us_per_pkt=0.00  temp=65.2 
+14:12:28 topology -> bridge
+lo               UNKNOWN        127.0.0.1/8 
+eth0             DOWN           
+br0              DOWN           
+eth1.20@if3      UP             
+  Pause parameters for eth0: Autonegotiate:	on RX:		off TX:		off RX negotiated: off TX negotiated: off  
+  	Speed: 1000Mb/s 	Link detected: yes 
+14:12:37 sweep B7 A0 S_m17 round=2 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=3 trusted=0 copies=0 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.102  copy_loss_pct=0.000  util0=43.5  util1=14.7  util2=15.3  util3=15.3  us_per_pkt=57.60  cpu0_us_per_pkt=28.20  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  util0=56.0  util1=19.7  util2=19.3  util3=14.1  us_per_pkt=52.60  cpu0_us_per_pkt=27.00  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=40000  cap_loss_pct=5.916  loss_pct=6.025  copy_loss_pct=0.000  util0=65.6  util1=19.6  util2=20.4  util3=20.5  us_per_pkt=53.30  cpu0_us_per_pkt=27.74  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=50000  cap_loss_pct=24.941  loss_pct=25.049  copy_loss_pct=0.000  util0=60.9  util1=19.9  util2=17.5  util3=18.7  us_per_pkt=54.49  cpu0_us_per_pkt=28.38  reader_us_per_pkt=0.00  temp=64.2 
+14:14:10 sweep B2 R123 S_m60 round=2 mode=bridge
+  ready mode=bridge protection=ips rules=full queues=1 trusted=1 copies=0 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.082  util0=15.1  util1=33.6  util2=2.0  util3=2.6  us_per_pkt=14.60  cpu0_us_per_pkt=4.12  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=80000  cap_loss_pct=0.112  loss_pct=0.150  util0=19.7  util1=44.6  util2=3.3  util3=3.9  us_per_pkt=14.19  cpu0_us_per_pkt=3.90  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=100000  cap_loss_pct=0.416  loss_pct=0.456  util0=24.9  util1=56.8  util2=3.5  util3=3.6  us_per_pkt=13.29  cpu0_us_per_pkt=3.73  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=120000  cap_loss_pct=3.825  loss_pct=3.860  util0=28.6  util1=64.8  util2=3.3  util3=3.6  us_per_pkt=13.38  cpu0_us_per_pkt=3.81  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=150000  cap_loss_pct=22.724  loss_pct=22.716  util0=33.8  util1=66.6  util2=3.3  util3=4.2  us_per_pkt=11.30  cpu0_us_per_pkt=3.54  reader_us_per_pkt=0.00  temp=63.7 
+14:15:43 sweep B7 R123 S_m17 round=2 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=3 trusted=0 copies=0 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=14.3  util1=22.3  util2=21.9  util3=21.3  us_per_pkt=51.60  cpu0_us_per_pkt=9.25  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=15.6  util1=25.0  util2=27.7  util3=27.1  us_per_pkt=45.80  cpu0_us_per_pkt=7.50  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=19.8  util1=35.1  util2=32.5  util3=31.6  us_per_pkt=47.45  cpu0_us_per_pkt=7.90  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=19.3  util1=37.6  util2=39.8  util3=38.4  us_per_pkt=47.00  cpu0_us_per_pkt=6.70  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=23.9  util1=40.8  util2=41.4  util3=43.6  us_per_pkt=47.00  cpu0_us_per_pkt=7.50  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=27.6  util1=43.5  util2=43.7  util3=44.2  us_per_pkt=46.05  cpu0_us_per_pkt=8.00  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=30.7  util1=41.2  util2=46.9  util3=46.2  us_per_pkt=45.20  cpu0_us_per_pkt=8.40  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=29.282  util0=33.5  util1=43.5  util2=42.5  util3=43.5  us_per_pkt=40.45  cpu0_us_per_pkt=8.30  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=120001  cap_loss_pct=0.161  loss_pct=0.270  copy_loss_pct=49.947  util0=39.7  util1=41.9  util2=40.6  util3=41.3  us_per_pkt=37.85  cpu0_us_per_pkt=9.20  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=150001  cap_loss_pct=17.136  loss_pct=17.244  copy_loss_pct=63.300  util0=37.4  util1=36.3  util2=37.0  util3=36.5  us_per_pkt=31.65  cpu0_us_per_pkt=8.05  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=200001  cap_loss_pct=35.425  loss_pct=35.533  copy_loss_pct=81.398  util0=30.7  util1=29.7  util2=33.2  util3=32.0  us_per_pkt=24.95  cpu0_us_per_pkt=6.10  reader_us_per_pkt=0.00  temp=63.7 
+14:17:59 sweep B2 A0 S_m60 round=2 mode=bridge
+  ready mode=bridge protection=ips rules=full queues=1 trusted=1 copies=0 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.078  util0=43.8  util1=2.7  util2=2.6  util3=2.1  us_per_pkt=13.98  cpu0_us_per_pkt=11.98  reader_us_per_pkt=0.00  temp=62.8 
+   actual_pps=80000  cap_loss_pct=0.570  loss_pct=0.613  util0=61.0  util1=2.9  util2=4.2  util3=2.4  us_per_pkt=14.06  cpu0_us_per_pkt=12.17  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=100000  cap_loss_pct=9.948  loss_pct=9.975  util0=69.0  util1=2.7  util2=3.8  util3=2.9  us_per_pkt=12.97  cpu0_us_per_pkt=11.42  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=120000  cap_loss_pct=25.137  loss_pct=25.136  util0=66.1  util1=3.0  util2=3.0  util3=3.3  us_per_pkt=13.31  cpu0_us_per_pkt=11.66  reader_us_per_pkt=0.00  temp=62.8 
+14:19:23 sweep B0 A0 S_m17 round=2 mode=bridge
+bridge only
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.109  util0=34.2  util1=3.5  util2=3.8  util3=6.9  us_per_pkt=14.15  cpu0_us_per_pkt=10.00  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.109  util0=60.4  util1=2.4  util2=2.1  util3=2.0  us_per_pkt=9.95  cpu0_us_per_pkt=8.98  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=150000  cap_loss_pct=18.803  loss_pct=18.886  util0=67.6  util1=3.0  util2=1.0  util3=2.3  us_per_pkt=9.38  cpu0_us_per_pkt=8.57  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=200000  cap_loss_pct=39.113  loss_pct=39.179  util0=66.4  util1=3.7  util2=1.9  util3=2.0  us_per_pkt=9.61  cpu0_us_per_pkt=8.62  reader_us_per_pkt=0.00  temp=63.3 
+14:20:05 sweep B1 A0 S_m17 round=2 mode=bridge
+  ready mode=bridge protection=ips rules=full queues=2 trusted=0 copies=0 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=47.509  util0=29.6  util1=27.8  util2=20.9  util3=20.3  us_per_pkt=63.90  cpu0_us_per_pkt=19.20  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=26.003  util0=35.9  util1=15.0  util2=32.6  util3=34.4  us_per_pkt=56.60  cpu0_us_per_pkt=17.25  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=27.286  util0=43.6  util1=33.8  util2=41.1  util3=23.5  us_per_pkt=56.50  cpu0_us_per_pkt=17.35  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=45000  cap_loss_pct=0.000  loss_pct=27.636  util0=45.6  util1=43.7  util2=28.0  util3=34.4  us_per_pkt=56.40  cpu0_us_per_pkt=16.95  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=27.427  util0=48.5  util1=47.8  util2=30.1  util3=33.8  us_per_pkt=55.65  cpu0_us_per_pkt=16.85  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=55000  cap_loss_pct=0.000  loss_pct=28.061  util0=50.3  util1=34.4  util2=33.3  util3=47.9  us_per_pkt=54.75  cpu0_us_per_pkt=16.60  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=60000  cap_loss_pct=2.164  loss_pct=29.410  util0=56.6  util1=43.1  util2=52.1  util3=21.6  us_per_pkt=55.76  cpu0_us_per_pkt=18.19  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=70000  cap_loss_pct=14.033  loss_pct=36.618  util0=53.3  util1=24.8  util2=42.8  util3=42.1  us_per_pkt=54.96  cpu0_us_per_pkt=17.97  reader_us_per_pkt=0.00  temp=64.2 
+14:22:08 sweep B1 R123 S_m17 round=2 mode=bridge
+  ready mode=bridge protection=ips rules=full queues=2 trusted=0 copies=0 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=47.925  util0=35.4  util1=24.6  util2=22.5  util3=27.2  us_per_pkt=71.04  cpu0_us_per_pkt=22.95  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=26.177  util0=30.6  util1=41.2  util2=23.8  util3=35.4  us_per_pkt=63.00  cpu0_us_per_pkt=14.70  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=27.846  util0=38.2  util1=40.6  util2=35.6  util3=41.4  us_per_pkt=61.95  cpu0_us_per_pkt=15.20  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=45000  cap_loss_pct=0.000  loss_pct=28.345  util0=33.8  util1=44.2  util2=42.8  util3=38.1  us_per_pkt=58.80  cpu0_us_per_pkt=12.50  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=50000  cap_loss_pct=12.345  loss_pct=36.961  util0=31.9  util1=44.5  util2=48.6  util3=36.1  us_per_pkt=56.00  cpu0_us_per_pkt=11.10  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=55000  cap_loss_pct=22.269  loss_pct=42.207  util0=30.7  util1=41.9  util2=40.4  util3=45.8  us_per_pkt=52.30  cpu0_us_per_pkt=10.10  reader_us_per_pkt=0.00  temp=65.2 
+14:23:56 sweep B0 R123 S_m17 round=2 mode=bridge
+bridge only
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.109  util0=15.1  util1=13.8  util2=12.2  util3=13.6  us_per_pkt=15.87  cpu0_us_per_pkt=4.37  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.109  util0=25.3  util1=18.6  util2=17.2  util3=18.1  us_per_pkt=11.73  cpu0_us_per_pkt=3.75  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=150000  cap_loss_pct=0.000  loss_pct=0.109  util0=35.4  util1=24.5  util2=25.5  util3=25.4  us_per_pkt=11.41  cpu0_us_per_pkt=3.65  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=200000  cap_loss_pct=0.000  loss_pct=0.109  util0=43.8  util1=33.0  util2=31.7  util3=31.7  us_per_pkt=11.10  cpu0_us_per_pkt=3.47  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=250000  cap_loss_pct=0.000  loss_pct=0.109  util0=56.1  util1=39.4  util2=40.2  util3=39.5  us_per_pkt=10.64  cpu0_us_per_pkt=3.41  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=300000  cap_loss_pct=0.000  loss_pct=0.109  util0=61.9  util1=45.4  util2=44.8  util3=45.6  us_per_pkt=10.18  cpu0_us_per_pkt=3.19  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=350000  cap_loss_pct=2.729  loss_pct=2.812  util0=67.4  util1=49.9  util2=49.0  util3=49.5  us_per_pkt=9.93  cpu0_us_per_pkt=3.10  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=400000  cap_loss_pct=14.992  loss_pct=15.064  util0=67.0  util1=49.5  util2=48.6  util3=48.4  us_per_pkt=9.92  cpu0_us_per_pkt=3.11  reader_us_per_pkt=0.00  temp=64.7 
+EXP4 ROUND 2 DONE 2026-11-04T14:25:16Z
+14:25:16 topology -> bridge
+lo               UNKNOWN        127.0.0.1/8 
+eth0             DOWN           
+br0              DOWN           
+eth1.20@if3      UP             
+  Pause parameters for eth0: Autonegotiate:	on RX:		off TX:		off RX negotiated: off TX negotiated: off  
+  	Speed: 1000Mb/s 	Link detected: yes 
+14:25:24 sweep K2 A0 S_m17 round=2 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=2 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.102  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=46.8  util1=15.2  util2=20.4  util3=14.2  us_per_pkt=62.65  cpu0_us_per_pkt=30.35  reader_us_per_pkt=2.40  temp=63.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=61.8  util1=16.9  util2=5.7  util3=39.1  us_per_pkt=59.35  cpu0_us_per_pkt=29.70  reader_us_per_pkt=3.56  temp=64.2 
+   actual_pps=40000  cap_loss_pct=14.983  loss_pct=15.092  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=65.2  util1=14.1  util2=13.7  util3=37.8  us_per_pkt=61.05  cpu0_us_per_pkt=30.41  reader_us_per_pkt=2.21  temp=63.3 
+   actual_pps=50000  cap_loss_pct=31.820  loss_pct=31.927  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=61.2  util1=34.1  util2=11.9  util3=15.4  us_per_pkt=62.56  cpu0_us_per_pkt=31.24  reader_us_per_pkt=2.23  temp=63.7 
+  reader20: 705335 packets captured 705335 packets received by filter 0 packets dropped by kernel 
+  reader21: 705335 packets captured 705335 packets received by filter 0 packets dropped by kernel 
+14:27:00 sweep K0 R123 S_m17 round=2 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=0 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.103  copy_loss_pct=0.000  util0=16.2  util1=17.4  util2=15.5  util3=24.2  us_per_pkt=47.65  cpu0_us_per_pkt=10.55  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=0.000  util0=13.6  util1=24.8  util2=29.6  util3=18.6  us_per_pkt=41.60  cpu0_us_per_pkt=6.55  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  util0=19.8  util1=26.6  util2=31.0  util3=28.2  us_per_pkt=41.90  cpu0_us_per_pkt=7.85  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  util0=26.6  util1=31.4  util2=31.5  util3=29.9  us_per_pkt=41.50  cpu0_us_per_pkt=9.25  reader_us_per_pkt=0.00  temp=62.8 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=14.535  util0=25.1  util1=29.4  util2=38.3  util3=35.3  us_per_pkt=40.10  cpu0_us_per_pkt=7.85  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=22.579  util0=37.5  util1=37.5  util2=30.2  util3=29.0  us_per_pkt=39.05  cpu0_us_per_pkt=10.90  reader_us_per_pkt=0.00  temp=62.8 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=45.141  util0=28.3  util1=31.4  util2=37.1  util3=35.8  us_per_pkt=36.10  cpu0_us_per_pkt=7.70  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=50.575  util0=39.5  util1=34.5  util2=34.9  util3=33.1  us_per_pkt=35.20  cpu0_us_per_pkt=9.80  reader_us_per_pkt=0.00  temp=65.2 
+   actual_pps=120001  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=69.277  util0=34.1  util1=35.2  util2=35.2  util3=34.3  us_per_pkt=32.15  cpu0_us_per_pkt=7.90  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=150001  cap_loss_pct=8.969  loss_pct=9.078  copy_loss_pct=75.088  util0=36.3  util1=36.8  util2=36.5  util3=37.2  us_per_pkt=31.35  cpu0_us_per_pkt=7.75  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=200001  cap_loss_pct=30.482  loss_pct=30.590  copy_loss_pct=88.738  util0=31.3  util1=30.1  util2=32.8  util3=31.1  us_per_pkt=24.80  cpu0_us_per_pkt=6.20  reader_us_per_pkt=0.00  temp=64.7 
+14:29:15 sweep K1 A0 S_m17 round=2 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=1 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=44.7  util1=21.1  util2=13.5  util3=11.3  us_per_pkt=58.60  cpu0_us_per_pkt=28.90  reader_us_per_pkt=1.19  temp=63.3 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=56.4  util1=18.8  util2=14.8  util3=21.8  us_per_pkt=53.60  cpu0_us_per_pkt=27.05  reader_us_per_pkt=1.82  temp=63.3 
+   actual_pps=40000  cap_loss_pct=7.599  loss_pct=7.708  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=66.0  util1=46.7  util2=5.4  util3=10.3  us_per_pkt=55.19  cpu0_us_per_pkt=28.35  reader_us_per_pkt=1.08  temp=63.7 
+   actual_pps=50000  cap_loss_pct=25.387  loss_pct=25.495  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=61.4  util1=21.3  util2=27.5  util3=9.1  us_per_pkt=55.49  cpu0_us_per_pkt=28.55  reader_us_per_pkt=1.09  temp=63.7 
+  reader20: 732941 packets captured 732941 packets received by filter 0 packets dropped by kernel 
+14:30:50 sweep K2h A0 S_m17 round=2 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=2 snaplen=128
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=47.0  util1=21.0  util2=18.6  util3=8.6  us_per_pkt=61.75  cpu0_us_per_pkt=30.45  reader_us_per_pkt=1.58  temp=64.2 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=61.0  util1=6.1  util2=6.0  util3=48.1  us_per_pkt=58.35  cpu0_us_per_pkt=29.35  reader_us_per_pkt=2.58  temp=62.8 
+   actual_pps=40000  cap_loss_pct=14.812  loss_pct=14.921  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=65.4  util1=5.3  util2=21.1  util3=37.0  us_per_pkt=60.22  cpu0_us_per_pkt=30.58  reader_us_per_pkt=1.38  temp=63.7 
+   actual_pps=50000  cap_loss_pct=31.487  loss_pct=31.595  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=61.3  util1=11.8  util2=21.0  util3=27.3  us_per_pkt=61.59  cpu0_us_per_pkt=31.09  reader_us_per_pkt=1.38  temp=63.3 
+  reader20: 74354 packets captured 74354 packets received by filter 0 packets dropped by kernel 
+  reader21: 74354 packets captured 74354 packets received by filter 0 packets dropped by kernel 
+14:32:25 sweep K1 R123 S_m17 round=2 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=1 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=17.0  util1=24.7  util2=17.2  util3=20.7  us_per_pkt=51.55  cpu0_us_per_pkt=11.00  reader_us_per_pkt=4.71  temp=62.8 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.102  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=11.2  util1=36.9  util2=22.1  util3=23.3  us_per_pkt=45.00  cpu0_us_per_pkt=5.40  reader_us_per_pkt=5.16  temp=63.3 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=15.3  util1=30.8  util2=27.7  util3=40.3  us_per_pkt=45.35  cpu0_us_per_pkt=6.10  reader_us_per_pkt=5.12  temp=63.3 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=31.4  util1=36.3  util2=29.8  util3=32.9  us_per_pkt=45.25  cpu0_us_per_pkt=10.90  reader_us_per_pkt=4.75  temp=63.3 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=23.389  xcopy_loss_pct=0.000  util0=21.5  util1=41.2  util2=38.8  util3=35.0  us_per_pkt=42.90  cpu0_us_per_pkt=6.75  reader_us_per_pkt=4.88  temp=63.7 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=27.860  xcopy_loss_pct=0.000  util0=35.1  util1=36.8  util2=38.3  util3=35.1  us_per_pkt=42.25  cpu0_us_per_pkt=10.20  reader_us_per_pkt=4.95  temp=63.3 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.106  copy_loss_pct=44.879  xcopy_loss_pct=0.000  util0=32.8  util1=35.4  util2=38.7  util3=39.3  us_per_pkt=39.85  cpu0_us_per_pkt=8.95  reader_us_per_pkt=4.78  temp=63.3 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.106  copy_loss_pct=47.722  xcopy_loss_pct=0.000  util0=42.8  util1=37.4  util2=36.2  util3=39.8  us_per_pkt=38.65  cpu0_us_per_pkt=10.60  reader_us_per_pkt=5.62  temp=63.3 
+   actual_pps=120001  cap_loss_pct=0.026  loss_pct=0.136  copy_loss_pct=64.648  xcopy_loss_pct=0.150  util0=41.3  util1=40.2  util2=41.3  util3=41.9  us_per_pkt=38.10  cpu0_us_per_pkt=9.55  reader_us_per_pkt=2.76  temp=64.2 
+   actual_pps=150001  cap_loss_pct=18.700  loss_pct=18.808  copy_loss_pct=75.090  xcopy_loss_pct=0.000  util0=36.6  util1=37.5  util2=36.1  util3=36.8  us_per_pkt=31.55  cpu0_us_per_pkt=7.85  reader_us_per_pkt=1.94  temp=62.8 
+   actual_pps=200001  cap_loss_pct=37.069  loss_pct=37.178  copy_loss_pct=88.987  xcopy_loss_pct=1.273  util0=30.8  util1=30.3  util2=33.6  util3=30.8  us_per_pkt=24.85  cpu0_us_per_pkt=6.10  reader_us_per_pkt=1.71  temp=63.7 
+  reader20: 2049370 packets captured 2049370 packets received by filter 4 packets dropped by kernel 
+14:34:44 sweep K0 A0 S_m17 round=2 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=0 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.108  copy_loss_pct=0.000  util0=41.5  util1=17.1  util2=13.4  util3=11.7  us_per_pkt=54.20  cpu0_us_per_pkt=26.85  reader_us_per_pkt=0.00  temp=62.8 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.103  copy_loss_pct=0.000  util0=53.3  util1=7.8  util2=35.4  util3=5.3  us_per_pkt=49.05  cpu0_us_per_pkt=25.70  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.107  copy_loss_pct=0.000  util0=63.1  util1=21.3  util2=21.5  util3=17.0  us_per_pkt=48.80  cpu0_us_per_pkt=25.05  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=50000  cap_loss_pct=18.261  loss_pct=18.368  copy_loss_pct=0.000  util0=60.8  util1=14.3  util2=20.6  util3=22.2  us_per_pkt=50.04  cpu0_us_per_pkt=25.81  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=60000  cap_loss_pct=31.672  loss_pct=31.779  copy_loss_pct=0.000  util0=56.5  util1=3.0  util2=45.1  util3=6.2  us_per_pkt=50.93  cpu0_us_per_pkt=25.98  reader_us_per_pkt=0.00  temp=63.7 
+14:36:22 sweep K2h R123 S_m17 round=2 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=2 snaplen=128
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=18.6  util1=20.4  util2=21.1  util3=23.1  us_per_pkt=53.90  cpu0_us_per_pkt=12.05  reader_us_per_pkt=8.69  temp=62.8 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=13.3  util1=28.0  util2=33.8  util3=23.4  us_per_pkt=47.50  cpu0_us_per_pkt=6.40  reader_us_per_pkt=8.35  temp=63.7 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=17.1  util1=35.1  util2=43.1  util3=26.0  us_per_pkt=48.25  cpu0_us_per_pkt=6.80  reader_us_per_pkt=8.34  temp=63.3 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=1.167  xcopy_loss_pct=0.000  util0=26.9  util1=43.2  util2=35.9  util3=33.3  us_per_pkt=48.50  cpu0_us_per_pkt=9.35  reader_us_per_pkt=8.04  temp=64.7 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=33.561  xcopy_loss_pct=0.000  util0=18.4  util1=49.8  util2=37.5  util3=34.2  us_per_pkt=44.00  cpu0_us_per_pkt=5.80  reader_us_per_pkt=8.48  temp=63.3 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=29.098  xcopy_loss_pct=0.000  util0=37.7  util1=41.1  util2=34.6  util3=39.6  us_per_pkt=44.45  cpu0_us_per_pkt=10.95  reader_us_per_pkt=9.13  temp=63.3 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=42.608  xcopy_loss_pct=0.000  util0=39.5  util1=37.8  util2=38.9  util3=39.1  us_per_pkt=42.50  cpu0_us_per_pkt=10.80  reader_us_per_pkt=8.84  temp=63.3 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=51.559  xcopy_loss_pct=0.000  util0=42.5  util1=40.9  util2=40.1  util3=43.7  us_per_pkt=41.30  cpu0_us_per_pkt=10.50  reader_us_per_pkt=8.03  temp=64.2 
+   actual_pps=120001  cap_loss_pct=8.532  loss_pct=8.641  copy_loss_pct=78.200  xcopy_loss_pct=0.128  util0=41.0  util1=40.3  util2=42.1  util3=41.0  us_per_pkt=37.90  cpu0_us_per_pkt=9.45  reader_us_per_pkt=3.57  temp=63.7 
+   actual_pps=150001  cap_loss_pct=25.448  loss_pct=25.556  copy_loss_pct=85.849  xcopy_loss_pct=0.059  util0=36.5  util1=38.1  util2=36.3  util3=36.3  us_per_pkt=31.65  cpu0_us_per_pkt=7.85  reader_us_per_pkt=3.04  temp=64.2 
+  reader20: 202750 packets captured 202750 packets received by filter 1 packet dropped by kernel 
+  reader21: 202172 packets captured 202172 packets received by filter 1 packet dropped by kernel 
+14:38:36 sweep K2 R123 S_m17 round=2 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=2 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=12.1  util1=34.6  util2=18.6  util3=18.7  us_per_pkt=54.50  cpu0_us_per_pkt=7.85  reader_us_per_pkt=9.27  temp=63.3 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=18.2  util1=32.8  util2=24.3  util3=25.0  us_per_pkt=48.30  cpu0_us_per_pkt=8.75  reader_us_per_pkt=9.70  temp=63.3 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=0.000  xcopy_loss_pct=0.000  util0=14.7  util1=28.1  util2=52.4  util3=28.0  us_per_pkt=49.10  cpu0_us_per_pkt=5.85  reader_us_per_pkt=10.06  temp=63.3 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=2.215  xcopy_loss_pct=0.000  util0=24.6  util1=35.4  util2=33.0  util3=47.1  us_per_pkt=48.90  cpu0_us_per_pkt=8.60  reader_us_per_pkt=9.79  temp=63.3 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=26.388  xcopy_loss_pct=0.000  util0=27.7  util1=46.2  util2=40.3  util3=36.6  us_per_pkt=47.35  cpu0_us_per_pkt=8.70  reader_us_per_pkt=9.70  temp=63.7 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=22.831  xcopy_loss_pct=0.000  util0=43.6  util1=39.1  util2=40.7  util3=35.7  us_per_pkt=46.15  cpu0_us_per_pkt=12.65  reader_us_per_pkt=10.61  temp=63.3 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=29.353  xcopy_loss_pct=0.000  util0=45.6  util1=39.7  util2=38.1  util3=40.1  us_per_pkt=44.65  cpu0_us_per_pkt=12.45  reader_us_per_pkt=10.67  temp=63.7 
+   actual_pps=100000  cap_loss_pct=0.000  loss_pct=0.109  copy_loss_pct=49.948  xcopy_loss_pct=0.000  util0=42.4  util1=43.2  util2=40.8  util3=43.2  us_per_pkt=42.00  cpu0_us_per_pkt=10.50  reader_us_per_pkt=11.50  temp=63.3 
+   actual_pps=120001  cap_loss_pct=8.274  loss_pct=8.383  copy_loss_pct=64.438  xcopy_loss_pct=0.410  util0=41.6  util1=39.6  util2=40.7  util3=43.9  us_per_pkt=38.30  cpu0_us_per_pkt=9.60  reader_us_per_pkt=3.83  temp=63.7 
+   actual_pps=150001  cap_loss_pct=25.129  loss_pct=25.238  copy_loss_pct=75.621  xcopy_loss_pct=0.614  util0=37.4  util1=37.1  util2=36.9  util3=36.7  us_per_pkt=31.70  cpu0_us_per_pkt=8.00  reader_us_per_pkt=3.30  temp=64.2 
+  reader20: 1905337 packets captured 1905337 packets received by filter 4 packets dropped by kernel 
+  reader21: 1892170 packets captured 1892170 packets received by filter 5 packets dropped by kernel 
+14:40:50 sweep K1 R123 bulk_fixed round=2 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=1 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=10000  cap_loss_pct=0.000  loss_pct=-0.005  copy_loss_pct=18.412  xcopy_loss_pct=0.000  util0=13.9  util1=22.5  util2=35.1  util3=33.3  us_per_pkt=154.29  cpu0_us_per_pkt=20.52  reader_us_per_pkt=6.07  temp=63.3 
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=62.480  xcopy_loss_pct=0.000  util0=20.6  util1=27.2  util2=32.8  util3=42.0  us_per_pkt=90.03  cpu0_us_per_pkt=15.11  reader_us_per_pkt=6.54  temp=63.3 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=-0.002  copy_loss_pct=75.485  xcopy_loss_pct=0.000  util0=24.9  util1=30.8  util2=48.5  util3=29.2  us_per_pkt=69.48  cpu0_us_per_pkt=12.98  reader_us_per_pkt=4.68  temp=63.7 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=-0.004  copy_loss_pct=82.812  xcopy_loss_pct=0.000  util0=31.4  util1=48.2  util2=34.6  util3=33.2  us_per_pkt=56.54  cpu0_us_per_pkt=12.04  reader_us_per_pkt=9.33  temp=63.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=-0.002  copy_loss_pct=86.579  xcopy_loss_pct=0.000  util0=36.5  util1=47.9  util2=18.9  util3=56.1  us_per_pkt=50.70  cpu0_us_per_pkt=11.61  reader_us_per_pkt=5.52  temp=63.3 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=-0.001  copy_loss_pct=88.780  xcopy_loss_pct=0.000  util0=45.4  util1=55.3  util2=19.7  util3=53.7  us_per_pkt=45.27  cpu0_us_per_pkt=11.80  reader_us_per_pkt=6.42  temp=63.3 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=-0.000  copy_loss_pct=89.719  xcopy_loss_pct=0.000  util0=50.9  util1=52.2  util2=22.2  util3=56.8  us_per_pkt=40.22  cpu0_us_per_pkt=11.24  reader_us_per_pkt=3.47  temp=63.3 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=-0.000  copy_loss_pct=90.936  xcopy_loss_pct=1.057  util0=56.1  util1=53.2  util2=29.2  util3=54.0  us_per_pkt=38.03  cpu0_us_per_pkt=11.09  reader_us_per_pkt=4.21  temp=63.7 
+   actual_pps=87952  cap_loss_pct=0.000  loss_pct=-0.002  copy_loss_pct=91.884  xcopy_loss_pct=1.458  util0=59.6  util1=67.5  util2=38.5  util3=52.2  us_per_pkt=38.43  cpu0_us_per_pkt=10.52  reader_us_per_pkt=2.88  temp=64.7 
+  reader20: 247392 packets captured 247392 packets received by filter 14 packets dropped by kernel 
+14:43:04 sweep K2h R123 bulk_fixed round=2 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=2 snaplen=128
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=10000  cap_loss_pct=0.000  loss_pct=-0.005  copy_loss_pct=17.945  xcopy_loss_pct=0.000  util0=17.7  util1=19.2  util2=35.6  util3=24.6  us_per_pkt=142.68  cpu0_us_per_pkt=26.09  reader_us_per_pkt=-0.48  temp=63.3 
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=-0.001  copy_loss_pct=62.247  xcopy_loss_pct=0.000  util0=19.6  util1=27.5  util2=28.1  util3=32.8  us_per_pkt=79.22  cpu0_us_per_pkt=14.40  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=-0.001  copy_loss_pct=73.752  xcopy_loss_pct=0.000  util0=24.1  util1=24.6  util2=26.4  util3=43.3  us_per_pkt=61.59  cpu0_us_per_pkt=12.53  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=-0.001  copy_loss_pct=81.505  xcopy_loss_pct=0.000  util0=29.6  util1=30.2  util2=21.3  util3=49.1  us_per_pkt=49.95  cpu0_us_per_pkt=11.36  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=85.093  xcopy_loss_pct=0.000  util0=33.8  util1=36.5  util2=19.5  util3=49.8  us_per_pkt=44.38  cpu0_us_per_pkt=10.74  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=88.678  xcopy_loss_pct=0.000  util0=39.8  util1=44.2  util2=43.9  util3=21.7  us_per_pkt=38.75  cpu0_us_per_pkt=10.31  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=88.394  xcopy_loss_pct=0.000  util0=45.7  util1=45.0  util2=35.2  util3=35.8  us_per_pkt=35.66  cpu0_us_per_pkt=10.07  reader_us_per_pkt=0.00  temp=64.7 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=90.092  xcopy_loss_pct=0.000  util0=49.1  util1=49.9  util2=44.1  util3=24.4  us_per_pkt=32.89  cpu0_us_per_pkt=9.64  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=87947  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=90.908  xcopy_loss_pct=0.000  util0=58.9  util1=61.4  util2=4.7  util3=68.0  us_per_pkt=33.98  cpu0_us_per_pkt=10.37  reader_us_per_pkt=0.00  temp=64.2 
+14:45:15 sweep K2 R123 bulk_fixed round=2 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=2 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=10000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=20.862  xcopy_loss_pct=0.000  util0=17.0  util1=19.2  util2=12.5  util3=62.6  us_per_pkt=163.20  cpu0_us_per_pkt=24.97  reader_us_per_pkt=12.57  temp=63.7 
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=63.145  xcopy_loss_pct=0.000  util0=22.9  util1=29.2  util2=19.3  util3=59.0  us_per_pkt=95.60  cpu0_us_per_pkt=16.78  reader_us_per_pkt=14.87  temp=63.3 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=76.924  xcopy_loss_pct=0.000  util0=28.6  util1=40.3  util2=10.7  util3=64.5  us_per_pkt=75.08  cpu0_us_per_pkt=14.89  reader_us_per_pkt=15.76  temp=63.7 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=83.265  xcopy_loss_pct=0.000  util0=34.6  util1=51.1  util2=13.6  util3=64.8  us_per_pkt=63.08  cpu0_us_per_pkt=13.32  reader_us_per_pkt=13.58  temp=65.2 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=86.799  xcopy_loss_pct=0.000  util0=42.0  util1=56.5  util2=14.2  util3=65.5  us_per_pkt=56.39  cpu0_us_per_pkt=13.28  reader_us_per_pkt=11.96  temp=63.7 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=89.603  xcopy_loss_pct=0.000  util0=51.6  util1=58.0  util2=21.3  util3=59.0  us_per_pkt=49.57  cpu0_us_per_pkt=13.46  reader_us_per_pkt=11.96  temp=65.2 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=90.232  xcopy_loss_pct=0.377  util0=57.2  util1=63.1  util2=61.3  util3=22.9  us_per_pkt=45.20  cpu0_us_per_pkt=12.65  reader_us_per_pkt=14.16  temp=65.2 
+   actual_pps=80000  cap_loss_pct=0.331  loss_pct=6.958  copy_loss_pct=89.691  xcopy_loss_pct=1.754  util0=66.7  util1=71.0  util2=37.9  util3=64.2  us_per_pkt=47.40  cpu0_us_per_pkt=13.18  reader_us_per_pkt=8.59  temp=64.2 
+   actual_pps=87945  cap_loss_pct=1.422  loss_pct=19.640  copy_loss_pct=89.002  xcopy_loss_pct=0.763  util0=70.2  util1=72.2  util2=59.0  util3=44.7  us_per_pkt=43.77  cpu0_us_per_pkt=12.48  reader_us_per_pkt=7.13  temp=65.2 
+  reader20: 238185 packets captured 238185 packets received by filter 10 packets dropped by kernel 
+  reader21: 237119 packets captured 237119 packets received by filter 25 packets dropped by kernel 
+14:47:28 sweep K2 A0 bulk_fixed round=2 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=2 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=10000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=20.761  xcopy_loss_pct=0.000  util0=27.7  util1=17.2  util2=22.1  util3=43.3  us_per_pkt=162.09  cpu0_us_per_pkt=40.72  reader_us_per_pkt=10.24  temp=64.2 
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=63.234  xcopy_loss_pct=0.000  util0=43.1  util1=23.1  util2=20.1  util3=44.1  us_per_pkt=95.60  cpu0_us_per_pkt=31.58  reader_us_per_pkt=10.55  temp=63.7 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=76.881  xcopy_loss_pct=0.000  util0=56.5  util1=16.0  util2=11.0  util3=57.3  us_per_pkt=73.43  cpu0_us_per_pkt=29.46  reader_us_per_pkt=13.40  temp=65.7 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=83.025  xcopy_loss_pct=1.472  util0=64.4  util1=36.9  util2=31.4  util3=25.7  us_per_pkt=61.04  cpu0_us_per_pkt=24.81  reader_us_per_pkt=12.10  temp=63.7 
+   actual_pps=50000  cap_loss_pct=3.096  loss_pct=3.096  copy_loss_pct=84.309  xcopy_loss_pct=0.000  util0=66.5  util1=48.1  util2=30.2  util3=15.0  us_per_pkt=52.49  cpu0_us_per_pkt=21.83  reader_us_per_pkt=5.82  temp=65.2 
+   actual_pps=60000  cap_loss_pct=23.218  loss_pct=23.218  copy_loss_pct=83.784  xcopy_loss_pct=0.000  util0=67.4  util1=18.8  util2=42.9  util3=34.7  us_per_pkt=55.52  cpu0_us_per_pkt=22.83  reader_us_per_pkt=6.06  temp=63.3 
+  reader20: 125619 packets captured 125619 packets received by filter 1 packet dropped by kernel 
+  reader21: 124516 packets captured 124516 packets received by filter 9 packets dropped by kernel 
+14:49:13 sweep K1 A0 bulk_fixed round=2 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=1 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=10000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=18.279  xcopy_loss_pct=0.000  util0=27.1  util1=13.6  util2=31.9  util3=32.0  us_per_pkt=153.34  cpu0_us_per_pkt=39.77  reader_us_per_pkt=5.43  temp=63.7 
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=-0.011  copy_loss_pct=61.864  xcopy_loss_pct=0.000  util0=39.7  util1=36.4  util2=19.5  util3=25.8  us_per_pkt=89.31  cpu0_us_per_pkt=29.19  reader_us_per_pkt=6.60  temp=64.2 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=-0.002  copy_loss_pct=75.697  xcopy_loss_pct=0.000  util0=50.5  util1=12.3  util2=19.9  util3=49.0  us_per_pkt=68.59  cpu0_us_per_pkt=26.28  reader_us_per_pkt=5.66  temp=64.2 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=81.838  xcopy_loss_pct=0.000  util0=61.4  util1=24.4  util2=25.6  util3=33.7  us_per_pkt=55.72  cpu0_us_per_pkt=23.59  reader_us_per_pkt=6.73  temp=63.7 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=-0.001  copy_loss_pct=83.704  xcopy_loss_pct=0.203  util0=64.0  util1=17.3  util2=44.9  util3=21.2  us_per_pkt=46.77  cpu0_us_per_pkt=20.32  reader_us_per_pkt=3.21  temp=64.2 
+   actual_pps=60000  cap_loss_pct=11.940  loss_pct=11.940  copy_loss_pct=84.861  xcopy_loss_pct=0.000  util0=66.6  util1=56.3  util2=10.0  util3=18.7  us_per_pkt=44.91  cpu0_us_per_pkt=19.73  reader_us_per_pkt=2.56  temp=63.7 
+   actual_pps=70000  cap_loss_pct=27.397  loss_pct=27.393  copy_loss_pct=85.372  xcopy_loss_pct=0.000  util0=66.5  util1=16.5  util2=13.2  util3=56.6  us_per_pkt=46.59  cpu0_us_per_pkt=20.27  reader_us_per_pkt=2.80  temp=63.7 
+  reader20: 161536 packets captured 161536 packets received by filter 3 packets dropped by kernel 
+14:51:08 sweep K0 A0 bulk_fixed round=2 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=0 snaplen=0
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=10000  cap_loss_pct=0.000  loss_pct=-0.005  copy_loss_pct=15.395  util0=22.5  util1=44.8  util2=17.1  util3=14.2  us_per_pkt=144.59  cpu0_us_per_pkt=32.93  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=59.627  util0=33.9  util1=22.2  util2=35.2  util3=19.7  us_per_pkt=81.52  cpu0_us_per_pkt=24.89  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=-0.001  copy_loss_pct=73.590  util0=42.5  util1=41.2  util2=27.4  util3=5.6  us_per_pkt=60.70  cpu0_us_per_pkt=22.08  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=-0.001  copy_loss_pct=81.032  util0=53.8  util1=54.3  util2=11.6  util3=8.5  us_per_pkt=49.17  cpu0_us_per_pkt=20.63  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=84.875  util0=59.6  util1=66.9  util2=4.1  util3=2.4  us_per_pkt=42.15  cpu0_us_per_pkt=18.89  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=85.234  util0=66.5  util1=3.8  util2=54.5  util3=15.7  us_per_pkt=36.49  cpu0_us_per_pkt=17.27  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=70000  cap_loss_pct=9.304  loss_pct=9.304  copy_loss_pct=86.948  util0=67.4  util1=3.1  util2=67.8  util3=3.6  us_per_pkt=34.52  cpu0_us_per_pkt=16.40  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=80000  cap_loss_pct=22.953  loss_pct=22.953  copy_loss_pct=86.838  util0=66.7  util1=3.4  util2=66.2  util3=3.5  us_per_pkt=35.73  cpu0_us_per_pkt=17.06  reader_us_per_pkt=0.00  temp=63.7 
+14:53:08 sweep K2h A0 bulk_fixed round=2 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=2 snaplen=128
+placement=A0 rps_cpus=0 irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=10000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=15.509  xcopy_loss_pct=0.000  util0=23.8  util1=27.5  util2=20.5  util3=26.5  us_per_pkt=144.43  cpu0_us_per_pkt=35.00  reader_us_per_pkt=-0.48  temp=63.3 
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=60.305  xcopy_loss_pct=0.000  util0=35.5  util1=12.0  util2=28.6  util3=33.6  us_per_pkt=80.49  cpu0_us_per_pkt=26.01  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=73.525  xcopy_loss_pct=0.000  util0=43.4  util1=25.6  util2=20.0  util3=27.6  us_per_pkt=60.70  cpu0_us_per_pkt=22.59  reader_us_per_pkt=0.00  temp=62.8 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=81.175  xcopy_loss_pct=0.000  util0=53.8  util1=62.8  util2=4.5  util3=7.1  us_per_pkt=49.08  cpu0_us_per_pkt=20.59  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=84.961  xcopy_loss_pct=0.000  util0=59.6  util1=10.3  util2=31.7  util3=31.2  us_per_pkt=42.15  cpu0_us_per_pkt=18.93  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=85.409  xcopy_loss_pct=0.000  util0=66.3  util1=66.5  util2=2.9  util3=4.8  us_per_pkt=36.55  cpu0_us_per_pkt=17.24  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=70000  cap_loss_pct=13.209  loss_pct=13.209  copy_loss_pct=86.423  xcopy_loss_pct=0.000  util0=67.1  util1=21.4  util2=9.6  util3=44.8  us_per_pkt=36.29  cpu0_us_per_pkt=17.04  reader_us_per_pkt=0.00  temp=63.7 
+   actual_pps=80000  cap_loss_pct=26.234  loss_pct=26.234  copy_loss_pct=86.803  xcopy_loss_pct=0.000  util0=65.9  util1=8.1  util2=3.7  util3=63.0  us_per_pkt=37.62  cpu0_us_per_pkt=17.62  reader_us_per_pkt=0.00  temp=63.7 
+14:55:10 sweep K0 R123 bulk_fixed round=2 mode=bridge
+  ready mode=bridge protection=ids rules=full queues=1 trusted=0 copies=0 snaplen=0
+placement=R123 rps_cpus=e irq29=0 eff=0 threaded=0 napi=[]
+   actual_pps=10000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=15.109  util0=12.0  util1=14.1  util2=23.0  util3=49.1  us_per_pkt=144.12  cpu0_us_per_pkt=17.66  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=20000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=60.679  util0=20.7  util1=22.8  util2=34.8  util3=31.9  us_per_pkt=80.81  cpu0_us_per_pkt=15.19  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=30000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=75.115  util0=24.3  util1=28.1  util2=30.7  util3=32.5  us_per_pkt=60.19  cpu0_us_per_pkt=12.66  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=40000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=81.463  util0=28.8  util1=34.6  util2=22.3  util3=43.4  us_per_pkt=49.49  cpu0_us_per_pkt=11.04  reader_us_per_pkt=0.00  temp=62.3 
+   actual_pps=50000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=85.128  util0=35.4  util1=35.5  util2=23.5  util3=45.0  us_per_pkt=44.18  cpu0_us_per_pkt=11.21  reader_us_per_pkt=0.00  temp=63.3 
+   actual_pps=60000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=88.197  util0=41.8  util1=42.6  util2=33.6  util3=32.7  us_per_pkt=39.13  cpu0_us_per_pkt=10.85  reader_us_per_pkt=0.00  temp=62.8 
+   actual_pps=70000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=89.694  util0=45.0  util1=46.3  util2=39.1  util3=23.5  us_per_pkt=34.01  cpu0_us_per_pkt=9.94  reader_us_per_pkt=0.00  temp=64.2 
+   actual_pps=80000  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=90.995  util0=47.9  util1=49.8  util2=21.1  util3=41.2  us_per_pkt=31.54  cpu0_us_per_pkt=9.45  reader_us_per_pkt=0.00  temp=62.3 
+   actual_pps=87944  cap_loss_pct=0.000  loss_pct=0.000  copy_loss_pct=91.629  util0=57.3  util1=59.1  util2=25.1  util3=45.9  us_per_pkt=33.09  cpu0_us_per_pkt=10.12  reader_us_per_pkt=0.00  temp=64.2 
+EXP5 ROUND 2 DONE 2026-11-04T14:57:20Z
+  Pause parameters for eth0: Autonegotiate:	on RX:		on TX:		on RX negotiated: on TX negotiated: on  
+  	Speed: 1000Mb/s 	Link detected: yes 
+NIGHT1104 DONE 2026-11-04T14:57:28Z
