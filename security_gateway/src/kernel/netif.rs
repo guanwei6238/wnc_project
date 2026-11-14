@@ -1,12 +1,18 @@
 use std::fmt;
 use std::io;
+use std::net::{IpAddr, Ipv4Addr};
 use std::path::Path;
 use std::str::FromStr;
 
 use futures::TryStreamExt;
+use rtnetlink::packet_route::AddressFamily;
+use rtnetlink::packet_route::address::{AddressAttribute, AddressMessage};
 use rtnetlink::packet_route::link::{
     LinkAttribute, LinkFlags, LinkInfo, LinkLayerType, LinkMessage, LinkXdp, State, XdpAttached,
 };
+use rtnetlink::packet_route::route::{RouteAddress, RouteAttribute, RouteMessage, RouteType};
+use rtnetlink::packet_route::rule::{RuleAction, RuleAttribute, RuleFlags, RuleMessage};
+use rtnetlink::{IpVersion, RouteMessageBuilder};
 
 const SYS_CLASS_NET: &str = "/sys/class/net";
 const DEVICE_DRIVER: &str = "device/driver";
@@ -139,8 +145,100 @@ impl Interface {
 pub enum NetifError {
     #[error("failed to open netlink connection: {0}")]
     Connect(io::Error),
-    #[error("failed to dump interfaces: {0}")]
-    Dump(String),
+    #[error("failed to dump {what}: {reason}")]
+    Dump { what: &'static str, reason: String },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Ipv4Net {
+    pub addr: Ipv4Addr,
+    pub prefix_len: u8,
+}
+
+impl Ipv4Net {
+    pub fn network(self) -> Self {
+        Self {
+            addr: masked(self.addr, self.prefix_len),
+            prefix_len: self.prefix_len,
+        }
+    }
+
+    pub fn overlaps(self, other: Self) -> bool {
+        let len = self.prefix_len.min(other.prefix_len);
+        masked(self.addr, len) == masked(other.addr, len)
+    }
+
+    pub fn is_link_local(self) -> bool {
+        self.addr.is_link_local()
+    }
+}
+
+impl fmt::Display for Ipv4Net {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}/{}", self.addr, self.prefix_len)
+    }
+}
+
+fn masked(addr: Ipv4Addr, prefix_len: u8) -> Ipv4Addr {
+    let mask = u32::MAX.checked_shl(32 - u32::from(prefix_len.min(32))).unwrap_or(0);
+    Ipv4Addr::from(u32::from(addr) & mask)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct InterfaceAddress {
+    pub index: u32,
+    pub net: Ipv4Net,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RouteKind {
+    Unicast,
+    Blackhole,
+    Unreachable,
+    Prohibit,
+    Throw,
+    Other,
+}
+
+impl fmt::Display for RouteKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Unicast => "unicast",
+            Self::Blackhole => "blackhole",
+            Self::Unreachable => "unreachable",
+            Self::Prohibit => "prohibit",
+            Self::Throw => "throw",
+            Self::Other => "other",
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NextHop {
+    pub oif: u32,
+    pub gateway: Option<Ipv4Addr>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Route {
+    pub destination: Ipv4Net,
+    pub kind: RouteKind,
+    pub metric: u32,
+    pub next_hops: Vec<NextHop>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Rule {
+    pub priority: u32,
+    pub table: Option<u32>,
+    pub unconditional: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Ipv4Routing {
+    pub addresses: Vec<InterfaceAddress>,
+    pub main_routes: Vec<Route>,
+    pub rules: Vec<Rule>,
 }
 
 pub struct Netlink {
@@ -162,7 +260,7 @@ impl Netlink {
             .execute()
             .try_collect()
             .await
-            .map_err(|e| NetifError::Dump(e.to_string()))?;
+            .map_err(dump_error("interfaces"))?;
 
         Ok(messages
             .into_iter()
@@ -172,6 +270,42 @@ impl Netlink {
                 iface
             })
             .collect())
+    }
+
+    pub async fn ipv4_routing(&self) -> Result<Ipv4Routing, NetifError> {
+        let mut addresses = self.handle.address().get();
+        addresses.message_mut().header.family = AddressFamily::Inet;
+        let addresses: Vec<AddressMessage> =
+            addresses.execute().try_collect().await.map_err(dump_error("addresses"))?;
+        let routes: Vec<RouteMessage> = self
+            .handle
+            .route()
+            .get(RouteMessageBuilder::<Ipv4Addr>::new().build())
+            .execute()
+            .try_collect()
+            .await
+            .map_err(dump_error("routes"))?;
+        let rules: Vec<RuleMessage> = self
+            .handle
+            .rule()
+            .get(IpVersion::V4)
+            .execute()
+            .try_collect()
+            .await
+            .map_err(dump_error("routing rules"))?;
+
+        Ok(Ipv4Routing {
+            addresses: addresses.into_iter().filter_map(from_address_message).collect(),
+            main_routes: routes.into_iter().filter_map(from_route_message).collect(),
+            rules: rules.into_iter().map(from_rule_message).collect(),
+        })
+    }
+}
+
+fn dump_error(what: &'static str) -> impl Fn(rtnetlink::Error) -> NetifError {
+    move |e| NetifError::Dump {
+        what,
+        reason: e.to_string(),
     }
 }
 
@@ -240,6 +374,104 @@ fn oper_state(state: State) -> OperState {
         State::Dormant => OperState::Dormant,
         State::Up => OperState::Up,
         _ => OperState::Unknown,
+    }
+}
+
+const RT_TABLE_MAIN: u32 = 254;
+
+fn from_address_message(msg: AddressMessage) -> Option<InterfaceAddress> {
+    if msg.header.family != AddressFamily::Inet {
+        return None;
+    }
+    let mut address = None;
+    let mut local = None;
+    for attr in msg.attributes {
+        match attr {
+            AddressAttribute::Address(IpAddr::V4(addr)) => address = Some(addr),
+            AddressAttribute::Local(IpAddr::V4(addr)) => local = Some(addr),
+            _ => {}
+        }
+    }
+    Some(InterfaceAddress {
+        index: msg.header.index,
+        net: Ipv4Net {
+            addr: local.or(address)?,
+            prefix_len: msg.header.prefix_len,
+        },
+    })
+}
+
+fn from_route_message(msg: RouteMessage) -> Option<Route> {
+    if msg.header.address_family != AddressFamily::Inet {
+        return None;
+    }
+    let mut table = u32::from(msg.header.table);
+    let mut destination = Ipv4Addr::UNSPECIFIED;
+    let mut metric = 0;
+    let mut oif = None;
+    let mut gateway = None;
+    let mut next_hops = Vec::new();
+    for attr in msg.attributes {
+        match attr {
+            RouteAttribute::Table(id) => table = id,
+            RouteAttribute::Destination(RouteAddress::Inet(addr)) => destination = addr,
+            RouteAttribute::Priority(value) => metric = value,
+            RouteAttribute::Oif(index) => oif = Some(index),
+            RouteAttribute::Gateway(RouteAddress::Inet(addr)) => gateway = Some(addr),
+            RouteAttribute::MultiPath(hops) => next_hops.extend(hops.into_iter().map(|hop| NextHop {
+                oif: hop.interface_index,
+                gateway: hop.attributes.into_iter().find_map(|attr| match attr {
+                    RouteAttribute::Gateway(RouteAddress::Inet(addr)) => Some(addr),
+                    _ => None,
+                }),
+            })),
+            _ => {}
+        }
+    }
+    if table != RT_TABLE_MAIN {
+        return None;
+    }
+    if let Some(oif) = oif {
+        next_hops.insert(0, NextHop { oif, gateway });
+    }
+    Some(Route {
+        destination: Ipv4Net {
+            addr: destination,
+            prefix_len: msg.header.destination_prefix_length,
+        },
+        kind: match msg.header.kind {
+            RouteType::Unicast => RouteKind::Unicast,
+            RouteType::BlackHole => RouteKind::Blackhole,
+            RouteType::Unreachable => RouteKind::Unreachable,
+            RouteType::Prohibit => RouteKind::Prohibit,
+            RouteType::Throw => RouteKind::Throw,
+            _ => RouteKind::Other,
+        },
+        metric,
+        next_hops,
+    })
+}
+
+fn from_rule_message(msg: RuleMessage) -> Rule {
+    let mut priority = 0;
+    let mut table = u32::from(msg.header.table);
+    let mut unconditional = msg.header.src_len == 0
+        && msg.header.dst_len == 0
+        && msg.header.tos == 0
+        && !msg.header.flags.contains(RuleFlags::Invert);
+    for attr in msg.attributes {
+        match attr {
+            RuleAttribute::Priority(value) => priority = value,
+            RuleAttribute::Table(id) => table = id,
+            RuleAttribute::Protocol(_) => {}
+            RuleAttribute::SuppressPrefixLen(u32::MAX) | RuleAttribute::SuppressIfGroup(u32::MAX) => {}
+            _ => unconditional = false,
+        }
+    }
+    Rule {
+        priority,
+        table: (msg.header.action == RuleAction::ToTable).then_some(table),
+        unconditional,
     }
 }
 

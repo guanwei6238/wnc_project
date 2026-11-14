@@ -41,7 +41,10 @@ cli 10.0.1.2 ── lan 10.0.1.0/24 ── eth0 [gw] eth1 ── wan 10.0.2.0/24
 - gw 有 `NET_ADMIN`、`NET_RAW`，並開了 `ip_forward=1`。
 - MAC 在 compose 裡固定，否則每次重建容器都會變，設定檔就對不上。
 - `docker/wnc-gw/setting.toml` 用 MAC 指定 LAN、WAN。veth 沒有出廠 MAC，所以實際上走的是「目前 MAC」這條路。
-- image 是 Debian trixie，和 Pi OS 同一代。`docker/Dockerfile` 分成兩個 stage：`base`（`wnc-lab:latest`，cli、srv 用）內含 iproute2、nftables、conntrack、tcpdump、iperf3、ethtool；`gw`（`wnc-lab-gw:latest`）在 `base` 上加裝 trixie-backports 的 Suricata 8.0.7。容器裡沒有 systemd，Suricata 不會自己啟動。改了 Dockerfile 要重建：`./down.sh && ./up.sh`。
+- image 是 Debian trixie，和 Pi OS 同一代。`docker/Dockerfile` 分成三個 stage：`base`（`wnc-lab:latest`，cli、srv 用）內含 iproute2、nftables、conntrack、tcpdump、iperf3、ethtool；`gw`（`wnc-lab-gw:latest`）在 `base` 上加裝 trixie-backports 的 Suricata；`rep`（`wnc-lab-rep:latest`）在 `base` 上加裝 tcpreplay。容器裡沒有 systemd，Suricata 不會自己啟動。改了 Dockerfile 要重建：`./down.sh && ./up.sh`。
+- Suricata 固定 8.0.7，和 Pi 一樣：trixie-backports 2026-11-03 換成 8.0.8，Dockerfile 改從 snapshot.debian.org 取 11/02 的 backports（`[check-valid-until=no]`），指定 `suricata=1:8.0.7-1~bpo13+1`，版本不對 build 就失敗。
+- 第四個容器 `rep`（`wnc-rep`，10.0.1.3／10.0.2.3）同時接 lan、wan，entrypoint 把兩張網卡改名成 `lan`、`wan`，用來把 dataset 的 pcap 從兩邊送進 gw（`tcpreplay -i wan -I lan -c <cache>`）。`tests/demo/pcaps/` 掛到它的 `/pcaps`。dataset 的 IP 要能轉送，gw 要先加路由：`tests/demo/prep_docker.sh`（`192.168.0.0/16` 往 LAN、其他往 WAN，下一跳是不存在的 MAC），流程和結果在 `tests/demo/DOCKER.md`。
+- demo 的設定 `docker/wnc-gw/demo.toml`、`demo-suricata.yaml` 跟著 `docker/wnc-gw/` 一起掛到 `/etc/wnc-gw/`；完整規則 `docker/suricata-rules/et_all.rules` 由 `prep_docker.sh` 複製，不進 git。
 
 ## 3. 常用指令
 
@@ -68,6 +71,7 @@ docker exec wnc-cli ping -c1 -W2 10.0.2.2                   # 確認轉送沒有
 | MAC 歧義 | `ip link add br-test type bridge && ip link set br-test address 02:00:00:00:01:01` | LAN 的 MAC 對到 `eth0`、`br-test` 兩個介面，報錯；改用 `--lan eth0` 就能解決 |
 | 設定檔錯誤 | 在容器的 `/tmp` 寫一個錯誤的 toml（欄位打錯、MAC 格式錯、缺欄位），用 `-c /tmp/x.toml` 指定 | 報錯並指出行號和欄位 |
 | 讀不到模組目錄 | 拿掉 `/lib/modules` 的掛載（或在其他沒掛載的容器裡跑） | 沒載入的模組變成 `unknown` |
+| routed 的位址和路由 | testbed 本身就是 routed，gw 有 `NET_ADMIN`，直接在 gw 裡改再跑 doctor：`ip route add default via 10.0.2.2 dev eth1`（WAN）、改成 `via 10.0.1.2 dev eth0`（LAN）、兩條不同 metric、multipath、`blackhole default`、`ip nexthop` 物件、`ip rule add from 10.0.1.0/24 table 100 pref 100`、`suppress_prefixlength 0` 的 rule、`ip addr del 10.0.1.1/24 dev eth0`、只有 169.254 的位址、`ip addr add 10.0.2.50/16 dev eth0`、dummy 網卡用 LAN 網段。用完刪掉預設路由、rule、nexthop，位址加回 `10.0.1.1/24 brd +` | 2026-11-05：testbed 沒有預設路由，平常就有一條 warning（正確）和一條 note；走 WAN 是 `ok (via 10.0.2.2 dev eth1)`，nexthop 物件也是 ok（kernel 的 compat 模式仍附 oif）；走 LAN、LAN 的 metric 較小、multipath 有一條走 LAN、blackhole 都是 warning；兩種 rule 都是「cannot verify」；沒有位址（含只有 169.254）是 warning；重疊是 error，`run` 拒絕啟動。用 nobody 執行結果相同 |
 | bridge 模式 | 在 gw 裡建臨時的 veth 和 bridge：`ip link add va type veth peer name vb; ip link add vc type veth peer name vd; ip link add br-test type bridge; ip link set va master br-test; ip link set vc master br-test`，全部 `up`，再用 `-c` 指定 `mode = "bridge"`、`lan = "va"`、`wan = "vc"` 的設定 | 一切正常時 4 項 ok；`ip link set vc nomaster` 報 error；換到另一個 bridge 報 error；`br-test` down 是 warning |
 | 介面上已經掛了 XDP 程式 | 臨時容器（`--cap-add SYS_ADMIN --cap-add NET_ADMIN --security-opt apparmor=unconfined`）裡掛 bpffs：`mount -t bpf bpf /tmp/bpffs`，用 Python 呼叫 bpf syscall 載入一個只回傳 `XDP_PASS` 的程式並 pin 起來，再 `ip link set dev va xdpgeneric pinned …`（native 用 `xdpdrv`）。筆電沒有 clang，所以不用 `.o` 檔 | generic 的顯示 `generic (id N)` 並提出 warning；native 的顯示 `native (id N)` |
 | `wnc-gw run` 的安裝與移除 | gw 裡先放一張假的系統 table（`table inet fake_os`，forward chain、policy accept），在背景跑 `sh -c '/opt/sg/wnc-gw run > /tmp/run.log 2>&1 & p=$!; echo $p > /tmp/run.pid; wait $p; echo exit=$? >> /tmp/run.log' &`，ping 之後看 counter，再 `kill -INT`（或 `-TERM`）。上次留下舊 table 的情況：先手動建一張內容不同的 `inet wnc_gw` 再跑 | 執行中 `nft list tables` 多一張 `inet wnc_gw`；結束後和開始前的清單相同、`exit=0`；舊 table 被整張換掉。容器的 PID 1 是 `sleep infinity`，不會回收子程序，所以用 `kill -0` 判斷會誤以為還在跑（zombie），結束碼要靠外層的 `sh` 記錄 |

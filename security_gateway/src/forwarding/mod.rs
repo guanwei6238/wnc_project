@@ -5,7 +5,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use crate::kernel::modules::RequiredModule;
-use crate::kernel::netif::Interface;
+use crate::kernel::netif::{Interface, Ipv4Routing};
 use crate::kernel::sysctl;
 use crate::platform::{BootConfig, Current};
 use crate::ports::{Port, Role};
@@ -54,7 +54,13 @@ impl<'de> serde::Deserialize<'de> for Mode {
 
 pub trait Forwarding {
     fn required_modules(&self) -> &'static [RequiredModule];
-    fn check_environment(&self, ports: &[Port], interfaces: &[Interface]) -> Vec<EnvCheck>;
+    fn check_environment(
+        &self,
+        ports: &[Port],
+        interfaces: &[Interface],
+        routing: Result<&Ipv4Routing, &str>,
+    ) -> Vec<EnvCheck>;
+    fn notes(&self, ports: &[Port], routing: Result<&Ipv4Routing, &str>) -> Vec<String>;
 }
 
 pub fn for_mode(mode: Mode) -> Box<dyn Forwarding> {
@@ -67,6 +73,8 @@ pub fn for_mode(mode: Mode) -> Box<dyn Forwarding> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Level {
     Required,
+    // 必要，但可能只是還沒好（例如 DHCP 還沒拿到位址）：給 warning，run 才會啟動
+    Awaited,
     Recommended,
 }
 

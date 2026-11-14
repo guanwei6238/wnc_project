@@ -176,6 +176,29 @@ fn unmet_recommended_check_is_a_warning() {
 }
 
 #[test]
+fn unmet_awaited_check_is_a_warning() {
+    let findings = env_findings(Mode::Routed, &[env(Level::Awaited, unmet())]);
+    assert_eq!(
+        findings,
+        vec![Finding {
+            severity: Severity::Warning,
+            message: "routed mode: P; F".into(),
+        }]
+    );
+}
+
+#[test]
+fn mode_notes_are_notes() {
+    assert_eq!(
+        note_findings(Mode::Routed, &["N".to_owned()]),
+        vec![Finding {
+            severity: Severity::Note,
+            message: "routed mode: N".into(),
+        }]
+    );
+}
+
+#[test]
 fn unknown_check_is_a_warning() {
     let checks = [env(
         Level::Required,

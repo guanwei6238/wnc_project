@@ -25,7 +25,7 @@
 
 | § | 決策 | 主要依據 | 狀態 |
 |---|---|---|---|
-| 1 | 轉送模式預設 bridge | 部署（透明）；效能只在 veth 量過，routed 比較便宜 | 〔已實作〕預設待重新評估 |
+| 1 | 轉送模式預設 bridge | 部署（透明）；Pi 實體網卡上 routed 每個封包少約 2 µs（只轉送 −15～−20%，有檢查 −2～−9%） | 〔已實作〕預設待開發者決定 |
 | 2 | ids 用 NFLOG、ips 用 NFQUEUE | Pi 量測 | 〔已實作〕 |
 | 3 | 多個 queue／group 用 symhash 分流 | Pi 量測 | 〔已實作〕 |
 | 4 | Suricata 強制 runmode=workers | Pi 量測 | 〔已實作〕 |
@@ -50,7 +50,7 @@
 
 ## 1. 轉送模式 `mode`：bridge〔預設〕／routed
 
-**決定**：兩種都支援，預設 bridge，bridge 由 OS 建立、wnc-gw 只檢查。〔已實作〕D3，2026-10-24。預設要不要改，等實體網卡上的比較（§20）。
+**決定**：兩種都支援，預設 bridge，bridge 由 OS 建立、wnc-gw 只檢查。〔已實作〕D3，2026-10-24。2026-11-04 在實體網卡上量過；預設要不要改還沒決定（§20）。
 
 **兩種模式的架構差異**
 
@@ -58,7 +58,7 @@
 |---|---|---|
 | 部署 | 插在中間即可，LAN 和 WAN 同一個網段，內網設定不用改 | LAN 和 WAN 是不同網段。我們不做 NAT，所以上游路由器要加一條到內網的路由，內網的 gateway 也要指向它 |
 | 封包怎麼進 nftables | 經過 `br_netfilter`：被橋接的 IP 封包也走 `inet` 的 forward hook | 一般的 IP 轉送，直接走 `inet` 的 forward hook |
-| doctor 檢查 | LAN、WAN 在同一個 bridge；`br_netfilter` 已載入；`net.bridge.bridge-nf-call-iptables`、`-ip6tables` = 1（必要） | LAN、WAN 都不在 bridge 裡；`net.ipv4.ip_forward` = 1（必要）、`net.ipv6.conf.all.forwarding` = 1（建議） |
+| doctor 檢查 | LAN、WAN 在同一個 bridge；`br_netfilter` 已載入；`net.bridge.bridge-nf-call-iptables`、`-ip6tables` = 1（必要） | LAN、WAN 都不在 bridge 裡；`net.ipv4.ip_forward` = 1（必要）、`net.ipv6.conf.all.forwarding` = 1（建議）；IPv4 的位址和路由（見下面「routed 的網路設定」） |
 | 判斷封包從哪個 port 進來 | forward chain 看到的 `iifname` 都是 `br0`，要在 netdev ingress 打 mark〔已決定，未實作〕 | `iifname` 就是實體 port；但決定兩種模式都用 ingress 的 mark，規則才能共用 |
 | fast path（tc eBPF） | `bpf_redirect` 直接送到另一個 port | 要 `bpf_fib_lookup` 查路由再 `bpf_redirect_neigh`；`bpf_fib_lookup` 是 GPL-only helper，BPF 程式要宣告 GPL 相容授權 |
 | nft flowtable | 不能用（只接受 ip、ip6、inet family，純橋接流量不經過） | 可以用（O5，待決） |
@@ -82,9 +82,35 @@
   | routed + nft + conntrack | 7.9 µs |
   | bridge + br_netfilter + nft + conntrack | 10.7 µs（比 routed 多約 35%） |
 
-  放進整體看（方案 B、實體網卡、bridge，2026-11-02）：檢查的封包整台機器約 55 µs、已信任的約 14 µs，所以 routed 預估在檢查流量上省約 5%、信任流量上省約 20%。這是推算，沒有在 routed 下量過。
+- 成本（2026-11-04，Pi、方案 B 的實體網卡、2 輪；`tests/cpu_alloc/README.md` 實驗 4）：
 
-**限制**：routed 只在 veth、單一 flow、沒有 GRO 的條件下量過。之後所有方案 B 的容量實驗都是 bridge。
+  | 工作負載 | bridge | routed |
+  |---|---|---|
+  | 只轉送，A0 @100k | 9.97 µs，容量 100 kpps | 8.02 µs（−20%），容量 150 kpps |
+  | 只轉送，RPS @100k | 11.79 µs，容量 300 kpps | 9.99 µs（−15%），容量 300 kpps |
+  | ips、全部信任，A0 @50k | 13.98 µs | 11.13 µs（−20%） |
+  | ips 2 queue @30–40k | 56.5–63.1 µs | 51.8–60.7 µs（−2～−9%），容量一樣 |
+  | ids 3 group，RPS @30–80k | 45.1–45.8 µs | 44.0–44.4 µs（−2～−3%），容量一樣 |
+
+  routed 的轉送每個封包少約 2 µs，省的主要是收封包那顆 CPU。veth 上的 35% 在實體網卡上是 15–20%（只轉送）；有檢查時只差 2–9%。
+- 行為差異（2026-11-04 同一組實驗）：
+  - routed 不轉送非 IP 的封包（ARP 等），bridge 照轉。
+  - routed、沒開 RPS 時，同一條新 TCP 連線的兩個一模一樣的封包如果同一批收進來，第二個會在 conntrack confirm 時被丟（`insert_failed`）；丟的是重複的副本。S_m17 有一半的封包是重複的，所以 ids A0 少送了 21–42%。開 RPS、或 bridge 都沒有。
+
+**限制**：只量了方案 B 的兩個 pcap（S_m17 掃描、S_m60 單一 UDP flow）；routed 的下一跳是假的 MAC，沒有真的路由器和 ARP。
+
+**routed 的網路設定**（2026-11-05 決定）：和 bridge 一樣由 OS 設定，wnc-gw 不設位址和路由，只在 doctor 檢查。wnc-gw 自己設的話會和 OS 的網路管理（NetworkManager、之後的 OpenWrt UCI）搶同一份設定，而且上游路由器那條路由它一樣設不到。
+
+| 檢查 | 結果 | 理由 |
+|---|---|---|
+| LAN、WAN 都有 IPv4 位址（169.254.0.0/16 不算） | 沒有：warning | 和 link down 一樣：WAN 用 DHCP 時開機那一刻可能還沒拿到。報 error 的話 `run` 不啟動，之後位址拿到了 kernel 照樣轉送，流量卻完全沒經過檢查 |
+| LAN、WAN 的網段不和彼此、也不和其他介面重疊 | 重疊：error | 設定本身矛盾，不會自己好 |
+| 預設路由走 WAN | 沒有、走別的介面、是 blackhole 等：warning；有 kernel 預設之外的 `ip rule`：無法確認（warning） | 公司內部網段可能本來就只用特定路由；只看 main table，policy routing 時不下結論 |
+| 內網 gateway、上游路由 | note，用實際的位址寫出來 | Pi 上查不到，只能提醒 |
+
+rp_filter 不另外檢查：路由設對時 strict 模式不會擋正常流量，還能擋偽造來源；會誤擋的情況（從 WAN 進來、回程卻走別的介面）就是「預設路由走 WAN」抓的，訊息裡順便提。IPv6 的位址和路由等真的要支援 IPv6 再加。
+
+成本：doctor 多三次 rtnetlink dump（位址、路由、rule），`run` 啟動前也會跑。筆電 Docker 裡第一次 149 µs、之後每次約 37 µs（同一個 doctor 列介面每次約 240 µs）；Pi 還沒量。
 
 **腳本與結果**：10/24 的量測腳本（`perf-fwd.sh`、`udpblast.rs`）放在當時的暫存目錄，**沒有進 repo**；功能驗證的紀錄在 `research/literature/trust-bypass/SYNTHESIS.md` §11 D3。
 
@@ -491,7 +517,8 @@
 | 事項 | 目前的數據 | 還缺什麼 |
 |---|---|---|
 | 預設開幾個 queue／group、網卡中斷和 RPS 怎麼放 | 方案 B、PAUSE 關（`tests/cpu_alloc/README.md`）：ids 用 RPS（CPU1–3）＋3 個 group 最好（17-1 轉送 120、檢查 80 kpps），不開 RPS 時轉送只有 30–40；ips 用「IRQ 搬到 CPU1＋3 個 queue」兩個 pcap 都到 60，1 個 queue 只有 20–30；queue／group 越多每個封包越貴（ids worker 15.6 → 29.2 µs） | 有 18% 流量從 USB 網卡進來時 ids 只到 50（推測是 eth1 的中斷在 CPU0、沒開 RPS），eth1 開 RPS 沒量 |
-| mode 的預設（§1） | 只有 veth 的數字：routed 每個封包便宜 2.8 µs | Pi 實體網卡上 routed 對 bridge 的容量和 CPU（只轉送、信任、ips、ids；A0 和 RPS）。預計開發者晚上離開時做 |
+| mode 的預設（§1） | Pi 實體網卡（2026-11-04）：routed 的轉送每個封包少約 2 µs，只轉送少 15–20%（A0 容量 100 → 150 kpps），有檢查時少 2–9%、容量一樣；routed 不轉送非 IP 的封包 | 開發者決定：效能差異主要在只轉送、信任的流量；routed 要改網段和上游路由（部署面） |
+| ids 一個封包複製多份（Suricata、edge AI、雲端特徵） | Pi（2026-11-04，`tests/cpu_alloc/README.md` 實驗 5）：kernel 每多一份，小封包 +3–5 µs、大封包 +7–8 µs；多 2 份轉送容量少約 2 成。只複製前 128 bytes 時大封包幾乎不加成本。user space 分發在小封包時比 kernel 複製省（A0 +5.8 對 +10.6 µs），大封包時比較貴 | 讀取端真的處理資料時的成本；要哪種做法看各用途要整個封包還是只要 header |
 | Suricata 要不要輸出 EVE flow 事件 | 3d 的觀察已決定用 conntrack 計數（§19），但 Debian 預設的 eve.json 仍輸出 flow、dns、http 等事件。Pi 離線時每個 EVE flow 事件約 100 µs（筆電 7 µs），主要是 Suricata 自己的 CPU；開 `nf_conntrack_acct` 每個封包多 0.1–1.3 µs（≤ 2%），dump 每筆 7.25 µs（`tests/eve_output/README.md`、`tests/cpu_alloc` 實驗 3） | live 模式下每個 EVE 事件的成本 |
 | 自動信任的預設值（§19） | Docker、Pi 功能驗證；Pi 上 4,000 封包／秒時每秒省 85 ms（每個封包 21 µs）；數值是建議值 | 開發者確認；真實流量下會不會信任到不該信任的連線 |
 | ids 模式下 alert 比 `min_age` 晚到（§19） | Docker、Pi：帶攻擊標記的連線在 ids 先被信任、結束時才撤銷，ips 一開始就不信任 | 確認原因（重組的 chunk 大小）；選做法：要求送往 server 的資料超過 chunk、調小 chunk、加大 `min_age` |

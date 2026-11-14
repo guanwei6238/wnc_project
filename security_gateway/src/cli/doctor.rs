@@ -16,7 +16,7 @@ use security_gateway::ids::suricata::{
 };
 use security_gateway::kernel::modules::{ModuleIndex, ModuleState, RequiredModule};
 use security_gateway::kernel::netdev::{Netdev, XdpFeatures};
-use security_gateway::kernel::netif::{Interface, LinkStatus, NetifError, Netlink, XdpAttachment, XdpMode};
+use security_gateway::kernel::netif::{Interface, Ipv4Routing, LinkStatus, Netlink, XdpAttachment, XdpMode};
 use security_gateway::kernel::nfqueue::QueueRange;
 use security_gateway::kernel::nft::{Nft, NftError, NftInfo};
 use security_gateway::kernel::sysctl;
@@ -81,7 +81,14 @@ pub async fn passes(config: &Config, starting: bool) -> bool {
     println!("trust:  {}", trust_summary(&config.trust));
     println!();
 
-    let interfaces = match load_interfaces().await {
+    let netlink = match Netlink::connect() {
+        Ok(netlink) => netlink,
+        Err(e) => {
+            eprintln!("error: {e}");
+            return false;
+        }
+    };
+    let interfaces = match netlink.interfaces().await {
         Ok(interfaces) => interfaces,
         Err(e) => {
             eprintln!("error: {e}");
@@ -96,7 +103,9 @@ pub async fn passes(config: &Config, starting: bool) -> bool {
     let mode = config.mode.value;
     let forwarding = forwarding::for_mode(mode);
     let ports: Vec<Port> = results.iter().filter_map(|r| r.as_ref().ok().cloned()).collect();
-    findings.extend(check_environment(mode, forwarding.as_ref(), &ports, &interfaces));
+    let routing = netlink.ipv4_routing().await.map_err(|e| e.to_string());
+    let routing = routing.as_ref().map_err(String::as_str);
+    findings.extend(check_environment(mode, forwarding.as_ref(), &ports, &interfaces, routing));
     println!();
 
     findings.extend(check_xdp(config.xdp.value, &ports).await);
@@ -167,10 +176,13 @@ fn check_environment(
     forwarding: &dyn Forwarding,
     ports: &[Port],
     interfaces: &[Interface],
+    routing: Result<&Ipv4Routing, &str>,
 ) -> Vec<Finding> {
-    let checks = forwarding.check_environment(ports, interfaces);
+    let checks = forwarding.check_environment(ports, interfaces, routing);
     print_environment(mode, &checks);
-    env_findings(mode, &checks)
+    let mut findings = env_findings(mode, &checks);
+    findings.extend(note_findings(mode, &forwarding.notes(ports, routing)));
+    findings
 }
 
 fn env_findings(mode: Mode, checks: &[EnvCheck]) -> Vec<Finding> {
@@ -181,7 +193,7 @@ fn env_findings(mode: Mode, checks: &[EnvCheck]) -> Vec<Finding> {
             EnvState::Unmet { problem, fix, .. } => Some(Finding {
                 severity: match check.level {
                     Level::Required => Severity::Error,
-                    Level::Recommended => Severity::Warning,
+                    Level::Awaited | Level::Recommended => Severity::Warning,
                 },
                 message: format!("{mode} mode: {problem}; {fix}"),
             }),
@@ -189,6 +201,16 @@ fn env_findings(mode: Mode, checks: &[EnvCheck]) -> Vec<Finding> {
                 severity: Severity::Warning,
                 message: format!("{mode} mode: cannot verify {}: {reason}", check.item),
             }),
+        })
+        .collect()
+}
+
+fn note_findings(mode: Mode, notes: &[String]) -> Vec<Finding> {
+    notes
+        .iter()
+        .map(|note| Finding {
+            severity: Severity::Note,
+            message: format!("{mode} mode: {note}"),
         })
         .collect()
 }
@@ -1171,10 +1193,6 @@ fn print_access(rows: &[AccessRow]) {
         };
         println!("{:<40} {:<22} {result}", row.path.display().to_string(), row.used_as);
     }
-}
-
-async fn load_interfaces() -> Result<Vec<Interface>, NetifError> {
-    Netlink::connect()?.interfaces().await
 }
 
 fn print_ports(config: &Config, results: &[Result<Port, ResolveError>]) {

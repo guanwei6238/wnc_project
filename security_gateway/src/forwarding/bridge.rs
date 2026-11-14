@@ -3,7 +3,7 @@ use super::{
     sysctl_checks, unresolved,
 };
 use crate::kernel::modules::RequiredModule;
-use crate::kernel::netif::Interface;
+use crate::kernel::netif::{Interface, Ipv4Routing};
 use crate::ports::Port;
 
 pub struct Bridged;
@@ -43,10 +43,19 @@ impl Forwarding for Bridged {
         MODULES
     }
 
-    fn check_environment(&self, ports: &[Port], interfaces: &[Interface]) -> Vec<EnvCheck> {
+    fn check_environment(
+        &self,
+        ports: &[Port],
+        interfaces: &[Interface],
+        _routing: Result<&Ipv4Routing, &str>,
+    ) -> Vec<EnvCheck> {
         let mut checks = membership_checks(ports, interfaces);
         checks.extend(sysctl_checks(SYSCTLS, read_sysctl));
         checks
+    }
+
+    fn notes(&self, _ports: &[Port], _routing: Result<&Ipv4Routing, &str>) -> Vec<String> {
+        Vec::new()
     }
 }
 

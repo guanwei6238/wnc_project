@@ -125,10 +125,12 @@ Suricata 就緒或停止時，wnc-gw 只換掉 `ids` chain 的規則，不重裝
 |---|---|---|
 | 部署 | 插在中間即可，LAN 和 WAN 同一個網段 | LAN 和 WAN 不同網段；不做 NAT，所以上游路由器要加到內網的路由 |
 | 怎麼進 nftables | 經過 `br_netfilter`（沒載入時規則完全被繞過） | 一般的 IP 轉送 |
-| doctor 檢查 | LAN、WAN 在同一個 bridge；`br_netfilter`、`bridge-nf-call-iptables`／`ip6tables` | LAN、WAN 不在 bridge 裡；`ip_forward` |
+| doctor 檢查 | LAN、WAN 在同一個 bridge；`br_netfilter`、`bridge-nf-call-iptables`／`ip6tables` | LAN、WAN 不在 bridge 裡；`ip_forward`；兩個 port 都有 IPv4 位址（沒有是 warning）、網段不和彼此或其他介面重疊（error）、預設路由走 WAN（warning）；note 寫出內網 gateway 和上游要加的路由 |
 | 封包從哪個 port 進來 | `iifname` 都是 `br0`，要靠 ingress 打的 mark〔已決定，未實作〕 | 同樣用 ingress 的 mark，兩種模式共用規則 |
 | fast path（tc eBPF） | `bpf_redirect` | `bpf_fib_lookup`（GPL-only helper）＋`bpf_redirect_neigh` |
-| 轉送成本（Pi、veth） | 10.7 µs／封包 | 7.9 µs／封包；實體網卡上還沒量 |
+| 轉送成本（Pi、veth） | 10.7 µs／封包 | 7.9 µs／封包 |
+| 轉送成本（Pi、實體網卡，2026-11-04） | 只轉送 @100k：9.97 µs，A0 容量 100 kpps | 8.02 µs，A0 容量 150 kpps；有檢查時只少 2–9%、容量一樣 |
+| 非 IP 的封包（ARP 等） | 照常轉送 | 不轉送 |
 
 nft table 兩種模式完全相同，差別只在 `forwarding/` 的環境檢查。
 

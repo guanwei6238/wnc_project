@@ -52,13 +52,13 @@ security_gateway/
 │   │   └── nflog.rs        CopyMonitor（INTERVAL 10 秒）：ids 時 Suricata 漏掉的複本（它的 NFLOG socket 的 Drops）增加就記 WARN「suricata missed packet copies; that traffic was forwarded without inspection」；換 pid（重啟）從 0 算起，找不到 socket、讀不到都只記第一次
 │   ├── ports.rs            Role、PortSelector（名稱或 MAC）、resolve()
 │   ├── protection.rs       Protection（ids 預設、ips）：delivery() 決定封包怎麼交給 Suricata；之後的黑名單、雲端判定要不要真的擋也看它
-│   ├── forwarding/         轉送模式：Mode、trait Forwarding，bridge.rs（Bridged）、routed.rs（Routed）
+│   ├── forwarding/         轉送模式：Mode、trait Forwarding（required_modules、check_environment、notes），bridge.rs（Bridged）、routed.rs（Routed：不在 bridge、ip_forward、IPv4 位址、網段不重疊、預設路由走 WAN，note 寫內網 gateway 和上游路由）；Level：Required（error）、Awaited（必要但可能還沒好，warning）、Recommended（warning）
 │   ├── platform/           因 OS 而異的部分：每種差異一個 trait，每個 OS 一個 struct
 │   │   ├── mod.rs          trait BootConfig、Dirs、Services（BootState）；pub use debian::Debian as Current（編譯時選 OS）
 │   │   └── debian.rs       Debian：/etc/modules-load.d/、/etc/sysctl.d/；/run/wnc-gw、/var/log/wnc-gw；suricata.service、cgroup 對應服務、systemctl is-enabled
 │   └── kernel/             跟 Linux kernel 打交道的薄模組
 │       ├── mod.rs
-│       ├── netif.rs        rtnetlink 列介面、sysfs 讀 driver、MacAddr、LinkStatus
+│       ├── netif.rs        rtnetlink 列介面、sysfs 讀 driver、MacAddr、LinkStatus；ipv4_routing()：IPv4 位址、main table 的路由（NextHop、metric、RouteKind）、rule（是否無條件查表）→ Ipv4Routing、Ipv4Net
 │       ├── conntrack.rs    手寫 ctnetlink（netlink-sys 的同步 Socket，non-blocking）：set_mark（只動 mask 內的位元）、set_marks（一次 100 筆，只有最後一筆要 ACK，回傳失敗的那幾筆）、get、list（kernel 依 mark 過濾）、stats（IPCTNL_MSG_CT_GET_STATS 的筆數和上限，加上 GET_STATS_CPU 每個 CPU 的 drop、early_drop、insert_failed；筆電 kernel 沒有 /proc/net/stat/nf_conntrack，所以不讀 procfs）；Stats、CpuStats；FiveTuple（兩個位址要同一版本）、Protocol、TcpState、Connection（含兩個方向的 Counters：封包數、bytes，要 nf_conntrack_acct = 1 才有）；任一方向的五元組都找到同一筆
 │       ├── modules.rs      /proc/modules + modules.{builtin,dep} → ModuleState；RequiredModule
 │       ├── netdev.rs       netdev genetlink：每個介面的 native XDP 功能（XdpFeatures）
