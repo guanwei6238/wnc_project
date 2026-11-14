@@ -18,6 +18,7 @@ issues! {
     ConfigUnreadable,
     ConfigInvalid,
     PortUnspecified,
+    ConfigInapplicable,
     PortNotFound,
     PortAmbiguous,
     PortShared,
@@ -169,6 +170,18 @@ impl Issue {
                         them.",
                 action: "Set ports.lan and ports.wan to an interface name or MAC address; wnc-gw \
                          show interfaces lists them.",
+            },
+            Self::ConfigInapplicable => &Explanation {
+                code: "C004",
+                title: "the config file sets options that do not apply",
+                reported_by: DOCTOR_AND_RUN,
+                severity: "error",
+                cause: "An option is set that the rest of the config makes unused, so it would silently do \
+                        nothing: suricata.queue with protection = \"ids\" (the default), suricata.group with \
+                        protection = \"ips\", or trust.min_packets, min_age, ttl or check_interval without \
+                        trust.auto = true. The message lists each one.",
+                action: "Remove the listed options, or change the option they depend on (protection or \
+                         trust.auto).",
             },
             Self::PortNotFound => &Explanation {
                 code: "P001",

@@ -22,7 +22,7 @@ CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=rust-lld \
 
 全域選項：`--log-format text|json`、`--log-level error|warn|info|debug|trace`（預設 info；每一筆 alert 的細節要 `debug` 才印）。
 
-設定檔預設在 `/etc/wnc-gw/setting.toml`，每個欄位的說明見 `setting.example.toml`。
+設定檔預設在 `/etc/wnc-gw/setting.toml`，每個欄位的說明見 `setting.example.toml`。只在某些選項下才有作用的欄位，在其他情況下設了會直接報錯（C004）：`[suricata] queue` 只能配 `protection = "ips"`、`group` 只能配 `"ids"`，`[trust]` 的其他欄位只能配 `auto = true`。
 
 ## 架構圖
 

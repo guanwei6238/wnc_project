@@ -1,4 +1,5 @@
 use super::*;
+use security_gateway::config::Source;
 use security_gateway::forwarding::{EnvCheck, EnvState, Level};
 use security_gateway::kernel::netif::OperState;
 use security_gateway::ports::{MatchedBy, PortSelector, Role};
@@ -1061,13 +1062,16 @@ fn file<T>(value: T) -> Setting<T> {
 }
 
 fn trust_settings(auto: bool, ttl: u64) -> TrustSettings {
-    TrustSettings {
-        auto: file(auto),
+    if !auto {
+        return TrustSettings::Manual { source: Source::File };
+    }
+    TrustSettings::Auto(AutoTrust {
+        source: Source::File,
         min_packets: file(10),
         min_age: file(std::time::Duration::from_secs(5)),
         ttl: file(std::time::Duration::from_secs(ttl)),
         check_interval: file(std::time::Duration::from_secs(5)),
-    }
+    })
 }
 
 fn severities(findings: &[Finding]) -> Vec<Severity> {

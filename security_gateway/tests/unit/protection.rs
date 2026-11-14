@@ -20,9 +20,3 @@ fn rejects_other_values() {
     );
 }
 
-#[test]
-fn ids_copies_to_the_groups_and_ips_queues() {
-    let (queue, group) = ("0-1".parse().unwrap(), "10-11".parse().unwrap());
-    assert_eq!(Protection::Ids.delivery(queue, group), Delivery::Copy(group));
-    assert_eq!(Protection::Ips.delivery(queue, group), Delivery::Queue(queue));
-}

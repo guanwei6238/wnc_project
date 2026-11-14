@@ -111,8 +111,7 @@ pub struct NftablesSettings {
 pub struct SuricataSettings {
     pub path: Setting<AbsolutePath>,
     pub config: Setting<AbsolutePath>,
-    pub queue: Setting<QueueRange>,
-    pub group: Setting<GroupRange>,
+    pub delivery: Setting<Delivery>,
     pub ready_timeout: Setting<Duration>,
     pub stop_timeout: Setting<Duration>,
     pub when_unavailable: Setting<WhenUnavailable>,
@@ -120,8 +119,14 @@ pub struct SuricataSettings {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TrustSettings {
-    pub auto: Setting<bool>,
+pub enum TrustSettings {
+    Manual { source: Source },
+    Auto(AutoTrust),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AutoTrust {
+    pub source: Source,
     pub min_packets: Setting<u64>,
     pub min_age: Setting<Duration>,
     pub ttl: Setting<Duration>,
@@ -134,7 +139,7 @@ impl Config {
     }
 
     pub fn delivery(&self) -> Delivery {
-        self.protection.value.delivery(self.suricata.queue.value, self.suricata.group.value)
+        self.suricata.delivery.value
     }
 
     pub fn port_specs(&self) -> Vec<PortSpec> {
@@ -156,6 +161,12 @@ pub enum ConfigError {
     Parse { path: PathBuf, message: String },
     #[error("{role} port is not specified (set ports.{key} in the config file or pass --{key})", key = role_key(*.role))]
     Missing { role: Role },
+    #[error(
+        "config file {} sets options that do not apply: {}; remove them or change the setting they depend on",
+        .path.display(),
+        .settings.join(", ")
+    )]
+    Inapplicable { path: PathBuf, settings: Vec<String> },
 }
 
 fn role_key(role: Role) -> &'static str {
@@ -272,10 +283,20 @@ fn merge(file: Option<PathBuf>, file_config: FileConfig, overrides: Overrides) -
             })
             .ok_or(ConfigError::Missing { role })
     };
+    let protection = file_or_default(file_config.protection);
+    let mut inapplicable = Vec::new();
+    let delivery = delivery(protection.value, &file_config.suricata, &mut inapplicable);
+    let trust = trust_settings(&file_config.trust, &mut inapplicable);
+    if !inapplicable.is_empty() {
+        return Err(ConfigError::Inapplicable {
+            path: file.unwrap_or_default(),
+            settings: inapplicable,
+        });
+    }
     Ok(Config {
         mode: file_or_default(file_config.mode),
         xdp: file_or_default(file_config.xdp),
-        protection: file_or_default(file_config.protection),
+        protection,
         lan: pick(Role::Lan, overrides.lan, file_config.ports.lan)?,
         wan: pick(Role::Wan, overrides.wan, file_config.ports.wan)?,
         nftables: NftablesSettings {
@@ -284,21 +305,65 @@ fn merge(file: Option<PathBuf>, file_config: FileConfig, overrides: Overrides) -
         suricata: SuricataSettings {
             path: file_or_path(file_config.suricata.path, suricata::DEFAULT_PATH),
             config: file_or_path(file_config.suricata.config, suricata::DEFAULT_CONFIG),
-            queue: file_or_default(file_config.suricata.queue),
-            group: file_or_default(file_config.suricata.group),
+            delivery,
             ready_timeout: file_or_seconds(file_config.suricata.ready_timeout, lifecycle::DEFAULT_READY_TIMEOUT),
             stop_timeout: file_or_seconds(file_config.suricata.stop_timeout, lifecycle::DEFAULT_STOP_TIMEOUT),
             when_unavailable: file_or_default(file_config.suricata.when_unavailable),
             eve_interval: file_or_default(file_config.suricata.eve_interval),
         },
-        trust: TrustSettings {
-            auto: file_or_default(file_config.trust.auto),
-            min_packets: file_or(file_config.trust.min_packets.map(|v| v.0), trust::DEFAULT_MIN_PACKETS),
-            min_age: file_or(file_config.trust.min_age.map(seconds), trust::DEFAULT_MIN_AGE),
-            ttl: file_or(file_config.trust.ttl.map(seconds), trust::DEFAULT_TTL),
-            check_interval: file_or(file_config.trust.check_interval.map(seconds), trust::DEFAULT_CHECK_INTERVAL),
-        },
+        trust,
         file,
+    })
+}
+
+fn delivery(protection: Protection, file: &FileSuricata, inapplicable: &mut Vec<String>) -> Setting<Delivery> {
+    let (unused, other) = match protection {
+        Protection::Ids => (file.queue.is_some(), "suricata.queue (only with protection = \"ips\")"),
+        Protection::Ips => (file.group.is_some(), "suricata.group (only with protection = \"ids\")"),
+    };
+    if unused {
+        inapplicable.push(other.to_owned());
+    }
+    match protection {
+        Protection::Ids => {
+            let group = file_or_default(file.group);
+            Setting {
+                value: Delivery::Copy(group.value),
+                source: group.source,
+            }
+        }
+        Protection::Ips => {
+            let queue = file_or_default(file.queue);
+            Setting {
+                value: Delivery::Queue(queue.value),
+                source: queue.source,
+            }
+        }
+    }
+}
+
+fn trust_settings(file: &FileTrust, inapplicable: &mut Vec<String>) -> TrustSettings {
+    let auto = file_or_default(file.auto);
+    if !auto.value {
+        let set = [
+            ("trust.min_packets", file.min_packets.is_some()),
+            ("trust.min_age", file.min_age.is_some()),
+            ("trust.ttl", file.ttl.is_some()),
+            ("trust.check_interval", file.check_interval.is_some()),
+        ];
+        inapplicable.extend(
+            set.iter()
+                .filter(|(_, set)| *set)
+                .map(|(key, _)| format!("{key} (only with trust.auto = true)")),
+        );
+        return TrustSettings::Manual { source: auto.source };
+    }
+    TrustSettings::Auto(AutoTrust {
+        source: auto.source,
+        min_packets: file_or(file.min_packets.map(|v| v.0), trust::DEFAULT_MIN_PACKETS),
+        min_age: file_or(file.min_age.map(seconds), trust::DEFAULT_MIN_AGE),
+        ttl: file_or(file.ttl.map(seconds), trust::DEFAULT_TTL),
+        check_interval: file_or(file.check_interval.map(seconds), trust::DEFAULT_CHECK_INTERVAL),
     })
 }
 

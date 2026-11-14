@@ -5,7 +5,7 @@ use std::process::ExitCode;
 use clap::Args;
 use security_gateway::access::{self, Writable, Writer};
 use security_gateway::config::{
-    self, AbsolutePath, Config, ConfigError, Overrides, Setting, SuricataSettings, TrustSettings,
+    self, AbsolutePath, AutoTrust, Config, ConfigError, Overrides, Setting, SuricataSettings, TrustSettings,
 };
 use security_gateway::datapath::{CoreHook, XdpPolicy, core_hook};
 use security_gateway::firewall::WhenUnavailable;
@@ -157,6 +157,7 @@ pub(crate) fn config_issue(e: &ConfigError) -> Issue {
         ConfigError::Read { .. } => Issue::ConfigUnreadable,
         ConfigError::Parse { .. } => Issue::ConfigInvalid,
         ConfigError::Missing { .. } => Issue::PortUnspecified,
+        ConfigError::Inapplicable { .. } => Issue::ConfigInapplicable,
     }
 }
 
@@ -976,16 +977,17 @@ fn print_suricata(path: &Setting<AbsolutePath>, info: &Result<SuricataInfo, Suri
 const CONNTRACK_ACCT: &str = "net.netfilter.nf_conntrack_acct";
 
 fn trust_summary(trust: &TrustSettings) -> String {
-    if !trust.auto.value {
-        return format!("manual (wnc-gw trust) ({})", trust.auto.source);
-    }
+    let trust = match trust {
+        TrustSettings::Manual { source } => return format!("manual (wnc-gw trust) ({source})"),
+        TrustSettings::Auto(auto) => auto,
+    };
     format!(
         "automatic after {} packets each way and {} s, for {} s; checked every {} s ({})",
         trust.min_packets.value,
         trust.min_age.value.as_secs(),
         trust.ttl.value.as_secs(),
         trust.check_interval.value.as_secs(),
-        trust.auto.source
+        trust.source
     )
 }
 
@@ -996,9 +998,10 @@ fn trust_findings(
     acct: Result<Option<String>, String>,
     tcp_established_timeout: Option<u64>,
 ) -> Vec<Finding> {
-    if !trust.auto.value {
-        return Vec::new();
-    }
+    let trust: &AutoTrust = match trust {
+        TrustSettings::Manual { .. } => return Vec::new(),
+        TrustSettings::Auto(auto) => auto,
+    };
     let ttl = trust.ttl.value.as_secs();
     let mut findings = vec![Finding {
         severity: Severity::Warning,

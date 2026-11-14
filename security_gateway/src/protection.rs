@@ -1,24 +1,11 @@
 use std::fmt;
 use std::str::FromStr;
 
-use crate::ids::delivery::Delivery;
-use crate::kernel::nflog::GroupRange;
-use crate::kernel::nfqueue::QueueRange;
-
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Protection {
     #[default]
     Ids,
     Ips,
-}
-
-impl Protection {
-    pub fn delivery(self, queue: QueueRange, group: GroupRange) -> Delivery {
-        match self {
-            Self::Ids => Delivery::Copy(group),
-            Self::Ips => Delivery::Queue(queue),
-        }
-    }
 }
 
 impl fmt::Display for Protection {

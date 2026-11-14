@@ -537,3 +537,14 @@ rp_filter 不另外檢查：路由設對時 strict 模式不會擋正常流量�
 **還沒解釋的量測**
 - 8.0.7 下 wnc-gw 和直接跑 Suricata NFQ 的每個封包成本比值是 0.81–1.21（7.0.10 時 0.97–1.01）：60-1 wnc-gw 便宜 18%，Honeypot-7-1 full 貴 21%。wnc-gw 多傳了 midstream、exception policy、delayed-detect、fail-open 等設定，原因沒查；這組每格只量 1 次（`tests/ids_inline/results/compare2.kvl`）。
 - af-packet IPS 比 NFQ 便宜 0–20%（8.0.7），但看不到 ct mark，所以沒有選（§2）。
+
+## 21. 設定：只保留相關的值，不相關的欄位直接報錯
+
+**決定**（2026-11-14，開發者：「不同的 mode、protection 應該只能存在他相關的設定，不然會出現 bug」）〔已實作〕：
+- 讀設定時，設了用不到的欄位就報錯（C004），doctor 和 run 都不往下走：`suricata.queue` 只能配 `protection = "ips"`、`suricata.group` 只能配 `"ids"`、`trust.min_packets`／`min_age`／`ttl`／`check_interval` 只能配 `trust.auto = true`。和 `deny_unknown_fields`（打錯欄位名稱就報錯）同一個理由：設了沒作用，使用者會以為生效了。
+- 程式內部的型別也只放相關的值：`SuricataSettings.delivery` 是 `Delivery::Queue(QueueRange)` 或 `Delivery::Copy(GroupRange)`，沒有另一個；`TrustSettings` 是 `Manual { source }` 或 `Auto(AutoTrust)`，手動時程式拿不到 `min_packets`，信任的計時器也不會建立。
+- `mode` 目前沒有只屬於 bridge 或 routed 的欄位；之後加的時候照同樣方式（型別分開、另一個模式設了就報錯）。
+- 考慮過的其他做法：doctor 只給 warning（切換 ids／ips 做實驗比較方便，但容易沒注意到）；改成 `[protection.ips]` 這種格式（格式本身就排除，但現有設定檔、腳本、文件都要改）。
+- 成本：只在讀設定時判斷，沒有執行期成本。省下的記憶體只有幾個欄位，主要的好處是不會讀到沒作用的值。
+- 現有的設定檔和腳本（`docker/wnc-gw/`、`tests/demo/demo.sh`、`tests/ids_inline/*.sh`、`tests/cpu_alloc/`）都只寫相關的欄位，不受影響。
+

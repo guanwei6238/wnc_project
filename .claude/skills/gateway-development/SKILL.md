@@ -37,7 +37,7 @@ security_gateway/
 │   │   ├── mod.rs          trait Privd（forwarded_connections、trust、untrust；之後由有權限的 process 實作）、LocalPrivd（同一個 process，ctnetlink socket 壞了就下次重連）
 │   │   └── trust.rs        TrustAgent：TrustPolicy（min_packets、min_age、ttl）；每個連線（五元組不分方向，配 conntrack id）的狀態 Watching（開始時間和當時的計數）→ Trusted（到期時間）→ 或 Refused（有 alert）；observe()（純函式，輸入連線清單和時間，輸出 Decision：Trust、Expire、Revoke）、alert()；check()、on_alert() 經 Privd 寫入並記 log（信任 INFO、撤銷 WARN、到期 DEBUG、有變動時每 60 秒摘要）；Suricata 停止時（set_inspecting）觀察中的連線全部重來；連線沒有計數時記一次 WARN
 │   ├── access.rs           除了 root 之外誰能改某個路徑（檔案本身、每一層目錄、跟著 symlink 之後的實際位置）；/etc/passwd、/etc/group 查名稱
-│   ├── config.rs           setting.toml + CLI 覆寫 → Config（每個值帶 Source）；AbsolutePath（路徑設定必須是絕對路徑）；delivery()：依 protection 選 queue 或 group
+│   ├── config.rs           setting.toml + CLI 覆寫 → Config（每個值帶 Source；只放相關的值：delivery、TrustSettings::Manual／Auto，不相關的欄位報 C004）；AbsolutePath（路徑設定必須是絕對路徑）；delivery()：依 protection 選 queue 或 group
 │   ├── datapath/           核心 eBPF 程式在每個 port 掛在哪、怎麼掛（mod.rs 只放 pub mod / pub use）
 │   │   └── hook.rs         XdpPolicy（xdp 設定）、CoreHook、core_hook() 選擇規則
 │   ├── firewall.rs         我們自己的 nft table（inet wnc_gw）：forward chain 依序是 counter、純 SYN（有 SYN 沒 ACK）而且有 TRUSTED_MARK 時清掉 bit（同一組五元組的新連線可能被 conntrack 重新同步到舊 entry，一定在任何判決之前）、連線第一次經過時設 FORWARDED_MARK（0x40000000，3d 只看有這個位元的連線）、SYN/FIN/RST jump ids（L2）、ct mark 有 TRUSTED_MARK 就 accept、最後 jump ids；ids 依 Suricata 狀態換成送檢查或沒就緒的規則（WhenUnavailable、Inspection），每種狀態都要以判決結尾，否則控制封包會回到 forward 再進一次 ids；送檢查依 Delivery：Queue 是 `queue`（accept 時加 bypass），Copy 是 `log group N accept`，多個 group 時 ids 是 `symhash mod N vmap` 跳到 ids_g<group>（這些 chain 一直在，各一條 log … accept）；install()、start_inspection()、stop_inspection()、remove()；trust()、untrust()、trusted() 用 kernel::conntrack 改、列 TRUSTED_MARK，forwarded() 列有 FORWARDED_MARK 的連線；untrust_all() 清掉全部（Untrusted：cleared、gone、failed）
@@ -114,11 +114,12 @@ security_gateway/
 ### 3.2 設定與 CLI
 
 - 設定值的來源：CLI 優先，其次設定檔；兩邊都沒有時，有預設值的設定（例如 `mode`）用預設值並記成 `Source::Default`，沒有預設值的（例如 port）報錯。需要能被 CLI 覆寫的值，在 `Config` 裡寫成 `Setting<T>`（值加上 `Source`），doctor 會顯示來源。
-- 新增設定欄位時要一起做四件事：
+- 新增設定欄位時要一起做五件事：
   1. `config.rs` 的私有檔案格式 struct（已開 `deny_unknown_fields`，打錯欄位名稱會直接報錯）。
   2. `Config` 的對應欄位與合併邏輯。
-  3. `setting.example.toml`：用英文說明，值**註解掉**（範本不能替使用者決定）。現有測試會確認範本原樣解析後什麼都沒設、去掉 `# ` 後能解析，但**新欄位沒寫進範本時測試抓不到**，要自己記得補。
-  4. `tests/unit/config.rs` 的測試。
+  3. 只在某個選項下才有作用的欄位：`Config` 裡用 enum 分開（例如 `TrustSettings::Auto(AutoTrust)`、`Delivery`），不要放一個「有時沒用」的欄位；另一個選項下設了就在 `merge()` 加進 `ConfigError::Inapplicable`（C004）（2026-11-14，DECISIONS.md §21）。
+  4. `setting.example.toml`：用英文說明，值**註解掉**（範本不能替使用者決定）。現有測試會確認範本原樣解析後什麼都沒設、去掉 `# ` 後能解析，但**新欄位沒寫進範本時測試抓不到**，要自己記得補。
+  5. `tests/unit/config.rs` 的測試。
 - 只有跨子命令共用的參數才設成 `global = true`（例如 `--config`、`--lan`、`--wan`、`--log-format`）。
 - 每個子命令都有自己的 `Args` struct，即使是空的，例如 `DoctorArgs {}`；之後加參數只要新增欄位。分類多的功能用巢狀子命令，例如 `wnc-gw show interfaces`。
 - clap 的 `///` 是 `--help` 的說明文字，不只是註解。開發者傾向刪掉說明性註解；遇到時提醒這會讓 help 變空，由開發者決定，不要自己加回去。

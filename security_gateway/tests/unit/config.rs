@@ -253,12 +253,20 @@ fn parse_rejects_eve_interval_out_of_range() {
 fn trust_defaults_to_manual() {
     let file_config = parse("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n").unwrap();
     let config = merge(None, file_config, Overrides::default()).unwrap();
-    assert!(!config.trust.auto.value);
-    assert_eq!(config.trust.auto.source, Source::Default);
-    assert_eq!(config.trust.min_packets.value, 10);
-    assert_eq!(config.trust.min_age.value, Duration::from_secs(5));
-    assert_eq!(config.trust.ttl.value, Duration::from_secs(900));
-    assert_eq!(config.trust.check_interval.value, Duration::from_secs(5));
+    assert_eq!(config.trust, TrustSettings::Manual { source: Source::Default });
+}
+
+#[test]
+fn automatic_trust_defaults() {
+    let file_config = parse("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n[trust]\nauto = true\n").unwrap();
+    let TrustSettings::Auto(trust) = merge(None, file_config, Overrides::default()).unwrap().trust else {
+        panic!("expected automatic trust");
+    };
+    assert_eq!(trust.source, Source::File);
+    assert_eq!(trust.min_packets, Setting { value: 10, source: Source::Default });
+    assert_eq!(trust.min_age.value, Duration::from_secs(5));
+    assert_eq!(trust.ttl.value, Duration::from_secs(900));
+    assert_eq!(trust.check_interval.value, Duration::from_secs(5));
 }
 
 #[test]
@@ -267,13 +275,27 @@ fn trust_from_file() {
         "[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n[trust]\nauto = true\nmin_packets = 3\nmin_age = 2\nttl = 30\ncheck_interval = 1\n",
     )
     .unwrap();
-    let config = merge(None, file_config, Overrides::default()).unwrap();
-    assert!(config.trust.auto.value);
-    assert_eq!(config.trust.auto.source, Source::File);
-    assert_eq!(config.trust.min_packets.value, 3);
-    assert_eq!(config.trust.min_age.value, Duration::from_secs(2));
-    assert_eq!(config.trust.ttl.value, Duration::from_secs(30));
-    assert_eq!(config.trust.check_interval.value, Duration::from_secs(1));
+    let TrustSettings::Auto(trust) = merge(None, file_config, Overrides::default()).unwrap().trust else {
+        panic!("expected automatic trust");
+    };
+    assert_eq!(trust.min_packets, Setting { value: 3, source: Source::File });
+    assert_eq!(trust.min_age.value, Duration::from_secs(2));
+    assert_eq!(trust.ttl.value, Duration::from_secs(30));
+    assert_eq!(trust.check_interval.value, Duration::from_secs(1));
+}
+
+#[test]
+fn trust_values_without_automatic_trust_are_an_error() {
+    for auto in ["", "auto = false\n"] {
+        let file_config = parse(&format!("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n[trust]\n{auto}ttl = 30\nmin_age = 2\n")).unwrap();
+        let err = merge(Some(PathBuf::from("/etc/wnc-gw/setting.toml")), file_config, Overrides::default()).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "config file /etc/wnc-gw/setting.toml sets options that do not apply: trust.min_age (only with \
+             trust.auto = true), trust.ttl (only with trust.auto = true); remove them or change the setting they \
+             depend on"
+        );
+    }
 }
 
 #[test]
@@ -361,7 +383,7 @@ fn parse_rejects_unknown_path_field() {
 fn suricata_queue_and_ready_timeout_default() {
     let file_config = parse("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n").unwrap();
     let config = merge(None, file_config, Overrides::default()).unwrap();
-    assert_eq!(config.suricata.queue, Setting { value: QueueRange::default(), source: Source::Default });
+    assert_eq!(config.suricata.delivery, Setting { value: Delivery::Copy(GroupRange::default()), source: Source::Default });
     assert_eq!(
         config.suricata.ready_timeout,
         Setting { value: std::time::Duration::from_secs(300), source: Source::Default }
@@ -371,9 +393,9 @@ fn suricata_queue_and_ready_timeout_default() {
 #[test]
 fn suricata_queue_and_ready_timeout_from_file() {
     let file_config =
-        parse("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n[suricata]\nqueue = \"2-5\"\nready_timeout = 30\n").unwrap();
+        parse("protection = \"ips\"\n[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n[suricata]\nqueue = \"2-5\"\nready_timeout = 30\n").unwrap();
     let config = merge(None, file_config, Overrides::default()).unwrap();
-    assert_eq!(config.suricata.queue, Setting { value: "2-5".parse().unwrap(), source: Source::File });
+    assert_eq!(config.suricata.delivery, Setting { value: Delivery::Queue("2-5".parse().unwrap()), source: Source::File });
     assert_eq!(
         config.suricata.ready_timeout,
         Setting { value: std::time::Duration::from_secs(30), source: Source::File }
@@ -442,19 +464,29 @@ fn protection_defaults_to_ids_with_group_10() {
     let file_config = parse("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n").unwrap();
     let config = merge(None, file_config, Overrides::default()).unwrap();
     assert_eq!(config.protection, Setting { value: Protection::Ids, source: Source::Default });
-    assert_eq!(config.suricata.group, Setting { value: GroupRange::default(), source: Source::Default });
+    assert_eq!(config.suricata.delivery.source, Source::Default);
     assert_eq!(config.delivery(), Delivery::Copy("10".parse().unwrap()));
 }
 
 #[test]
 fn protection_and_group_from_file() {
     let file_config =
-        parse("protection = \"ips\"\n[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n[suricata]\nqueue = \"0-1\"\ngroup = \"20-21\"\n")
-            .unwrap();
+        parse("protection = \"ids\"\n[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n[suricata]\ngroup = \"20-21\"\n").unwrap();
     let config = merge(None, file_config, Overrides::default()).unwrap();
-    assert_eq!(config.protection, Setting { value: Protection::Ips, source: Source::File });
-    assert_eq!(config.suricata.group, Setting { value: "20-21".parse().unwrap(), source: Source::File });
-    assert_eq!(config.delivery(), Delivery::Queue("0-1".parse().unwrap()));
+    assert_eq!(config.protection, Setting { value: Protection::Ids, source: Source::File });
+    assert_eq!(config.suricata.delivery, Setting { value: Delivery::Copy("20-21".parse().unwrap()), source: Source::File });
+}
+
+#[test]
+fn queue_with_ids_and_group_with_ips_are_errors() {
+    let ports = "[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n";
+    for (text, expected) in [
+        (format!("{ports}[suricata]\nqueue = \"0-1\"\n"), "suricata.queue (only with protection = \"ips\")"),
+        (format!("protection = \"ips\"\n{ports}[suricata]\ngroup = 11\n"), "suricata.group (only with protection = \"ids\")"),
+    ] {
+        let err = merge(Some(PathBuf::from("/x.toml")), parse(&text).unwrap(), Overrides::default()).unwrap_err();
+        assert!(matches!(&err, ConfigError::Inapplicable { settings, .. } if settings == &[expected]), "{err}");
+    }
 }
 
 #[test]

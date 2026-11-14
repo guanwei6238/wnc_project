@@ -67,14 +67,16 @@
 # (default: 0), or a range such as "0-3" to spread the traffic over several
 # queues. Each queue is inspected by its own Suricata thread, so a range of N
 # queues can use up to N CPU cores. Suricata fails to start if another program
-# already uses one of them.
+# already uses one of them. Only allowed with protection = "ips": with "ids" it
+# would do nothing, so the config is rejected.
 # queue = 0
 
 # NFLOG group Suricata receives copies from when protection = "ids" (default:
 # 10), or a range such as "10-11" to spread the traffic over several groups.
 # Each group is inspected by its own Suricata thread, as with queues. Group 0 is
 # not allowed. Suricata fails to start if another program already uses one of
-# them.
+# them. Only allowed with protection = "ids": with "ips" it would do nothing,
+# so the config is rejected.
 # group = 10
 
 # Seconds to wait for Suricata to report that it is ready (default: 300).
@@ -118,6 +120,9 @@
 # and Suricata's alerts in an EVE file (see eve_interval above).
 # Connections can always be trusted by hand with `wnc-gw trust add`.
 # auto = false
+
+# The options below are only allowed with auto = true: without it they would
+# do nothing, so the config is rejected.
 
 # Packets each direction must carry before a connection can be trusted
 # (default: 10, 1 to 1000000).

@@ -1,12 +1,12 @@
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use clap::Args;
 use security_gateway::agent::LocalPrivd;
 use security_gateway::agent::trust::{TrustAgent, TrustPolicy};
-use security_gateway::config::{self, Config, Overrides};
+use security_gateway::config::{self, Config, Overrides, TrustSettings};
 use security_gateway::firewall::{self, FAMILY, Inspection, TABLE, WhenUnavailable};
 use security_gateway::ids::delivery::Delivery;
 use security_gateway::ids::lifecycle::{Event, Lifecycle};
@@ -174,9 +174,14 @@ async fn serve(
     let mut alert_file = alert_file;
     let mut alerts: Option<AlertWatch> = None;
     let mut privd = LocalPrivd::default();
-    let mut trust_agent = trust_agent(config, alert_file.is_some());
-    let mut trust_tick = time::interval(config.trust.check_interval.value);
-    trust_tick.set_missed_tick_behavior(MissedTickBehavior::Delay);
+    let (mut trust_agent, mut trust_tick) = match trust_agent(config, alert_file.is_some()) {
+        Some((agent, check_interval)) => {
+            let mut tick = time::interval(check_interval);
+            tick.set_missed_tick_behavior(MissedTickBehavior::Delay);
+            (Some(agent), Some(tick))
+        }
+        None => (None, None),
+    };
     let mut uninspected_since = Some(Instant::now());
     let mut stop_failed = false;
     let mut conntrack_monitor = ConntrackMonitor::default();
@@ -206,7 +211,7 @@ async fn serve(
                     agent.set_alerts_current(alerts.as_ref().is_none_or(AlertWatch::is_current));
                 }
             }
-            _ = trust_tick.tick(), if trust_agent.is_some() => {
+            _ = tick(&mut trust_tick) => {
                 if let Some(agent) = trust_agent.as_mut() {
                     agent.check(&mut privd, std::time::Instant::now());
                 }
@@ -280,11 +285,20 @@ async fn serve(
     code
 }
 
-fn trust_agent(config: &Config, alerts: bool) -> Option<TrustAgent> {
-    let trust = &config.trust;
-    if !trust.auto.value {
-        return None;
+async fn tick(interval: &mut Option<time::Interval>) {
+    match interval {
+        Some(interval) => {
+            interval.tick().await;
+        }
+        None => std::future::pending().await,
     }
+}
+
+fn trust_agent(config: &Config, alerts: bool) -> Option<(TrustAgent, Duration)> {
+    let trust = match &config.trust {
+        TrustSettings::Manual { .. } => return None,
+        TrustSettings::Auto(auto) => auto,
+    };
     if !alerts {
         warn!(
             code = %Issue::AutoTrustOff,
@@ -299,11 +313,12 @@ fn trust_agent(config: &Config, alerts: bool) -> Option<TrustAgent> {
         check_interval_s = trust.check_interval.value.as_secs(),
         "automatic trust is on"
     );
-    Some(TrustAgent::new(TrustPolicy {
+    let agent = TrustAgent::new(TrustPolicy {
         min_packets: trust.min_packets.value,
         min_age: trust.min_age.value,
         ttl: trust.ttl.value,
-    }))
+    });
+    Some((agent, trust.check_interval.value))
 }
 
 async fn alert_file(config: &Config) -> Option<PathBuf> {
