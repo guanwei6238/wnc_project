@@ -75,3 +75,21 @@ services:
     networks:
       wan:
         ipv4_address: 10.0.2.2
+
+  rep:
+    build:
+      context: .
+      target: rep
+    image: wnc-lab-rep:latest
+    container_name: wnc-rep
+    hostname: rep
+    environment:
+      ROLE: rep
+    cap_add: [NET_ADMIN, NET_RAW]
+    volumes:
+      - ../tests/demo/pcaps:/pcaps
+    networks:
+      lan:
+        ipv4_address: 10.0.1.3
+      wan:
+        ipv4_address: 10.0.2.3

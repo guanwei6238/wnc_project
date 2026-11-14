@@ -1,0 +1,6 @@
+%YAML 1.1
+---
+include: /etc/suricata/suricata.yaml
+default-rule-path: /var/lib/suricata/rules
+rule-files:
+  - et_all.rules

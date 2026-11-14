@@ -25,9 +25,16 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
-# 只有 gw 需要 Suricata。版本跟架構決定的一樣，用 trixie-backports 的 8.0.7。
+# 只有 gw 需要 Suricata。版本跟 Pi 一樣用 trixie-backports 的 8.0.7；
+# backports 11/03 換成 8.0.8，所以取 snapshot.debian.org 上 11/02 的 backports。
 FROM base AS gw
 
-RUN echo 'deb http://deb.debian.org/debian trixie-backports main' > /etc/apt/sources.list.d/backports.list \
- && apt-get update && apt-get install -y --no-install-recommends -t trixie-backports suricata \
+RUN echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20261102T000000Z trixie-backports main' > /etc/apt/sources.list.d/backports.list \
+ && apt-get update && apt-get install -y --no-install-recommends -t trixie-backports suricata=1:8.0.7-1~bpo13+1 \
+ && rm -rf /var/lib/apt/lists/*
+
+# rep 重播 dataset 的 pcap
+FROM base AS rep
+
+RUN apt-get update && apt-get install -y --no-install-recommends tcpreplay \
  && rm -rf /var/lib/apt/lists/*

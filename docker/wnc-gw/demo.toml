@@ -1,0 +1,17 @@
+mode = "routed"
+xdp = "off"
+protection = "ids"
+
+[ports]
+lan = "02:00:00:00:01:01"
+wan = "02:00:00:00:02:01"
+
+[suricata]
+config = "/etc/wnc-gw/demo-suricata.yaml"
+
+[trust]
+auto = true
+min_packets = 10
+min_age = 5
+ttl = 60
+check_interval = 2

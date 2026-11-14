@@ -15,7 +15,7 @@ find_if() {   # $1 = IP 前綴 -> 印出介面名稱
   ip -o -4 addr show | awk -v p="$1" '$4 ~ "^"p {print $2; exit}'
 }
 
-ROLE="${ROLE:?必須設定 ROLE=cli|gw|srv}"
+ROLE="${ROLE:?必須設定 ROLE=cli|gw|srv|rep}"
 
 case "$ROLE" in
   cli)
@@ -35,6 +35,13 @@ case "$ROLE" in
     ip route replace 10.0.1.0/24 via "$GW_WAN_IP" dev "$WAN_IF"
     # 方便起見直接把 iperf3 server 跑起來
     iperf3 -s -D --logfile /var/log/iperf3.log
+    ;;
+  rep)
+    # 兩張網卡改成固定的名字，tcpreplay 才能直接寫 -i wan -I lan
+    LAN_IF=$(find_if "$LAN_NET_PREFIX")
+    WAN_IF=$(find_if "$WAN_NET_PREFIX")
+    ip link set "$LAN_IF" down; ip link set "$LAN_IF" name lan; ip link set lan up
+    ip link set "$WAN_IF" down; ip link set "$WAN_IF" name wan; ip link set wan up
     ;;
   *)
     echo "未知的 ROLE: $ROLE" >&2; exit 1 ;;
