@@ -1076,14 +1076,14 @@ fn severities(findings: &[Finding]) -> Vec<Severity> {
 
 #[test]
 fn manual_trust_has_nothing_to_check() {
-    let findings = trust_findings(&trust_settings(false, 900), Protection::Ips, false, Ok(None), Some(600));
+    let findings = trust_findings(&trust_settings(false, 900), Protection::Ips, Some(false), Ok(None), Some(600));
     assert_eq!(findings, []);
     assert_eq!(trust_summary(&trust_settings(false, 900)), "manual (wnc-gw trust) (config file)");
 }
 
 #[test]
 fn automatic_trust_is_always_a_warning() {
-    let findings = trust_findings(&trust_settings(true, 900), Protection::Ips, true, Ok(Some("1".into())), Some(600));
+    let findings = trust_findings(&trust_settings(true, 900), Protection::Ips, Some(true), Ok(Some("1".into())), Some(600));
     assert_eq!(severities(&findings), [Severity::Warning]);
     assert!(findings[0].message.starts_with("automatic trust is on: a connection that carries 10 packets each way"));
     assert_eq!(
@@ -1094,7 +1094,7 @@ fn automatic_trust_is_always_a_warning() {
 
 #[test]
 fn automatic_trust_needs_alerts_and_packet_counters() {
-    let findings = trust_findings(&trust_settings(true, 900), Protection::Ids, false, Ok(Some("0".into())), None);
+    let findings = trust_findings(&trust_settings(true, 900), Protection::Ids, Some(false), Ok(Some("0".into())), None);
     assert_eq!(severities(&findings), [Severity::Warning, Severity::Error, Severity::Error]);
     assert!(findings[1].message.contains("needs suricata's alerts in an EVE file"));
     assert!(findings[2].message.contains("net.netfilter.nf_conntrack_acct = 1"));
@@ -1103,16 +1103,24 @@ fn automatic_trust_needs_alerts_and_packet_counters() {
 
 #[test]
 fn unloaded_conntrack_cannot_be_verified() {
-    let findings = trust_findings(&trust_settings(true, 900), Protection::Ids, true, Ok(None), None);
+    let findings = trust_findings(&trust_settings(true, 900), Protection::Ids, Some(true), Ok(None), None);
     assert_eq!(severities(&findings), [Severity::Warning, Severity::Warning]);
     assert!(findings[1].message.contains("nf_conntrack is not loaded yet"));
 }
 
 #[test]
 fn ips_warns_when_trust_ends_before_suricata_forgets_the_connection() {
-    let short = trust_findings(&trust_settings(true, 600), Protection::Ips, true, Ok(Some("1".into())), Some(600));
+    let short = trust_findings(&trust_settings(true, 600), Protection::Ips, Some(true), Ok(Some("1".into())), Some(600));
     assert_eq!(severities(&short), [Severity::Warning, Severity::Warning]);
     assert!(short[1].message.contains("set [trust] ttl above 600"));
-    let ids = trust_findings(&trust_settings(true, 600), Protection::Ids, true, Ok(Some("1".into())), Some(600));
+    let ids = trust_findings(&trust_settings(true, 600), Protection::Ids, Some(true), Ok(Some("1".into())), Some(600));
     assert_eq!(ids.len(), 1, "ids only gets copies, so suricata cannot drop them");
+}
+
+#[test]
+fn unverifiable_alerts_are_a_warning_not_an_error() {
+    let findings = trust_findings(&trust_settings(true, 900), Protection::Ids, None, Ok(Some("1".into())), None);
+    assert_eq!(severities(&findings), [Severity::Warning, Severity::Warning]);
+    assert_eq!(findings[1].issue, Issue::AutoTrustOff);
+    assert!(findings[1].message.starts_with("cannot verify that suricata writes alerts"));
 }

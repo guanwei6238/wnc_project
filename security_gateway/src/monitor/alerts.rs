@@ -84,6 +84,10 @@ impl AlertMonitor {
         }
     }
 
+    pub fn is_current(&self) -> bool {
+        !self.failing && !self.behind
+    }
+
     pub fn alert(&mut self, alert: &Alert) {
         let connection = alert.connection();
         debug!(
@@ -255,6 +259,10 @@ impl AlertWatch {
             self.monitor.summarize();
             Vec::new()
         }
+    }
+
+    pub fn is_current(&self) -> bool {
+        self.monitor.is_current()
     }
 
     pub fn finish(&mut self) {

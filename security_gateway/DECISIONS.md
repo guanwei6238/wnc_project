@@ -479,6 +479,12 @@ rp_filter 不另外檢查：路由設對時 strict 模式不會擋正常流量�
 - 有 alert：還在觀察的連線之後都不信任；已信任的立刻撤銷（記 WARN）。alert 比第一次觀察早到也算（記住 10 分鐘）。
 - TTL 到期：取消信任，回到檢查，要再觀察一次才會再信任。
 - Suricata 停止時，觀察到一半的連線全部重來（那段時間沒有 alert 可以參考）；已信任的照常到期。
+- **沒有即時的 alert 就不新增信任**（2026-11-14，開發者：「要否則會出現被繞過的問題，我們要重視資安」）。原則是「alert 是唯一的『有問題』訊號，看不到它時不能用『沒有 alert』當理由信任」：
+  - doctor 確定 Suricata 沒有寫 alert 的 eve-log：error（T002），run 不啟動。
+  - 讀不到 Suricata 的設定而無法確認（S002、S010；run 時是 S024）：warning（T012），run 照常啟動、**關掉自動信任**，全部送檢查。不選「不啟動」：run 沒啟動時 table 不存在，routed 下 kernel 照轉，等於全部不檢查，比少了信任更糟。
+  - 執行中 EVE 讀不到（E002）或落後（E003）：暫停新增信任（T013），觀察中的連線重新觀察；已信任的照常到期，之後讀到的 alert 照樣撤銷。恢復時記 INFO。
+  - 修正前的漏洞：doctor 在 `--build-info` 或 `--dump-config` 失敗時整段跳過信任檢查，run 照常開自動信任，卻讀不到 alert（subagent 在 Docker 上用假 Suricata 重現）。
+  - 成本：都是啟動時或每次讀 EVE 時的布林判斷，不在封包路徑上，沒有另外量。
 - 只看經過 gateway 的連線：forward chain 在連線第一次經過時把 ct mark 的 `0x40000000` 設上（只寫一次），wnc-gw 用 ctnetlink 依這個位元列連線（kernel 端過濾），gateway 自己的連線（例如 SSH）不會被算進來。
 - 寫入走 `agent::Privd` trait（架構 §3：privd 的介面先定成 trait、方法隨功能才加），現在的實作 `LocalPrivd` 在同一個 process 裡直接用 ctnetlink。
 - 預設值的理由：

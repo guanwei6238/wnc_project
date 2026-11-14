@@ -90,6 +90,7 @@ pub struct TrustAgent {
     tracked: HashMap<Key, Tracked>,
     alerted: HashMap<Key, Instant>,
     inspecting: bool,
+    alerts_current: bool,
     counts: Counts,
     last_summary: Option<Instant>,
     failing: bool,
@@ -103,6 +104,7 @@ impl TrustAgent {
             tracked: HashMap::new(),
             alerted: HashMap::new(),
             inspecting: false,
+            alerts_current: true,
             counts: Counts::default(),
             last_summary: None,
             failing: false,
@@ -114,6 +116,20 @@ impl TrustAgent {
         self.inspecting = inspecting;
         if !inspecting {
             self.tracked.retain(|_, t| !matches!(t.state, State::Watching { .. }));
+        }
+    }
+
+    pub fn set_alerts_current(&mut self, current: bool) {
+        if mem::replace(&mut self.alerts_current, current) == current {
+            return;
+        }
+        if current {
+            info!("suricata's alerts are current again; automatic trust resumed");
+        } else {
+            warn!(
+                code = %Issue::AutoTrustPaused,
+                "automatic trust is paused because suricata's alerts are not current; no new connection is trusted"
+            );
         }
     }
 
@@ -237,7 +253,7 @@ impl TrustAgent {
                     }
                 }
                 State::Watching { since, base } => {
-                    if !self.inspecting {
+                    if !self.inspecting || !self.alerts_current {
                         tracked.state = watching;
                         continue;
                     }

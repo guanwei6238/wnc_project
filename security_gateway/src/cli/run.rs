@@ -174,7 +174,7 @@ async fn serve(
     let mut alert_file = alert_file;
     let mut alerts: Option<AlertWatch> = None;
     let mut privd = LocalPrivd::default();
-    let mut trust_agent = trust_agent(config);
+    let mut trust_agent = trust_agent(config, alert_file.is_some());
     let mut trust_tick = time::interval(config.trust.check_interval.value);
     trust_tick.set_missed_tick_behavior(MissedTickBehavior::Delay);
     let mut uninspected_since = Some(Instant::now());
@@ -203,6 +203,7 @@ async fn serve(
                     for alert in &found {
                         agent.on_alert(alert, &mut privd, std::time::Instant::now());
                     }
+                    agent.set_alerts_current(alerts.as_ref().is_none_or(AlertWatch::is_current));
                 }
             }
             _ = trust_tick.tick(), if trust_agent.is_some() => {
@@ -279,9 +280,16 @@ async fn serve(
     code
 }
 
-fn trust_agent(config: &Config) -> Option<TrustAgent> {
+fn trust_agent(config: &Config, alerts: bool) -> Option<TrustAgent> {
     let trust = &config.trust;
     if !trust.auto.value {
+        return None;
+    }
+    if !alerts {
+        warn!(
+            code = %Issue::AutoTrustOff,
+            "automatic trust is off because wnc-gw cannot see suricata's alerts; every connection is inspected"
+        );
         return None;
     }
     info!(

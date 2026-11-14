@@ -122,3 +122,17 @@ fn reports_restarts_and_falling_behind() {
     assert_eq!(m.observe_read(Ok(report(None, true))), []);
     assert_eq!(m.observe_read(Ok(report(None, false))), [Finding::CaughtUp]);
 }
+
+#[test]
+fn alerts_are_current_unless_reading_fails_or_falls_behind() {
+    let mut m = monitor();
+    assert!(m.is_current());
+    m.observe_read(Err(io::Error::new(io::ErrorKind::PermissionDenied, "denied")));
+    assert!(!m.is_current());
+    m.observe_read(Ok(ReadReport::default()));
+    assert!(m.is_current());
+    m.observe_read(Ok(ReadReport { behind: true, ..ReadReport::default() }));
+    assert!(!m.is_current());
+    m.observe_read(Ok(ReadReport::default()));
+    assert!(m.is_current());
+}

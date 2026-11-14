@@ -564,6 +564,8 @@ async fn check_suricata(config: &Config) -> Vec<Finding> {
     findings.extend(when_unavailable_finding(settings.when_unavailable.value, config.protection.value));
     findings.extend(protection_findings(config.protection.value));
     findings.push(spawned_finding());
+    let mut alerts = None;
+    let mut tcp_established_timeout = None;
     if info.is_ok() {
         println!();
         let yaml = settings.config.value.as_path();
@@ -571,19 +573,19 @@ async fn check_suricata(config: &Config) -> Vec<Finding> {
         let rule_files = dump.as_ref().map(SuricataConfig::check_rule_files).unwrap_or_default();
         let log_dir = spawned::log_dir(Current.log_dir());
         let alert_file = dump.as_ref().ok().and_then(|dump| dump.alert_file(&log_dir));
+        tcp_established_timeout = dump.as_ref().ok().and_then(|dump| dump.tcp_established_timeout);
+        alerts = dump.as_ref().ok().map(|_| alert_file.is_some());
         print_suricata_config(settings, &dump, &rule_files, alert_file.as_deref());
         findings.extend(suricata_config_findings(yaml, &dump, &rule_files, alert_file.as_deref()));
-        if let Ok(dump) = &dump {
-            let acct = sysctl::read(CONNTRACK_ACCT).map_err(|e| e.to_string());
-            findings.extend(trust_findings(
-                &config.trust,
-                config.protection.value,
-                alert_file.is_some(),
-                acct,
-                dump.tcp_established_timeout,
-            ));
-        }
     }
+    let acct = sysctl::read(CONNTRACK_ACCT).map_err(|e| e.to_string());
+    findings.extend(trust_findings(
+        &config.trust,
+        config.protection.value,
+        alerts,
+        acct,
+        tcp_established_timeout,
+    ));
     findings
 }
 
@@ -990,7 +992,7 @@ fn trust_summary(trust: &TrustSettings) -> String {
 fn trust_findings(
     trust: &TrustSettings,
     protection: Protection,
-    alerts: bool,
+    alerts: Option<bool>,
     acct: Result<Option<String>, String>,
     tcp_established_timeout: Option<u64>,
 ) -> Vec<Finding> {
@@ -1009,7 +1011,16 @@ fn trust_findings(
             trust.min_age.value.as_secs()
         ),
     }];
-    if !alerts {
+    if alerts.is_none() {
+        findings.push(Finding {
+            severity: Severity::Warning,
+            issue: Issue::AutoTrustOff,
+            message: "cannot verify that suricata writes alerts, because its config could not be checked; if run \
+                      cannot find them either, it starts with automatic trust off and inspects every connection"
+                .to_owned(),
+        });
+    }
+    if alerts == Some(false) {
         findings.push(Finding {
             severity: Severity::Error,
             issue: Issue::AutoTrustNoAlerts,

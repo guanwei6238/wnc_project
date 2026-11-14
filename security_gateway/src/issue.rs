@@ -74,6 +74,8 @@ issues! {
     SuricataServiceUnchecked,
     AutoTrust,
     AutoTrustNoAlerts,
+    AutoTrustOff,
+    AutoTrustPaused,
     ConntrackAcct,
     TrustTtlTooShort,
     WritableByNonRoot,
@@ -757,9 +759,34 @@ impl Issue {
                 severity: "error",
                 cause: "[trust] auto = true, but suricata's config has no eve-log output that \
                         writes alerts to a regular file (S013), so connections that raise alerts \
-                        would be trusted too.",
+                        would be trusted too. When the config cannot be checked at all, doctor \
+                        reports T012 instead.",
                 action: "Enable an eve-log output with alerts (see S013), or set [trust] auto = \
                          false.",
+            },
+            Self::AutoTrustOff => &Explanation {
+                code: "T012",
+                title: "automatic trust is turned off because alerts cannot be seen",
+                reported_by: DOCTOR_AND_RUN,
+                severity: "warning",
+                cause: "[trust] auto = true, but suricata or its config could not be checked (S002, S010 in doctor; \
+                        S024 in run), so wnc-gw cannot tell where suricata writes alerts. Without alerts every \
+                        connection would be trusted, so run starts with automatic trust off: everything is inspected, \
+                        only the CPU that trust saves is lost. If the config is known to have no alert output, doctor \
+                        reports T002 instead and run does not start.",
+                action: "Fix what S002, S010 or S024 reports, then restart run to turn automatic trust back on.",
+            },
+            Self::AutoTrustPaused => &Explanation {
+                code: "T013",
+                title: "automatic trust is paused because alerts are not current",
+                reported_by: RUN,
+                severity: "warning",
+                cause: "wnc-gw cannot read Suricata's EVE file (E002) or reads it late (E003), so an alert on a \
+                        watched connection may not have reached it yet. To avoid trusting such a connection, no new \
+                        connection is trusted and every watched one starts its observation again once alerts are \
+                        current; already trusted connections keep their trust until it expires or an alert revokes \
+                        it. INFO \"automatic trust resumed\" ends it.",
+                action: "Fix what E002 or E003 reports.",
             },
             Self::ConntrackAcct => &Explanation {
                 code: "T003",

@@ -302,3 +302,28 @@ fn check_survives_a_failed_read() {
     a.check(&mut privd, Instant::now());
     assert!(!a.failing);
 }
+
+#[test]
+fn nothing_new_is_trusted_while_alerts_are_not_current() {
+    let mut a = agent();
+    let t0 = Instant::now();
+    a.observe(&[conn(1, tcp(), (0, 0), 0)], t0);
+    a.set_alerts_current(false);
+    assert_eq!(a.observe(&[conn(1, tcp(), (50, 50), 0)], after(t0, 10)), [], "paused");
+    a.set_alerts_current(true);
+    assert_eq!(a.observe(&[conn(1, tcp(), (60, 60), 0)], after(t0, 11)), [], "watching restarted at 10 s");
+    assert_eq!(
+        a.observe(&[conn(1, tcp(), (70, 70), 0)], after(t0, 15)),
+        [Decision::Trust { tuple: tcp(), packets: (20, 20) }]
+    );
+}
+
+#[test]
+fn trust_given_before_a_pause_still_expires_and_can_be_revoked() {
+    let mut a = agent();
+    let t0 = Instant::now();
+    a.observe(&[conn(1, tcp(), (0, 0), 0)], t0);
+    assert_eq!(a.observe(&[conn(1, tcp(), (20, 20), 0)], after(t0, 5)).len(), 1);
+    a.set_alerts_current(false);
+    assert!(matches!(a.alert(&alert_on(&tcp(), 7), after(t0, 6)), Some(Decision::Revoke { sid: 7, .. })));
+}
