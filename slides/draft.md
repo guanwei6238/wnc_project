@@ -1,9 +1,10 @@
 # 報告製作規劃
 ## 報告時間
-2026/10/19
+2026/11/09
 
 ## 標題
-根據內容定義
+security gateway 專案介紹 & Demo
 
 ## 內容主題
-查看 `../tests/ids_throughput/REPORT.md`(詳細版本)，`../tests/ids_throughput/BRIEF.md`(簡化版) 做出進度報告
+根據 `../security_gateway` 的README.md, DECISION.md，介紹整體架構，doctor 功能， 支援哪些 setting
+然後這次需要 demo 的細節在 `../tests/demo` 你需要確保 demo 要提的東西在 slides 會講到

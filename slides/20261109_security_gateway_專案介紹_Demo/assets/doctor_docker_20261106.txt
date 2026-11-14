@@ -1,0 +1,64 @@
+config: /etc/wnc-gw/demo.toml
+mode:   routed (config file)
+xdp:    off (config file)
+protection: ids (config file), suricata receives nflog 10
+trust:  automatic after 10 packets each way and 5 s, for 60 s; checked every 2 s (config file)
+
+ROLE SPECIFIED         SOURCE       INTERFACE       IDX  MATCHED BY    ADMIN OPER
+LAN  02:00:00:00:01:01 config file  eth0            2    current MAC   up    UP
+WAN  02:00:00:00:02:01 config file  eth1            3    current MAC   up    UP
+
+ROUTED MODE CHECK                    RESULT
+LAN and WAN not in a bridge          ok
+net.ipv4.ip_forward                  ok (1)
+net.ipv6.conf.all.forwarding         not met (0)
+LAN and WAN have IPv4 addresses      ok (eth0: 10.0.1.1/24, eth1: 10.0.2.1/24)
+subnets do not overlap               ok
+default route via WAN                ok (via 10.0.2.200 dev eth1)
+
+ROLE INTERFACE       DRIVER     NATIVE XDP                   ATTACHED XDP       CORE HOOK
+LAN  eth0            -          basic,redirect,rx-sg         none               tc
+WAN  eth1            -          basic,redirect,rx-sg         none               tc
+
+kernel: 7.0.0-42-generic
+KERNEL MODULE        STATE     NEEDED FOR
+nf_tables            loaded    nftables rules
+nf_conntrack         loaded    connection tracking
+nft_ct               loadable  matching and setting ct mark
+nf_conntrack_netlink loaded    trusting connections by ct mark from user space
+nft_log              loadable  copying packets to the IDS
+nfnetlink_log        loadable  passing packet copies to user space
+
+COMMAND            SOURCE       VERSION    JSON
+/usr/sbin/nft      default      1.1.3      yes
+
+COMMAND            SOURCE       VERSION    NFQUEUE  NFLOG    READY NOTIFY
+/usr/bin/suricata  default      8.0.7      yes      yes      yes
+
+SURICATA CONFIG                          SOURCE       RESULT
+/etc/wnc-gw/demo-suricata.yaml           config file  ok
+/var/lib/suricata/rules/et_all.rules     rule-files   ok
+/var/log/wnc-gw/suricata/eve.json        eve-log      alerts, read every 0.5 s (default)
+
+RUNNING SURICATA   CAPTURE        RSS       NETNS    STARTED BY
+none
+SURICATA SERVICE   AT BOOT
+suricata.service   unknown
+
+FILE                                     USED AS                MODIFIABLE BY NON-ROOT
+/etc/wnc-gw/demo.toml                    wnc-gw config file     yes
+/usr/sbin/nft                            nft command            no
+/usr/bin/suricata                        suricata command       no
+/etc/wnc-gw/demo-suricata.yaml           suricata config file   yes
+
+warning: routed mode: net.ipv6.conf.all.forwarding is 0, so IPv6 traffic is not forwarded; set it with: sysctl -w net.ipv6.conf.all.forwarding=1, and persist it in /etc/sysctl.d/
+note: routed mode: LAN hosts must use 10.0.1.1 as their gateway, and the upstream router needs a route to 10.0.1.0/24, 192.168.0.0/16 via 10.0.2.1; wnc-gw does not translate addresses, so that route is needed unless you set up NAT yourself
+warning: forwarded traffic passes without inspection while suricata starts or restarts (when_unavailable = "accept"); set when_unavailable = "drop" to drop it instead
+warning: protection = "ids": suricata only gets copies of forwarded packets, so no detection blocks traffic; set protection = "ips" to make packets wait for suricata's verdict
+warning: protection = "ids": suricata does not validate checksums, because packets merged by GRO reach it with incomplete ones; it also inspects packets that the receiving host drops for a bad checksum, which an attacker can use to hide data from inspection; protection = "ips" does not have this limitation
+warning: protection = "ids": traffic that arrives faster than suricata takes the copies is forwarded without inspection, whichever when_unavailable is set
+warning: suricata is started by wnc-gw and shares its account and privileges, so a compromised suricata can do whatever the gateway can
+warning: automatic trust is on: a connection that carries 10 packets each way, for at least 5 s and without a suricata alert, skips inspection for 60 s except for syn/fin/rst; an attack sent after that is not seen until the trust expires
+warning: could not check whether suricata.service starts at boot: /usr/bin/systemctl not found
+warning: wnc-gw config file /etc/wnc-gw/demo.toml can be modified without root (user 1000 owns /etc/wnc-gw/demo.toml, /etc/wnc-gw; group 1000 can write to /etc/wnc-gw/demo.toml, /etc/wnc-gw), so those accounts could make the gateway run code with its privileges
+warning: suricata config file /etc/wnc-gw/demo-suricata.yaml can be modified without root (user 1000 owns /etc/wnc-gw/demo-suricata.yaml, /etc/wnc-gw; group 1000 can write to /etc/wnc-gw/demo-suricata.yaml, /etc/wnc-gw), so those accounts could make the gateway run code with its privileges

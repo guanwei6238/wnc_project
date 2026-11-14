@@ -23,6 +23,7 @@
 2. 撰寫 `slide_implement.md` 說明每頁要有哪些資料（如果需要截圖等你沒辦法操作的資源可以找 user 處理）的文件
 3. 開一個 subagent (sonnet) 照 `slide_implement.md` 把報告做出來
 4. 開一個 subagent (opus) 檢查做完的報告是否有依據 `slide_implement.md` 並驗證所有說明的真實性，並輸出一個 markdown 說明驗證了什麼東西。
+5. 開多個 subagents 從不同角度(公司，老師端等)看這份 slides，把不必要的敘述或數據移除。
 
 ## 注意事項
 - 報告只放重點內容，不要把要用說明的文字放在上面，細節用講的不要把他們都放上去。
