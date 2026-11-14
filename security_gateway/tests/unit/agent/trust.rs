@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use super::*;
-use crate::kernel::conntrack::Counters;
+use crate::kernel::conntrack::{ConntrackError, Counters};
 
 const POLICY: TrustPolicy = TrustPolicy {
     min_packets: 10,
@@ -54,8 +54,6 @@ fn agent() -> TrustAgent {
 fn after(start: Instant, secs: u64) -> Instant {
     start + Duration::from_secs(secs)
 }
-
-const TRUSTED: u32 = TRUSTED_MARK;
 
 #[test]
 fn trusts_after_enough_time_and_packets_each_way() {
@@ -190,24 +188,13 @@ fn trust_expires_after_the_ttl_and_the_connection_is_watched_again() {
     let t0 = Instant::now();
     a.observe(&[conn(1, tcp(), (0, 0), 0)], t0);
     a.observe(&[conn(1, tcp(), (20, 20), 0)], after(t0, 5));
-    assert_eq!(a.observe(&[conn(1, tcp(), (20, 20), TRUSTED)], after(t0, 64)), []);
+    assert_eq!(a.observe(&[conn(1, tcp(), (20, 20), 0)], after(t0, 64)), []);
     assert_eq!(
-        a.observe(&[conn(1, tcp(), (20, 20), TRUSTED)], after(t0, 65)),
+        a.observe(&[conn(1, tcp(), (20, 20), 0)], after(t0, 65)),
         [Decision::Expire { tuple: tcp() }]
     );
     assert_eq!(a.observe(&[conn(1, tcp(), (25, 25), 0)], after(t0, 70)), [], "needs new packets");
     assert_eq!(a.observe(&[conn(1, tcp(), (30, 30), 0)], after(t0, 71)).len(), 1);
-}
-
-#[test]
-fn a_cleared_trust_bit_means_watching_again() {
-    let mut a = agent();
-    let t0 = Instant::now();
-    a.observe(&[conn(1, tcp(), (0, 0), 0)], t0);
-    a.observe(&[conn(1, tcp(), (20, 20), 0)], after(t0, 5));
-    a.observe(&[conn(1, tcp(), (20, 20), TRUSTED)], after(t0, 6));
-    assert_eq!(a.observe(&[conn(1, tcp(), (21, 21), 0)], after(t0, 7)), [], "a bare syn cleared the bit");
-    assert_eq!(a.observe(&[conn(1, tcp(), (31, 31), 0)], after(t0, 12)).len(), 1);
 }
 
 #[test]
@@ -234,11 +221,27 @@ fn ended_connections_are_forgotten() {
 }
 
 #[test]
-fn a_manually_trusted_connection_is_left_alone() {
+fn a_trusted_connection_missing_from_conntrack_is_kept_until_the_ttl() {
     let mut a = agent();
     let t0 = Instant::now();
-    a.observe(&[conn(1, tcp(), (0, 0), TRUSTED)], t0);
-    assert_eq!(a.observe(&[conn(1, tcp(), (99, 99), TRUSTED)], after(t0, 3_600)), []);
+    a.observe(&[conn(1, tcp(), (0, 0), 0)], t0);
+    assert_eq!(a.observe(&[conn(1, tcp(), (20, 20), 0)], after(t0, 5)).len(), 1);
+    assert_eq!(a.observe(&[], after(t0, 30)), [], "trusted packets skip conntrack, so its entry may time out");
+    assert_eq!(a.observe(&[], after(t0, 65)), [Decision::Expire { tuple: tcp() }]);
+    assert!(a.tracked.is_empty());
+}
+
+#[test]
+fn a_new_conntrack_entry_keeps_the_trust_until_the_ttl() {
+    let mut a = agent();
+    let t0 = Instant::now();
+    a.observe(&[conn(1, tcp(), (0, 0), 0)], t0);
+    assert_eq!(a.observe(&[conn(1, tcp(), (20, 20), 0)], after(t0, 5)).len(), 1);
+    assert_eq!(a.observe(&[conn(2, tcp(), (1, 0), 0)], after(t0, 30)), [], "a control packet made a new entry");
+    assert_eq!(
+        a.observe(&[conn(2, tcp(), (1, 0), 0)], after(t0, 65)),
+        [Decision::Expire { tuple: tcp() }]
+    );
 }
 
 #[derive(Default)]
@@ -257,17 +260,16 @@ impl Privd for FakePrivd {
         Ok(self.connections.clone())
     }
 
-    fn trust(&mut self, tuple: &FiveTuple) -> Result<(), ConntrackError> {
+    fn trust(&mut self, tuple: &FiveTuple) -> Result<(), PrivdError> {
         self.trusted.push(*tuple);
-        let c = self.connections.iter_mut().find(|c| c.original == *tuple).ok_or(ConntrackError::NotFound)?;
-        c.mark |= TRUSTED_MARK;
         Ok(())
     }
 
-    fn untrust(&mut self, tuple: &FiveTuple) -> Result<(), ConntrackError> {
+    fn untrust(&mut self, tuple: &FiveTuple) -> Result<(), PrivdError> {
+        if !self.trusted.contains(tuple) || self.untrusted.contains(tuple) {
+            return Err(PrivdError::NotTrusted);
+        }
         self.untrusted.push(*tuple);
-        let c = self.connections.iter_mut().find(|c| c.original == *tuple).ok_or(ConntrackError::NotFound)?;
-        c.mark &= !TRUSTED_MARK;
         Ok(())
     }
 }
@@ -284,10 +286,9 @@ fn check_writes_trust_and_revokes_on_alerts() {
     privd.connections[0] = conn(1, tcp(), (20, 20), 0);
     a.check(&mut privd, after(t0, 5));
     assert_eq!(privd.trusted, [tcp()]);
-    assert_ne!(privd.connections[0].mark & TRUSTED_MARK, 0);
     a.on_alert(&alert_on(&tcp(), 9), &mut privd, after(t0, 6));
     assert_eq!(privd.untrusted, [tcp()]);
-    assert_eq!(privd.connections[0].mark & TRUSTED_MARK, 0);
+    assert_eq!(a.counts.revoked, 1);
 }
 
 #[test]

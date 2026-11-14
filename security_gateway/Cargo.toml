@@ -8,7 +8,7 @@ name = "wnc-gw"
 path = "src/main.rs"
 
 [workspace]
-members = ["gw-ebpf"]
+members = ["gw-common", "gw-ebpf"]
 default-members = ["."]
 
 [dependencies]
@@ -29,6 +29,7 @@ libc = "0.2.191"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", default-features = false, features = ["fmt", "std", "ansi", "json"] }
 aya = "0.16.0"
+gw-common = { path = "gw-common", features = ["user"] }
 
 [dev-dependencies]
 netlink-packet-netfilter = "0.4.0"

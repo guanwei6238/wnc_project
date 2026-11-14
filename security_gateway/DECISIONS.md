@@ -29,9 +29,9 @@
 | 2 | ids 用 NFLOG、ips 用 NFQUEUE | Pi 量測 | 〔已實作〕 |
 | 3 | 多個 queue／group 用 symhash 分流 | Pi 量測 | 〔已實作〕 |
 | 4 | Suricata 強制 runmode=workers | Pi 量測 | 〔已實作〕 |
-| 5 | 信任用 ct mark，以連線為單位 | 安全理由＋Pi 量測 | 〔已實作〕 |
-| 6 | SYN／FIN／RST 一律檢查、純 SYN 清信任 | Pi 量測＋kernel 行為 | 〔已實作〕 |
-| 7 | 手寫 ctnetlink 寫 ct mark | Pi 量測 | 〔已實作〕 |
+| 5 | 信任：10-28 用 ct mark，11-14 改成 TC 的 trust map（fast path） | 安全理由＋Pi 量測 | 〔已實作〕（11-14 的做法） |
+| 6 | SYN／FIN／RST 一律檢查、純 SYN 清信任（11-14 起在 TC 做） | Pi 量測＋kernel 行為 | 〔已實作〕 |
+| 7 | 手寫 ctnetlink（11-14 起只用來讀連線） | Pi 量測 | 〔已實作〕 |
 | 8 | nftables 用 nft JSON | 授權＋Pi 量測 | 〔已實作〕 |
 | 9 | table 骨架寫死、黑名單放 nft set | 設計 | 〔已實作〕（set 未做） |
 | 10 | wnc-gw 啟動 Suricata，READY=1 後才送封包 | 當機重現 | 〔已實作〕 |
@@ -201,7 +201,7 @@ rp_filter 不另外檢查：路由設對時 strict 模式不會擋正常流量�
 
 ## 5. 信任：ct mark，以一條連線為單位
 
-> **2026-11-14 決定改掉**（步驟 C，還沒實作）：trust 只放在 TC 的 BPF map（五元組、每個方向一筆），不再用 ct mark：信任的封包在 TC 直接 redirect，不進 bridge、netfilter、conntrack。核心程式掛不上時就沒有信任（全部檢查，D001／D005 維持 warning、log 寫明信任停用）。沒有 conntrack 的 TCP 序號窗檢查：偽造五元組相同的封包可以不經檢查送進內網，這是 RQ3 第 4 項（SYNTHESIS §6.1）的實驗條件，緩解（TC 自己檢查序號窗）在那個實驗做，map 的 value 先預留欄位。依據：E1（Pi 實體網卡、bridge）：信任的封包 TC redirect 比 ct mark 少 5–6 µs（−39～−46%），IRQ 在 CPU1 時容量 80 → 150 kpps；E2：map 寫一筆 2.8 µs、ctnetlink 14.5 µs；兩種做法查到時每封包成本相同，map＋ct mark 還要每 5 秒對帳（`tests/ebpf/README.md`）；選項與差別見架構 skill 的 `decisions.md` O17。下面是 10-28 的做法，C 實作完之前仍是現況。
+> **2026-11-14 改掉，已實作**（步驟 C；Docker routed、Pi bridge 驗過，見 §17）：trust 只放在 TC 的 BPF map（五元組、每個方向一筆），不再用 ct mark：信任的封包在 TC 直接 redirect，不進 bridge、netfilter、conntrack。核心程式掛不上時就沒有信任（全部檢查，D001／D005 維持 warning、log 寫明信任停用）。沒有 conntrack 的 TCP 序號窗檢查：偽造五元組相同的封包可以不經檢查送進內網，這是 RQ3 第 4 項（SYNTHESIS §6.1）的實驗條件，緩解（TC 自己檢查序號窗）在那個實驗做，map 的 value 先預留欄位。依據：E1（Pi 實體網卡、bridge）：信任的封包 TC redirect 比 ct mark 少 5–6 µs（−39～−46%），IRQ 在 CPU1 時容量 80 → 150 kpps；E2：map 寫一筆 2.8 µs、ctnetlink 14.5 µs；兩種做法查到時每封包成本相同，map＋ct mark 還要每 5 秒對帳（`tests/ebpf/README.md`）；選項與差別見架構 skill 的 `decisions.md` O17。下面是 10-28 的 ct mark 做法和它的量測，留著當 RQ3 第 4 項的對照（程式在 git 歷史，`1faa17d` 之前）。
 
 **決定**：已信任的連線在 conntrack entry 上設 mark 的最高位元（`0x80000000`），forward chain 看到就直接 accept、不進 Suricata。〔已實作〕O17，2026-10-28。目前用 `wnc-gw trust add／del／list` 手動設定；自動判定（控制迴路）還沒做。
 
@@ -232,6 +232,8 @@ rp_filter 不另外檢查：路由設對時 strict 模式不會擋正常流量�
 
 ## 6. 控制封包一律檢查（L2）、純 SYN 清掉信任
 
+> **2026-11-14 起在 TC 做**：核心 eBPF 程式看到 TCP 的 SYN／FIN／RST 一律交回 kernel（所以一定進 netfilter 和 Suricata，nft 裡不再需要 L2 規則）；純 SYN 先刪掉這組五元組兩個方向的信任。nft 的 forward chain 只剩 counter、設 forwarded 位元、jump ids。Docker 驗證（`tests/ebpf/fastpath_docker.sh reuse`）：同一個來源 port 重新連線，信任從 1 筆變 0 筆。下面是 10-28 在 netfilter 的做法。
+
 **決定**：forward chain 依序是：純 SYN 碰到已信任的 entry 先清掉信任位元 → SYN／FIN／RST 一律進 Suricata → 已信任的 accept → 其他進 Suricata。〔已實作〕2026-10-28。
 
 **依據：L2**
@@ -250,6 +252,8 @@ rp_filter 不另外檢查：路由設對時 strict 模式不會擋正常流量�
 ---
 
 ## 7. 寫 ct mark：手寫 ctnetlink
+
+> **2026-11-14 起只用來讀**：自動信任讀轉送的連線和計數、`wnc-gw trust add` 確認連線存在而且是轉送的；信任不再寫 ct mark。
 
 **決定**：wnc-gw 自己組 ctnetlink 訊息（`kernel/conntrack.rs`），不用 crate、也不 spawn `conntrack`。〔已實作〕O17，2026-10-28。這是「netlink 用 rust-netlink」原則的例外，只限 ctnetlink。
 
@@ -414,6 +418,10 @@ rp_filter 不另外檢查：路由設對時 strict 模式不會擋正常流量�
 - 核心 eBPF 程式用 Rust（aya-ebpf），排在 TCX 第一；授權先用 GPL 相容的開源授權（字串待定，建議 `Dual MIT/GPL`），之後要閉源再改。〔已決定〕2026-11-14。
 - 骨架（步驟 A1）〔已實作〕2026-11-14：`run` 裝好 table 後把核心程式掛到兩個 port 的 TCX ingress 第一位，只計數、回傳 NEXT；不 pin（wnc-gw 結束或被 `kill -9` 時 kernel 自動卸下）。ELF 用 `Dual MIT/GPL` 嵌進 wnc-gw。**掛不上時記 ERROR D001、照常執行**（我替開發者選的：程式現在不改變轉送；之後 fast path 掛不上時，信任仍由 netfilter 的 ct mark 處理，只是比較慢）。Docker、Pi 6.18（沒有 vmlinux BTF）都驗過。
 - 揭露別的 TCX 程式（步驟 A2）〔已實作〕2026-11-14：doctor 列出每個 port 的 TCX ingress（D002 排在前面、D006 不是 wnc-gw 的、D004 查不了、D005 沒有 TCX），run 每 10 秒確認核心程式還在第一位（D002、D003，只在改變時記，不自動重掛），全部是 warning。查詢自己呼叫 `bpf(BPF_PROG_QUERY)`（新增一處 `unsafe`，開發者同意），只要 `CAP_NET_ADMIN`，之後的 privd 也能用；aya 的 `query_tcx` 要 `CAP_SYS_ADMIN`，沒有用。
+- **trust 搬到 TC（步驟 C）〔已實作〕2026-11-14**：核心程式查 trust map（`gw-common` 的 `FlowKey`：五元組 40 bytes；每個方向一筆，HASH 32,768 筆；value 是封包數、bytes、最後時間、方向，另外預留 RQ3 第 4 項的欄位），查到就 redirect：bridge 用 `bpf_redirect`；routed 減 TTL（IPv4 用 `l3_csum_replace` 修 checksum，TTL ≤ 1 交回 kernel）再 `bpf_redirect_neigh`。廣播／多播、IPv4 分片、TCP 的 SYN／FIN／RST 交回 kernel。寫入由 `LocalPrivd` 負責（它持有核心程式）；`wnc-gw trust` 經 `/run/wnc-gw/control.sock`（0600、`SO_PEERCRED` 只收 root 或 run 的帳號）請 run 寫，`add` 先用 ctnetlink 確認連線存在而且有 forwarded 位元（送給 gateway 自己的連線 redirect 出去會錯）。自動信任的狀態機：已信任的連線不在 conntrack 表裡（UDP 逾時）或換了 entry（控制封包建了新的）也留到 TTL 再刪 map。核心程式掛不上時沒有信任，自動信任關閉（T014）。
+  - Docker（routed testbed，`tests/ebpf/fastpath_docker.sh all`）：TCP、UDP 信任期間 forward chain 的 counter 停住（65 → 65、32 → 32），`trust del` 後恢復；srv 收到的 TTL 是 63；160 行／160 個全部收到；port 重用時信任被刪；送給 gw 自己的連線 `is not forwarded by the gateway`；nobody `permission denied`；run 沒在跑 `wnc-gw run is not running`。自動信任（`protection_docker.sh autotrust`，ids、ips）和 11/04 的結果相同。沒有 CAP_BPF 時 D001＋T014。
+  - Pi（bridge，`tests/ebpf/core_pi.sh fastpath|auto`）：IPv4 TCP、UDP、IPv6 TCP 都在信任期間停住、`del` 後恢復，TTL／hop limit 64（bridge 不減）；自動信任的 ids chain 停在 47，TTL 到期再信任，FIN 的 alert 撤銷。
+  - 還沒做：手動信任的閒置清除（連線結束後 entry 留到 `del`、新 SYN 或 run 停止）；用 wnc-gw 本身在 Pi 實體網卡重量（E1 是 bench 的 V4）、很多條信任 flow、routed 的 Pi 量測。
 - 成本（步驟 A3）〔已量〕2026-11-14（`tests/ebpf/README.md`，Pi 4、1000 MHz、veth、10 kpps）：進 TCX 本身約 0.52 µs／封包（整台 CPU，同一輪相減，標準差 0.07）；程式本身（bpf_stats）計數 +47 ns、解析 header＋五元組查一次空的 hash map +449 ns。現在的核心程式約 0.57 µs、加上 fast path 每個封包一定要做的查表約 1.0 µs，每個封包都要付；信任的封包約 14 µs、全部檢查 55–61 µs。
 
 **依據（設計，沒有在 Pi 上量過）**

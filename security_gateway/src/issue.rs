@@ -76,6 +76,7 @@ issues! {
     AutoTrust,
     AutoTrustNoAlerts,
     AutoTrustOff,
+    AutoTrustNoFastPath,
     AutoTrustPaused,
     ConntrackAcct,
     TrustTtlTooShort,
@@ -86,6 +87,8 @@ issues! {
     ChecksFailed,
     SignalsUnavailable,
     SupervisionEnded,
+    ControlUnavailable,
+    ControlRejected,
     TableInstallFailed,
     CoreProgramFailed,
     CoreProgramNotFirst,
@@ -117,7 +120,6 @@ issues! {
     ConntrackDropped,
     ConntrackEvicted,
     ConntrackStatsUnreadable,
-    EarlierTrustKept,
     ConntrackUnreadable,
     NoPacketCounters,
     TrustFailed,
@@ -795,6 +797,17 @@ impl Issue {
                         reports T002 instead and run does not start.",
                 action: "Fix what S002, S010 or S024 reports, then restart run to turn automatic trust back on.",
             },
+            Self::AutoTrustNoFastPath => &Explanation {
+                code: "T014",
+                title: "automatic trust is off because the core eBPF program is not attached",
+                reported_by: RUN,
+                severity: "warning",
+                cause: "[trust] auto = true, but the core eBPF program could not be attached (D001). \
+                        Trust is kept in that program's map and trusted packets are forwarded by it, \
+                        so without it nothing can be trusted: every connection is inspected and only \
+                        the CPU that trust saves is lost.",
+                action: "Fix what D001 reports, then restart run.",
+            },
             Self::AutoTrustPaused => &Explanation {
                 code: "T013",
                 title: "automatic trust is paused because alerts are not current",
@@ -899,6 +912,28 @@ impl Issue {
                         (F003) and exits with a failure.",
                 action: "Start run again and report it with the log.",
             },
+            Self::ControlUnavailable => &Explanation {
+                code: "L006",
+                title: "run cannot listen for trust requests",
+                reported_by: RUN,
+                severity: "warning",
+                cause: "At start, run creates the socket that wnc-gw trust add, del and list talk to \
+                        (control.sock in /run/wnc-gw) and that failed, for example because the \
+                        directory is not writable. run keeps going; automatic trust is not affected.",
+                action: "Check the error in the message and the permissions of /run/wnc-gw, then \
+                         restart run.",
+            },
+            Self::ControlRejected => &Explanation {
+                code: "L007",
+                title: "a trust request from another account was rejected",
+                reported_by: RUN,
+                severity: "warning",
+                cause: "Something connected to run's trust socket from an account that is neither \
+                        root nor the one run uses. The socket is only accessible to that account \
+                        (mode 0600), so this needs a process that already has its privileges or \
+                        an unusual setup. The request is not carried out.",
+                action: "Find out which program it was (uid in the log); use wnc-gw trust as root.",
+            },
             Self::TableInstallFailed => &Explanation {
                 code: "F001",
                 title: "the nft table cannot be installed",
@@ -919,8 +954,9 @@ impl Issue {
                 cause: "At start, run loads its eBPF program and attaches it first on TCX ingress of \
                         both ports, and that failed: run lacks CAP_BPF or CAP_NET_ADMIN, the kernel \
                         has no TCX (it needs Linux 6.6 or later) or rejected the program, or a port \
-                        went away. The program does not change traffic yet, so run keeps running \
-                        without it; inspection and trust work as before.",
+                        went away. run keeps running without it: trust lives in the program's \
+                        map, so no connection is trusted and every packet is inspected (more CPU, \
+                        nothing skips inspection); automatic trust is turned off (T014).",
                 action: "Run as root on Linux 6.6 or later; the message has the kernel's error. See \
                          what is attached with: bpftool net show.",
             },
@@ -947,7 +983,8 @@ impl Issue {
                         TCX ingress, and it is gone: the interface was removed (a USB adapter \
                         unplugged; the attachment does not come back when it is plugged in again) \
                         or someone detached it (bpftool link detach). run does not attach it \
-                        again; inspection and trust work as before.",
+                        again, so the connections trusted on that port are inspected again (more \
+                        CPU, nothing skips inspection).",
                 action: "Restart run once the port is back (wnc-gw doctor shows the port and its \
                          TCX programs).",
             },
@@ -968,8 +1005,8 @@ impl Issue {
                 reported_by: DOCTOR,
                 severity: "warning",
                 cause: "The kernel rejected the query for TCX ingress programs, so it has no TCX \
-                        (added in Linux 6.6) and run cannot attach its core eBPF program (D001). \
-                        Inspection and trust do not need it yet.",
+                        (added in Linux 6.6) and run cannot attach its core eBPF program (D001), \
+                        which holds trust: every connection is inspected.",
                 action: "Use Linux 6.6 or later.",
             },
             Self::ForeignTcxPrograms => &Explanation {
@@ -1253,20 +1290,6 @@ impl Issue {
                         cannot be reported. Logged once; INFO when it works again.",
                 action: "Run wnc-gw run as root and check the kernel modules with wnc-gw doctor.",
             },
-            Self::EarlierTrustKept => &Explanation {
-                code: "T005",
-                title: "trust left by an earlier run cannot be cleared",
-                reported_by: RUN,
-                severity: "error",
-                cause: "At start, run clears the trust mark of every connection an earlier wnc-gw \
-                        trusted, and that failed for some connections, or ctnetlink could not be \
-                        used at all (for example without CAP_NET_ADMIN, in which case F001 \
-                        follows). Connections still marked keep skipping inspection until they \
-                        end; when ctnetlink fails, wnc-gw cannot tell whether there are any.",
-                action: "Run as root; list the marked connections with: wnc-gw trust list, and \
-                         remove them with wnc-gw trust del (TCP and UDP) or conntrack -D (any \
-                         protocol).",
-            },
             Self::ConntrackUnreadable => &Explanation {
                 code: "T006",
                 title: "the conntrack table cannot be read; automatic trust is paused",
@@ -1293,20 +1316,21 @@ impl Issue {
                 title: "a connection cannot be trusted",
                 reported_by: RUN,
                 severity: "warning",
-                cause: "Setting a connection's trust mark over ctnetlink failed. The connection \
-                        simply stays inspected.",
-                action: "Nothing is needed for that connection; if it repeats, check that \
-                         ctnetlink works (conntrack -L).",
+                cause: "Writing a connection into the core eBPF program's trust map failed, \
+                        usually because the map is full (32768 entries: 16384 connections, one \
+                        entry per direction). The connection simply stays inspected.",
+                action: "Nothing is needed for that connection; if it repeats, see how many are \
+                         trusted with: wnc-gw trust list.",
             },
             Self::ExpireFailed => &Explanation {
                 code: "T009",
                 title: "trust cannot be ended",
                 reported_by: RUN,
                 severity: "error",
-                cause: "A trusted connection reached its ttl, but clearing its trust mark failed, \
-                        so it keeps skipping inspection until it ends.",
-                action: "Remove it with wnc-gw trust del (TCP and UDP) or delete it with conntrack \
-                         -D.",
+                cause: "A trusted connection reached its ttl, but removing it from the trust map \
+                        failed, so it keeps skipping inspection until run stops or the same TCP \
+                        connection starts again (a new SYN).",
+                action: "Remove it with: wnc-gw trust del.",
             },
             Self::TrustRevoked => &Explanation {
                 code: "T010",
@@ -1324,10 +1348,10 @@ impl Issue {
                 title: "trust cannot be revoked after an alert",
                 reported_by: RUN,
                 severity: "error",
-                cause: "Suricata alerted on a trusted connection, but clearing its trust mark \
-                        failed, so the connection keeps skipping inspection until it ends.",
-                action: "Remove it with wnc-gw trust del (TCP and UDP) or delete it with conntrack \
-                         -D, and look at the alert.",
+                cause: "Suricata alerted on a trusted connection, but removing it from the trust \
+                        map failed, so the connection keeps skipping inspection until run stops or \
+                        the same TCP connection starts again (a new SYN).",
+                action: "Remove it with wnc-gw trust del, and look at the alert.",
             },
         }
     }

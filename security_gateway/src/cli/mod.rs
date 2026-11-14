@@ -68,7 +68,7 @@ pub async fn run() -> ExitCode {
         Command::Explain(args) => explain::run(args),
         Command::Run(args) => run::run(cli.config.as_deref(), overrides, cli.log_format, cli.log_level, args).await,
         Command::Show(args) => show::run(args).await,
-        Command::Trust(args) => trust::run(args, cli.log_format, cli.log_level),
+        Command::Trust(args) => trust::run(args),
     }
 }
 

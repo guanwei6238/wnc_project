@@ -2,15 +2,14 @@ use std::fmt;
 use std::str::FromStr;
 
 use crate::ids::delivery::Delivery;
-use crate::kernel::conntrack::{Connection, Conntrack, ConntrackError, FiveTuple};
+use crate::kernel::conntrack::{Connection, Conntrack, ConntrackError};
 use crate::kernel::nflog::GroupRange;
-use crate::kernel::nft::{BaseChain, Family, Hook, Nft, NftError, Policy, RegularChain, Statement, Table, TcpFlag};
+use crate::kernel::nft::{BaseChain, Family, Hook, Nft, NftError, Policy, RegularChain, Statement, Table};
 
 pub const FAMILY: Family = Family::Inet;
 pub const TABLE: &str = "wnc_gw";
 const PRIORITY_FILTER: i32 = 0;
 const IDS_CHAIN: &str = "ids";
-pub const TRUSTED_MARK: u32 = 0x8000_0000;
 pub const FORWARDED_MARK: u32 = 0x4000_0000;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -74,43 +73,8 @@ pub async fn remove(nft: &Nft) -> Result<(), NftError> {
     nft.delete_table(FAMILY, TABLE).await
 }
 
-pub fn trust(conntrack: &mut Conntrack, tuple: &FiveTuple) -> Result<(), ConntrackError> {
-    conntrack.set_mark(tuple, TRUSTED_MARK, TRUSTED_MARK)
-}
-
-pub fn untrust(conntrack: &mut Conntrack, tuple: &FiveTuple) -> Result<(), ConntrackError> {
-    conntrack.set_mark(tuple, 0, TRUSTED_MARK)
-}
-
-pub fn trusted(conntrack: &mut Conntrack) -> Result<Vec<Connection>, ConntrackError> {
-    conntrack.list(TRUSTED_MARK, TRUSTED_MARK)
-}
-
 pub fn forwarded(conntrack: &mut Conntrack) -> Result<Vec<Connection>, ConntrackError> {
     conntrack.list(FORWARDED_MARK, FORWARDED_MARK)
-}
-
-#[derive(Debug, Default)]
-pub struct Untrusted {
-    pub cleared: usize,
-    pub gone: usize,
-    pub failed: Vec<(FiveTuple, ConntrackError)>,
-}
-
-pub fn untrust_all(conntrack: &mut Conntrack) -> Result<Untrusted, ConntrackError> {
-    let tuples: Vec<FiveTuple> = trusted(conntrack)?.into_iter().map(|c| c.original).collect();
-    let failures = conntrack.set_marks(&tuples, 0, TRUSTED_MARK)?;
-    Ok(untrusted(tuples.len(), failures))
-}
-
-fn untrusted(total: usize, failures: Vec<(FiveTuple, ConntrackError)>) -> Untrusted {
-    let (gone, failed): (Vec<_>, Vec<_>) =
-        failures.into_iter().partition(|(_, e)| matches!(e, ConntrackError::NotFound));
-    Untrusted {
-        cleared: total - gone.len() - failed.len(),
-        gone: gone.len(),
-        failed,
-    }
 }
 
 fn table(inspection: Inspection) -> Table {
@@ -124,21 +88,7 @@ fn table(inspection: Inspection) -> Table {
             policy: Policy::Accept,
             rules: vec![
                 vec![Statement::Counter],
-                vec![
-                    Statement::TcpFlagsEq {
-                        mask: vec![TcpFlag::Syn, TcpFlag::Ack],
-                        value: vec![TcpFlag::Syn],
-                    },
-                    Statement::CtMarkHas(TRUSTED_MARK),
-                    Statement::Counter,
-                    Statement::CtMarkClear(TRUSTED_MARK),
-                ],
                 vec![Statement::CtMarkLacks(FORWARDED_MARK), Statement::CtMarkSet(FORWARDED_MARK)],
-                vec![
-                    Statement::TcpFlagsAny(vec![TcpFlag::Fin, TcpFlag::Syn, TcpFlag::Rst]),
-                    Statement::Jump(IDS_CHAIN.to_owned()),
-                ],
-                vec![Statement::CtMarkHas(TRUSTED_MARK), Statement::Counter, Statement::Accept],
                 vec![Statement::Jump(IDS_CHAIN.to_owned())],
             ],
         }],

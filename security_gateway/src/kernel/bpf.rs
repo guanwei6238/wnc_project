@@ -3,8 +3,10 @@ use std::io;
 use std::mem::size_of;
 
 use aya::Ebpf;
-use aya::maps::PerCpuArray;
+use aya::maps::{Array, HashMap as BpfHashMap, MapError, PerCpuArray};
 use aya::programs::{LinkOrder, SchedClassifier, TcAttach, TcAttachType, loaded_programs};
+use aya::sys::SyscallError;
+use gw_common::{FlowKey, FlowStats};
 
 const BPF_PROG_QUERY: libc::c_long = 16;
 const BPF_TCX_INGRESS: u32 = 46;
@@ -26,8 +28,10 @@ pub enum BpfError {
         ifindex: u32,
         error: String,
     },
-    #[error("cannot read map {name:?}: {error}")]
+    #[error("cannot use map {name:?}: {error}")]
     Map { name: &'static str, error: String },
+    #[error("map {name:?} is full")]
+    MapFull { name: &'static str },
     #[error("cannot list the loaded eBPF programs: {0}")]
     List(String),
 }
@@ -80,19 +84,68 @@ impl TcxProgram {
         Ok(())
     }
 
-    pub fn per_cpu_sum(&self, map: &'static str) -> Result<u64, BpfError> {
-        let map_error = |e: &dyn std::error::Error| BpfError::Map {
-            name: map,
-            error: error_chain(e),
-        };
-        let array: PerCpuArray<_, u64> = self
-            .ebpf
-            .map(map)
-            .ok_or(BpfError::NoMap(map))?
-            .try_into()
-            .map_err(|e| map_error(&e))?;
-        let values = array.get(&0, 0).map_err(|e| map_error(&e))?;
+    pub fn per_cpu_sum(&self, map: &'static str, index: u32) -> Result<u64, BpfError> {
+        let array: PerCpuArray<_, u64> = self.map(map)?.try_into().map_err(|e| map_error(map, &e))?;
+        let values = array.get(&index, 0).map_err(|e| map_error(map, &e))?;
         Ok(values.iter().fold(0u64, |sum, v| sum.wrapping_add(*v)))
+    }
+
+    pub fn set_u32(&mut self, map: &'static str, index: u32, value: u32) -> Result<(), BpfError> {
+        let mut array: Array<_, u32> = self.map_mut(map)?.try_into().map_err(|e| map_error(map, &e))?;
+        array.set(index, &value, 0).map_err(|e| map_error(map, &e))
+    }
+
+    pub fn insert_u32(&mut self, map: &'static str, key: u32, value: u32) -> Result<(), BpfError> {
+        let mut hash: BpfHashMap<_, u32, u32> = self.map_mut(map)?.try_into().map_err(|e| map_error(map, &e))?;
+        hash.insert(&key, &value, 0).map_err(|e| map_error(map, &e))
+    }
+
+    pub fn insert_flow(&mut self, map: &'static str, key: &FlowKey, value: &FlowStats) -> Result<(), BpfError> {
+        let mut hash: BpfHashMap<_, FlowKey, FlowStats> =
+            self.map_mut(map)?.try_into().map_err(|e| map_error(map, &e))?;
+        hash.insert(key, value, 0).map_err(|e| match errno(&e) {
+            Some(libc::E2BIG) => BpfError::MapFull { name: map },
+            _ => map_error(map, &e),
+        })
+    }
+
+    // 回傳 false：本來就沒有這筆
+    pub fn remove_flow(&mut self, map: &'static str, key: &FlowKey) -> Result<bool, BpfError> {
+        let mut hash: BpfHashMap<_, FlowKey, FlowStats> =
+            self.map_mut(map)?.try_into().map_err(|e| map_error(map, &e))?;
+        match hash.remove(key) {
+            Ok(()) => Ok(true),
+            Err(e) if errno(&e) == Some(libc::ENOENT) => Ok(false),
+            Err(e) => Err(map_error(map, &e)),
+        }
+    }
+
+    pub fn flows(&self, map: &'static str) -> Result<Vec<(FlowKey, FlowStats)>, BpfError> {
+        let hash: BpfHashMap<_, FlowKey, FlowStats> = self.map(map)?.try_into().map_err(|e| map_error(map, &e))?;
+        // 列舉途中被 kernel 刪掉的（純 SYN）會在這裡失敗，跳過
+        Ok(hash.iter().filter_map(Result::ok).collect())
+    }
+
+    fn map(&self, map: &'static str) -> Result<&aya::maps::Map, BpfError> {
+        self.ebpf.map(map).ok_or(BpfError::NoMap(map))
+    }
+
+    fn map_mut(&mut self, map: &'static str) -> Result<&mut aya::maps::Map, BpfError> {
+        self.ebpf.map_mut(map).ok_or(BpfError::NoMap(map))
+    }
+}
+
+fn map_error(name: &'static str, e: &dyn std::error::Error) -> BpfError {
+    BpfError::Map {
+        name,
+        error: error_chain(e),
+    }
+}
+
+fn errno(e: &MapError) -> Option<i32> {
+    match e {
+        MapError::SyscallError(SyscallError { io_error, .. }) => io_error.raw_os_error(),
+        _ => None,
     }
 }
 

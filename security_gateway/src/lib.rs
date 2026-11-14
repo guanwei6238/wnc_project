@@ -2,6 +2,7 @@ pub mod access;
 pub mod agent;
 pub mod command;
 pub mod config;
+pub mod control;
 pub mod datapath;
 pub mod firewall;
 pub mod forwarding;

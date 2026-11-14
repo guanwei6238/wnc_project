@@ -94,19 +94,17 @@ fn rejects_unknown_when_unavailable() {
 }
 
 #[test]
-fn control_packets_go_to_ids_before_trusted_flows_are_accepted() {
+fn forward_marks_then_sends_everything_to_ids() {
     let rules = &table(inspection("0", WhenUnavailable::Drop)).chains[0].rules;
-    let ids = Statement::Jump("ids".into());
-    let l2 = rules
-        .iter()
-        .position(|r| r == &vec![Statement::TcpFlagsAny(vec![TcpFlag::Fin, TcpFlag::Syn, TcpFlag::Rst]), ids.clone()])
-        .expect("syn/fin/rst rule");
-    let trusted = rules
-        .iter()
-        .position(|r| r == &vec![Statement::CtMarkHas(TRUSTED_MARK), Statement::Counter, Statement::Accept])
-        .expect("trusted rule");
-    assert!(l2 < trusted, "control packets must be checked before trusted flows are accepted");
-    assert_eq!(rules.last(), Some(&vec![ids]));
+    assert_eq!(
+        rules,
+        &vec![
+            vec![Statement::Counter],
+            vec![Statement::CtMarkLacks(FORWARDED_MARK), Statement::CtMarkSet(FORWARDED_MARK)],
+            vec![Statement::Jump("ids".into())],
+        ],
+        "trust lives in the core eBPF program now; what reaches netfilter is never trusted"
+    );
 }
 
 #[test]
@@ -123,14 +121,8 @@ fn ids_chain_always_ends_with_a_verdict() {
 }
 
 #[test]
-fn trusted_mark_is_a_single_bit() {
-    assert_eq!(TRUSTED_MARK.count_ones(), 1);
-}
-
-#[test]
 fn forwarded_mark_is_another_single_bit() {
     assert_eq!(FORWARDED_MARK.count_ones(), 1);
-    assert_eq!(FORWARDED_MARK & TRUSTED_MARK, 0);
 }
 
 #[test]
@@ -145,42 +137,6 @@ fn forwarded_connections_are_marked_once_before_any_verdict() {
         .position(|r| r.iter().any(|s| matches!(s, Statement::Jump(_) | Statement::Accept)))
         .expect("a rule with a verdict");
     assert!(mark < first_verdict, "every forwarded connection must get the mark, trusted or not");
-}
-
-#[test]
-fn a_bare_syn_clears_trust_before_anything_else_sees_it() {
-    let rules = &table(inspection("0", WhenUnavailable::Drop)).chains[0].rules;
-    let syn = Statement::TcpFlagsEq {
-        mask: vec![TcpFlag::Syn, TcpFlag::Ack],
-        value: vec![TcpFlag::Syn],
-    };
-    let clear = rules
-        .iter()
-        .position(|r| {
-            r == &vec![syn.clone(), Statement::CtMarkHas(TRUSTED_MARK), Statement::Counter, Statement::CtMarkClear(TRUSTED_MARK)]
-        })
-        .expect("syn clear rule");
-    let first_verdict = rules
-        .iter()
-        .position(|r| r.iter().any(|s| matches!(s, Statement::Jump(_) | Statement::Accept)))
-        .expect("a rule with a verdict");
-    assert!(
-        clear < first_verdict,
-        "a new connection reusing a trusted entry must lose the mark before its syn is judged"
-    );
-}
-
-#[test]
-fn connections_that_already_ended_are_not_failures() {
-    use crate::kernel::conntrack::{ConntrackError, FiveTuple, Protocol};
-    let tuple = FiveTuple::new(Protocol::Tcp, "10.0.1.2:1".parse().unwrap(), "10.0.2.2:2".parse().unwrap()).unwrap();
-    let failures = vec![
-        (tuple, ConntrackError::NotFound),
-        (tuple, ConntrackError::Kernel(std::io::Error::from_raw_os_error(libc::EINVAL))),
-        (tuple, ConntrackError::NotFound),
-    ];
-    let u = untrusted(10, failures);
-    assert_eq!((u.cleared, u.gone, u.failed.len()), (7, 2, 1));
 }
 
 #[test]

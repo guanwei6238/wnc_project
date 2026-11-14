@@ -11,6 +11,7 @@ fn main() {
     let manifest_dir = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR is set by cargo"));
     let out_dir = PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR is set by cargo"));
     println!("cargo::rerun-if-changed={}", manifest_dir.join(EBPF_PACKAGE).display());
+    println!("cargo::rerun-if-changed={}", manifest_dir.join("gw-common").display());
     println!("cargo::rerun-if-changed={}", manifest_dir.join("Cargo.lock").display());
 
     // 另外的 target 目錄：和外層的 cargo 共用會互相鎖住

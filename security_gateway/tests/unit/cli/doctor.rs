@@ -332,7 +332,7 @@ fn a_kernel_without_tcx_is_a_warning() {
             severity: Severity::Warning,
             issue: Issue::TcxUnsupported,
             message: "the kernel has no TCX (it needs Linux 6.6 or later), so run cannot attach its core eBPF \
-                      program (D001); inspection and trust work without it"
+                      program (D001), which holds trust; every connection is inspected"
                 .to_owned(),
         }]
     );

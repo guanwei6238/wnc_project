@@ -3,11 +3,9 @@ use std::net::{IpAddr, SocketAddr};
 use std::process::ExitCode;
 
 use clap::{Args, Subcommand};
-use security_gateway::firewall;
-use security_gateway::kernel::conntrack::{Connection, Conntrack, FiveTuple, Protocol};
-use tracing::info;
-
-use super::logging::{self, LogFormat, LogLevel};
+use security_gateway::control::{self, Flow, Request, Response, Tuple};
+use security_gateway::kernel::conntrack::{FiveTuple, Protocol};
+use security_gateway::platform::{Current, Dirs};
 
 #[derive(Debug, Args)]
 pub struct TrustArgs {
@@ -39,70 +37,58 @@ pub struct ConnectionArgs {
 #[derive(Debug, Args)]
 pub struct ListArgs {}
 
-pub fn run(args: TrustArgs, log_format: LogFormat, log_level: LogLevel) -> ExitCode {
-    match args.command {
-        TrustCommand::Add(args) => change(args, true, log_format, log_level),
-        TrustCommand::Del(args) => change(args, false, log_format, log_level),
-        TrustCommand::List(_) => list(),
-    }
-}
-
-fn change(args: ConnectionArgs, trust: bool, log_format: LogFormat, log_level: LogLevel) -> ExitCode {
-    let tuple = match FiveTuple::new(
-        args.protocol,
-        SocketAddr::new(args.src, args.src_port),
-        SocketAddr::new(args.dst, args.dst_port),
-    ) {
-        Ok(tuple) => tuple,
-        Err(e) => return fail(e),
+pub fn run(args: TrustArgs) -> ExitCode {
+    let request = match args.command {
+        TrustCommand::Add(args) => match tuple(&args) {
+            Ok(tuple) => Request::Trust {
+                connection: Tuple::of(&tuple),
+            },
+            Err(e) => return fail(e),
+        },
+        TrustCommand::Del(args) => match tuple(&args) {
+            Ok(tuple) => Request::Untrust {
+                connection: Tuple::of(&tuple),
+            },
+            Err(e) => return fail(e),
+        },
+        TrustCommand::List(_) => Request::List,
     };
-    let mut conntrack = match Conntrack::connect() {
-        Ok(conntrack) => conntrack,
-        Err(e) => return fail(e),
-    };
-    let result = if trust {
-        firewall::trust(&mut conntrack, &tuple)
-    } else {
-        firewall::untrust(&mut conntrack, &tuple)
-    };
-    if let Err(e) = result {
-        return fail(format_args!("{tuple}: {e}"));
-    }
-    logging::init(log_format, log_level);
-    let connection = tuple.to_string();
-    if trust {
-        info!(connection = connection.as_str(), "connection trusted, its packets other than syn/fin/rst skip inspection");
-    } else {
-        info!(connection = connection.as_str(), "connection no longer trusted, its packets go to inspection again");
-    }
-    ExitCode::SUCCESS
-}
-
-fn list() -> ExitCode {
-    match Conntrack::connect().and_then(|mut conntrack| firewall::trusted(&mut conntrack)) {
-        Ok(connections) => {
-            print_connections(&connections);
+    let path = control::socket_path(Current.runtime_dir());
+    match control::request(&path, &request) {
+        Ok(Response::Done) => ExitCode::SUCCESS,
+        Ok(Response::Trusted { flows }) => {
+            print_flows(&flows);
             ExitCode::SUCCESS
         }
+        Ok(Response::Error { message }) => fail(message),
         Err(e) => fail(e),
     }
 }
 
-fn print_connections(connections: &[Connection]) {
+fn tuple(args: &ConnectionArgs) -> Result<FiveTuple, impl fmt::Display> {
+    FiveTuple::new(
+        args.protocol,
+        SocketAddr::new(args.src, args.src_port),
+        SocketAddr::new(args.dst, args.dst_port),
+    )
+}
+
+fn print_flows(flows: &[Flow]) {
     out!(
-        "{:<10} {:<5} {:<24} {:<24} {:<11} {:>7} {}",
-        "ID", "PROTO", "SOURCE", "DESTINATION", "STATE", "TIMEOUT", "MARK"
+        "{:<5} {:<40} {:<40} {:>10} {:>12} {:>10} {:>12}",
+        "PROTO", "SOURCE", "DESTINATION", "PACKETS->", "BYTES->", "PACKETS<-", "BYTES<-"
     );
-    for c in connections {
+    for flow in flows {
+        let c = &flow.connection;
         out!(
-            "{:<10} {:<5} {:<24} {:<24} {:<11} {:>7} {:#010x}",
-            c.id,
-            c.original.protocol().to_string(),
-            c.original.src().to_string(),
-            c.original.dst().to_string(),
-            c.tcp_state.map_or_else(|| "-".to_owned(), |s| s.to_string()),
-            c.timeout_s.map_or_else(|| "-".to_owned(), |t| t.to_string()),
-            c.mark,
+            "{:<5} {:<40} {:<40} {:>10} {:>12} {:>10} {:>12}",
+            c.protocol,
+            c.src.to_string(),
+            c.dst.to_string(),
+            flow.packets_original,
+            flow.bytes_original,
+            flow.packets_reply,
+            flow.bytes_reply
         );
     }
 }

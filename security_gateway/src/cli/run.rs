@@ -4,18 +4,19 @@ use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
 use clap::Args;
-use security_gateway::agent::LocalPrivd;
+use security_gateway::agent::{LocalPrivd, Privd, PrivdError};
 use security_gateway::agent::trust::{TrustAgent, TrustPolicy};
 use security_gateway::config::{self, Config, Overrides, TrustSettings};
+use security_gateway::control::{self, ControlServer, Flow, Incoming, Request, Response, Tuple};
 use security_gateway::datapath::CoreProgram;
-use security_gateway::firewall::{self, FAMILY, Inspection, TABLE, WhenUnavailable};
+use security_gateway::firewall::{self, FAMILY, FORWARDED_MARK, Inspection, TABLE, WhenUnavailable};
 use security_gateway::ids::delivery::Delivery;
 use security_gateway::ids::lifecycle::{Event, Lifecycle};
 use security_gateway::ids::spawned::{self, Options, SpawnedSuricata};
 use security_gateway::ids::suricata::Suricata;
 use security_gateway::instance::{self, InstanceError};
 use security_gateway::issue::Issue;
-use security_gateway::kernel::conntrack::Conntrack;
+use security_gateway::kernel::conntrack::{Conntrack, ConntrackError};
 use security_gateway::kernel::bpf;
 use security_gateway::kernel::netif::Netlink;
 use security_gateway::kernel::nflog;
@@ -84,7 +85,6 @@ pub async fn run(
         delivery: config.delivery(),
         when_unavailable: config.suricata.when_unavailable.value,
     };
-    clear_earlier_trust();
     if let Err(e) = firewall::install(&nft, inspection).await {
         error!(code = %Issue::TableInstallFailed, table = table.as_str(), error = %e, "failed to install table");
         return ExitCode::FAILURE;
@@ -95,10 +95,23 @@ pub async fn run(
         Some((core, watch)) => (Some(core), Some(watch)),
         None => (None, None),
     };
+    let mut privd = LocalPrivd::new(core);
+    let control = match ControlServer::bind(&control::socket_path(Current.runtime_dir())) {
+        Ok(server) => Some(server),
+        Err(e) => {
+            warn!(
+                code = %Issue::ControlUnavailable,
+                error = %e,
+                "cannot listen for wnc-gw trust requests; trust add, del and list do not work"
+            );
+            None
+        }
+    };
 
-    let mut code = serve(&config, &nft, inspection, alert_file, core_watch, &mut signals).await;
+    let mut code = serve(&config, &nft, inspection, alert_file, &mut privd, core_watch, control.as_ref(), &mut signals).await;
 
-    if let Some(core) = core {
+    drop(control);
+    if let Some(core) = privd.into_core() {
         detach_core(core);
     }
 
@@ -118,7 +131,7 @@ pub async fn run(
 
 async fn attach_core(config: &Config) -> Option<(CoreProgram, CoreWatch)> {
     let attached = match resolve_ports(config).await {
-        Ok(ports) => CoreProgram::attach(&ports).map(|core| (core, ports)).map_err(|e| e.to_string()),
+        Ok(ports) => CoreProgram::attach(&ports, config.mode.value).map(|core| (core, ports)).map_err(|e| e.to_string()),
         Err(e) => Err(e),
     };
     match attached {
@@ -144,7 +157,7 @@ async fn attach_core(config: &Config) -> Option<(CoreProgram, CoreWatch)> {
             error!(
                 code = %Issue::CoreProgramFailed,
                 error = e.as_str(),
-                "cannot attach the core ebpf program; running without it"
+                "cannot attach the core ebpf program; running without it, so no connection is trusted"
             );
             None
         }
@@ -161,41 +174,11 @@ async fn resolve_ports(config: &Config) -> Result<Vec<Port>, String> {
 }
 
 fn detach_core(core: CoreProgram) {
-    let (prog_id, packets) = (core.id(), core.packets());
+    let (prog_id, packets, redirected) = (core.id(), core.packets(), core.redirected());
     drop(core);
-    match packets {
-        Ok(packets) => info!(prog_id, packets, "core ebpf program detached"),
-        Err(e) => info!(prog_id, error = %e, "core ebpf program detached"),
-    }
-}
-
-fn clear_earlier_trust() {
-    let start = Instant::now();
-    match Conntrack::connect().and_then(|mut conntrack| firewall::untrust_all(&mut conntrack)) {
-        Ok(untrusted) => {
-            if untrusted.cleared + untrusted.gone > 0 {
-                info!(
-                    cleared = untrusted.cleared,
-                    gone = untrusted.gone,
-                    clear_ms = start.elapsed().as_millis() as u64,
-                    "cleared trust left by an earlier run"
-                );
-            }
-            for (tuple, e) in &untrusted.failed {
-                let connection = tuple.to_string();
-                error!(
-                    code = %Issue::EarlierTrustKept,
-                    connection = connection.as_str(),
-                    error = %e,
-                    "cannot clear trust left by an earlier run; this connection skips inspection until it ends"
-                );
-            }
-        }
-        Err(e) => error!(
-            code = %Issue::EarlierTrustKept,
-            error = %e,
-            "cannot clear trust left by an earlier run; those connections skip inspection until they end"
-        ),
+    match (packets, redirected) {
+        (Ok(packets), Ok(redirected)) => info!(prog_id, packets, redirected, "core ebpf program detached"),
+        (Err(e), _) | (_, Err(e)) => info!(prog_id, error = %e, "core ebpf program detached"),
     }
 }
 
@@ -228,7 +211,9 @@ async fn serve(
     nft: &Nft,
     inspection: Inspection,
     alert_file: Option<PathBuf>,
+    privd: &mut LocalPrivd,
     core_watch: Option<CoreWatch>,
+    control: Option<&ControlServer>,
     signals: &mut StopSignals,
 ) -> ExitCode {
     let mut core_watch = core_watch;
@@ -243,8 +228,7 @@ async fn serve(
     };
     let mut alert_file = alert_file;
     let mut alerts: Option<AlertWatch> = None;
-    let mut privd = LocalPrivd::default();
-    let (mut trust_agent, mut trust_tick) = match trust_agent(config, alert_file.is_some()) {
+    let (mut trust_agent, mut trust_tick) = match trust_agent(config, alert_file.is_some(), privd.core().is_some()) {
         Some((agent, check_interval)) => {
             let mut tick = time::interval(check_interval);
             tick.set_missed_tick_behavior(MissedTickBehavior::Delay);
@@ -268,6 +252,16 @@ async fn serve(
                 break ExitCode::SUCCESS;
             }
             _ = monitor_tick.tick() => conntrack_monitor.check(Conntrack::connect().and_then(|mut c| c.stats())),
+            incoming = async {
+                match control {
+                    Some(control) => control.accept().await,
+                    None => std::future::pending().await,
+                }
+            } => {
+                if let Ok(incoming) = incoming {
+                    handle_request(incoming, privd).await;
+                }
+            }
             _ = core_tick.tick(), if core_watch.is_some() => {
                 if let Some(watch) = core_watch.as_mut() {
                     watch.check(bpf::tcx_ingress);
@@ -281,14 +275,14 @@ async fn serve(
             } => {
                 if let Some(agent) = trust_agent.as_mut() {
                     for alert in &found {
-                        agent.on_alert(alert, &mut privd, std::time::Instant::now());
+                        agent.on_alert(alert, privd, std::time::Instant::now());
                     }
                     agent.set_alerts_current(alerts.as_ref().is_none_or(AlertWatch::is_current));
                 }
             }
             _ = tick(&mut trust_tick) => {
                 if let Some(agent) = trust_agent.as_mut() {
-                    agent.check(&mut privd, std::time::Instant::now());
+                    agent.check(privd, std::time::Instant::now());
                 }
             }
             _ = copy_tick.tick(), if copying_to.is_some() => {
@@ -369,11 +363,18 @@ async fn tick(interval: &mut Option<time::Interval>) {
     }
 }
 
-fn trust_agent(config: &Config, alerts: bool) -> Option<(TrustAgent, Duration)> {
+fn trust_agent(config: &Config, alerts: bool, fast_path: bool) -> Option<(TrustAgent, Duration)> {
     let trust = match &config.trust {
         TrustSettings::Manual { .. } => return None,
         TrustSettings::Auto(auto) => auto,
     };
+    if !fast_path {
+        warn!(
+            code = %Issue::AutoTrustNoFastPath,
+            "automatic trust is off because the core ebpf program is not attached; every connection is inspected"
+        );
+        return None;
+    }
     if !alerts {
         warn!(
             code = %Issue::AutoTrustOff,
@@ -416,6 +417,89 @@ async fn alert_file(config: &Config) -> Option<PathBuf> {
         Err(e) => {
             warn!(code = %Issue::AlertFileUnknown, error = %e, "cannot read suricata's config; wnc-gw cannot see alerts");
             None
+        }
+    }
+}
+
+async fn handle_request(mut incoming: Incoming, privd: &mut LocalPrivd) {
+    let uid = incoming.uid.map_or(-1, i64::from);
+    if !incoming.allowed {
+        warn!(code = %Issue::ControlRejected, uid, "rejected a trust request from another account");
+        incoming
+            .reply(&Response::Error {
+                message: "permission denied".to_owned(),
+            })
+            .await;
+        return;
+    }
+    let response = match incoming.read().await {
+        Ok(request) => answer(request, privd, uid),
+        Err(e) => Response::Error { message: e.to_string() },
+    };
+    incoming.reply(&response).await;
+}
+
+fn answer(request: Request, privd: &mut LocalPrivd, uid: i64) -> Response {
+    let error = |message: String| Response::Error { message };
+    match request {
+        Request::List => match privd.trusted() {
+            Ok(flows) => Response::Trusted {
+                flows: flows
+                    .iter()
+                    .map(|flow| Flow {
+                        connection: Tuple::of(&flow.tuple),
+                        packets_original: flow.original.packets,
+                        bytes_original: flow.original.bytes,
+                        packets_reply: flow.reply.packets,
+                        bytes_reply: flow.reply.bytes,
+                    })
+                    .collect(),
+            },
+            Err(e) => error(e.to_string()),
+        },
+        Request::Trust { connection } => {
+            let tuple = match connection.five_tuple() {
+                Ok(tuple) => tuple,
+                Err(e) => return error(e),
+            };
+            // 只信任 gateway 轉送的連線：送給 gateway 自己的連線 redirect 出去就錯了
+            match privd.connection(&tuple) {
+                Ok(c) if c.mark & FORWARDED_MARK != 0 => {}
+                Ok(_) => return error(format!("{tuple} is not forwarded by the gateway")),
+                Err(ConntrackError::NotFound) => return error(format!("{tuple}: connection not found")),
+                Err(e) => return error(format!("{tuple}: {e}")),
+            }
+            match privd.trust(&tuple) {
+                Ok(()) => {
+                    let connection = tuple.to_string();
+                    info!(
+                        connection = connection.as_str(),
+                        uid,
+                        "connection trusted by request; its packets other than syn/fin/rst skip inspection"
+                    );
+                    Response::Done
+                }
+                Err(e) => error(format!("{tuple}: {e}")),
+            }
+        }
+        Request::Untrust { connection } => {
+            let tuple = match connection.five_tuple() {
+                Ok(tuple) => tuple,
+                Err(e) => return error(e),
+            };
+            match privd.untrust(&tuple) {
+                Ok(()) => {
+                    let connection = tuple.to_string();
+                    info!(
+                        connection = connection.as_str(),
+                        uid,
+                        "connection no longer trusted by request; its packets go to inspection again"
+                    );
+                    Response::Done
+                }
+                Err(PrivdError::NotTrusted) => error(format!("{tuple}: connection is not trusted")),
+                Err(e) => error(format!("{tuple}: {e}")),
+            }
         }
     }
 }

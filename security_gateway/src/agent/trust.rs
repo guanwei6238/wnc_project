@@ -5,11 +5,10 @@ use std::time::{Duration, Instant};
 
 use tracing::{debug, error, info, warn};
 
-use super::Privd;
+use super::{Privd, PrivdError};
 use crate::issue::Issue;
-use crate::firewall::TRUSTED_MARK;
 use crate::ids::eve::Alert;
-use crate::kernel::conntrack::{Connection, ConntrackError, FiveTuple, Protocol, TcpState};
+use crate::kernel::conntrack::{Connection, FiveTuple, Protocol, TcpState};
 
 pub const DEFAULT_MIN_PACKETS: u64 = 10;
 pub const DEFAULT_MIN_AGE: Duration = Duration::from_secs(5);
@@ -222,11 +221,13 @@ impl TrustAgent {
                 state: watching,
             });
             if tracked.id != c.id {
-                *tracked = Tracked {
-                    id: c.id,
-                    tuple: c.original,
-                    state: watching,
+                // 信任中的封包不經過 conntrack，entry 逾時後控制封包會建新的 entry（id 不同）；
+                // 信任在 map 裡，要留到 TTL 才刪，所以只換 id
+                let (tuple, state) = match tracked.state {
+                    State::Trusted { until } => (tracked.tuple, State::Trusted { until }),
+                    _ => (c.original, watching),
                 };
+                *tracked = Tracked { id: c.id, tuple, state };
             }
             if self.alerted.contains_key(&key) && matches!(tracked.state, State::Watching { .. }) {
                 tracked.state = State::Refused;
@@ -237,17 +238,9 @@ impl TrustAgent {
                     "suricata alerted on this connection before it was watched; it will not be trusted"
                 );
             }
-            let has_trust_bit = c.mark & TRUSTED_MARK != 0;
             match tracked.state {
                 State::Trusted { until } => {
-                    if !has_trust_bit {
-                        let connection = tracked.tuple.to_string();
-                        debug!(
-                            connection = connection.as_str(),
-                            "trust bit was cleared outside the agent; watching the connection again"
-                        );
-                        tracked.state = watching;
-                    } else if now >= until {
+                    if now >= until {
                         tracked.state = watching;
                         decisions.push(Decision::Expire { tuple: tracked.tuple });
                     }
@@ -255,9 +248,6 @@ impl TrustAgent {
                 State::Watching { since, base } => {
                     if !self.inspecting || !self.alerts_current {
                         tracked.state = watching;
-                        continue;
-                    }
-                    if has_trust_bit {
                         continue;
                     }
                     let Some((original, reply)) = packets else {
@@ -283,7 +273,16 @@ impl TrustAgent {
                 State::Refused => {}
             }
         }
-        self.tracked.retain(|key, _| seen.contains(key));
+        // 信任中的連線不在 conntrack 表裡也要留著（UDP 的 entry 會逾時），到期才刪 map
+        self.tracked.retain(|key, tracked| match tracked.state {
+            _ if seen.contains(key) => true,
+            State::Trusted { until } if now < until => true,
+            State::Trusted { .. } => {
+                decisions.push(Decision::Expire { tuple: tracked.tuple });
+                false
+            }
+            _ => false,
+        });
         decisions
     }
 
@@ -302,7 +301,6 @@ impl TrustAgent {
                             "connection trusted; its packets other than syn/fin/rst skip inspection"
                         );
                     }
-                    Err(ConntrackError::NotFound) => {}
                     Err(e) => warn!(code = %Issue::TrustFailed, connection = connection.as_str(), error = %e, "cannot trust connection"),
                 }
             }
@@ -313,7 +311,7 @@ impl TrustAgent {
                         self.counts.expired += 1;
                         debug!(connection = connection.as_str(), "trust expired; connection is inspected again");
                     }
-                    Err(ConntrackError::NotFound) => {}
+                    Err(PrivdError::NotTrusted) => {}
                     Err(e) => error!(
                         code = %Issue::ExpireFailed,
                         connection = connection.as_str(),
@@ -330,7 +328,7 @@ impl TrustAgent {
             } => {
                 let connection = tuple.to_string();
                 match privd.untrust(&tuple) {
-                    Ok(()) | Err(ConntrackError::NotFound) => {
+                    Ok(()) | Err(PrivdError::NotTrusted) => {
                         self.counts.revoked += 1;
                         warn!(
                             code = %Issue::TrustRevoked,

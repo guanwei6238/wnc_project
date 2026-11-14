@@ -406,7 +406,7 @@ fn tcx_findings(rows: &[TcxRow], names: Option<&HashMap<u32, String>>) -> Vec<Fi
             severity: Severity::Warning,
             issue: Issue::TcxUnsupported,
             message: "the kernel has no TCX (it needs Linux 6.6 or later), so run cannot attach its core eBPF \
-                      program (D001); inspection and trust work without it"
+                      program (D001), which holds trust; every connection is inspected"
                 .to_owned(),
         });
     } else if let Some(e) = errors.first() {
@@ -501,12 +501,12 @@ const REQUIRED_MODULES: &[RequiredModule] = &[
     },
     RequiredModule {
         name: "nft_ct",
-        purpose: "matching and setting ct mark",
+        purpose: "marking forwarded connections (ct mark)",
         must_be_loaded: false,
     },
     RequiredModule {
         name: "nf_conntrack_netlink",
-        purpose: "trusting connections by ct mark from user space",
+        purpose: "reading forwarded connections from user space",
         must_be_loaded: false,
     },
 ];

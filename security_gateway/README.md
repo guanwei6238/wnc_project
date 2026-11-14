@@ -2,9 +2,9 @@
 
 Security gateway 的主程式，Rust 實作，執行檔是 `wnc-gw`。架在內網（LAN）和外網（WAN）之間，轉送的流量先在本機用 Suricata 檢查，之後再把本機判斷不了的交給 edge AI 和雲端。
 
-目前做到階段 1：nftables 把轉送的流量交給 Suricata，用 conntrack 的 ct mark 記錄「已信任」的連線，被信任的連線不進 Suricata。信任可以由管理者手動設，也可以讓 wnc-gw 觀察一段時間、沒有 alert 就自動信任（`[trust] auto`）。
+目前做到階段 1 加上 TC fast path：nftables 把轉送的流量交給 Suricata；「已信任」的連線記在核心 eBPF 程式的 map 裡，它的封包在兩個 port 的 TCX ingress 就直接轉送到另一個 port，不進 bridge／routing、netfilter 和 Suricata。信任可以由管理者手動設，也可以讓 wnc-gw 觀察一段時間、沒有 alert 就自動信任（`[trust] auto`）。
 
-eBPF 做到步驟 A1（骨架）：`run` 把核心 eBPF 程式掛在兩個 port 的 TCX ingress 第一位，目前只計數、不改變轉送；之後信任的連線會在這裡直接轉送（fast path）。
+核心 eBPF 程式（步驟 A、C，2026-11-14）：`run` 把它掛在兩個 port 的 TCX ingress 第一位；查到信任的五元組就 redirect（bridge 用 `bpf_redirect`，routed 先減 TTL 再 `bpf_redirect_neigh`），其他封包照常進 kernel。Pi 上信任的封包每個比原本的 ct mark 做法少 5–6 µs（`tests/ebpf/README.md`）。
 
 ## 用法
 
@@ -28,7 +28,7 @@ eBPF 程式同一個 ELF 在 x86 和 arm64 都能用（只分 endian），授權
 |---|---|
 | `wnc-gw doctor` | 檢查設定、port、每個 port 的 TCX 程式、kernel 模組、nft、Suricata 和權限，不改任何東西 |
 | `wnc-gw run` | 先跑 doctor，再裝 nft table、啟動並監督 Suricata，直到收到 SIGINT／SIGTERM／SIGHUP；結束時移除 table |
-| `wnc-gw trust add／del／list` | 手動信任或取消信任一條連線（ct mark） |
+| `wnc-gw trust add／del／list` | 手動信任或取消信任一條連線，或列出信任中的連線和每個方向的封包數、bytes：透過 `/run/wnc-gw/control.sock` 請 `run` 寫 trust map，所以 `run` 要在跑、要用 root；只能信任 gateway 轉送的 TCP、UDP 連線 |
 | `wnc-gw show interfaces` | 列出網卡，方便在設定檔裡指定 port |
 | `wnc-gw explain [代碼]`、`explain --all` | doctor 的每個 error／warning／note 都有代碼（例如 `warning[R006]`），`run` 的每個 WARN／ERROR log 也有（`code=S015`，json 是 `"code":"S015"`）；不帶參數列出全部代碼，帶代碼印出說明（cause：什麼情況會出現；action：怎麼處理），`--all` 印出全部的詳細說明 |
 
@@ -76,15 +76,14 @@ bpftool map dump id <map_id>         # 每個 CPU 各一個計數（little-endia
 ```mermaid
 flowchart TD
     IN["封包從 LAN 或 WAN 的 port 進來"]
-    HOOK["TCX ingress：核心 eBPF 程式排第一<br/>目前只計數、回傳 NEXT（步驟 A1）<br/>之後信任的連線在這裡直接轉送（fast path）<br/>不受 xdp 設定影響，一律 TC"]:::done
+    HOOK["TCX ingress：核心 eBPF 程式排第一（不受 xdp 設定影響，一律 TC）<br/>解析 header，用五元組查 trust map"]:::done
+    FP{"已信任？<br/>（unicast、不是分片、TCP 沒有 SYN／FIN／RST）<br/>純 SYN：先刪掉這組五元組的信任"}
+    REDIR["fast path：直接送到另一個 port<br/>bridge：bpf_redirect<br/>routed：減 TTL → bpf_redirect_neigh<br/>不進 bridge／routing、netfilter、Suricata"]:::done
     MODE{"mode"}
     BR["bridge 〔預設〕<br/>bridge 由 OS 建立，wnc-gw 只檢查<br/>經過 br_netfilter 進 netfilter"]:::done
     RT["routed"]:::done
     FWD["netfilter forward hook<br/>table inet wnc_gw → chain forward"]:::done
-    R1["① 純 SYN 碰到已信任的 entry<br/>先清掉信任位元（port 重用時，舊連線的信任不給新連線）"]:::done
-    RF["② 連線第一次經過時設 forwarded 位元（0x40000000）<br/>自動信任只看有這個位元的連線"]:::done
-    R2{"③ SYN／FIN／RST？"}
-    R3{"④ ct mark 有信任位元？<br/>（最高位元 0x80000000）"}
+    RF["連線第一次經過時設 forwarded 位元（0x40000000）<br/>自動信任只看有這個位元的連線"]:::done
     IDSC["chain ids"]:::done
     READY{"Suricata 已就緒？<br/>（收到 READY=1）"}
     UNAV{"when_unavailable"}
@@ -97,14 +96,12 @@ flowchart TD
     OUT["從另一個 port 送出"]
     VDROP["丟掉"]
 
-    IN --> HOOK --> MODE
+    IN --> HOOK --> FP
+    FP -->|是| REDIR --> OUT
+    FP -->|"否（包括 TCP 的控制封包：一律檢查）"| MODE
     MODE -->|"bridge〔預設〕"| BR --> FWD
     MODE -->|routed| RT --> FWD
-    FWD --> R1 --> RF --> R2
-    R2 -->|"是（L2：控制封包一律檢查）"| IDSC
-    R2 -->|否| R3
-    R3 -->|"是：信任，不進 Suricata"| OUT
-    R3 -->|否| IDSC
+    FWD --> RF --> IDSC
     IDSC --> READY
     READY -->|否| UNAV
     UNAV -->|"accept〔預設〕"| ACC --> OUT
@@ -129,10 +126,7 @@ table inet wnc_gw {
 	chain forward {
 		type filter hook forward priority filter; policy accept;
 		counter
-		tcp flags & (syn | ack) == syn ct mark & 0x80000000 == 0x80000000 counter ct mark set ct mark & 0x7fffffff   # ①
-		ct mark & 0x40000000 == 0x00000000 ct mark set ct mark | 0x40000000                                           # ②
-		tcp flags fin,syn,rst jump ids                                                                                # ③
-		ct mark & 0x80000000 == 0x80000000 counter accept                                                             # ④
+		ct mark & 0x40000000 == 0x00000000 ct mark set ct mark | 0x40000000
 		jump ids
 	}
 	chain ids {
@@ -162,7 +156,7 @@ Suricata 就緒或停止時，wnc-gw 只換掉 `ids` chain 的規則，不重裝
 | 怎麼進 nftables | 經過 `br_netfilter`（沒載入時規則完全被繞過） | 一般的 IP 轉送 |
 | doctor 檢查 | LAN、WAN 在同一個 bridge；`br_netfilter`、`bridge-nf-call-iptables`／`ip6tables` | LAN、WAN 不在 bridge 裡；`ip_forward`；兩個 port 都有 IPv4 位址（沒有是 warning）、網段不和彼此或其他介面重疊（error）、預設路由走 WAN（warning）；note 寫出內網 gateway 和上游要加的路由 |
 | 封包從哪個 port 進來 | `iifname` 都是 `br0`，要靠 ingress 打的 mark〔已決定，未實作〕 | 同樣用 ingress 的 mark，兩種模式共用規則 |
-| fast path（tc eBPF） | `bpf_redirect` | `bpf_fib_lookup`（GPL-only helper）＋`bpf_redirect_neigh` |
+| fast path（tc eBPF） | `bpf_redirect` 到另一個 port | 減 TTL（IPv4 修 checksum）＋`bpf_redirect_neigh`（kernel 自己查限定在出口網卡的路由；不是 GPL-only） |
 | 轉送成本（Pi、veth） | 10.7 µs／封包 | 7.9 µs／封包 |
 | 轉送成本（Pi、實體網卡，2026-11-04） | 只轉送 @100k：9.97 µs，A0 容量 100 kpps | 8.02 µs，A0 容量 150 kpps；有檢查時只少 2–9%、容量一樣 |
 | 非 IP 的封包（ARP 等） | 照常轉送 | 不轉送 |
@@ -229,9 +223,9 @@ wnc-gw 從 suricata.yaml 設定的 eve-log 檔讀 alert，每 `eve_interval` 秒
 |---|---|---|
 | 誰信任連線 | 只有管理者用 `wnc-gw trust add` | wnc-gw 自己判斷，`wnc-gw trust add` 也照樣能用 |
 | 什麼時候信任 | — | Suricata 在檢查的期間，這條連線兩個方向都已經有 `min_packets`（預設 10）個封包、觀察滿 `min_age`（預設 5）秒、沒有任何 alert；只限 TCP（已建立）和 UDP |
-| 信任多久 | 到連線結束、`trust del` 或 wnc-gw 重啟 | `ttl`（預設 900）秒，之後回到檢查，再觀察一次才會再信任 |
+| 信任多久 | 到 `trust del`、同一組五元組的新 TCP 連線（純 SYN）或 run 停止；連線結束不會自己清掉（閒置清除還沒做） | `ttl`（預設 900）秒，之後回到檢查，再觀察一次才會再信任 |
 | 有 alert 時 | — | 還在觀察的：之後都不信任；已經信任的：立刻撤銷，記 WARN |
-| 需要 | — | `net.netfilter.nf_conntrack_acct = 1`、Suricata 把 alert 寫進 eve 檔；doctor 確定沒有就報 error（T002），讀不到 Suricata 設定而無法確認時是 warning，run 照常啟動但關掉自動信任、全部送檢查（T012）；執行中 EVE 讀不到或落後時暫停新增信任（T013） |
+| 需要 | 核心 eBPF 程式有掛上（D001） | 同左（掛不上時自動信任關閉、全部檢查，T014）；`net.netfilter.nf_conntrack_acct = 1`、Suricata 把 alert 寫進 eve 檔；doctor 確定沒有就報 error（T002），讀不到 Suricata 設定而無法確認時是 warning，run 照常啟動但關掉自動信任、全部送檢查（T012）；執行中 EVE 讀不到或落後時暫停新增信任（T013） |
 | 風險 | — | 信任之後才送的攻擊，到 TTL 結束前都看不到；doctor 一律給 warning |
 | log | `trust add／del` 各一行 | 每次信任一行 INFO、撤銷一行 WARN、到期是 DEBUG；有變動時每 60 秒一行摘要 |
 | 成本（Pi） | — | 每次讀 conntrack 固定約 7 ms＋每條經過 gateway 的連線 9.4 µs，讀的期間事件迴圈停住；4,000 封包／秒的 8 條長連線時，Suricata 加 wnc-gw 每秒省 85 ms（每個封包 21 µs） |
@@ -247,7 +241,8 @@ flowchart LR
     subgraph RUN["wnc-gw run（同一台機器只能跑一個）"]
         SUP["Suricata 監督<br/>NOTIFY_SOCKET 收 READY=1<br/>結束時退避 1→60 秒後重啟"]
         FW["firewall<br/>table 骨架寫死在程式裡"]
-        CLR["啟動時清掉上次留下的信任"]
+        CTL["control.sock（0600，SO_PEERCRED 只收 root 或 run 的帳號）<br/>trust add 先確認連線存在、而且是轉送的"]
+        CORE["核心 eBPF 程式（TCX 第一位）<br/>trust map、port 對應<br/>每 10 秒確認還在第一位（D002、D003）"]
         MON["監控<br/>conntrack 表快滿、因表滿丟包<br/>ids：NFLOG 漏掉的複本（每 10 秒）"]
         ALR["讀 alert<br/>eve.json 每 0.5 秒讀新增的部分<br/>每筆 DEBUG、每 60 秒一行 INFO 摘要"]
     end
@@ -263,17 +258,18 @@ flowchart LR
 
     ADMIN --> CLI
     ADMIN --> RUN
-    CLI -->|"trust add／del／list"| CT
+    CLI -->|"trust add／del／list"| CTL --> PRIVD
     SUP -->|spawn| SUR
     SUR -->|"READY=1"| SUP
     SUP -->|"就緒後才換上 queue／log 規則"| FW
     FW --> NFT --> K
-    CLR --> CT --> K
     MON -->|讀計數| K
     RUN --> LOG
     SUR -->|"eve.json"| ALR
     ALR -->|alert| AGT
-    AGT -->|"讀連線、寫 ct mark"| PRIVD --> CT
+    AGT -->|"讀連線、寫信任"| PRIVD
+    PRIVD -->|"讀連線（ctnetlink）"| CT --> K
+    PRIVD -->|"寫、刪 trust map"| CORE
     LOOP -.-> AGT
 
     classDef later fill:#fff3cd,stroke:#b8860b,color:#000,stroke-dasharray: 5 5
@@ -291,12 +287,12 @@ flowchart LR
 | 檢查模式 `protection` | ids〔預設〕用 **NFLOG** 送複本 | ips 用 **NFQUEUE**，封包等判決 | 〔已實作〕 | NFLOG 不讓轉送等 Suricata，Pi 上整台每個封包省 4–25 µs；ids 要關 checksum 檢查（GRO），doctor 會警告（O18，2026-10-29） |
 | 多核分流 | kernel 的 **symhash**（ips：`queue to symhash mod N`；ids：`symhash vmap`） | `queue num 0-N`（只看位址）、Suricata 的 autofp | 〔已實作〕 | 位址 hash 讓同一對 IP 的連線擠在同一個 queue（42-1：12.9 對 26.4 kpps）；symhash 含 port、雙向一致，每個封包只多 0.7–1.8 µs（O14，2026-10-27） |
 | Suricata runmode | 強制 **workers**（`--set runmode=workers`） | autofp | 〔已實作〕 | autofp 要在執行緒之間交接，Pi 上整台每個封包多 15–35 µs（O18，2026-10-30） |
-| 信任 | **ct mark** 的最高位元，以 conntrack 的一條連線為單位 | nft set 存五元組 | 〔已實作〕（`wnc-gw trust` 手動，或 `[trust] auto`） | 五元組會被 port 重用或偽造封包繞過；Pi 上信任每個封包省 38–68 µs（O17，2026-10-28） |
-| 控制封包（L2） | SYN／FIN／RST 一律送 Suricata，規則在信任之前 | 不送 | 〔已實作〕 | 長連線只多約 1 µs（O17，2026-10-28） |
-| 寫入 ct mark | **手寫 ctnetlink**（`kernel/conntrack.rs`） | `netlink-packet-netfilter` crate、spawn `conntrack` | 〔已實作〕 | Pi 上每筆：手寫 13 µs、crate 20–51 µs；`conntrack -U` 每筆讀整張表（O17，2026-10-28） |
+| 信任 | **核心 eBPF 程式的 trust map**（五元組，每個方向一筆，32,768 筆），信任的封包在 TC 直接轉送 | ct mark（10-28～11-14 的做法）、map＋ct mark | 〔已實作〕（`wnc-gw trust` 手動，或 `[trust] auto`） | TC 讀不到 ct mark；Pi 實體網卡上信任的封包比 ct mark 少 5–6 µs、容量 80 → 150 kpps，寫一筆 2.8 對 14.5 µs。程式掛不上時沒有信任（全部檢查）；沒有 conntrack 的 TCP 序號窗檢查，是 RQ3 第 4 項的實驗條件（O17，2026-11-14） |
+| 控制封包（L2） | TCP 的 SYN／FIN／RST 在 TC 一律交回 kernel，所以一定進 Suricata；純 SYN 先刪掉同一組五元組的信任 | 不送 | 〔已實作〕 | 長連線只多約 1 µs（O17，2026-10-28）；port 重用時新連線不沿用舊的信任 |
+| 讀 conntrack | **手寫 ctnetlink**（`kernel/conntrack.rs`）：自動信任讀連線和計數、`trust add` 確認連線 | `netlink-packet-netfilter` crate、spawn `conntrack` | 〔已實作〕 | Pi 上讀一筆：手寫 20 µs、crate 74 µs（O17，2026-10-28） |
 | 操作 nftables | **nft JSON**，spawn `/usr/sbin/nft` | libnftnl、rustables | 〔已實作〕 | 不連結 GPL 的函式庫；每次約 7.7 ms，所以要批次（O4，2026-10-25） |
 | 我們的 table | 骨架寫死在程式，使用者只能管 set 的內容 | 使用者寫 nft 規則 | 〔已實作〕（set 還沒有） | 流程由程式決定，避免設定錯讓程式出錯（O11，2026-10-25） |
-| 自動信任（3d） | 讀 conntrack 計數（有 forwarded 位元 `0x40000000` 的連線）和 Suricata 的 alert，判斷後經 `Privd` 寫 ct mark；預設關 | EVE 的 flow 事件、雲端判定 | 〔已實作〕（門檻和 TTL 的預設值是建議值，待確認） | EVE flow 要等連線結束才有；forwarded 位元讓 gateway 自己的連線不被算進來（O22，2026-11-04） |
+| 自動信任（3d） | 讀 conntrack 計數（有 forwarded 位元 `0x40000000` 的連線）和 Suricata 的 alert，判斷後經 `Privd` 寫 trust map；預設關 | EVE 的 flow 事件、雲端判定 | 〔已實作〕（門檻和 TTL 的預設值是建議值，待確認） | EVE flow 要等連線結束才有；forwarded 位元讓 gateway 自己的連線不被算進來（O22，2026-11-04） |
 | 方向判斷 | netdev ingress 打 mark，不用 `iifname` | `iifname` | 〔已決定，未實作〕 | bridge 模式下 forward chain 看到的 `iifname` 是 `br0`，分不出從哪個 port 進來；ingress 打的 mark 帶得到 forward chain（D3，2026-10-24） |
 | 核心 eBPF 掛點 `xdp` | auto〔預設〕：native XDP 才掛 XDP，否則 TC | off、generic | 〔已決定，未實作〕（doctor 已會判斷） | generic XDP 比 TC 慢，不自動選（2026-10-24） |
 | Fast path | tc eBPF 轉送已信任的 flow | XDP、flowtable | 〔已決定，未實作〕 | 2026-10-20；flowtable 當後端（O5）待決 |
@@ -344,6 +340,8 @@ flowchart LR
 | `src/agent/` | 3d：自動信任的狀態機（`trust.rs`）和 `Privd` trait（之後拆出有權限的 process 時，換成跨 process 的實作） |
 | `src/protection.rs`、`src/ids/` | ids／ips、啟動和監督 Suricata、讀 Suricata 的資訊和 EVE 檔裡的 alert |
 | `src/kernel/` | 和 kernel 溝通：nft、ctnetlink、NFLOG／NFQUEUE、eBPF（`bpf.rs`，包住 aya）、模組、sysctl、netlink |
+| `gw-common/` | kernel 和 user space 共用的 trust map key、value（`#[repr(C)]`） |
+| `src/control.rs` | `wnc-gw trust` 和 `run` 之間的 unix socket：一行 JSON 的請求和回應 |
 | `src/monitor/` | 執行中的監控（conntrack 表、NFLOG 漏掉的複本、Suricata 的 alert 摘要） |
 | `src/platform/` | 依 OS 而不同的部分（目前只有 Debian） |
 | `tests/unit/` | 單元測試，路徑對應 `src/` |
