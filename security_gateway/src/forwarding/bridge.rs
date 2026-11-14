@@ -1,7 +1,8 @@
 use super::{
-    EnvCheck, EnvState, Forwarding, Level, RequiredSysctl, describe, is_bridge, master_of, port_pair, read_sysctl,
+    EnvCheck, EnvState, Forwarding, Level, Note, RequiredSysctl, describe, is_bridge, master_of, port_pair, read_sysctl,
     sysctl_checks, unresolved,
 };
+use crate::issue::Issue;
 use crate::kernel::modules::RequiredModule;
 use crate::kernel::netif::{Interface, Ipv4Routing};
 use crate::ports::Port;
@@ -23,12 +24,14 @@ const MODULES: &[RequiredModule] = &[
 
 const SYSCTLS: &[RequiredSysctl] = &[
     RequiredSysctl {
+        issue: Issue::BridgeNfCallIptables,
         key: "net.bridge.bridge-nf-call-iptables",
         level: Level::Required,
         consequence: "bridged IPv4 traffic bypasses nftables",
         absent: "br_netfilter is not loaded",
     },
     RequiredSysctl {
+        issue: Issue::BridgeNfCallIp6tables,
         key: "net.bridge.bridge-nf-call-ip6tables",
         level: Level::Required,
         consequence: "bridged IPv6 traffic bypasses nftables",
@@ -54,14 +57,14 @@ impl Forwarding for Bridged {
         checks
     }
 
-    fn notes(&self, _ports: &[Port], _routing: Result<&Ipv4Routing, &str>) -> Vec<String> {
+    fn notes(&self, _ports: &[Port], _routing: Result<&Ipv4Routing, &str>) -> Vec<Note> {
         Vec::new()
     }
 }
 
 fn membership_checks(ports: &[Port], interfaces: &[Interface]) -> Vec<EnvCheck> {
     let Some((lan, wan)) = port_pair(ports) else {
-        return vec![unresolved(MEMBERSHIP)];
+        return vec![unresolved(MEMBERSHIP, Issue::BridgeMembership)];
     };
     let lan_master = master_of(&lan.interface, interfaces);
     let wan_master = master_of(&wan.interface, interfaces);
@@ -74,6 +77,7 @@ fn membership_checks(ports: &[Port], interfaces: &[Interface]) -> Vec<EnvCheck> 
         name(wan_master)
     );
     let unmet = |problem: String, fix: String| EnvCheck {
+        issue: Issue::BridgeMembership,
         item: MEMBERSHIP.to_owned(),
         level: Level::Required,
         state: EnvState::Unmet {
@@ -93,6 +97,7 @@ fn membership_checks(ports: &[Port], interfaces: &[Interface]) -> Vec<EnvCheck> 
             }
             vec![
                 EnvCheck {
+                    issue: Issue::BridgeMembership,
                     item: MEMBERSHIP.to_owned(),
                     level: Level::Required,
                     state: EnvState::Met { actual: a.name.clone() },
@@ -138,6 +143,7 @@ fn up_check(bridge: &Interface) -> EnvCheck {
         }
     };
     EnvCheck {
+        issue: Issue::BridgeDown,
         item: format!("bridge {} is up", bridge.name),
         level: Level::Recommended,
         state,

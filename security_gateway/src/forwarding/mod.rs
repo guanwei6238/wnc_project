@@ -4,6 +4,7 @@ pub mod routed;
 use std::fmt;
 use std::str::FromStr;
 
+use crate::issue::Issue;
 use crate::kernel::modules::RequiredModule;
 use crate::kernel::netif::{Interface, Ipv4Routing};
 use crate::kernel::sysctl;
@@ -60,7 +61,7 @@ pub trait Forwarding {
         interfaces: &[Interface],
         routing: Result<&Ipv4Routing, &str>,
     ) -> Vec<EnvCheck>;
-    fn notes(&self, ports: &[Port], routing: Result<&Ipv4Routing, &str>) -> Vec<String>;
+    fn notes(&self, ports: &[Port], routing: Result<&Ipv4Routing, &str>) -> Vec<Note>;
 }
 
 pub fn for_mode(mode: Mode) -> Box<dyn Forwarding> {
@@ -73,13 +74,13 @@ pub fn for_mode(mode: Mode) -> Box<dyn Forwarding> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Level {
     Required,
-    // 必要，但可能只是還沒好（例如 DHCP 還沒拿到位址）：給 warning，run 才會啟動
     Awaited,
     Recommended,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnvCheck {
+    pub issue: Issue,
     pub item: String,
     pub level: Level,
     pub state: EnvState,
@@ -92,7 +93,14 @@ pub enum EnvState {
     Unknown { reason: String },
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Note {
+    pub issue: Issue,
+    pub text: String,
+}
+
 struct RequiredSysctl {
+    issue: Issue,
     key: &'static str,
     level: Level,
     consequence: &'static str,
@@ -123,6 +131,7 @@ fn sysctl_checks(
                 Err(reason) => EnvState::Unknown { reason },
             };
             EnvCheck {
+                issue: r.issue,
                 item: r.key.to_owned(),
                 level: r.level,
                 state,
@@ -140,8 +149,9 @@ fn port_pair(ports: &[Port]) -> Option<(&Port, &Port)> {
     Some((find(Role::Lan)?, find(Role::Wan)?))
 }
 
-fn unresolved(item: &str) -> EnvCheck {
+fn unresolved(item: &str, issue: Issue) -> EnvCheck {
     EnvCheck {
+        issue,
         item: item.to_owned(),
         level: Level::Required,
         state: EnvState::Unknown {

@@ -12,7 +12,8 @@ use security_gateway::ids::delivery::Delivery;
 use security_gateway::ids::lifecycle::{Event, Lifecycle};
 use security_gateway::ids::spawned::{self, Options, SpawnedSuricata};
 use security_gateway::ids::suricata::Suricata;
-use security_gateway::instance;
+use security_gateway::instance::{self, InstanceError};
+use security_gateway::issue::Issue;
 use security_gateway::kernel::conntrack::Conntrack;
 use security_gateway::kernel::nflog;
 use security_gateway::kernel::nft::Nft;
@@ -42,19 +43,23 @@ pub async fn run(
     let config = match config::load(config_path, overrides) {
         Ok(config) => config,
         Err(e) => {
-            error!(error = %e, "cannot load the config file");
+            error!(code = %doctor::config_issue(&e), error = %e, "cannot load the config file");
             return ExitCode::FAILURE;
         }
     };
     let _lock = match instance::lock(Current.runtime_dir()) {
         Ok(lock) => lock,
         Err(e) => {
-            error!(error = %e, "not starting");
+            let issue = match e {
+                InstanceError::AlreadyRunning { .. } => Issue::AlreadyRunning,
+                InstanceError::Io { .. } => Issue::LockFailed,
+            };
+            error!(code = %issue, error = %e, "not starting");
             return ExitCode::FAILURE;
         }
     };
     if !doctor::passes(&config, true).await {
-        error!("not starting because the checks above found errors");
+        error!(code = %Issue::ChecksFailed, "not starting because the checks above found errors");
         return ExitCode::FAILURE;
     }
     println!();
@@ -63,7 +68,7 @@ pub async fn run(
     let mut signals = match StopSignals::listen() {
         Ok(signals) => signals,
         Err(e) => {
-            error!(error = %e, "failed to listen for signals");
+            error!(code = %Issue::SignalsUnavailable, error = %e, "failed to listen for signals");
             return ExitCode::FAILURE;
         }
     };
@@ -76,7 +81,7 @@ pub async fn run(
     };
     clear_earlier_trust();
     if let Err(e) = firewall::install(&nft, inspection).await {
-        error!(table = table.as_str(), error = %e, "failed to install table");
+        error!(code = %Issue::TableInstallFailed, table = table.as_str(), error = %e, "failed to install table");
         return ExitCode::FAILURE;
     }
     info!(table = table.as_str(), "table installed; waiting for SIGINT, SIGTERM or SIGHUP");
@@ -85,9 +90,13 @@ pub async fn run(
     let mut code = serve(&config, &nft, inspection, alert_file, &mut signals).await;
 
     match firewall::remove(&nft).await {
-        Ok(()) => warn!(table = table.as_str(), "table removed; forwarded traffic passes without inspection"),
+        Ok(()) => warn!(
+            code = %Issue::TableRemoved,
+            table = table.as_str(),
+            "table removed; forwarded traffic passes without inspection"
+        ),
         Err(e) => {
-            error!(table = table.as_str(), error = %e, "failed to remove table");
+            error!(code = %Issue::TableRemoveFailed, table = table.as_str(), error = %e, "failed to remove table");
             code = ExitCode::FAILURE;
         }
     }
@@ -109,6 +118,7 @@ fn clear_earlier_trust() {
             for (tuple, e) in &untrusted.failed {
                 let connection = tuple.to_string();
                 error!(
+                    code = %Issue::EarlierTrustKept,
                     connection = connection.as_str(),
                     error = %e,
                     "cannot clear trust left by an earlier run; this connection skips inspection until it ends"
@@ -116,6 +126,7 @@ fn clear_earlier_trust() {
             }
         }
         Err(e) => error!(
+            code = %Issue::EarlierTrustKept,
             error = %e,
             "cannot clear trust left by an earlier run; those connections skip inspection until they end"
         ),
@@ -156,7 +167,7 @@ async fn serve(
     let mut suricata = match SpawnedSuricata::start(suricata_options(config)) {
         Ok(suricata) => suricata,
         Err(e) => {
-            error!(error = %e, "failed to start suricata");
+            error!(code = %Issue::SuricataStartFailed, error = %e, "failed to start suricata");
             return ExitCode::FAILURE;
         }
     };
@@ -167,6 +178,7 @@ async fn serve(
     let mut trust_tick = time::interval(config.trust.check_interval.value);
     trust_tick.set_missed_tick_behavior(MissedTickBehavior::Delay);
     let mut uninspected_since = Some(Instant::now());
+    let mut stop_failed = false;
     let mut conntrack_monitor = ConntrackMonitor::default();
     let mut monitor_tick = time::interval(ConntrackMonitor::INTERVAL);
     monitor_tick.set_missed_tick_behavior(MissedTickBehavior::Delay);
@@ -205,12 +217,12 @@ async fn serve(
             }
             event = suricata.next_event() => match event {
                 None => {
-                    error!("suricata supervision ended unexpectedly");
+                    error!(code = %Issue::SupervisionEnded, "suricata supervision ended unexpectedly");
                     break ExitCode::FAILURE;
                 }
                 Some(Event::Ready { pid, .. }) => {
                     if let Err(e) = firewall::start_inspection(nft, inspection).await {
-                        error!(error = %e, "failed to send forwarded traffic to suricata");
+                        error!(code = %Issue::StartInspectionFailed, error = %e, "failed to send forwarded traffic to suricata");
                         break ExitCode::FAILURE;
                     }
                     if let Delivery::Copy(_) = inspection.delivery {
@@ -233,7 +245,12 @@ async fn serve(
                     }
                     if uninspected_since.is_none() {
                         if let Err(e) = firewall::stop_inspection(nft, inspection).await {
-                            error!(error = %e, "failed to stop sending forwarded traffic to suricata; not restarting suricata");
+                            error!(
+                                code = %Issue::StopInspectionFailed,
+                                error = %e,
+                                "failed to stop sending forwarded traffic to suricata; not restarting suricata"
+                            );
+                            stop_failed = true;
                             break ExitCode::FAILURE;
                         }
                         uninspected_since = Some(Instant::now());
@@ -248,7 +265,9 @@ async fn serve(
         match firewall::stop_inspection(nft, inspection).await {
             Ok(()) => log_uninspected(inspection.when_unavailable),
             Err(e) => {
-                error!(error = %e, "failed to stop sending forwarded traffic to suricata");
+                if !stop_failed {
+                    error!(code = %Issue::StopInspectionFailed, error = %e, "failed to stop sending forwarded traffic to suricata");
+                }
                 code = ExitCode::FAILURE;
             }
         }
@@ -289,12 +308,15 @@ async fn alert_file(config: &Config) -> Option<PathBuf> {
         Ok(dump) => {
             let file = dump.alert_file(&log_dir);
             if file.is_none() {
-                warn!("suricata does not write alerts to a regular EVE file; wnc-gw cannot see alerts");
+                warn!(
+                    code = %Issue::NoAlertOutput,
+                    "suricata does not write alerts to a regular EVE file; wnc-gw cannot see alerts"
+                );
             }
             file
         }
         Err(e) => {
-            warn!(error = %e, "cannot read suricata's config; wnc-gw cannot see alerts");
+            warn!(code = %Issue::AlertFileUnknown, error = %e, "cannot read suricata's config; wnc-gw cannot see alerts");
             None
         }
     }
@@ -303,8 +325,16 @@ async fn alert_file(config: &Config) -> Option<PathBuf> {
 fn log_uninspected(when_unavailable: WhenUnavailable) {
     let when = when_unavailable.to_string();
     match when_unavailable {
-        WhenUnavailable::Accept => warn!(when_unavailable = when.as_str(), "forwarded traffic passes without inspection"),
-        WhenUnavailable::Drop => warn!(when_unavailable = when.as_str(), "forwarded traffic is dropped without inspection"),
+        WhenUnavailable::Accept => warn!(
+            code = %Issue::Uninspected,
+            when_unavailable = when.as_str(),
+            "forwarded traffic passes without inspection"
+        ),
+        WhenUnavailable::Drop => warn!(
+            code = %Issue::DroppedUninspected,
+            when_unavailable = when.as_str(),
+            "forwarded traffic is dropped without inspection"
+        ),
     }
 }
 

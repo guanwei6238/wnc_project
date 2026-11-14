@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 use tracing::{debug, error, info, warn};
 
 use super::Privd;
+use crate::issue::Issue;
 use crate::firewall::TRUSTED_MARK;
 use crate::ids::eve::Alert;
 use crate::kernel::conntrack::{Connection, ConntrackError, FiveTuple, Protocol, TcpState};
@@ -128,7 +129,7 @@ impl TrustAgent {
             }
             Err(e) => {
                 if !mem::replace(&mut self.failing, true) {
-                    warn!(error = %e, "cannot read the conntrack table; automatic trust is paused");
+                    warn!(code = %Issue::ConntrackUnreadable, error = %e, "cannot read the conntrack table; automatic trust is paused");
                 }
             }
         }
@@ -190,6 +191,7 @@ impl TrustAgent {
             let packets = c.original_counters.zip(c.reply_counters).map(|(o, r)| (o.packets, r.packets));
             if packets.is_none() && !mem::replace(&mut self.no_counters, true) {
                 warn!(
+                    code = %Issue::NoPacketCounters,
                     "conntrack keeps no packet counters for forwarded connections, so none of them can be trusted; \
                      set net.netfilter.nf_conntrack_acct = 1 (it applies to connections that start after that)"
                 );
@@ -285,7 +287,7 @@ impl TrustAgent {
                         );
                     }
                     Err(ConntrackError::NotFound) => {}
-                    Err(e) => warn!(connection = connection.as_str(), error = %e, "cannot trust connection"),
+                    Err(e) => warn!(code = %Issue::TrustFailed, connection = connection.as_str(), error = %e, "cannot trust connection"),
                 }
             }
             Decision::Expire { tuple } => {
@@ -297,6 +299,7 @@ impl TrustAgent {
                     }
                     Err(ConntrackError::NotFound) => {}
                     Err(e) => error!(
+                        code = %Issue::ExpireFailed,
                         connection = connection.as_str(),
                         error = %e,
                         "cannot end trust; this connection skips inspection until it ends"
@@ -314,6 +317,7 @@ impl TrustAgent {
                     Ok(()) | Err(ConntrackError::NotFound) => {
                         self.counts.revoked += 1;
                         warn!(
+                            code = %Issue::TrustRevoked,
                             connection = connection.as_str(),
                             sid,
                             signature = ?signature,
@@ -322,6 +326,7 @@ impl TrustAgent {
                         );
                     }
                     Err(e) => error!(
+                        code = %Issue::RevokeFailed,
                         connection = connection.as_str(),
                         sid,
                         error = %e,

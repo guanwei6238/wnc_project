@@ -82,6 +82,7 @@ warning: …
 3. **判斷**：在 `doctor.rs` 寫：
    - `check_x() -> Vec<Finding>`：呼叫探測、印出自己那一段表格、回傳 finding。
    - `x_findings(...) -> Vec<Finding>`：純函式，只負責事實轉 finding。
+   - 每個 `Finding` 帶一個 `Issue`（`src/issue.rs`，印成 `warning[R006]: …`）。新的情況在 `issues!` 加一個 variant、在 `explanation()` 給代碼（字母依類別：C 設定、P port、B／R 模式、X XDP、K 模組、N nft、S Suricata、O 其他 Suricata、T 信任、A 權限）和說明：照 Oracle `oerr`、Cisco system message 的寫法只有 cause（什麼情況會觸發，要寫到驗證方照著做就能重現）和 action（怎麼處理），各 1–3 句（2026-11-14，開發者覺得分 meaning／check／impact 太細；驗證方要用這些說明做測試）。同一個檢查的「無法確認」用同一個代碼，嚴重程度寫 `error or warning`。forwarding 的 `EnvCheck`、`Note` 也帶 `Issue`。
 4. **接上**：在 `run()` 裡加一行 `findings.extend(check_x());`，位置放在相關段落的後面。
 5. **測試**：
    - 探測的解析放在 `tests/unit/<lib 路徑>.rs`。

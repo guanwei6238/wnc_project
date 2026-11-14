@@ -15,6 +15,7 @@ use tracing::{error, info, warn};
 
 use super::delivery::Delivery;
 use super::lifecycle::{Event, Exit, Lifecycle};
+use crate::issue::Issue;
 use crate::kernel::nflog::GroupRange;
 
 const NOTIFY_SOCKET: &str = "notify.sock";
@@ -108,7 +109,7 @@ async fn supervise(
         drain(&notify);
         let started = Instant::now();
         match spawn(&options) {
-            Err(e) => error!(path = %options.path.display(), error = %e, "failed to start suricata"),
+            Err(e) => error!(code = %Issue::SuricataStartFailed, path = %options.path.display(), error = %e, "failed to start suricata"),
             Ok(mut child) => {
                 let pid = child.id().unwrap_or_default();
                 info!(pid, delivery = %options.delivery, "suricata started");
@@ -128,7 +129,7 @@ async fn supervise(
                     info!(pid, exit = exit_text.as_str(), "suricata stopped");
                     return;
                 }
-                warn!(pid, exit = exit_text.as_str(), uptime_s = uptime.as_secs(), was_ready, "suricata exited");
+                warn!(code = %Issue::SuricataExited, pid, exit = exit_text.as_str(), uptime_s = uptime.as_secs(), was_ready, "suricata exited");
                 if run.ready_at.is_some_and(|at| at.elapsed() >= STABLE_AFTER) {
                     backoff.reset();
                 }
@@ -179,7 +180,7 @@ async fn watch(
                 }
             }
             _ = &mut deadline, if ready_at.is_none() => {
-                warn!(pid, ready_timeout_s = ready_timeout.as_secs(), "suricata did not become ready in time; stopping it");
+                warn!(code = %Issue::SuricataNotReady, pid, ready_timeout_s = ready_timeout.as_secs(), "suricata did not become ready in time; stopping it");
                 let status = terminate(child, pid, options.stop_timeout).await;
                 return Run { status, ready_at, stopped: false };
             }
@@ -305,7 +306,7 @@ async fn terminate(child: &mut Child, pid: u32, stop_timeout: Duration) -> io::R
                 info!(pid, waited_s = asked.elapsed().as_secs(), stop_timeout_s = stop_timeout.as_secs(), "suricata is still stopping");
             }
             _ = &mut deadline => {
-                warn!(pid, stop_timeout_s = stop_timeout.as_secs(), "suricata did not stop in time; killing it");
+                warn!(code = %Issue::SuricataStopSlow, pid, stop_timeout_s = stop_timeout.as_secs(), "suricata did not stop in time; killing it");
                 child.start_kill()?;
                 return child.wait().await;
             }
@@ -337,18 +338,18 @@ async fn forward(stream: impl AsyncRead + Unpin, pid: u32, delivery: Delivery) {
         let line = String::from_utf8_lossy(&bytes);
         let (level, text) = classify(&line);
         match level {
-            Level::Error => error!(source = "suricata", pid, "{text}"),
-            Level::Warn => warn!(source = "suricata", pid, "{text}"),
+            Level::Error => error!(code = %Issue::SuricataMessage, source = "suricata", pid, "{text}"),
+            Level::Warn => warn!(code = %Issue::SuricataMessage, source = "suricata", pid, "{text}"),
             Level::Info => info!(source = "suricata", pid, "{text}"),
         }
         if text.contains("nfq_create_queue failed") {
-            error!(pid, delivery = %delivery, "suricata cannot bind the queue; another program is using it");
+            error!(code = %Issue::QueueBusy, pid, delivery = %delivery, "suricata cannot bind the queue; another program is using it");
         }
         if text.contains("nflog_bind_group() failed") {
-            error!(pid, delivery = %delivery, "suricata cannot bind the nflog group; another program is using it");
+            error!(code = %Issue::NflogBusy, pid, delivery = %delivery, "suricata cannot bind the nflog group; another program is using it");
         }
         if let Some(failed) = failed_rules(text).filter(|&n| n > 0) {
-            warn!(pid, failed, "suricata could not load some rules; they are not used for detection");
+            warn!(code = %Issue::RulesFailed, pid, failed, "suricata could not load some rules; they are not used for detection");
         }
     }
 }

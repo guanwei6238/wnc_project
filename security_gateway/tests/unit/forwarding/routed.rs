@@ -358,12 +358,13 @@ fn upstream_note_lists_networks_behind_lan() {
     let (lan, wan) = lan_wan(&interfaces);
     assert_eq!(
         Routed.notes(&[lan, wan], Ok(&healthy())),
-        vec![
-            "LAN hosts must use 10.99.1.1 as their gateway, and the upstream router needs a route to 10.99.1.0/24, \
-             192.168.100.0/24 via 10.99.2.1; wnc-gw does not translate addresses, so that route is needed unless you \
-             set up NAT yourself"
+        vec![Note {
+            issue: Issue::RoutedUpstream,
+            text: "LAN hosts must use 10.99.1.1 as their gateway, and the upstream router needs a route to \
+                   10.99.1.0/24, 192.168.100.0/24 via 10.99.2.1; wnc-gw does not translate addresses, so that route \
+                   is needed unless you set up NAT yourself"
                 .to_owned()
-        ]
+        }]
     );
 }
 
@@ -373,6 +374,17 @@ fn no_upstream_note_without_addresses() {
     let (lan, wan) = lan_wan(&interfaces);
     let mut routing = healthy();
     routing.addresses.retain(|a| a.index != WAN);
-    assert_eq!(Routed.notes(&[lan.clone(), wan.clone()], Ok(&routing)), Vec::<String>::new());
-    assert_eq!(Routed.notes(&[lan, wan], Err("x")), Vec::<String>::new());
+    assert_eq!(Routed.notes(&[lan.clone(), wan.clone()], Ok(&routing)), Vec::<Note>::new());
+    assert_eq!(Routed.notes(&[lan, wan], Err("x")), Vec::<Note>::new());
+}
+
+#[test]
+fn upstream_note_skips_link_local_routes() {
+    let interfaces = routed_interfaces();
+    let (lan, wan) = lan_wan(&interfaces);
+    let mut routing = healthy();
+    routing.addresses.push(addr(LAN, "169.254.7.7/16"));
+    routing.main_routes.push(route("169.254.0.0/16", 0, &[(LAN, None)]));
+    let notes = Routed.notes(&[lan, wan], Ok(&routing));
+    assert!(!notes[0].text.contains("169.254"), "{notes:?}");
 }

@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use tracing::{info, warn};
 
+use crate::issue::Issue;
 use crate::kernel::nflog::NetfilterSocket;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -69,13 +70,13 @@ fn log(finding: Finding) {
     let interval_s = CopyMonitor::INTERVAL.as_secs();
     match finding {
         Finding::Missed { missed } => {
-            warn!(missed, interval_s, "suricata missed packet copies; that traffic was forwarded without inspection")
+            warn!(code = %Issue::CopiesMissed, missed, interval_s, "suricata missed packet copies; that traffic was forwarded without inspection")
         }
         Finding::NoSockets { pid } => {
-            warn!(pid, "cannot find suricata's nflog sockets; missed packet copies are not counted")
+            warn!(code = %Issue::CopiesUncounted, pid, "cannot find suricata's nflog sockets; missed packet copies are not counted")
         }
         Finding::ReadFailed { error } => {
-            warn!(error = error.as_str(), "cannot read suricata's nflog sockets; missed packet copies are not counted")
+            warn!(code = %Issue::CopiesUncounted, error = error.as_str(), "cannot read suricata's nflog sockets; missed packet copies are not counted")
         }
         Finding::ReadRecovered => info!("suricata's nflog sockets can be read again"),
     }

@@ -1,7 +1,8 @@
 use super::{
-    EnvCheck, EnvState, Forwarding, Level, RequiredSysctl, describe, is_bridge, master_of, port_pair, read_sysctl,
+    EnvCheck, EnvState, Forwarding, Level, Note, RequiredSysctl, describe, is_bridge, master_of, port_pair, read_sysctl,
     sysctl_checks, unresolved,
 };
+use crate::issue::Issue;
 use crate::kernel::modules::RequiredModule;
 use crate::kernel::netif::{Interface, Ipv4Net, Ipv4Routing, NextHop, Route, RouteKind, Rule};
 use crate::ports::Port;
@@ -10,12 +11,14 @@ pub struct Routed;
 
 const SYSCTLS: &[RequiredSysctl] = &[
     RequiredSysctl {
+        issue: Issue::RoutedIpForward,
         key: "net.ipv4.ip_forward",
         level: Level::Required,
         consequence: "IPv4 traffic is not forwarded",
         absent: "IPv4 forwarding is not available in this kernel",
     },
     RequiredSysctl {
+        issue: Issue::RoutedIpv6Forward,
         key: "net.ipv6.conf.all.forwarding",
         level: Level::Recommended,
         consequence: "IPv6 traffic is not forwarded",
@@ -48,24 +51,35 @@ impl Forwarding for Routed {
         checks
     }
 
-    fn notes(&self, ports: &[Port], routing: Result<&Ipv4Routing, &str>) -> Vec<String> {
+    fn notes(&self, ports: &[Port], routing: Result<&Ipv4Routing, &str>) -> Vec<Note> {
         let (Some((lan, wan)), Ok(routing)) = (port_pair(ports), routing) else {
             return Vec::new();
         };
-        upstream_note(lan, wan, routing).into_iter().collect()
+        upstream_note(lan, wan, routing)
+            .map(|text| Note {
+                issue: Issue::RoutedUpstream,
+                text,
+            })
+            .into_iter()
+            .collect()
     }
 }
 
 fn routing_checks(ports: &[Port], interfaces: &[Interface], routing: Result<&Ipv4Routing, &str>) -> Vec<EnvCheck> {
-    let items = [ADDRESSED, SEPARATE, DEFAULT_ROUTE];
+    let items = [
+        (ADDRESSED, Issue::RoutedAddresses),
+        (SEPARATE, Issue::RoutedOverlap),
+        (DEFAULT_ROUTE, Issue::RoutedDefaultRoute),
+    ];
     let Some((lan, wan)) = port_pair(ports) else {
-        return items.map(unresolved).into();
+        return items.map(|(item, issue)| unresolved(item, issue)).into();
     };
     let routing = match routing {
         Ok(routing) => routing,
         Err(reason) => {
             return items
-                .map(|item| EnvCheck {
+                .map(|(item, issue)| EnvCheck {
+                    issue,
                     item: item.to_owned(),
                     level: Level::Required,
                     state: EnvState::Unknown {
@@ -125,6 +139,7 @@ fn address_check(lan: &Port, wan: &Port, routing: &Ipv4Routing) -> EnvCheck {
         },
     };
     EnvCheck {
+        issue: Issue::RoutedAddresses,
         item: ADDRESSED.to_owned(),
         level: Level::Awaited,
         state,
@@ -179,6 +194,7 @@ fn overlap_check(lan: &Port, wan: &Port, interfaces: &[Interface], routing: &Ipv
         }
     };
     EnvCheck {
+        issue: Issue::RoutedOverlap,
         item: SEPARATE.to_owned(),
         level: Level::Required,
         state,
@@ -274,6 +290,7 @@ fn default_route_check(wan: &Port, interfaces: &[Interface], routing: &Ipv4Routi
         }
     };
     EnvCheck {
+        issue: Issue::RoutedDefaultRoute,
         item: DEFAULT_ROUTE.to_owned(),
         level: Level::Recommended,
         state,
@@ -292,6 +309,7 @@ fn upstream_note(lan: &Port, wan: &Port, routing: &Ipv4Routing) -> Option<String
         let destination = route.destination.network();
         if route.kind == RouteKind::Unicast
             && route.destination.prefix_len > 0
+            && !route.destination.is_link_local()
             && via_lan
             && !behind_lan.contains(&destination)
         {
@@ -310,7 +328,7 @@ fn upstream_note(lan: &Port, wan: &Port, routing: &Ipv4Routing) -> Option<String
 
 fn not_bridged_check(ports: &[Port], interfaces: &[Interface]) -> EnvCheck {
     let Some((lan, wan)) = port_pair(ports) else {
-        return unresolved(NOT_BRIDGED);
+        return unresolved(NOT_BRIDGED, Issue::RoutedNotBridged);
     };
     let bridged: Vec<(&Port, &Interface)> = [lan, wan]
         .into_iter()
@@ -338,6 +356,7 @@ fn not_bridged_check(ports: &[Port], interfaces: &[Interface]) -> EnvCheck {
         }
     };
     EnvCheck {
+        issue: Issue::RoutedNotBridged,
         item: NOT_BRIDGED.to_owned(),
         level: Level::Required,
         state,

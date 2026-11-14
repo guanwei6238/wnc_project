@@ -7,6 +7,7 @@ use std::time::Duration;
 use tokio::time::{self, Instant, Interval, MissedTickBehavior};
 use tracing::{debug, info, warn};
 
+use crate::issue::Issue;
 use crate::ids::eve::{self, Alert, EveFile, EveInterval, ParseAlertError, ReadReport, Restart};
 
 const MAX_CONNECTIONS: usize = 10_000;
@@ -184,9 +185,10 @@ impl AlertMonitor {
                 );
             }
             Finding::Skipped { malformed, too_long } => {
-                warn!(path, malformed, too_long, "skipped EVE lines that wnc-gw could not read")
+                warn!(code = %Issue::EveSkipped, path, malformed, too_long, "skipped EVE lines that wnc-gw could not read")
             }
             Finding::ReadFailed { error } => warn!(
+                code = %Issue::EveUnreadable,
                 path,
                 error = error.as_str(),
                 "cannot read suricata's EVE file; wnc-gw does not see alerts until it can"
@@ -200,6 +202,7 @@ impl AlertMonitor {
                 info!(path, "suricata's EVE file was truncated; reading it from the start")
             }
             Finding::Behind => warn!(
+                code = %Issue::EveBehind,
                 path,
                 "suricata writes its EVE file faster than wnc-gw reads it; alerts reach wnc-gw late"
             ),

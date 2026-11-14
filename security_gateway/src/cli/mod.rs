@@ -1,4 +1,5 @@
 pub mod doctor;
+pub mod explain;
 mod logging;
 pub mod run;
 pub mod show;
@@ -38,6 +39,7 @@ pub struct Cli {
 #[derive(Debug, Subcommand)]
 pub enum Command {
     Doctor(doctor::DoctorArgs),
+    Explain(explain::ExplainArgs),
     Run(run::RunArgs),
     Show(show::ShowArgs),
     Trust(trust::TrustArgs),
@@ -52,6 +54,7 @@ pub async fn run() -> ExitCode {
 
     match cli.command {
         Command::Doctor(args) => doctor::run(cli.config.as_deref(), overrides, args).await,
+        Command::Explain(args) => explain::run(args),
         Command::Run(args) => run::run(cli.config.as_deref(), overrides, cli.log_format, cli.log_level, args).await,
         Command::Show(args) => show::run(args).await,
         Command::Trust(args) => trust::run(args, cli.log_format, cli.log_level),

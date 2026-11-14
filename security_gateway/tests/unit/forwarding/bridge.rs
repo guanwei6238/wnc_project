@@ -37,11 +37,13 @@ fn same_bridge_is_met() {
         checks,
         vec![
             EnvCheck {
+                issue: Issue::BridgeMembership,
                 item: "LAN and WAN in one bridge".into(),
                 level: Level::Required,
                 state: EnvState::Met { actual: "br0".into() },
             },
             EnvCheck {
+                issue: Issue::BridgeDown,
                 item: "bridge br0 is up".into(),
                 level: Level::Recommended,
                 state: EnvState::Met { actual: String::new() },
@@ -58,6 +60,7 @@ fn bridge_down_is_recommended() {
     assert_eq!(
         checks[1],
         EnvCheck {
+            issue: Issue::BridgeDown,
             item: "bridge br0 is up".into(),
             level: Level::Recommended,
             state: EnvState::Unmet {
@@ -111,6 +114,7 @@ fn unresolved_port_is_unknown() {
     assert_eq!(
         checks,
         vec![EnvCheck {
+            issue: Issue::BridgeMembership,
             item: "LAN and WAN in one bridge".into(),
             level: Level::Required,
             state: EnvState::Unknown {

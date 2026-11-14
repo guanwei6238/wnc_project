@@ -18,6 +18,7 @@ CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=rust-lld \
 | `wnc-gw run` | 先跑 doctor，再裝 nft table、啟動並監督 Suricata，直到收到 SIGINT／SIGTERM／SIGHUP；結束時移除 table |
 | `wnc-gw trust add／del／list` | 手動信任或取消信任一條連線（ct mark） |
 | `wnc-gw show interfaces` | 列出網卡，方便在設定檔裡指定 port |
+| `wnc-gw explain [代碼]`、`explain --all` | doctor 的每個 error／warning／note 都有代碼（例如 `warning[R006]`），`run` 的每個 WARN／ERROR log 也有（`code=S015`，json 是 `"code":"S015"`）；不帶參數列出全部代碼，帶代碼印出說明（cause：什麼情況會出現；action：怎麼處理），`--all` 印出全部的詳細說明 |
 
 全域選項：`--log-format text|json`、`--log-level error|warn|info|debug|trace`（預設 info；每一筆 alert 的細節要 `debug` 才印）。
 
@@ -298,7 +299,8 @@ flowchart LR
 
 | 目錄／檔案 | 內容 |
 |---|---|
-| `src/cli/` | 子命令（doctor、run、trust、show）和 log 初始化 |
+| `src/cli/` | 子命令（doctor、run、trust、show、explain）和 log 初始化 |
+| `src/issue.rs` | doctor 結果和 `run` 的 WARN／ERROR log 的代碼（`Issue`），以及 `explain` 印的說明 |
 | `src/config.rs` | 讀設定檔，CLI 參數可以蓋過 |
 | `src/ports.rs` | 依名稱或 MAC 找出 LAN、WAN 是哪張網卡 |
 | `src/forwarding/` | bridge、routed 兩種模式各自的環境檢查（trait） |

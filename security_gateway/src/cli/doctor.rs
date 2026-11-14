@@ -4,12 +4,15 @@ use std::process::ExitCode;
 
 use clap::Args;
 use security_gateway::access::{self, Writable, Writer};
-use security_gateway::config::{self, AbsolutePath, Config, Overrides, Setting, SuricataSettings, TrustSettings};
+use security_gateway::config::{
+    self, AbsolutePath, Config, ConfigError, Overrides, Setting, SuricataSettings, TrustSettings,
+};
 use security_gateway::datapath::{CoreHook, XdpPolicy, core_hook};
 use security_gateway::firewall::WhenUnavailable;
-use security_gateway::forwarding::{self, EnvCheck, EnvState, Forwarding, Level, Mode};
+use security_gateway::forwarding::{self, EnvCheck, EnvState, Forwarding, Level, Mode, Note};
 use security_gateway::ids::delivery::Delivery;
 use security_gateway::ids::spawned;
+use security_gateway::issue::Issue;
 use security_gateway::ids::suricata::{
     self, Capture, Owner, RuleFile, RuleFileState, RunningSuricata, Suricata, SuricataConfig, SuricataError,
     SuricataInfo, SuricataScan,
@@ -37,6 +40,7 @@ enum Severity {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Finding {
     severity: Severity,
+    issue: Issue,
     message: String,
 }
 
@@ -47,7 +51,7 @@ impl Finding {
             Severity::Warning => "warning",
             Severity::Note => "note",
         };
-        println!("{label}: {}", self.message);
+        println!("{label}[{}]: {}", self.issue, self.message);
     }
 }
 
@@ -57,6 +61,7 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: Doctor
         Err(e) => {
             Finding {
                 severity: Severity::Error,
+                issue: config_issue(&e),
                 message: e.to_string(),
             }
             .print();
@@ -84,14 +89,24 @@ pub async fn passes(config: &Config, starting: bool) -> bool {
     let netlink = match Netlink::connect() {
         Ok(netlink) => netlink,
         Err(e) => {
-            eprintln!("error: {e}");
+            Finding {
+                severity: Severity::Error,
+                issue: Issue::InterfacesUnlisted,
+                message: e.to_string(),
+            }
+            .print();
             return false;
         }
     };
     let interfaces = match netlink.interfaces().await {
         Ok(interfaces) => interfaces,
         Err(e) => {
-            eprintln!("error: {e}");
+            Finding {
+                severity: Severity::Error,
+                issue: Issue::InterfacesUnlisted,
+                message: e.to_string(),
+            }
+            .print();
             return false;
         }
     };
@@ -131,7 +146,26 @@ pub async fn passes(config: &Config, starting: bool) -> bool {
     for finding in &findings {
         finding.print();
     }
+    if let Some(first) = findings.first() {
+        println!("\nfor more about a finding, run: wnc-gw explain <code> (for example wnc-gw explain {})", first.issue);
+    }
     !findings.iter().any(|f| f.severity == Severity::Error)
+}
+
+pub(crate) fn config_issue(e: &ConfigError) -> Issue {
+    match e {
+        ConfigError::Read { .. } => Issue::ConfigUnreadable,
+        ConfigError::Parse { .. } => Issue::ConfigInvalid,
+        ConfigError::Missing { .. } => Issue::PortUnspecified,
+    }
+}
+
+fn resolve_issue(e: &ResolveError) -> Issue {
+    match e {
+        ResolveError::NotFound { .. } => Issue::PortNotFound,
+        ResolveError::Ambiguous { .. } => Issue::PortAmbiguous,
+        ResolveError::SharedInterface { .. } => Issue::PortShared,
+    }
 }
 
 fn port_findings(results: &[Result<Port, ResolveError>]) -> Vec<Finding> {
@@ -141,6 +175,7 @@ fn port_findings(results: &[Result<Port, ResolveError>]) -> Vec<Finding> {
             Ok(port) => link_finding(port),
             Err(e) => Some(Finding {
                 severity: Severity::Error,
+                issue: resolve_issue(e),
                 message: e.to_string(),
             }),
         })
@@ -149,24 +184,28 @@ fn port_findings(results: &[Result<Port, ResolveError>]) -> Vec<Finding> {
 
 fn link_finding(port: &Port) -> Option<Finding> {
     let name = &port.interface.name;
-    let (severity, problem) = match port.interface.link_status() {
+    let (severity, issue, problem) = match port.interface.link_status() {
         LinkStatus::Up => return None,
         LinkStatus::AdminDown => (
             Severity::Warning,
+            Issue::PortAdminDown,
             format!("interface is administratively down; bring it up with: ip link set {name} up"),
         ),
         LinkStatus::NoCarrier => (
             Severity::Warning,
+            Issue::PortNoCarrier,
             "no carrier (link is down); check the cable and the device on the other end".to_owned(),
         ),
         LinkStatus::Unknown => (
             Severity::Note,
+            Issue::PortStateUnreported,
             "link state is not reported by the driver".to_owned(),
         ),
-        LinkStatus::Other(state) => (Severity::Warning, format!("link state is {state}")),
+        LinkStatus::Other(state) => (Severity::Warning, Issue::PortStateOther, format!("link state is {state}")),
     };
     Some(Finding {
         severity,
+        issue,
         message: format!("{} ({name}): {problem}", port.role),
     })
 }
@@ -195,22 +234,25 @@ fn env_findings(mode: Mode, checks: &[EnvCheck]) -> Vec<Finding> {
                     Level::Required => Severity::Error,
                     Level::Awaited | Level::Recommended => Severity::Warning,
                 },
+                issue: check.issue,
                 message: format!("{mode} mode: {problem}; {fix}"),
             }),
             EnvState::Unknown { reason } => Some(Finding {
                 severity: Severity::Warning,
+                issue: check.issue,
                 message: format!("{mode} mode: cannot verify {}: {reason}", check.item),
             }),
         })
         .collect()
 }
 
-fn note_findings(mode: Mode, notes: &[String]) -> Vec<Finding> {
+fn note_findings(mode: Mode, notes: &[Note]) -> Vec<Finding> {
     notes
         .iter()
         .map(|note| Finding {
             severity: Severity::Note,
-            message: format!("{mode} mode: {note}"),
+            issue: note.issue,
+            message: format!("{mode} mode: {}", note.text),
         })
         .collect()
 }
@@ -266,6 +308,7 @@ fn xdp_findings(policy: XdpPolicy, detection_error: Option<&str>, rows: &[XdpRow
     if let (Some(e), XdpPolicy::Auto) = (detection_error, policy) {
         findings.push(Finding {
             severity: Severity::Warning,
+            issue: Issue::XdpUndetected,
             message: format!("cannot detect native XDP support ({e}); the core program will use TC"),
         });
     }
@@ -279,6 +322,7 @@ fn xdp_findings(policy: XdpPolicy, detection_error: Option<&str>, rows: &[XdpRow
             let program = prog_id.map_or("a generic XDP program".to_owned(), |id| format!("generic XDP program {id}"));
             findings.push(Finding {
                 severity: Severity::Warning,
+                issue: Issue::XdpGenericAttached,
                 message: format!(
                     "{role} ({name}): {program} is attached; generic XDP disables GRO on this interface and is slower \
                      than TC (detach it with: ip link set dev {name} xdpgeneric off)"
@@ -288,6 +332,7 @@ fn xdp_findings(policy: XdpPolicy, detection_error: Option<&str>, rows: &[XdpRow
         if row.hook == CoreHook::GenericXdp {
             findings.push(Finding {
                 severity: Severity::Warning,
+                issue: Issue::XdpGenericConfigured,
                 message: format!(
                     "{role} ({name}): xdp = \"generic\" makes the core program use generic XDP, which disables GRO \
                      on this interface; use \"auto\" to get native XDP or TC"
@@ -389,6 +434,7 @@ fn check_modules(mode_modules: &[RequiredModule], delivery: Delivery) -> Vec<Fin
         Err(e) => {
             return vec![Finding {
                 severity: Severity::Warning,
+                issue: Issue::ModulesUnchecked,
                 message: format!("could not check kernel modules: {e}"),
             }];
         }
@@ -407,11 +453,12 @@ fn module_findings(release: &str, states: &[(&RequiredModule, ModuleState)]) -> 
     states
         .iter()
         .filter_map(|(module, state)| {
-            let (severity, message) = match state {
+            let (severity, issue, message) = match state {
                 ModuleState::Loaded | ModuleState::Builtin => return None,
                 ModuleState::Loadable if !module.must_be_loaded => return None,
                 ModuleState::Loadable => (
                     Severity::Error,
+                    Issue::ModuleNotLoaded,
                     format!(
                         "kernel module {name} is not loaded (needed for {}) and the kernel does not load it on demand; \
                          load it with: modprobe {name}, and {}",
@@ -422,17 +469,23 @@ fn module_findings(release: &str, states: &[(&RequiredModule, ModuleState)]) -> 
                 ),
                 ModuleState::Missing => (
                     Severity::Error,
+                    Issue::ModuleMissing,
                     format!("kernel module {} is missing (needed for {})", module.name, module.purpose),
                 ),
                 ModuleState::Unknown => (
                     Severity::Warning,
+                    Issue::ModuleUnverified,
                     format!(
                         "cannot verify kernel module {}: it is not loaded and /lib/modules/{release} is not readable",
                         module.name
                     ),
                 ),
             };
-            Some(Finding { severity, message })
+            Some(Finding {
+                severity,
+                issue,
+                message,
+            })
         })
         .collect()
 }
@@ -455,20 +508,30 @@ async fn check_nft(path: &Setting<AbsolutePath>) -> Vec<Finding> {
 fn nft_finding(path: &Path, info: &Result<NftInfo, NftError>) -> Option<Finding> {
     const PURPOSE: &str = "needed for installing the gateway's nftables rules";
     let nft = path.display();
-    let (severity, message) = match info {
+    let (severity, issue, message) = match info {
         Ok(NftInfo { json: Some(true), .. }) => return None,
         Ok(NftInfo { json: Some(false), .. }) => (
             Severity::Error,
+            Issue::NftNoJson,
             format!("{nft} is built without JSON support ({PURPOSE}); install an nftables build with JSON support"),
         ),
         Ok(NftInfo { json: None, .. }) => (
             Severity::Warning,
+            Issue::NftUnverified,
             format!("cannot verify JSON support of {nft}: nft -V does not report it"),
         ),
-        Err(NftError::NotFound { .. }) => (Severity::Error, format!("{nft} not found ({PURPOSE}); install nftables")),
-        Err(e) => (Severity::Warning, format!("could not check nft: {e}")),
+        Err(NftError::NotFound { .. }) => (
+            Severity::Error,
+            Issue::NftNotFound,
+            format!("{nft} not found ({PURPOSE}); install nftables"),
+        ),
+        Err(e) => (Severity::Warning, Issue::NftUnverified, format!("could not check nft: {e}")),
     };
-    Some(Finding { severity, message })
+    Some(Finding {
+        severity,
+        issue,
+        message,
+    })
 }
 
 fn print_nft(path: &Setting<AbsolutePath>, info: &Result<NftInfo, NftError>) {
@@ -500,8 +563,8 @@ async fn check_suricata(config: &Config) -> Vec<Finding> {
     let mut findings = suricata_findings(suricata.path(), &info, config.delivery());
     findings.extend(when_unavailable_finding(settings.when_unavailable.value, config.protection.value));
     findings.extend(protection_findings(config.protection.value));
+    findings.push(spawned_finding());
     if info.is_ok() {
-        findings.push(spawned_finding());
         println!();
         let yaml = settings.config.value.as_path();
         let dump = suricata.dump_config(yaml, &spawned::FORCED_SETTINGS).await;
@@ -542,8 +605,9 @@ fn other_suricata_findings(
     service: &str,
     boot: Option<&BootState>,
 ) -> Vec<Finding> {
-    let warning = |message: String| Finding {
+    let warning = |issue: Issue, message: String| Finding {
         severity: Severity::Warning,
+        issue,
         message,
     };
     let mut findings = Vec::new();
@@ -551,6 +615,7 @@ fn other_suricata_findings(
         Ok(scan) => {
             if scan.others_hidden {
                 findings.push(warning(
+                    Issue::ProcessesHidden,
                     "could not see other users' processes (/proc is mounted with hidepid), so other suricata \
                      processes may be missing"
                         .to_owned(),
@@ -559,7 +624,10 @@ fn other_suricata_findings(
             scan.running.as_slice()
         }
         Err(e) => {
-            findings.push(warning(format!("could not check for other suricata processes: {e}")));
+            findings.push(warning(
+                Issue::OtherSuricataUnchecked,
+                format!("could not check for other suricata processes: {e}"),
+            ));
             &[]
         }
     };
@@ -584,11 +652,14 @@ fn other_suricata_findings(
                     }
                     _ => String::new(),
                 };
-                findings.push(warning(format!(
-                    "a suricata left by a previous wnc-gw (pid {pid}) is still running{held}; it should exit by itself \
-                     shortly, otherwise stop it with: kill {pid}",
-                    pid = other.pid
-                )));
+                findings.push(warning(
+                    Issue::LeftoverSuricata,
+                    format!(
+                        "a suricata left by a previous wnc-gw (pid {pid}) is still running{held}; it should exit by \
+                         itself shortly, otherwise stop it with: kill {pid}",
+                        pid = other.pid
+                    ),
+                ));
                 continue;
             }
             Owner::Other => {}
@@ -608,17 +679,19 @@ fn other_suricata_findings(
         let memory = other
             .rss_kb
             .map_or_else(|| "memory".to_owned(), |kb| format!("{} MB of memory", megabytes(kb)));
-        let (severity, message) = match (&other.capture, &held, other.same_net_ns) {
+        let (severity, issue, message) = match (&other.capture, &held, other.same_net_ns) {
             _ if let Some(groups) = nflog_groups => (
                 Severity::Warning,
+                Issue::OtherSuricataOnNflog,
                 format!(
                     "{who} is receiving packet copies over NFLOG; if it binds NFLOG group {groups}, which wnc-gw is \
-                     configured to use (wnc-gw cannot see that without root), wnc-gw's suricata cannot start until \
+                     configured to use (wnc-gw cannot tell which group it binds), wnc-gw's suricata cannot start until \
                      that one stops; stop it with: {stop}"
                 ),
             ),
             (Capture::Nfq(_), Some(queues), Some(true)) => (
                 Severity::Warning,
+                Issue::OtherSuricataOnQueue,
                 format!(
                     "{who} is running inline on NFQUEUE {queues}, which wnc-gw is configured to use; wnc-gw's \
                      suricata cannot bind it until that one stops (wnc-gw keeps retrying); stop it with: {stop}"
@@ -626,6 +699,7 @@ fn other_suricata_findings(
             ),
             (Capture::Nfq(_), Some(queues), None) => (
                 Severity::Warning,
+                Issue::OtherSuricataOnQueue,
                 format!(
                     "{who} is running inline on NFQUEUE {queues}, which wnc-gw is configured to use; if it is in \
                      wnc-gw's network namespace (could not tell), wnc-gw's suricata cannot bind it until that one \
@@ -634,6 +708,7 @@ fn other_suricata_findings(
             ),
             (Capture::Nfq(queues), _, same_net_ns) => (
                 Severity::Warning,
+                Issue::OtherSuricataInline,
                 format!(
                     "{who} is running inline on NFQUEUE {}{}; it competes with wnc-gw's suricata for CPU and uses \
                      {memory}; stop it with: {stop}",
@@ -643,6 +718,7 @@ fn other_suricata_findings(
             ),
             (Capture::Live(method), _, _) => (
                 Severity::Warning,
+                Issue::OtherSuricataLive,
                 format!(
                     "{who} is capturing traffic ({method}) and inspects it separately from wnc-gw; it competes \
                      for CPU and uses {memory}; stop it with: {stop}"
@@ -650,14 +726,17 @@ fn other_suricata_findings(
             ),
             (Capture::File, _, _) => (
                 Severity::Note,
+                Issue::OtherSuricataPcap,
                 format!("{who} is reading pcap files; it competes for CPU while it runs"),
             ),
             (Capture::Test, _, _) => (
                 Severity::Note,
+                Issue::OtherSuricataTest,
                 format!("{who} is testing its configuration (suricata-update runs suricata -T); it exits by itself"),
             ),
             (Capture::Unknown, _, _) => (
                 Severity::Warning,
+                Issue::OtherSuricataUnknown,
                 format!(
                     "{who} is running, but its command line does not show how it gets packets; it may compete \
                      with wnc-gw's suricata; stop it with: {stop}"
@@ -665,16 +744,24 @@ fn other_suricata_findings(
             ),
         };
         service_running |= is_service && !matches!(other.capture, Capture::File | Capture::Test);
-        findings.push(Finding { severity, message });
+        findings.push(Finding {
+            severity,
+            issue,
+            message,
+        });
     }
     match boot {
-        Some(BootState::Enabled) if !service_running => findings.push(warning(format!(
-            "{service} is enabled, so another suricata starts at boot; disable it with: {}",
-            Current.disable_service_hint(service)
-        ))),
-        Some(BootState::Unknown(reason)) => {
-            findings.push(warning(format!("could not check whether {service} starts at boot: {reason}")))
-        }
+        Some(BootState::Enabled) if !service_running => findings.push(warning(
+            Issue::SuricataServiceEnabled,
+            format!(
+                "{service} is enabled, so another suricata starts at boot; disable it with: {}",
+                Current.disable_service_hint(service)
+            ),
+        )),
+        Some(BootState::Unknown(reason)) => findings.push(warning(
+            Issue::SuricataServiceUnchecked,
+            format!("could not check whether {service} starts at boot: {reason}"),
+        )),
         _ => {}
     }
     findings
@@ -742,12 +829,14 @@ fn suricata_findings(path: &Path, info: &Result<SuricataInfo, SuricataError>, de
         Err(SuricataError::NotFound { .. }) => {
             return vec![Finding {
                 severity: Severity::Error,
+                issue: Issue::SuricataNotFound,
                 message: format!("{suricata} not found (needed for inspecting traffic); install suricata"),
             }];
         }
         Err(e) => {
             return vec![Finding {
                 severity: Severity::Warning,
+                issue: Issue::SuricataUnchecked,
                 message: format!("could not check suricata: {e}"),
             }];
         }
@@ -761,6 +850,7 @@ fn suricata_findings(path: &Path, info: &Result<SuricataInfo, SuricataError>, de
         Some(true) => {}
         Some(false) => findings.push(Finding {
             severity: Severity::Error,
+            issue: Issue::SuricataNoCapture,
             message: format!(
                 "{suricata} is built without {name} support (needed for {needed_for}); \
                  install a suricata build with {name} support"
@@ -768,6 +858,7 @@ fn suricata_findings(path: &Path, info: &Result<SuricataInfo, SuricataError>, de
         }),
         None => findings.push(Finding {
             severity: Severity::Warning,
+            issue: Issue::SuricataNoCapture,
             message: format!("cannot verify {name} support of {suricata}: --build-info does not report it"),
         }),
     }
@@ -775,6 +866,7 @@ fn suricata_findings(path: &Path, info: &Result<SuricataInfo, SuricataError>, de
         Some(true) => {}
         Some(false) => findings.push(Finding {
             severity: Severity::Error,
+            issue: Issue::SuricataNoSystemd,
             message: format!(
                 "{suricata} is built without systemd support (needed for the readiness notification the gateway \
                  waits for before sending it packets); install a suricata build with systemd support"
@@ -782,6 +874,7 @@ fn suricata_findings(path: &Path, info: &Result<SuricataInfo, SuricataError>, de
         }),
         None => findings.push(Finding {
             severity: Severity::Warning,
+            issue: Issue::SuricataNoSystemd,
             message: format!(
                 "cannot verify systemd support of {suricata} (needed for the readiness notification): \
                  --build-info does not report it (Suricata 8.0 and later do)"
@@ -794,6 +887,7 @@ fn suricata_findings(path: &Path, info: &Result<SuricataInfo, SuricataError>, de
 fn spawned_finding() -> Finding {
     Finding {
         severity: Severity::Warning,
+        issue: Issue::SuricataSpawned,
         message: "suricata is started by wnc-gw and shares its account and privileges, so a compromised suricata \
                   can do whatever the gateway can"
             .to_owned(),
@@ -809,6 +903,7 @@ fn when_unavailable_finding(when_unavailable: WhenUnavailable, protection: Prote
     match when_unavailable {
         WhenUnavailable::Accept => Some(Finding {
             severity: Severity::Warning,
+            issue: Issue::AcceptWhenUnavailable,
             message: format!(
                 "forwarded traffic passes without inspection while suricata {when} (when_unavailable = \"accept\"); \
                  set when_unavailable = \"drop\" to drop it instead"
@@ -823,17 +918,27 @@ fn protection_findings(protection: Protection) -> Vec<Finding> {
         return Vec::new();
     }
     [
-        "protection = \"ids\": suricata only gets copies of forwarded packets, so no detection blocks traffic; \
+        (
+            Issue::IdsNoBlocking,
+            "protection = \"ids\": suricata only gets copies of forwarded packets, so no detection blocks traffic; \
          set protection = \"ips\" to make packets wait for suricata's verdict",
-        "protection = \"ids\": suricata does not validate checksums, because packets merged by GRO reach it with \
+        ),
+        (
+            Issue::IdsNoChecksum,
+            "protection = \"ids\": suricata does not validate checksums, because packets merged by GRO reach it with \
          incomplete ones; it also inspects packets that the receiving host drops for a bad checksum, which an \
          attacker can use to hide data from inspection; protection = \"ips\" does not have this limitation",
-        "protection = \"ids\": traffic that arrives faster than suricata takes the copies is forwarded without \
+        ),
+        (
+            Issue::IdsCopiesDropped,
+            "protection = \"ids\": traffic that arrives faster than suricata takes the copies is forwarded without \
          inspection, whichever when_unavailable is set",
+        ),
     ]
     .into_iter()
-    .map(|message| Finding {
+    .map(|(issue, message)| Finding {
         severity: Severity::Warning,
+        issue,
         message: message.to_owned(),
     })
     .collect()
@@ -895,6 +1000,7 @@ fn trust_findings(
     let ttl = trust.ttl.value.as_secs();
     let mut findings = vec![Finding {
         severity: Severity::Warning,
+        issue: Issue::AutoTrust,
         message: format!(
             "automatic trust is on: a connection that carries {} packets each way, for at least {} s and without \
              a suricata alert, skips inspection for {ttl} s except for syn/fin/rst; an attack sent after that is \
@@ -906,6 +1012,7 @@ fn trust_findings(
     if !alerts {
         findings.push(Finding {
             severity: Severity::Error,
+            issue: Issue::AutoTrustNoAlerts,
             message: "automatic trust needs suricata's alerts in an EVE file; without them, connections that raise \
                       alerts would be trusted too"
                 .to_owned(),
@@ -915,6 +1022,7 @@ fn trust_findings(
         Ok(Some(value)) if value == "1" => {}
         Ok(Some(value)) => findings.push(Finding {
             severity: Severity::Error,
+            issue: Issue::ConntrackAcct,
             message: format!(
                 "automatic trust needs {CONNTRACK_ACCT} = 1 to count each connection's packets, but it is {value}; \
                  set it with: sysctl -w {CONNTRACK_ACCT}=1, and {}",
@@ -923,6 +1031,7 @@ fn trust_findings(
         }),
         Ok(None) => findings.push(Finding {
             severity: Severity::Warning,
+            issue: Issue::ConntrackAcct,
             message: format!(
                 "cannot verify {CONNTRACK_ACCT} because nf_conntrack is not loaded yet; automatic trust needs it set \
                  to 1 (sysctl -w {CONNTRACK_ACCT}=1 once the module is loaded)"
@@ -930,6 +1039,7 @@ fn trust_findings(
         }),
         Err(e) => findings.push(Finding {
             severity: Severity::Warning,
+            issue: Issue::ConntrackAcct,
             message: format!("cannot verify {CONNTRACK_ACCT}: {e}; automatic trust needs it set to 1"),
         }),
     }
@@ -939,6 +1049,7 @@ fn trust_findings(
     {
         findings.push(Finding {
             severity: Severity::Warning,
+            issue: Issue::TrustTtlTooShort,
             message: format!(
                 "trust ttl ({ttl} s) is not longer than suricata's flow-timeouts.tcp.established ({established} s): \
                  when trust ends suricata may still hold the connection's old state and drop its packets as out of \
@@ -959,6 +1070,7 @@ fn suricata_config_findings(
     if dump.is_ok() && alert_file.is_none() {
         findings.push(Finding {
             severity: Severity::Warning,
+            issue: Issue::NoAlertOutput,
             message: format!(
                 "suricata does not write alerts to a regular EVE file, so wnc-gw cannot see alerts; enable an \
                  eve-log output with filetype: regular and alert in its types in {}",
@@ -980,12 +1092,14 @@ fn rule_file_findings(
         Err(SuricataError::Failed { stderr, .. }) => {
             return vec![Finding {
                 severity: Severity::Error,
+                issue: Issue::SuricataConfigUnloadable,
                 message: format!("suricata cannot load {config}: {}", suricata_errors(stderr)),
             }];
         }
         Err(e) => {
             return vec![Finding {
                 severity: Severity::Warning,
+                issue: Issue::SuricataConfigUnloadable,
                 message: format!("could not check {config}: {e}"),
             }];
         }
@@ -994,6 +1108,7 @@ fn rule_file_findings(
     if rule_files.is_empty() {
         return vec![Finding {
             severity: Severity::Error,
+            issue: Issue::NoRules,
             message: format!("suricata has no rules to load: rule-files is empty; {fix}"),
         }];
     }
@@ -1008,6 +1123,7 @@ fn rule_file_findings(
         let problems: Vec<String> = rule_files.iter().filter_map(rule_file_problem).collect();
         return vec![Finding {
             severity: Severity::Error,
+            issue: Issue::NoRules,
             message: format!("suricata has no rules to load: {}; {fix}", problems.join(", ")),
         }];
     }
@@ -1027,6 +1143,7 @@ fn rule_file_findings(
             };
             Some(Finding {
                 severity: Severity::Warning,
+                issue: Issue::RuleFileProblem,
                 message,
             })
         })
@@ -1140,19 +1257,23 @@ fn access_findings(rows: &[AccessRow]) -> Vec<Finding> {
     rows.iter()
         .filter_map(|row| {
             let path = row.path.display();
-            let message = match &row.writers {
+            let (issue, message) = match &row.writers {
                 Ok(writers) if writers.is_empty() => return None,
-                Ok(writers) => format!(
+                Ok(writers) => (
+                    Issue::WritableByNonRoot,
+                    format!(
                     "{} {path} can be modified without root ({}), so those accounts could make the gateway run \
                      code with its privileges",
                     row.used_as,
-                    describe_writers(writers)
+                        describe_writers(writers)
+                    ),
                 ),
                 Err(e) if e.kind() == io::ErrorKind::NotFound => return None,
-                Err(e) => format!("could not check who can modify {path}: {e}"),
+                Err(e) => (Issue::AccessUnchecked, format!("could not check who can modify {path}: {e}")),
             };
             Some(Finding {
                 severity: Severity::Warning,
+                issue,
                 message,
             })
         })

@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use tracing::{info, warn};
 
+use crate::issue::Issue;
 use crate::kernel::conntrack::{ConntrackError, CpuStats, Stats};
 
 const NEARLY_FULL_PERCENT: u64 = 90;
@@ -86,14 +87,14 @@ fn log(finding: Finding) {
     match finding {
         Finding::Table { entries, max } => info!(entries, max, "conntrack table"),
         Finding::NearlyFull { entries, max } => {
-            warn!(entries, max, "conntrack table is nearly full; new connections may be dropped")
+            warn!(code = %Issue::ConntrackNearlyFull, entries, max, "conntrack table is nearly full; new connections may be dropped")
         }
         Finding::NoLongerNearlyFull { entries, max } => info!(entries, max, "conntrack table is no longer nearly full"),
-        Finding::Dropped { drop, insert_failed } => warn!(drop, insert_failed, interval_s, "conntrack dropped packets"),
+        Finding::Dropped { drop, insert_failed } => warn!(code = %Issue::ConntrackDropped, drop, insert_failed, interval_s, "conntrack dropped packets"),
         Finding::Evicted { early_drop } => {
-            warn!(early_drop, interval_s, "conntrack evicted unassured connections to make room")
+            warn!(code = %Issue::ConntrackEvicted, early_drop, interval_s, "conntrack evicted unassured connections to make room")
         }
-        Finding::ReadFailed { error } => warn!(error = error.as_str(), "cannot read conntrack statistics"),
+        Finding::ReadFailed { error } => warn!(code = %Issue::ConntrackStatsUnreadable, error = error.as_str(), "cannot read conntrack statistics"),
         Finding::ReadRecovered => info!("conntrack statistics can be read again"),
     }
 }

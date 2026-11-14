@@ -51,6 +51,7 @@ fn each_mode_lists_its_modules() {
 }
 
 const FORWARD: RequiredSysctl = RequiredSysctl {
+    issue: Issue::RoutedIpForward,
     key: "net.ipv4.ip_forward",
     level: Level::Required,
     consequence: "IPv4 traffic is not forwarded",

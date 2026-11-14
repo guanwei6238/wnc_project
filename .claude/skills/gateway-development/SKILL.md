@@ -24,12 +24,14 @@ security_gateway/
 │   ├── main.rs             #[tokio::main(flavor = "current_thread")]，只呼叫 cli::run()
 │   ├── cli/                ← bin：只放參數與膠水
 │   │   ├── mod.rs          Cli（全域參數 -c/--config、--lan、--wan、--log-format、--log-level）、Command、run()
-│   │   ├── doctor.rs       doctor：載入設定 → passes()（各項檢查、印報告，沒有 error 才回傳 true）→ 結束碼
+│   │   ├── doctor.rs       doctor：載入設定 → passes()（各項檢查、印報告，沒有 error 才回傳 true）→ 結束碼；每個 Finding 帶 Issue，印成 warning[R006]: …
+│   │   ├── explain.rs      explain：列出全部代碼、印一條（explain R006）或全部（--all）的說明（cause、action），100 字元折行
 │   │   ├── logging.rs      LogFormat（text、json）、LogLevel（預設 info）、init()：tracing 的輸出設定（stderr、UTC 時間、text 在終端機才上色、寫入失敗不回報，否則 stderr 斷掉時會 panic），run 和 trust add/del 會呼叫
 │   │   ├── trust.rs        trust add/del/list：用 ctnetlink 直接設、清信任 bit，或列出有信任 bit 的連線；不需要 run，但沒有 run 時沒有 table 看這個 bit，Pi 上也沒有 entry；add、del 記 log 事件
 │   │   ├── run.rs          run：開 log → 載入設定 → instance::lock()（已有 wnc-gw 在跑就不啟動）→ doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM/SIGHUP → 清掉上一次留下的信任 bit（firewall::untrust_all，清不掉照常啟動、記 ERROR）→ 安裝 table（ids chain 是沒就緒狀態）→ 從 suricata.yaml 找出寫 alert 的 eve-log 檔（dump-config）→ 啟動 Suricata（SpawnedSuricata）→ Ready 時 start_inspection（第一次 Ready 時開始讀 EVE 的 alert：AlertWatch）、Stopped 時 stop_inspection 再 allow_restart；每 10 秒用新的 ctnetlink socket 讀 conntrack 統計交給 ConntrackMonitor；ids 時 Suricata 就緒後每 10 秒讀它的 NFLOG socket 交給 CopyMonitor → 收到訊號：stop_inspection → 停止 Suricata → 讀完 EVE 最後一段並記摘要 → 移除 table；沒檢查的時段都記成 log 事件
 │   │   └── show/           show 的巢狀子命令（mod.rs 分派，interfaces.rs 列介面）
 │   ├── lib.rs              只宣告功能模組：access、agent、config、datapath、firewall、forwarding、ids、instance、kernel、monitor、platform、ports、protection
+│   ├── issue.rs            Issue（doctor 結果和 run 的 WARN／ERROR log 的代碼，issues! macro 同時產生 enum 和 ALL）、explanation()（exhaustive match，新增 Issue 不寫說明就編不過）、FromStr 不分大小寫
 │   ├── command.rs          執行外部程式的共用部分：逾時 5 秒、kill_on_drop、寫 stdin、收 stdout 和 stderr（output()、run()、CommandError）
 │   ├── agent/              3d：wnc-gw 自己判斷信任（之後拆成無特權的 agent process）
 │   │   ├── mod.rs          trait Privd（forwarded_connections、trust、untrust；之後由有權限的 process 實作）、LocalPrivd（同一個 process，ctnetlink socket 壞了就下次重連）
@@ -141,6 +143,7 @@ security_gateway/
 - 用 `tracing`（`tracing-subscriber` 只開 `fmt`、`std`、`ansi`、`json`）。lib 只用 `info!`、`warn!`、`error!` 這類 macro 發出事件，**不設定輸出**；輸出由 bin 的 `cli/logging.rs` 決定，目前 `run` 和 `trust add/del` 會呼叫 `init()`。
 - **格式**：`--log-format text|json`（全域參數，預設 text，2026-10-29）。放命令列而不是 setting.toml：log 在讀設定檔之前就開始（讀設定失敗也要記），而且格式取決於誰讀輸出，是執行環境的事。json 每行一個物件，欄位攤平在最外層（`{"timestamp":…,"level":"INFO","message":…,"uninspected_ms":97}`），數字欄位是 JSON 數字，不輸出 target 和 span。doctor 的報告（stdout）和 CLI 的 `error: …`（例如 `trust add` 找不到連線）不是事件，維持純文字；分析 `run` 的 log 時只讀 stderr。
 - **報告和事件分開**：doctor 的報告印在 stdout（它是報告，見 `references/doctor-checks.md` §2）；`run` 這類長時間執行的命令，過程中發生的事一律記成事件，印在 stderr。用 systemd 執行時 stderr 直接進 journald。
+- **每個 WARN、ERROR 事件的第一個欄位是 `code = %Issue::X`**（2026-11-14），`wnc-gw explain` 查得到說明；`tests/unit/issue.rs` 會掃 `src/`，漏了就失敗。新的事件要在 `src/issue.rs` 加 variant 和 cause／action。INFO、DEBUG 不用。
 - 訊息照錯誤訊息的規則：英文、小寫開頭、結尾不加句號。會變的值放欄位，不要塞進訊息：`info!(table = table.as_str(), "table installed")`，錯誤放 `error = %e`。欄位名稱用 snake_case，有單位的寫在名稱裡（`ready_ms`、`uptime_s`）。字串欄位用 `as_str()` 記錄，輸出時會加引號，含空白也不會跟其他欄位混在一起。
 - **會讓流量沒經過檢查的事件，一定要記**（開發者 2026-10-26 的要求）：Suricata 啟動、就緒、結束（結束碼或 signal、執行多久）、重啟，以及 queue 規則的裝上和拆掉。「從什麼時候到什麼時候沒有檢查」要能直接從 log 讀出來：目前是 WARN「forwarded traffic passes without inspection」（或 `is dropped without inspection`）到 INFO「forwarded traffic is inspected」（帶 `uninspected_ms`）。
 - 時間是 UTC。Pi 沒有校時時，log 的時間不可信（2026-10-26 時 Pi 慢了 6 天）。
