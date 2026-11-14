@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -7,7 +8,7 @@ use security_gateway::access::{self, Writable, Writer};
 use security_gateway::config::{
     self, AbsolutePath, AutoTrust, Config, ConfigError, Overrides, Setting, SuricataSettings, TrustSettings,
 };
-use security_gateway::datapath::{CoreHook, XdpPolicy, core_hook};
+use security_gateway::datapath::{CORE_PROGRAM_NAME, CoreHook, XdpPolicy, core_hook};
 use security_gateway::firewall::WhenUnavailable;
 use security_gateway::forwarding::{self, EnvCheck, EnvState, Forwarding, Level, Mode, Note};
 use security_gateway::ids::delivery::Delivery;
@@ -17,6 +18,7 @@ use security_gateway::ids::suricata::{
     self, Capture, Owner, RuleFile, RuleFileState, RunningSuricata, Suricata, SuricataConfig, SuricataError,
     SuricataInfo, SuricataScan,
 };
+use security_gateway::kernel::bpf::{self, TcxChain, TcxQueryError};
 use security_gateway::kernel::modules::{ModuleIndex, ModuleState, RequiredModule};
 use security_gateway::kernel::netdev::{Netdev, XdpFeatures};
 use security_gateway::kernel::netif::{Interface, Ipv4Routing, LinkStatus, Netlink, XdpAttachment, XdpMode};
@@ -124,6 +126,9 @@ pub async fn passes(config: &Config, starting: bool) -> bool {
     out!();
 
     findings.extend(check_xdp(config.xdp.value, &ports).await);
+    out!();
+
+    findings.extend(check_tcx(&ports));
     out!();
 
     findings.extend(check_modules(forwarding.required_modules(), config.delivery()));
@@ -370,6 +375,116 @@ fn print_xdp(rows: &[XdpRow]) {
             attached,
             row.hook
         );
+    }
+}
+
+#[derive(Debug)]
+struct TcxRow {
+    port: Port,
+    chain: Result<TcxChain, TcxQueryError>,
+}
+
+fn check_tcx(ports: &[Port]) -> Vec<Finding> {
+    let rows: Vec<TcxRow> = ports
+        .iter()
+        .map(|port| TcxRow {
+            port: port.clone(),
+            chain: bpf::tcx_ingress(port.interface.index),
+        })
+        .collect();
+    let any_program = rows.iter().any(|row| matches!(&row.chain, Ok(chain) if !chain.prog_ids.is_empty()));
+    let names = if any_program { bpf::program_names().ok() } else { None };
+    print_tcx(&rows, names.as_ref());
+    tcx_findings(&rows, names.as_ref())
+}
+
+fn tcx_findings(rows: &[TcxRow], names: Option<&HashMap<u32, String>>) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let errors: Vec<&TcxQueryError> = rows.iter().filter_map(|row| row.chain.as_ref().err()).collect();
+    if errors.iter().any(|e| matches!(e, TcxQueryError::Unsupported)) {
+        findings.push(Finding {
+            severity: Severity::Warning,
+            issue: Issue::TcxUnsupported,
+            message: "the kernel has no TCX (it needs Linux 6.6 or later), so run cannot attach its core eBPF \
+                      program (D001); inspection and trust work without it"
+                .to_owned(),
+        });
+    } else if let Some(e) = errors.first() {
+        findings.push(Finding {
+            severity: Severity::Warning,
+            issue: Issue::TcxUnchecked,
+            message: format!("cannot list the TCX programs on the ports ({e}); run doctor as root to see them"),
+        });
+    }
+    for row in rows {
+        let Ok(chain) = &row.chain else { continue };
+        if chain.prog_ids.is_empty() {
+            continue;
+        }
+        let (role, name) = (row.port.role, &row.port.interface.name);
+        let Some(names) = names else {
+            findings.push(Finding {
+                severity: Severity::Warning,
+                issue: Issue::ForeignTcxPrograms,
+                message: format!(
+                    "{role} ({name}): TCX ingress has programs {}; without CAP_SYS_ADMIN doctor cannot tell which, if \
+                     any, is wnc-gw's",
+                    program_list(&chain.prog_ids, None)
+                ),
+            });
+            continue;
+        };
+        let is_core = |id: &u32| names.get(id).map(String::as_str) == Some(CORE_PROGRAM_NAME);
+        let before = chain.prog_ids.iter().position(is_core).map_or(&[][..], |at| &chain.prog_ids[..at]);
+        if !before.is_empty() {
+            findings.push(Finding {
+                severity: Severity::Warning,
+                issue: Issue::CoreProgramNotFirst,
+                message: format!(
+                    "{role} ({name}): {} run before wnc-gw's core eBPF program on TCX ingress and see every packet \
+                     first",
+                    program_list(before, Some(names))
+                ),
+            });
+        }
+        let after: Vec<u32> = chain.prog_ids[before.len()..].iter().copied().filter(|id| !is_core(id)).collect();
+        if !after.is_empty() {
+            findings.push(Finding {
+                severity: Severity::Warning,
+                issue: Issue::ForeignTcxPrograms,
+                message: format!(
+                    "{role} ({name}): TCX ingress has programs that wnc-gw did not load: {}; wnc-gw's core program \
+                     runs before them",
+                    program_list(&after, Some(names))
+                ),
+            });
+        }
+    }
+    findings
+}
+
+fn program_list(ids: &[u32], names: Option<&HashMap<u32, String>>) -> String {
+    let labels: Vec<String> = ids
+        .iter()
+        .map(|id| match names.and_then(|names| names.get(id)).filter(|name| !name.is_empty()) {
+            Some(name) => format!("{id} ({name})"),
+            None => id.to_string(),
+        })
+        .collect();
+    labels.join(", ")
+}
+
+fn print_tcx(rows: &[TcxRow], names: Option<&HashMap<u32, String>>) {
+    out!("{:<4} {:<15} {}", "ROLE", "INTERFACE", "TCX INGRESS (IN ORDER)");
+    for row in rows {
+        let programs = match &row.chain {
+            Ok(chain) if chain.prog_ids.is_empty() => "none".to_owned(),
+            Ok(chain) => program_list(&chain.prog_ids, names),
+            Err(TcxQueryError::NotPermitted) => "not checked (needs CAP_NET_ADMIN)".to_owned(),
+            Err(TcxQueryError::Unsupported) => "no tcx".to_owned(),
+            Err(_) => "unknown".to_owned(),
+        };
+        out!("{:<4} {:<15} {}", row.port.role.to_string(), row.port.interface.name, programs);
     }
 }
 

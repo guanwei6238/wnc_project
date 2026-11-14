@@ -7,6 +7,7 @@ use clap::Args;
 use security_gateway::agent::LocalPrivd;
 use security_gateway::agent::trust::{TrustAgent, TrustPolicy};
 use security_gateway::config::{self, Config, Overrides, TrustSettings};
+use security_gateway::datapath::CoreProgram;
 use security_gateway::firewall::{self, FAMILY, Inspection, TABLE, WhenUnavailable};
 use security_gateway::ids::delivery::Delivery;
 use security_gateway::ids::lifecycle::{Event, Lifecycle};
@@ -15,12 +16,16 @@ use security_gateway::ids::suricata::Suricata;
 use security_gateway::instance::{self, InstanceError};
 use security_gateway::issue::Issue;
 use security_gateway::kernel::conntrack::Conntrack;
+use security_gateway::kernel::bpf;
+use security_gateway::kernel::netif::Netlink;
 use security_gateway::kernel::nflog;
 use security_gateway::kernel::nft::Nft;
 use security_gateway::monitor::alerts::AlertWatch;
 use security_gateway::monitor::conntrack::ConntrackMonitor;
 use security_gateway::monitor::nflog::CopyMonitor;
+use security_gateway::monitor::tcx::{CoreWatch, WatchedPort};
 use security_gateway::platform::{Current, Dirs};
+use security_gateway::ports::{self, Port};
 use tokio::signal::unix::{Signal, SignalKind, signal};
 use tokio::time::{self, MissedTickBehavior};
 use tracing::{error, info, warn};
@@ -86,8 +91,16 @@ pub async fn run(
     }
     info!(table = table.as_str(), "table installed; waiting for SIGINT, SIGTERM or SIGHUP");
     log_uninspected(inspection.when_unavailable);
+    let (core, core_watch) = match attach_core(&config).await {
+        Some((core, watch)) => (Some(core), Some(watch)),
+        None => (None, None),
+    };
 
-    let mut code = serve(&config, &nft, inspection, alert_file, &mut signals).await;
+    let mut code = serve(&config, &nft, inspection, alert_file, core_watch, &mut signals).await;
+
+    if let Some(core) = core {
+        detach_core(core);
+    }
 
     match firewall::remove(&nft).await {
         Ok(()) => warn!(
@@ -101,6 +114,59 @@ pub async fn run(
         }
     }
     code
+}
+
+async fn attach_core(config: &Config) -> Option<(CoreProgram, CoreWatch)> {
+    let attached = match resolve_ports(config).await {
+        Ok(ports) => CoreProgram::attach(&ports).map(|core| (core, ports)).map_err(|e| e.to_string()),
+        Err(e) => Err(e),
+    };
+    match attached {
+        Ok((core, ports)) => {
+            let interfaces: Vec<&str> = ports.iter().map(|port| port.interface.name.as_str()).collect();
+            let interfaces = interfaces.join(",");
+            info!(
+                prog_id = core.id(),
+                interfaces = interfaces.as_str(),
+                "core ebpf program attached first on tcx ingress"
+            );
+            let watched = ports
+                .into_iter()
+                .map(|port| WatchedPort {
+                    name: port.interface.name,
+                    ifindex: port.interface.index,
+                })
+                .collect();
+            let watch = CoreWatch::new(core.id(), watched);
+            Some((core, watch))
+        }
+        Err(e) => {
+            error!(
+                code = %Issue::CoreProgramFailed,
+                error = e.as_str(),
+                "cannot attach the core ebpf program; running without it"
+            );
+            None
+        }
+    }
+}
+
+async fn resolve_ports(config: &Config) -> Result<Vec<Port>, String> {
+    let netlink = Netlink::connect().map_err(|e| e.to_string())?;
+    let interfaces = netlink.interfaces().await.map_err(|e| e.to_string())?;
+    ports::resolve(&config.port_specs(), &interfaces)
+        .into_iter()
+        .map(|port| port.map_err(|e| e.to_string()))
+        .collect()
+}
+
+fn detach_core(core: CoreProgram) {
+    let (prog_id, packets) = (core.id(), core.packets());
+    drop(core);
+    match packets {
+        Ok(packets) => info!(prog_id, packets, "core ebpf program detached"),
+        Err(e) => info!(prog_id, error = %e, "core ebpf program detached"),
+    }
 }
 
 fn clear_earlier_trust() {
@@ -162,8 +228,12 @@ async fn serve(
     nft: &Nft,
     inspection: Inspection,
     alert_file: Option<PathBuf>,
+    core_watch: Option<CoreWatch>,
     signals: &mut StopSignals,
 ) -> ExitCode {
+    let mut core_watch = core_watch;
+    let mut core_tick = time::interval(CoreWatch::INTERVAL);
+    core_tick.set_missed_tick_behavior(MissedTickBehavior::Delay);
     let mut suricata = match SpawnedSuricata::start(suricata_options(config)) {
         Ok(suricata) => suricata,
         Err(e) => {
@@ -198,6 +268,11 @@ async fn serve(
                 break ExitCode::SUCCESS;
             }
             _ = monitor_tick.tick() => conntrack_monitor.check(Conntrack::connect().and_then(|mut c| c.stats())),
+            _ = core_tick.tick(), if core_watch.is_some() => {
+                if let Some(watch) = core_watch.as_mut() {
+                    watch.check(bpf::tcx_ingress);
+                }
+            }
             found = async {
                 match alerts.as_mut() {
                     Some(alerts) => alerts.next().await,

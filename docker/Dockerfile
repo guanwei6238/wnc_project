@@ -33,6 +33,10 @@ RUN echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/2
  && apt-get update && apt-get install -y --no-install-recommends -t trixie-backports suricata=1:8.0.7-1~bpo13+1 \
  && rm -rf /var/lib/apt/lists/*
 
+# bpftool：看 wnc-gw 掛在每個 port 上的 eBPF 程式和 map
+RUN apt-get update && apt-get install -y --no-install-recommends bpftool \
+ && rm -rf /var/lib/apt/lists/*
+
 # rep 重播 dataset 的 pcap
 FROM base AS rep
 

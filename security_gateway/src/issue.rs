@@ -87,6 +87,12 @@ issues! {
     SignalsUnavailable,
     SupervisionEnded,
     TableInstallFailed,
+    CoreProgramFailed,
+    CoreProgramNotFirst,
+    CoreProgramDetached,
+    TcxUnchecked,
+    TcxUnsupported,
+    ForeignTcxPrograms,
     TableRemoveFailed,
     TableRemoved,
     StartInspectionFailed,
@@ -904,6 +910,80 @@ impl Issue {
                         inspected.",
                 action: "Run as root and run wnc-gw doctor; the nft error in the message says what \
                          is missing.",
+            },
+            Self::CoreProgramFailed => &Explanation {
+                code: "D001",
+                title: "the core eBPF program cannot be attached",
+                reported_by: RUN,
+                severity: "error",
+                cause: "At start, run loads its eBPF program and attaches it first on TCX ingress of \
+                        both ports, and that failed: run lacks CAP_BPF or CAP_NET_ADMIN, the kernel \
+                        has no TCX (it needs Linux 6.6 or later) or rejected the program, or a port \
+                        went away. The program does not change traffic yet, so run keeps running \
+                        without it; inspection and trust work as before.",
+                action: "Run as root on Linux 6.6 or later; the message has the kernel's error. See \
+                         what is attached with: bpftool net show.",
+            },
+            Self::CoreProgramNotFirst => &Explanation {
+                code: "D002",
+                title: "other eBPF programs run before the core eBPF program",
+                reported_by: DOCTOR_AND_RUN,
+                severity: "warning",
+                cause: "On a port's TCX ingress, programs that are not wnc-gw's run before its core \
+                        program, which wnc-gw attached first: a loader attached them afterwards \
+                        with BPF_F_BEFORE, which puts a program first. They see \
+                        every packet first and can drop, redirect or change it, or its mark, \
+                        before wnc-gw does. run checks every 10 seconds and logs each change.",
+                action: "Find them with: bpftool net show dev <port>, and detach them, or attach \
+                         them after wnc-gw's program; restart run to put the core program first \
+                         again.",
+            },
+            Self::CoreProgramDetached => &Explanation {
+                code: "D003",
+                title: "the core eBPF program is no longer attached",
+                reported_by: RUN,
+                severity: "warning",
+                cause: "run checks every 10 seconds that its core program is still on each port's \
+                        TCX ingress, and it is gone: the interface was removed (a USB adapter \
+                        unplugged; the attachment does not come back when it is plugged in again) \
+                        or someone detached it (bpftool link detach). run does not attach it \
+                        again; inspection and trust work as before.",
+                action: "Restart run once the port is back (wnc-gw doctor shows the port and its \
+                         TCX programs).",
+            },
+            Self::TcxUnchecked => &Explanation {
+                code: "D004",
+                title: "the TCX programs on a port cannot be listed",
+                reported_by: DOCTOR_AND_RUN,
+                severity: "warning",
+                cause: "Listing a port's TCX ingress programs (bpf BPF_PROG_QUERY) failed, usually \
+                        because doctor runs without CAP_NET_ADMIN (not root); the table shows \
+                        not checked. In run it is logged when the check starts failing.",
+                action: "Run doctor as root to see the programs; otherwise the message has the \
+                         kernel's error.",
+            },
+            Self::TcxUnsupported => &Explanation {
+                code: "D005",
+                title: "the kernel has no TCX",
+                reported_by: DOCTOR,
+                severity: "warning",
+                cause: "The kernel rejected the query for TCX ingress programs, so it has no TCX \
+                        (added in Linux 6.6) and run cannot attach its core eBPF program (D001). \
+                        Inspection and trust do not need it yet.",
+                action: "Use Linux 6.6 or later.",
+            },
+            Self::ForeignTcxPrograms => &Explanation {
+                code: "D006",
+                title: "a port has TCX programs that wnc-gw did not load",
+                reported_by: DOCTOR,
+                severity: "warning",
+                cause: "A port's TCX ingress has eBPF programs other than wnc-gw's core program \
+                        (wnc_gw_ingress). run attaches its program before them, so they see only \
+                        the packets it passes on; they can still drop, redirect or change those \
+                        packets. Without CAP_SYS_ADMIN doctor sees only program ids and cannot \
+                        tell which one is wnc-gw's.",
+                action: "Check that you know what they are: bpftool net show dev <port>, and \
+                         bpftool prog show id <id>.",
             },
             Self::TableRemoveFailed => &Explanation {
                 code: "F002",

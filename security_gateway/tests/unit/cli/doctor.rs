@@ -229,6 +229,115 @@ fn unknown_check_is_a_warning() {
     );
 }
 
+fn tcx_row(name: &str, chain: Result<&[u32], TcxQueryError>) -> TcxRow {
+    TcxRow {
+        port: port(Role::Lan, name, true, OperState::Up),
+        chain: chain.map(|ids| TcxChain {
+            revision: 1,
+            prog_ids: ids.to_vec(),
+        }),
+    }
+}
+
+fn names(pairs: &[(u32, &str)]) -> HashMap<u32, String> {
+    pairs.iter().map(|&(id, name)| (id, name.to_owned())).collect()
+}
+
+#[test]
+fn empty_tcx_and_the_core_program_alone_have_no_finding() {
+    let rows = [tcx_row("eth0", Ok(&[])), tcx_row("eth1", Ok(&[52]))];
+    assert_eq!(tcx_findings(&rows, Some(&names(&[(52, "wnc_gw_ingress")]))), vec![]);
+}
+
+#[test]
+fn programs_after_the_core_program_are_disclosed() {
+    let rows = [tcx_row("eth0", Ok(&[52, 60, 61]))];
+    let names = names(&[(52, "wnc_gw_ingress"), (60, "shaper"), (61, "")]);
+    assert_eq!(
+        tcx_findings(&rows, Some(&names)),
+        vec![Finding {
+            severity: Severity::Warning,
+            issue: Issue::ForeignTcxPrograms,
+            message: "LAN (eth0): TCX ingress has programs that wnc-gw did not load: 60 (shaper), 61; wnc-gw's core \
+                      program runs before them"
+                .to_owned(),
+        }]
+    );
+}
+
+#[test]
+fn programs_before_the_core_program_are_a_warning() {
+    let rows = [tcx_row("eth0", Ok(&[60, 52, 61]))];
+    let names = names(&[(52, "wnc_gw_ingress"), (60, "jumper"), (61, "shaper")]);
+    assert_eq!(
+        tcx_findings(&rows, Some(&names)),
+        vec![
+            Finding {
+                severity: Severity::Warning,
+                issue: Issue::CoreProgramNotFirst,
+                message: "LAN (eth0): 60 (jumper) run before wnc-gw's core eBPF program on TCX ingress and see every \
+                          packet first"
+                    .to_owned(),
+            },
+            Finding {
+                severity: Severity::Warning,
+                issue: Issue::ForeignTcxPrograms,
+                message: "LAN (eth0): TCX ingress has programs that wnc-gw did not load: 61 (shaper); wnc-gw's core \
+                          program runs before them"
+                    .to_owned(),
+            },
+        ]
+    );
+}
+
+#[test]
+fn without_names_programs_are_listed_by_id() {
+    let rows = [tcx_row("eth0", Ok(&[52]))];
+    assert_eq!(
+        tcx_findings(&rows, None),
+        vec![Finding {
+            severity: Severity::Warning,
+            issue: Issue::ForeignTcxPrograms,
+            message: "LAN (eth0): TCX ingress has programs 52; without CAP_SYS_ADMIN doctor cannot tell which, if \
+                      any, is wnc-gw's"
+                .to_owned(),
+        }]
+    );
+}
+
+#[test]
+fn tcx_query_failures_are_one_warning() {
+    let rows = [
+        tcx_row("eth0", Err(TcxQueryError::NotPermitted)),
+        tcx_row("eth1", Err(TcxQueryError::NotPermitted)),
+    ];
+    assert_eq!(
+        tcx_findings(&rows, None),
+        vec![Finding {
+            severity: Severity::Warning,
+            issue: Issue::TcxUnchecked,
+            message: "cannot list the TCX programs on the ports (listing tcx programs needs CAP_NET_ADMIN); run \
+                      doctor as root to see them"
+                .to_owned(),
+        }]
+    );
+}
+
+#[test]
+fn a_kernel_without_tcx_is_a_warning() {
+    let rows = [tcx_row("eth0", Err(TcxQueryError::Unsupported))];
+    assert_eq!(
+        tcx_findings(&rows, None),
+        vec![Finding {
+            severity: Severity::Warning,
+            issue: Issue::TcxUnsupported,
+            message: "the kernel has no TCX (it needs Linux 6.6 or later), so run cannot attach its core eBPF \
+                      program (D001); inspection and trust work without it"
+                .to_owned(),
+        }]
+    );
+}
+
 fn xdp_row(attached: Option<XdpAttachment>, native: Option<XdpFeatures>, hook: CoreHook) -> XdpRow {
     let mut port = port(Role::Lan, "eth0", true, OperState::Up);
     port.interface.xdp = attached;

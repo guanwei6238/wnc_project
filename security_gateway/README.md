@@ -4,6 +4,8 @@ Security gateway 的主程式，Rust 實作，執行檔是 `wnc-gw`。架在內�
 
 目前做到階段 1：nftables 把轉送的流量交給 Suricata，用 conntrack 的 ct mark 記錄「已信任」的連線，被信任的連線不進 Suricata。信任可以由管理者手動設，也可以讓 wnc-gw 觀察一段時間、沒有 alert 就自動信任（`[trust] auto`）。
 
+eBPF 做到步驟 A1（骨架）：`run` 把核心 eBPF 程式掛在兩個 port 的 TCX ingress 第一位，目前只計數、不改變轉送；之後信任的連線會在這裡直接轉送（fast path）。
+
 ## 用法
 
 ```sh
@@ -12,9 +14,19 @@ CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=rust-lld \
   cargo build --release --target aarch64-unknown-linux-musl
 ```
 
+編譯時 `build.rs` 會先用 nightly 編 `gw-ebpf/`（在 kernel 裡跑的 eBPF 程式），把 ELF 嵌進 wnc-gw；wnc-gw 本身用 stable。所以編譯的機器要多裝兩樣（Pi 上不用）：
+
+```sh
+rustup toolchain install nightly-2026-11-13 --profile minimal --component rust-src
+# bpf-linker：從 https://github.com/aya-rs/bpf-linker/releases 下載 0.13.0 的 x86_64-unknown-linux-musl 版，放進 PATH
+# （不要 cargo install：要綁特定版本的 LLVM）
+```
+
+eBPF 程式同一個 ELF 在 x86 和 arm64 都能用（只分 endian），授權是 `Dual MIT/GPL`（`gw-ebpf/Cargo.toml`）。nightly 的日期寫在 `build.rs` 的 `EBPF_TOOLCHAIN`，換日期要重新驗證。
+
 | 子命令 | 做什麼 |
 |---|---|
-| `wnc-gw doctor` | 檢查設定、port、kernel 模組、nft、Suricata 和權限，不改任何東西 |
+| `wnc-gw doctor` | 檢查設定、port、每個 port 的 TCX 程式、kernel 模組、nft、Suricata 和權限，不改任何東西 |
 | `wnc-gw run` | 先跑 doctor，再裝 nft table、啟動並監督 Suricata，直到收到 SIGINT／SIGTERM／SIGHUP；結束時移除 table |
 | `wnc-gw trust add／del／list` | 手動信任或取消信任一條連線（ct mark） |
 | `wnc-gw show interfaces` | 列出網卡，方便在設定檔裡指定 port |
@@ -23,6 +35,28 @@ CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=rust-lld \
 全域選項：`--log-format text|json`、`--log-level error|warn|info|debug|trace`（預設 info；每一筆 alert 的細節要 `debug` 才印）。
 
 設定檔預設在 `/etc/wnc-gw/setting.toml`，每個欄位的說明見 `setting.example.toml`。只在某些選項下才有作用的欄位，在其他情況下設了會直接報錯（C004）：`[suricata] queue` 只能配 `protection = "ips"`、`group` 只能配 `"ids"`，`[trust]` 的其他欄位只能配 `auto = true`。
+
+**看核心 eBPF 程式**：`run` 啟動時記 `core ebpf program attached first on tcx ingress prog_id=… interfaces="…"`，結束時記 `core ebpf program detached packets=…`（兩個 port 收到的封包數合計，GRO 合併後的 skb 算一個）。執行中用 root 看（Pi 的 bpftool 在 `/usr/sbin`）：
+
+```sh
+bpftool net show                     # 每個 port 的 tcx/ingress 上有 wnc_gw_ingress，排在第一個
+bpftool prog show name wnc_gw_ingress   # map_ids 是計數 map 的 id
+bpftool map dump id <map_id>         # 每個 CPU 各一個計數（little-endian u64）
+```
+
+程式不 pin：wnc-gw 結束（包括被 `kill -9`）時 kernel 會自動卸下，封包回到原本的路徑。掛不上（沒有 `CAP_BPF`、kernel 沒有 TCX 等）時記 ERROR D001，`run` 照常執行，檢查和信任不受影響。
+
+**別的 eBPF 程式（揭露，不阻擋）**：kernel 沒辦法鎖住「排第一」，之後有人用 `BPF_F_BEFORE` 掛的程式就會排到前面，所以 wnc-gw 只負責讓管理者看得到：
+
+| 情況 | doctor | run（每 10 秒查一次，只在狀態改變時記） |
+|---|---|---|
+| port 上有不是 wnc-gw 的 TCX 程式 | 表格列出 id（root 執行時加上名稱），warning D006 | — |
+| 有程式排在 wnc-gw 的程式前面 | warning D002 | WARN D002（`before="…"`），恢復時 INFO |
+| wnc-gw 的程式不見了（USB 網卡拔掉、被 `bpftool link detach`） | — | WARN D003；不會自動重新掛上 |
+| 沒有 `CAP_NET_ADMIN`（一般帳號跑 doctor） | `not checked`，warning D004 | — |
+| kernel 沒有 TCX（6.6 以前） | warning D005 | 掛不上，D001 |
+
+查詢用 `bpf(BPF_PROG_QUERY)`，只要 `CAP_NET_ADMIN`；名稱要 `CAP_SYS_ADMIN`，沒有時只顯示 id，也分不出哪個是 wnc-gw 的。都是 warning：核心程式現在還不影響轉送，等 fast path 上線再改一部分成 error。
 
 ## 架構圖
 
@@ -42,7 +76,7 @@ CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=rust-lld \
 ```mermaid
 flowchart TD
     IN["封包從 LAN 或 WAN 的 port 進來"]
-    HOOK["核心 eBPF 程式的掛點（xdp = auto〔預設〕）<br/>網卡有 native XDP 才掛 XDP，否則掛 TC；不會自動選 generic<br/>Pi 4 兩個 port 都沒有 native XDP<br/>〔已決定，未實作〕doctor 只判斷會掛在哪"]:::later
+    HOOK["TCX ingress：核心 eBPF 程式排第一<br/>目前只計數、回傳 NEXT（步驟 A1）<br/>之後信任的連線在這裡直接轉送（fast path）<br/>不受 xdp 設定影響，一律 TC"]:::done
     MODE{"mode"}
     BR["bridge 〔預設〕<br/>bridge 由 OS 建立，wnc-gw 只檢查<br/>經過 br_netfilter 進 netfilter"]:::done
     RT["routed"]:::done
@@ -179,11 +213,11 @@ nft table 兩種模式完全相同，差別只在 `forwarding/` 的環境檢查�
 
 | | auto〔預設〕 | off | generic |
 |---|---|---|---|
-| 核心 eBPF 程式掛在哪 | 網卡有 native XDP 就掛 XDP，否則掛 TC | 一律 TC | 即使網卡不支援也掛 generic XDP |
+| 之後算特徵的 eBPF 程式掛在哪 | 網卡有 native XDP 就掛 XDP，否則掛 TC | 一律 TC | 即使網卡不支援也掛 generic XDP |
 | Pi 4 上 | 兩個 port 都是 TC | TC | generic XDP |
-| 代價 | — | 放棄 native XDP 的速度 | 比 TC 慢（省不到建 skb、可能要複製封包），而且整張網卡跳過 GRO；只給測試用 |
+| 代價 | — | 特徵在 GRO 合併後才算（大小、到達間隔不準） | 比 TC 慢（省不到建 skb、可能要複製封包），而且整張網卡跳過 GRO；只給測試用 |
 
-核心 eBPF 程式還沒實作，目前只有 doctor 會判斷每個 port 會掛在哪。
+2026-11-14 起 XDP 只負責算特徵（看得到 GRO 合併前的原始 frame），轉送和信任一律在 TCX，所以核心 eBPF 程式不受這個設定影響。算特徵的程式還沒實作，目前只有 doctor 會判斷每個 port 會掛在哪（doctor 的 CORE HOOK 欄位到時候改名）。
 
 **讀 alert：每 `eve_interval` 秒讀一次**（DECISIONS.md §19；不是分支，只有間隔可以設）
 
@@ -304,11 +338,12 @@ flowchart LR
 | `src/config.rs` | 讀設定檔，CLI 參數可以蓋過 |
 | `src/ports.rs` | 依名稱或 MAC 找出 LAN、WAN 是哪張網卡 |
 | `src/forwarding/` | bridge、routed 兩種模式各自的環境檢查（trait） |
-| `src/datapath/` | 核心 eBPF 程式該掛 XDP 還是 TC 的判斷 |
+| `gw-ebpf/`、`build.rs` | 在 kernel 裡跑的 eBPF 程式（`no_std`，用 nightly 編）；`build.rs` 編好後由 `src/datapath/ingress.rs` 嵌進 wnc-gw |
+| `src/datapath/` | 核心 eBPF 程式：掛在哪（`hook.rs`：xdp 設定的判斷）、載入並掛到兩個 port 的 TCX ingress 第一位（`ingress.rs`） |
 | `src/firewall.rs` | 我們的 nft table、信任與取消信任 |
 | `src/agent/` | 3d：自動信任的狀態機（`trust.rs`）和 `Privd` trait（之後拆出有權限的 process 時，換成跨 process 的實作） |
 | `src/protection.rs`、`src/ids/` | ids／ips、啟動和監督 Suricata、讀 Suricata 的資訊和 EVE 檔裡的 alert |
-| `src/kernel/` | 和 kernel 溝通：nft、ctnetlink、NFLOG／NFQUEUE、模組、sysctl、netlink |
+| `src/kernel/` | 和 kernel 溝通：nft、ctnetlink、NFLOG／NFQUEUE、eBPF（`bpf.rs`，包住 aya）、模組、sysctl、netlink |
 | `src/monitor/` | 執行中的監控（conntrack 表、NFLOG 漏掉的複本、Suricata 的 alert 摘要） |
 | `src/platform/` | 依 OS 而不同的部分（目前只有 Debian） |
 | `tests/unit/` | 單元測試，路徑對應 `src/` |

@@ -18,17 +18,19 @@ description: 在 security_gateway/（執行檔 wnc-gw）加功能或改程式時
 
 ```
 security_gateway/
-├── Cargo.toml              package = security_gateway（lib 名稱），[[bin]] name = "wnc-gw"
+├── Cargo.toml              package = security_gateway（lib 名稱），[[bin]] name = "wnc-gw"；也是 workspace 根（members = gw-ebpf，default-members = "."，所以 cargo build／test 不會用 host target 編 gw-ebpf）
+├── build.rs                用 rustup run nightly-2026-11-13 cargo build -Z build-std=core --target bpfel-unknown-none 編 gw-ebpf（另外的 --target-dir 在 OUT_DIR，避免和外層 cargo 互鎖；拿掉 RUSTC 等環境變數，否則會用到 stable 的 rustc），把 ELF 複製到 OUT_DIR/gw-ebpf；成功時不印東西（不用 aya-build：它把每行輸出變成 cargo warning，而且每次 build 都重印）
+├── gw-ebpf/                在 kernel 裡跑的 eBPF 程式（no_std、no_main，aya-ebpf 0.3.0，授權 Dual MIT/GPL）：wnc_gw_ingress（TC classifier，per-CPU 的 PACKETS 加一後回傳 TCX_NEXT）
 ├── setting.example.toml    設定檔範本：說明用英文，所有值預設註解掉
 ├── src/
 │   ├── main.rs             #[tokio::main(flavor = "current_thread")]，只呼叫 cli::run()
 │   ├── cli/                ← bin：只放參數與膠水
 │   │   ├── mod.rs          out! macro（取代 println!：stdout 被關掉時不 panic，cli 一律用它）；Cli（全域參數 -c/--config、--lan、--wan、--log-format、--log-level）、Command、run()
-│   │   ├── doctor.rs       doctor：載入設定 → passes()（各項檢查、印報告，沒有 error 才回傳 true）→ 結束碼；每個 Finding 帶 Issue，印成 warning[R006]: …
+│   │   ├── doctor.rs       doctor（TCX 段落：check_tcx 每個 port 查 tcx_ingress，有程式時才試 program_names；tcx_findings 純函式：前面有別人 D002、後面有別人 D006、沒名稱時列 id 並說分不出來 D006、查不了 D004、沒有 TCX D005，都是 warning）：載入設定 → passes()（各項檢查、印報告，沒有 error 才回傳 true）→ 結束碼；每個 Finding 帶 Issue，印成 warning[R006]: …
 │   │   ├── explain.rs      explain：列出全部代碼、印一條（explain R006）或全部（--all）的說明（cause、action），100 字元折行
 │   │   ├── logging.rs      LogFormat（text、json）、LogLevel（預設 info）、init()：tracing 的輸出設定（stderr、UTC 時間、text 在終端機才上色、寫入失敗不回報，否則 stderr 斷掉時會 panic），run 和 trust add/del 會呼叫
 │   │   ├── trust.rs        trust add/del/list：用 ctnetlink 直接設、清信任 bit，或列出有信任 bit 的連線；不需要 run，但沒有 run 時沒有 table 看這個 bit，Pi 上也沒有 entry；add、del 記 log 事件
-│   │   ├── run.rs          run：開 log → 載入設定 → instance::lock()（已有 wnc-gw 在跑就不啟動）→ doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM/SIGHUP → 清掉上一次留下的信任 bit（firewall::untrust_all，清不掉照常啟動、記 ERROR）→ 安裝 table（ids chain 是沒就緒狀態）→ 從 suricata.yaml 找出寫 alert 的 eve-log 檔（dump-config）→ 啟動 Suricata（SpawnedSuricata）→ Ready 時 start_inspection（第一次 Ready 時開始讀 EVE 的 alert：AlertWatch）、Stopped 時 stop_inspection 再 allow_restart；每 10 秒用新的 ctnetlink socket 讀 conntrack 統計交給 ConntrackMonitor；ids 時 Suricata 就緒後每 10 秒讀它的 NFLOG socket 交給 CopyMonitor → 收到訊號：stop_inspection → 停止 Suricata → 讀完 EVE 最後一段並記摘要 → 移除 table；沒檢查的時段都記成 log 事件
+│   │   ├── run.rs          run：開 log → 載入設定 → instance::lock()（已有 wnc-gw 在跑就不啟動）→ doctor::passes()，有 error 就不啟動 → 先註冊 SIGINT/SIGTERM/SIGHUP → 清掉上一次留下的信任 bit（firewall::untrust_all，清不掉照常啟動、記 ERROR）→ 安裝 table（ids chain 是沒就緒狀態）→ 掛核心 eBPF 程式（attach_core：重新解析 port，掛不上記 ERROR D001、照常執行；結束時在移除 table 之前 detach_core，記 packets）→ 從 suricata.yaml 找出寫 alert 的 eve-log 檔（dump-config）→ 啟動 Suricata（SpawnedSuricata）→ Ready 時 start_inspection（第一次 Ready 時開始讀 EVE 的 alert：AlertWatch）、Stopped 時 stop_inspection 再 allow_restart；每 10 秒用新的 ctnetlink socket 讀 conntrack 統計交給 ConntrackMonitor；ids 時 Suricata 就緒後每 10 秒讀它的 NFLOG socket 交給 CopyMonitor → 收到訊號：stop_inspection → 停止 Suricata → 讀完 EVE 最後一段並記摘要 → 移除 table；沒檢查的時段都記成 log 事件
 │   │   └── show/           show 的巢狀子命令（mod.rs 分派，interfaces.rs 列介面）
 │   ├── lib.rs              只宣告功能模組：access、agent、config、datapath、firewall、forwarding、ids、instance、kernel、monitor、platform、ports、protection
 │   ├── issue.rs            Issue（doctor 結果和 run 的 WARN／ERROR log 的代碼，issues! macro 同時產生 enum 和 ALL）、explanation()（exhaustive match，新增 Issue 不寫說明就編不過）、FromStr 不分大小寫
@@ -39,7 +41,8 @@ security_gateway/
 │   ├── access.rs           除了 root 之外誰能改某個路徑（檔案本身、每一層目錄、跟著 symlink 之後的實際位置）；/etc/passwd、/etc/group 查名稱
 │   ├── config.rs           setting.toml + CLI 覆寫 → Config（每個值帶 Source；只放相關的值：delivery、TrustSettings::Manual／Auto，不相關的欄位報 C004）；AbsolutePath（路徑設定必須是絕對路徑）；delivery()：依 protection 選 queue 或 group
 │   ├── datapath/           核心 eBPF 程式在每個 port 掛在哪、怎麼掛（mod.rs 只放 pub mod / pub use）
-│   │   └── hook.rs         XdpPolicy（xdp 設定）、CoreHook、core_hook() 選擇規則
+│   │   ├── hook.rs         XdpPolicy（xdp 設定）、CoreHook、core_hook() 選擇規則（2026-11-14 起 xdp 只決定之後算特徵的程式，核心程式一律 TCX）
+│   │   └── ingress.rs      CoreProgram：嵌入的 ELF（include_bytes! 包在 align(8) 的 struct，ELF 解析要對齊）、attach(ports)：載入後掛到每個 port 的 TCX ingress 第一位（LinkOrder::first）、id()、packets()；drop 時 aya 關掉 link 的 fd，kernel 就卸下（不 pin，wnc-gw 被 kill -9 也一樣）
 │   ├── firewall.rs         我們自己的 nft table（inet wnc_gw）：forward chain 依序是 counter、純 SYN（有 SYN 沒 ACK）而且有 TRUSTED_MARK 時清掉 bit（同一組五元組的新連線可能被 conntrack 重新同步到舊 entry，一定在任何判決之前）、連線第一次經過時設 FORWARDED_MARK（0x40000000，3d 只看有這個位元的連線）、SYN/FIN/RST jump ids（L2）、ct mark 有 TRUSTED_MARK 就 accept、最後 jump ids；ids 依 Suricata 狀態換成送檢查或沒就緒的規則（WhenUnavailable、Inspection），每種狀態都要以判決結尾，否則控制封包會回到 forward 再進一次 ids；送檢查依 Delivery：Queue 是 `queue`（accept 時加 bypass），Copy 是 `log group N accept`，多個 group 時 ids 是 `symhash mod N vmap` 跳到 ids_g<group>（這些 chain 一直在，各一條 log … accept）；install()、start_inspection()、stop_inspection()、remove()；trust()、untrust()、trusted() 用 kernel::conntrack 改、列 TRUSTED_MARK，forwarded() 列有 FORWARDED_MARK 的連線；untrust_all() 清掉全部（Untrusted：cleared、gone、failed）
 │   ├── ids/                跟 IDS engine 打交道的薄模組（mod.rs 只放 pub mod）
 │   │   ├── eve.rs          EVE 檔（只讀新增的部分）：EveFile（啟動時從檔尾開始；半行等寫完；被換掉時先讀完舊檔再從頭讀新檔；被截斷從頭讀；超過 1 MiB 的行丟掉；一次最多讀 32 MiB）、parse_alert()（先用字串判斷 event_type 是不是 alert 才解析，typed struct）、Alert、EveInterval（設定寫秒、可以有小數，0.05–10，預設 0.5；內部取到毫秒）
@@ -51,6 +54,7 @@ security_gateway/
 │   ├── monitor/            執行中定期檢查、決定要不要記 log（mod.rs 只放 pub mod）
 │   │   ├── alerts.rs       AlertMonitor：每筆 alert 記 DEBUG（連線、flow_id、sid、規則名稱、action），每 60 秒有 alert 時記一行 INFO 摘要（筆數、flow 數、最多的前 5 個 sid）；讀不到 EVE（只記第一次和恢復）、被換掉、被截斷、讀不完、壞掉或超長的行；AlertWatch：EveFile＋每 eve_interval 秒的計時＋摘要計時，run 的事件迴圈呼叫 next()
 │   │   ├── conntrack.rs    ConntrackMonitor（INTERVAL 10 秒）：第一次讀到時記筆數和上限；到上限 90% 記 WARN、降到 80% 以下記 INFO（中間不重複記）；drop、insert_failed 有增加記 WARN「conntrack dropped packets」，early_drop 有增加記 WARN「evicted」（每個 CPU 的 u32 計數用 wrapping_sub，只算兩次都有的 CPU）；讀取失敗只記第一次，恢復時記一次。判斷（observe）是純函式，記 log 另外一層
+│   │   ├── tcx.rs          CoreWatch（INTERVAL 10 秒）：每個 port 查 TCX ingress（kernel::bpf::tcx_ingress），position() 純函式判斷 First／Behind(前面的 id)／Detached（含介面消失 ENODEV）／Unknown；只在改變時記：Behind WARN D002、Detached WARN D003、Unknown WARN D004、回到 First INFO
 │   │   └── nflog.rs        CopyMonitor（INTERVAL 10 秒）：ids 時 Suricata 漏掉的複本（它的 NFLOG socket 的 Drops）增加就記 WARN「suricata missed packet copies; that traffic was forwarded without inspection」；換 pid（重啟）從 0 算起，找不到 socket、讀不到都只記第一次
 │   ├── ports.rs            Role、PortSelector（名稱或 MAC）、resolve()
 │   ├── protection.rs       Protection（ids 預設、ips）：delivery() 決定封包怎麼交給 Suricata；之後的黑名單、雲端判定要不要真的擋也看它
@@ -61,6 +65,7 @@ security_gateway/
 │   └── kernel/             跟 Linux kernel 打交道的薄模組
 │       ├── mod.rs
 │       ├── netif.rs        rtnetlink 列介面、sysfs 讀 driver、MacAddr、LinkStatus；ipv4_routing()：IPv4 位址、main table 的路由（NextHop、metric、RouteKind）、rule（是否無條件查表）→ Ipv4Routing、Ipv4Net
+│       ├── bpf.rs          包住 aya 0.16：TcxProgram（load(elf, name)、attach_ingress_first(ifindex)、id()、per_cpu_sum(map)）、BpfError（aya 的錯誤轉成字串，error_chain() 串起 source 但跳過已經包含在訊息裡的）；aya 的型別不出現在對外介面。tcx_ingress(ifindex) → TcxChain（revision、依序的 prog id）：自己呼叫 bpf(BPF_PROG_QUERY)，只要 CAP_NET_ADMIN（aya 的 query_tcx 會順便用 id 拿 fd，要 CAP_SYS_ADMIN，privd 沒有）；QueryAttr 照 kernel bpf_attr 的 query 段排列，測試用 offset_of! 檢查；錯誤分成 NotPermitted（EPERM／EACCES）、Unsupported（EINVAL：沒有 TCX）、NoDevice（ENODEV）、Io。program_names()：aya 的 loaded_programs() 列出 id → 名稱，要 CAP_SYS_ADMIN，doctor 只拿來顯示
 │       ├── conntrack.rs    手寫 ctnetlink（netlink-sys 的同步 Socket，non-blocking）：set_mark（只動 mask 內的位元）、set_marks（一次 100 筆，只有最後一筆要 ACK，回傳失敗的那幾筆）、get、list（kernel 依 mark 過濾）、stats（IPCTNL_MSG_CT_GET_STATS 的筆數和上限，加上 GET_STATS_CPU 每個 CPU 的 drop、early_drop、insert_failed；筆電 kernel 沒有 /proc/net/stat/nf_conntrack，所以不讀 procfs）；Stats、CpuStats；FiveTuple（兩個位址要同一版本）、Protocol、TcpState、Connection（含兩個方向的 Counters：封包數、bytes，要 nf_conntrack_acct = 1 才有）；任一方向的五元組都找到同一筆
 │       ├── modules.rs      /proc/modules + modules.{builtin,dep} → ModuleState；RequiredModule
 │       ├── netdev.rs       netdev genetlink：每個介面的 native XDP 功能（XdpFeatures）
@@ -134,9 +139,10 @@ security_gateway/
 ### 3.4 相依套件與執行環境
 
 - async 用 tokio，單執行緒 runtime；feature 只開用得到的（目前是 `rt`、`macros`、`process`、`time`、`io-util`、`signal`、`sync`、`net`）。**`ids/spawned.rs` 依賴單執行緒 runtime**：`PR_SET_PDEATHSIG` 是在 fork 子程序的那個執行緒結束時觸發，改成多執行緒 runtime 時要重新檢查。
-- `unsafe` 只用在沒有安全 API 的系統呼叫，目前是 `ids/spawned.rs` 的兩處：`pre_exec` 裡的 `prctl(PR_SET_PDEATHSIG)`（fork 之後不能配置記憶體，錯誤只用 errno），以及送 SIGTERM 的 `kill`（送之前先 `try_wait`，避免 pid 已被回收再被別的程序使用）。透過 `libc` crate 呼叫。新增 `unsafe` 前先跟開發者確認。
+- `unsafe` 只用在沒有安全 API 的系統呼叫，目前是 `ids/spawned.rs` 的兩處和 `kernel/bpf.rs` 的一處（2026-11-14 開發者同意：`BPF_PROG_QUERY` 的 syscall，aya 沒有只拿 id 的公開 API）（`gw-ebpf/` 是在 kernel 裡跑的程式，讀寫 map 的值和封包指標都要 `unsafe`，記憶體安全由 kernel verifier 檢查，不算在這條裡）：`pre_exec` 裡的 `prctl(PR_SET_PDEATHSIG)`（fork 之後不能配置記憶體，錯誤只用 errno），以及送 SIGTERM 的 `kill`（送之前先 `try_wait`，避免 pid 已被回收再被別的程序使用）。透過 `libc` crate 呼叫。新增 `unsafe` 前先跟開發者確認。
 - netlink 用 rust-netlink 系列（`rtnetlink` 等）。這一系列的版本必須彼此對齊（共用同一個 `netlink-packet-core`），升級時整組一起升，並用 `Cargo.lock` 鎖住。netdev family 用 `genetlink` + `netlink-packet-generic` 自己實作在 `kernel/netdev.rs`。**netdev 這類新 family 不要用 dump**：kernel 的 dump 回應不帶 `NLM_F_MULTI`，netlink-proto 收到第一則就認定請求結束，其他裝置會被默默漏掉；改成每個介面各送一次帶 ifindex 的請求。其他缺口：`ethtool` crate 只能讀 feature。**ctnetlink 是例外，手寫在 `kernel/conntrack.rs`**（2026-10-28，O17）：Pi 上 netlink-proto 設一筆 51 µs、netlink-packet-netfilter 編碼 20 µs、手寫 13 µs，讀一筆 crate 解碼 74 µs、手寫 20 µs（musl 的記憶體配置慢）。netlink-packet-netfilter 只放 dev-dependency，測試比對兩邊的位元組。之後頻繁呼叫的 netlink 操作也要先量，不要直接假設 crate 夠快。
 - 呼叫外部程式用 `Command::new().arg()`，不組 shell 字串，並加逾時。用 tokio 的 `Command`，設 `kill_on_drop(true)`，再用 `tokio::time::timeout` 包住，逾時時子行程才會被砍掉。這些都集中在共用的 `command.rs`：`run()`（結束碼不是 0 就是 `Failed`）、`output()`（結束碼本身就是答案時用，例如 `systemctl is-enabled`）、`CommandError`（錯誤帶執行檔的路徑；`NftError`、`SuricataError` 是它的別名）。2026-10-27 有了第三個呼叫者（platform 的 systemctl）之後抽出來，新的外部程式一律用它，不要再寫一份 spawn 加逾時。執行檔用絕對路徑，不從 PATH 找：之後由有權限的 process 執行時，PATH 可能被換掉，而且 Pi 上一般帳號的 PATH 沒有 `/usr/sbin`。
+- **eBPF 的工具鏈**（2026-11-14）：`gw-ebpf` 用 `nightly-2026-11-13`＋`rust-src` 和 bpf-linker 0.13.0（GitHub release 的 musl 預編 binary，不用 cargo install：要綁 LLVM 23）；wnc-gw 本身照樣是 stable（aya 0.16 要 1.98）。換 nightly 日期時改 `build.rs` 的 `EBPF_TOOLCHAIN`，並在 Docker 和 Pi 重新驗證。aya-ebpf 0.3.0 的 TCX 回傳值在 `bindings::tcx_action_base::TCX_NEXT`。ELF 帶程式自己的 BTF（`-Clink-arg=--btf`），Pi（沒有 vmlinux BTF）上載入正常（`btf_id` 有值）。
 - 新增 crate 前，用全域需求評估（之後是否還會用到、是否純 Rust、能否編 musl/aarch64、維護狀態、授權）。
 
 ### 3.5 log

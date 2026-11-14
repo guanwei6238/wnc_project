@@ -407,6 +407,11 @@ rp_filter 不另外檢查：路由設對時 strict 模式不會擋正常流量�
 **決定**
 - `xdp = auto`〔預設〕：網卡有 native XDP 才掛 XDP，否則掛 TC；不會自動選 generic XDP。doctor 已會判斷每個 port 用哪一種，核心 eBPF 程式本身〔已決定，未實作〕。2026-10-24。
 - fast path（已信任的 flow 直接轉送）用 tc eBPF，不用 XDP。〔已決定，未實作〕2026-10-20。
+- XDP 只負責算特徵（GRO 合併前的原始 frame，大小和 IAT 準），之後可能加 ban；轉送和 trust 一律在 TCX，有 native XDP 的硬體上也一樣。`xdp` 設定改指特徵程式掛在哪。〔已決定，未實作〕2026-11-14。
+- 接下來的順序：eBPF 骨架 → trust 從 netfilter 搬到 TC（fast path）→ 算特徵送 user space，和 edge AI、雲端一起做。〔已決定〕2026-11-14。
+- 核心 eBPF 程式用 Rust（aya-ebpf），排在 TCX 第一；授權先用 GPL 相容的開源授權（字串待定，建議 `Dual MIT/GPL`），之後要閉源再改。〔已決定〕2026-11-14。
+- 骨架（步驟 A1）〔已實作〕2026-11-14：`run` 裝好 table 後把核心程式掛到兩個 port 的 TCX ingress 第一位，只計數、回傳 NEXT；不 pin（wnc-gw 結束或被 `kill -9` 時 kernel 自動卸下）。ELF 用 `Dual MIT/GPL` 嵌進 wnc-gw。**掛不上時記 ERROR D001、照常執行**（我替開發者選的：程式現在不改變轉送；之後 fast path 掛不上時，信任仍由 netfilter 的 ct mark 處理，只是比較慢）。Docker、Pi 6.18（沒有 vmlinux BTF）都驗過；成本還沒量（A3）。
+- 揭露別的 TCX 程式（步驟 A2）〔已實作〕2026-11-14：doctor 列出每個 port 的 TCX ingress（D002 排在前面、D006 不是 wnc-gw 的、D004 查不了、D005 沒有 TCX），run 每 10 秒確認核心程式還在第一位（D002、D003，只在改變時記，不自動重掛），全部是 warning。查詢自己呼叫 `bpf(BPF_PROG_QUERY)`（新增一處 `unsafe`，開發者同意），只要 `CAP_NET_ADMIN`，之後的 privd 也能用；aya 的 `query_tcx` 要 `CAP_SYS_ADMIN`，沒有用。
 
 **依據（設計，沒有在 Pi 上量過）**
 - generic XDP 比 TC 差：省不到建 skb 的成本，可能要重新配置並複製封包，而且整張網卡會跳過 GRO。

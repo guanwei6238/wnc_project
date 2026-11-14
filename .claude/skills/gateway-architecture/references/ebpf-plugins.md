@@ -24,7 +24,7 @@
 
 - **[已決定] 2026-10-22：外掛支援完整功能。** 外掛掛在哪個 hook、能不能 drop 或 redirect，由管理者在設定裡決定，後果也由管理者負責。框架依設定載入和掛載，並讓管理者看得清楚：§4 的能力報告，以及 doctor 列出的清單。
 - **核心程式**由我們自己寫、自己發行。它負責解析 header、維護 flow 特徵 map、查 ban 和信任 map、redirect、設 mark。
-- [建議] 核心程式在 TCX 排第一：ban 回傳 DROP，trust 回傳 REDIRECT，永不封鎖清單回傳 PASS，其他回傳 NEXT 交給後面的程式。這不限制外掛能做什麼，只是讓外掛寫錯時，管理連線還連得上。預設開啟，可以在設定裡關掉。
+- 核心程式在 TCX 排第一（[已決定] 2026-11-14，`decisions.md` O3；回傳值的分法還是 [建議]）：ban 回傳 DROP，trust 回傳 REDIRECT，永不封鎖清單回傳 PASS，其他回傳 NEXT 交給後面的程式。這不限制外掛能做什麼，只是讓外掛寫錯時，管理連線還連得上。預設開啟，可以在設定裡關掉。
   - TCX 依序執行，只要有一支程式回傳 NEXT 以外的值就停 [K: `net/core/dev.c` tcx_run]。所以核心程式回傳 PASS 或 REDIRECT 的封包，排在後面的外掛看不到。
   - 這個保護只對 TCX 外掛有效。XDP 在 tc 之前執行，socket filter 不影響轉送。
 
@@ -69,6 +69,7 @@
   | 程式的名稱、tag | `BPF_PROG_GET_FD_BY_ID` 再 `OBJ_GET_INFO_BY_FD` | `CAP_SYS_ADMIN` |
   | 系統上全部的程式 | `BPF_PROG_GET_NEXT_ID` | `CAP_SYS_ADMIN` |
 
+  2026-11-14 實作：wnc-gw 自己呼叫 `BPF_PROG_QUERY`（只要 `CAP_NET_ADMIN`），名稱只有 doctor 在有 `CAP_SYS_ADMIN` 時顯示（`kernel/bpf.rs`）。
   privd 不給 `CAP_SYS_ADMIN`，所以「是不是框架載入的」要用 id 比對：privd 記得自己載入的每支程式的 id，不在名單裡的就是框架以外的程式，只顯示 id。
 
 ## 4. 外掛的載入管線 [建議]
@@ -116,7 +117,7 @@
 | 有 | TCX、Extension（freplace）、ProgramArray、map pinning | XDP、舊式 TcHook、`Xdp::query`（可讀 XDP feature） |
 | 沒有 | BPF token、簽章、xdp-features 查詢、libxdp dispatcher | TCX、freplace、BPF token、light skeleton |
 
-  「核心程式 + 外掛」的架構傾向選 aya [建議]。
+  「核心程式 + 外掛」的架構選 aya。**[已決定] 2026-11-14：核心 eBPF 程式也用 Rust 寫（aya-ebpf）**：要 nightly 和 `bpf-linker`（wnc-gw 本身照樣用 stable）；BPF bytecode 只分 endian，同一個 ELF 可以在 x86 和 arm64 用；map 的 struct 放 `no_std` 的共用 crate（`#[repr(C)]`）。授權先用 GPL 相容的開源授權（字串待定，建議 `Dual MIT/GPL`），之後要閉源再改：已發布的版本收不回來，閉源版不能用 GPL-only helper。
 
 ## 7. XDP 的預設與能力偵測
 
@@ -125,8 +126,11 @@
 - **使用者的 XDP 外掛**：網卡沒有 native XDP 時不載入，請使用者改成 TC 程式；只有明確指定 generic 才載入。XDP 和 TC 程式的 ctx 不同（`xdp_md`、`__sk_buff`），框架沒辦法替外掛改掛。錯誤訊息的例子：
   `error: plugin "foo" is an XDP program but eth0 has no native XDP support; rebuild it as a TC program, or allow generic XDP explicitly`
 - **doctor** 顯示每個 port 實際的 XDP 模式（rtnetlink 的 `IFLA_XDP_ATTACHED`，不需要權限）。generic 的話提出 warning，說明這張網卡的 GRO 被關掉了。
-- [待確認] 這條原則和 10-20「fast path 用 tc、不用 XDP」的關係：有 native XDP 時，trust 的 redirect 要不要也放在 XDP。
-- [待確認] 核心程式掛在 XDP 時，§1「排在 TCX 第一，用 PASS 保護管理連線」的做法要重新設計，因為 XDP 回傳 PASS 不會跳過後面的 TCX 外掛。
+- **[已決定] 2026-11-14：XDP 只負責算特徵，轉送和 trust 一律在 TCX。** 原本兩個待確認因此解決：有 native XDP 時 trust 的 redirect 也不放 XDP；§1「排在 TCX 第一，用 PASS 保護管理連線」不用重新設計，因為 trust 和保護都留在 TCX。
+  - 放 XDP 的理由是特徵比較準（GRO 合併前的原始 frame，§8），不是省 CPU：XDP 回傳 PASS 的封包照樣建 skb。XDP 真正省 CPU 的是 DROP，之後 ban 可以考慮放 XDP（未決）。
+  - 代價：有 native XDP 的設備上，信任封包要跑兩支程式、查兩次 flow map（XDP 更新特徵、TC 查 trust），差多少要量。沒有 native XDP（Pi）時特徵也在 TC 算，可以和 trust 合在同一支程式、同一次查詢。
+  - `xdp` 設定的意義從「核心程式掛在哪」變成「特徵程式掛在哪」；doctor 的 CORE HOOK 欄位要跟著改（實作特徵時）。
+  - 上面「核心程式」的掛法（auto／off／generic）從此指特徵程式；trust 的程式不受 `xdp` 設定影響。
 
 **為什麼不用 generic XDP**（主 agent 核對 `net/core/dev.c`、`include/linux/netdevice.h`，2026-10-24）：
 - 它在 skb 建好之後才執行（`do_xdp_generic`），省不到建 skb 的成本。執行位置只比 tc ingress 早一點。

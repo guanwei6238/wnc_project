@@ -1,3 +1,4 @@
+pub mod bpf;
 pub mod conntrack;
 pub mod modules;
 pub mod netdev;
