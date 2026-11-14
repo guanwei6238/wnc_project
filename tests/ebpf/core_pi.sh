@@ -1,9 +1,9 @@
 #!/bin/bash
 # 核心 eBPF 程式（步驟 A1）在 Pi 上的功能驗證；不碰 eth0、eth1
 #   ecli(c0 10.8.0.1) --veth-- lan0 [egw: br0] wan0 --veth-- s0(esrv 10.8.0.2)
-# 用法: sudo bash core_pi.sh up|run|show|tcx|kill9|down（tcx 要 foreign_tcx.py 放在同一個目錄）
+# 用法: sudo bash core_pi.sh up|run|show|tcx|fastpath|auto|kill9|down（tcx 要 foreign_tcx.py 放在同一個目錄）
 GW=${GW:-/tmp/wncgw/wnc-gw}; D=/tmp/wncgw/ebpf
-G="ip netns exec egw"; C="ip netns exec ecli"
+G="ip netns exec egw"; C="ip netns exec ecli"; S="ip netns exec esrv"
 
 setup() {
   mkdir -p $D
@@ -22,14 +22,53 @@ start() {
   echo "wnc-gw did not start"; tail -5 $D/run.log; return 1
 }
 
+SRVPY='import socket, sys
+family = socket.AF_INET6 if ":" in sys.argv[2] else socket.AF_INET
+s = socket.socket(family, socket.SOCK_STREAM if sys.argv[1] == "tcp" else socket.SOCK_DGRAM)
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); s.bind((sys.argv[2], 5001)); n = 0
+if sys.argv[1] == "tcp":
+    s.listen(4)
+    while True:
+        c, _ = s.accept()
+        for line in c.makefile(): n += 1
+        print("lines", n, flush=True)
+else:
+    while True:
+        s.recv(2048); n += 1; print("datagrams", n, flush=True)'
+CLIPY='import socket, sys, time
+proto, src, dst, port, secs = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]), float(sys.argv[5])
+family = socket.AF_INET6 if ":" in src else socket.AF_INET
+s = socket.socket(family, socket.SOCK_STREAM if proto == "tcp" else socket.SOCK_DGRAM)
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); s.bind((src, port)); s.connect((dst, 5001))
+end = time.time() + secs; n = 0
+while time.time() < end:
+    s.send(b"line\n"); n += 1; time.sleep(0.1)
+s.close(); print("sent", n)'
+fwd() { $G nft list chain inet wnc_gw forward | grep -m1 -o "packets [0-9]*" | cut -d" " -f2; }
+ids() { $G nft list chain inet wnc_gw ids | grep -m1 -o "packets [0-9]*" | cut -d" " -f2; }
+stop_run() { kill -INT $(pgrep -n -x wnc-gw); until [ -e $D/exit ]; do sleep 0.2; done; }
+
+flow() {  # $1 = tcp|udp，$2 = 來源，$3 = 目的：3 秒時信任、9 秒時取消，共 16 秒
+  pkill -f "$D/srv.py"; echo "$SRVPY" > $D/srv.py; echo "$CLIPY" > $D/cli.py
+  $S python3 $D/srv.py $1 $3 > $D/srv.out 2>&1 & sleep 0.5
+  $C python3 $D/cli.py $1 $2 $3 42000 16 > $D/cli.out & cp=$!; sleep 3
+  $GW trust add $1 $2 42000 $3 5001 && echo "   trust add: ok"
+  f0=$(fwd); sleep 3; f1=$(fwd); echo "   forward chain while trusted: $f0 -> $f1"
+  $GW trust list | sed 's/^/   /'
+  [ $1 = tcp ] && $S timeout 2 tcpdump -c 3 -n -v -i s0 "tcp port 5001 and src $2" 2>/dev/null | grep -o -E "(ttl|hlim) [0-9]*" | sort | uniq -c | sed 's/^/   tcpdump: /'
+  sleep 3; $GW trust del $1 $2 42000 $3 5001 && echo "   trust del: ok"
+  f2=$(fwd); sleep 2; f3=$(fwd); echo "   forward chain after del: $f2 -> $f3"
+  wait $cp; sleep 1; echo "   client: $(cat $D/cli.out), server: $(tail -1 $D/srv.out)"; pkill -f "$D/srv.py"
+}
+
 case "$1" in
 up)
   modprobe br_netfilter
   for ns in ecli esrv egw; do
     ip netns add $ns
-    ip netns exec $ns sysctl -q -w net.ipv6.conf.all.disable_ipv6=1 net.ipv6.conf.default.disable_ipv6=1
     ip -n $ns link set lo up
   done
+  ip netns exec egw sysctl -q -w net.ipv6.conf.all.disable_ipv6=1 net.ipv6.conf.default.disable_ipv6=1
   ip link add c0 netns ecli type veth peer name lan0 netns egw
   ip link add s0 netns esrv type veth peer name wan0 netns egw
   ip -n egw link add br0 type bridge
@@ -37,6 +76,8 @@ up)
   ip -n egw link set br0 up
   ip -n ecli addr add 10.8.0.1/24 dev c0; ip -n ecli link set c0 up
   ip -n esrv addr add 10.8.0.2/24 dev s0; ip -n esrv link set s0 up
+  ip -n ecli addr add fd08::1/64 dev c0 nodad; ip -n esrv addr add fd08::2/64 dev s0 nodad
+  modprobe nf_conntrack; $G sysctl -q -w net.netfilter.nf_conntrack_acct=1
   $C ping -c 1 -W 2 10.8.0.2 | grep -o "1 received"
   ;;
 run)
@@ -70,6 +111,23 @@ tcx)
   kill $F0
   echo "--- run log"; grep -E "D00|core ebpf" $D/run.log | cut -c28-
   ;;
+fastpath)
+  setup; start || exit 1
+  for f in "tcp 10.8.0.1 10.8.0.2" "udp 10.8.0.1 10.8.0.2" "tcp fd08::1 fd08::2"; do echo "=== $f"; flow $f; done
+  stop_run; grep -E "trusted by request|no longer trusted|core ebpf program detached|ERROR|WARN" $D/run.log | cut -c28-220
+  ;;
+auto)
+  setup; printf '\n[trust]\nauto = true\nmin_packets = 5\nmin_age = 2\nttl = 10\ncheck_interval = 1\n' >> $D/setting.toml
+  echo 'alert tcp any any -> any 5001 (msg:"core fin"; flow:to_server; flags:F+; sid:1000302; rev:1;)' >> $D/test.rules
+  start || exit 1
+  pkill -f "$D/srv.py"; echo "$SRVPY" > $D/srv.py; echo "$CLIPY" > $D/cli.py
+  $S python3 $D/srv.py tcp 10.8.0.2 > $D/srv.out 2>&1 & sleep 0.5
+  $C python3 $D/cli.py tcp 10.8.0.1 10.8.0.2 42001 25 > $D/cli.out & cp=$!
+  sleep 1; c1=$(ids); sleep 4; c2=$(ids); sleep 3; c3=$(ids)
+  echo "   ids chain at 1 s, 5 s, 8 s: $c1 $c2 $c3 (trusted from about 3 s)"
+  wait $cp; sleep 2; echo "   client: $(cat $D/cli.out), server: $(tail -1 $D/srv.out)"; pkill -f "$D/srv.py"
+  stop_run; grep -E "automatic trust|connection trusted|trust expired|trust revoked|core ebpf program detached|ERROR" $D/run.log | cut -c28-220
+  ;;
 kill9)
   setup; start || exit 1
   $G bpftool net show dev lan0 2>/dev/null | grep tcx
@@ -80,5 +138,5 @@ kill9)
 down)
   for ns in ecli esrv egw; do ip netns del $ns 2>/dev/null; done; true
   ;;
-*) echo "usage: sudo bash core_pi.sh up|run|show|tcx|kill9|down"; exit 2 ;;
+*) echo "usage: sudo bash core_pi.sh up|run|show|tcx|fastpath|auto|kill9|down"; exit 2 ;;
 esac

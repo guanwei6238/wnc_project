@@ -15,6 +15,8 @@ sudo bash core_pi.sh up      # 建 netns
 sudo bash core_pi.sh run     # run → ping 5 次 → SIGINT，印出 attach／detach 的 log
 sudo bash core_pi.sh show    # run 中印 bpftool net show 和每個 CPU 的計數
 sudo bash core_pi.sh tcx     # 別的 TCX 程式：doctor（root、wnc）、run 中被插隊、被拆掉
+sudo bash core_pi.sh fastpath  # 步驟 C：IPv4 TCP、UDP、IPv6 TCP 手動信任，看 forward chain、TTL、trust list
+sudo bash core_pi.sh auto      # 步驟 C：自動信任
 sudo bash core_pi.sh kill9   # kill -9 之後程式是否自動卸下
 sudo bash core_pi.sh down
 ```
@@ -137,3 +139,21 @@ Pi 4、鎖 1000 MHz、eth0 PAUSE 關、bridge；S_m60（102 條 flow，最大的
 
 對照 ctnetlink 設 ct mark（DECISIONS.md §7）：一筆 14.5 µs、一次 100 筆時每筆 2.4 µs。一條連線信任兩個方向要寫兩筆 map（約 5.6 µs）。map＋ct mark 的做法兩邊都要寫（約 20 µs），還要定期從 conntrack 對帳（每次讀表固定約 7 ms＋每條 9.4 µs，DECISIONS.md §19）。這次 map 沒有用批次操作（`BPF_MAP_UPDATE_BATCH`）。
 
+
+# 步驟 C：trust 在 TC（wnc-gw 本身）
+
+- `fastpath_docker.sh <tcp|udp|reuse|errors|all>`：Docker 的 routed testbed（cli 10.0.1.2 — gw — srv 10.0.2.2）。
+- `core_pi.sh fastpath|auto`：Pi 上的 bridge（上面的 netns 拓樸，ecli、esrv 另外有 fd08::1、fd08::2）。
+
+結果（2026-11-14）：
+
+| | Docker（routed） | Pi（bridge） |
+|---|---|---|
+| 手動信任 TCP | forward chain 65 → 65（信任期間），`del` 後 65 → 107；TTL 63；160／160 行 | 72 → 74（多的 2 個是 IPv6 的多播，交回 kernel），`del` 後 74 → 115；TTL 64；160／160 |
+| 手動信任 UDP | 32 → 32，`del` 後 33 → 53；TTL 63；160／160 | 228 → 228，`del` 後 228 → 250；160／160 |
+| IPv6 TCP | testbed 的 gw 不轉送 IPv6，沒測 | 365 → 367，`del` 後 367 → 409；hop limit 64；160／160 |
+| port 重用 | 同一個來源 port 重連，信任 1 → 0 筆 | — |
+| 自動信任 | `protection_docker.sh autotrust`：ids chain 停住（ids 67 → 67、ips 71 → 72）、到期再信任、FIN alert 撤銷，和 11/04 相同 | ids chain 47 → 47、到期再信任、FIN alert 撤銷；250／250 行 |
+| 失敗路徑 | run 沒在跑、找不到連線、送給 gw 自己的連線（`is not forwarded by the gateway`）、沒被信任、nobody（`permission denied`）、沒有 CAP_BPF（D001＋T014） | — |
+
+還沒做：手動信任的閒置清除；用 wnc-gw 本身在 Pi 實體網卡量（E1 用的是 bench 的 V4）、很多條信任 flow、routed 的 Pi 量測。
