@@ -1,0 +1,12 @@
+[package]
+name = "ebpf-bench"
+version = "0.1.0"
+edition = "2024"
+
+[workspace]
+members = ["ebpf"]
+default-members = ["."]
+
+[dependencies]
+aya = "0.16.0"
+libc = "0.2.191"

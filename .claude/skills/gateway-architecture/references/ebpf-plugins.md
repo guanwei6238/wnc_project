@@ -70,6 +70,7 @@
   | 系統上全部的程式 | `BPF_PROG_GET_NEXT_ID` | `CAP_SYS_ADMIN` |
 
   2026-11-14 實作：wnc-gw 自己呼叫 `BPF_PROG_QUERY`（只要 `CAP_NET_ADMIN`），名稱只有 doctor 在有 `CAP_SYS_ADMIN` 時顯示（`kernel/bpf.rs`）。
+- 沒有 `CAP_PERFMON` 時 verifier 不允許「scalar += 指標」、不同來源的指標運算（`bpf_allow_ptr_leaks`）。privd 沒有這個權限，所以核心程式要照這個限制寫（`tests/ebpf/README.md`）。
   privd 不給 `CAP_SYS_ADMIN`，所以「是不是框架載入的」要用 id 比對：privd 記得自己載入的每支程式的 id，不在名單裡的就是框架以外的程式，只顯示 id。
 
 ## 4. 外掛的載入管線 [建議]

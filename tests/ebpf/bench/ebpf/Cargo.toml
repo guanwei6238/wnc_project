@@ -1,0 +1,12 @@
+[package]
+name = "bench-ebpf"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR GPL-2.0-only"
+
+[dependencies]
+aya-ebpf = "0.3.0"
+
+[[bin]]
+name = "bench-ebpf"
+path = "src/main.rs"
