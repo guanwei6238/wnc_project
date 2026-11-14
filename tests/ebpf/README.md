@@ -83,3 +83,57 @@ sudo bash cost_pi.sh cpu; sudo bash cost_pi.sh stats
 筆電容器只給 CAP_NET_ADMIN、CAP_BPF，和之後的 privd 一樣沒有 CAP_PERFMON（架構 §3）。這時 verifier 不允許某些指標運算，Rust 寫起來很自然的兩種寫法會被拒絕（Pi 用 root 有全部權限，不會發現）：
 - **先把 struct 清成 0 再填欄位**：被編成逐 byte 的 memset 迴圈（`R5 tried to add from different maps, paths or scalars`）。改成每個欄位先讀出來，最後一次組成 struct；連 `[u8; 3]` 的 pad 也會變 memset，key 裡不要放 byte 陣列。
 - **變數 offset 讀封包**（IPv4 的 header 長度）：編譯器產生 `scalar += pkt`（`pointer arithmetic with it prohibited for !root`）。常見的位置（沒有 option 的 IPv4 在 34、IPv6 在 54）用固定 offset 直接讀，其他用 `bpf_skb_load_bytes`（`ctx.load()`）。
+
+# 步驟 C 之前的實驗：TC fast path 對 ct mark 信任（E1、E2）
+
+問題：信任的封包在 TC 就 redirect 到另一個 port（跳過 bridge、netfilter、conntrack），比現在用 ct mark 在 netfilter 放行省多少？trust 只放在 TC 的 map（不用 ct mark）和 map＋ct mark，寫入的成本差多少？
+
+`bench` 的 V4（`v4_redirect`）：V3 的解析之外，目的 MAC 不是 unicast、IPv4 分片、TCP 的 SYN／FIN／RST 交回 netfilter（純 SYN 先刪掉兩個方向的信任）；用五元組查 `TRUST`（每個方向一筆，值是封包數、bytes、最後時間），查到就更新計數並 `bpf_redirect` 到 `PEER` 裡的另一個 port。`ebpf-bench v4 --flows <檔> <port A> <port B>` 把檔裡的五元組兩個方向都放進去；`flows.py <pcap>` 從 pcap 產生這個檔。
+
+功能檢查（筆電臨時容器，只有 CAP_NET_ADMIN、CAP_BPF）：va→vb 的 100 個信任 UDP 全部從 vd 送出（vc 收到 100），其他 port 的 30 個 0；`connect()` 送出的純 SYN 讓 map 從 4 筆變 2 筆。
+
+## E1：每個信任封包（2026-11-14，方案 B 的實體網卡，`tests/cpu_alloc/alloc_run.sh exp9`，2 輪）
+
+Pi 4、鎖 1000 MHz、eth0 PAUSE 關、bridge；S_m60（102 條 flow，最大的一條 UDP 佔 98%），每個速率點至少 5 秒。
+
+| 工作負載 | 內容 |
+|---|---|
+| B0 | 只有 bridge（沒有 wnc-gw） |
+| B2 | wnc-gw ips、full、1 queue，prerouting 把每條連線設成信任（ct mark）＝現在的信任 |
+| F2 | B2 再加 TC fast path（V4，信任 S_m60 的全部五元組；98.6–98.9% 的封包在 TC 就 redirect，其餘是 TCP 控制封包等） |
+
+容量（cap_loss ≤ 0.1% 的最高速率，kpps；兩輪相同）：
+
+| 放置 | B0 只有 bridge | B2 ct mark 信任 | F2 TC fast path |
+|---|---|---|---|
+| A0（中斷都在 CPU0） | 80 | 50 | 50 |
+| I1（IRQ 29 → CPU1） | 120 | 80 | **150** |
+
+同一個速率的每封包 CPU（µs，整台 Pi＝經過時間 − idle；A0 另列 CPU0；兩輪平均）：
+
+| 速率 | B0 | B2 | F2 | F2 − B2 |
+|---|---|---|---|---|
+| A0 50k（CPU0） | 9.78 | 12.68 | **6.82** | −5.9（−46%） |
+| I1 80k（整台） | 10.12 | 13.96 | **8.53** | −5.4（−39%） |
+| I1 120k（整台） | 9.26 | 丟 20% | 7.53 | — |
+
+怎麼讀：
+- 信任的封包走 TC fast path 比走 netfilter＋ct mark 每個少 5–6 µs，也比完全不裝 wnc-gw 的 bridge 便宜 1.6–3 µs（跳過了 bridge 和 br_netfilter）。I1 的容量從 80 到 150 kpps（+87%）。
+- 低速率時「整台」的數字比較高（50k 時 B0 是 14 µs、80k 是 10 µs），是每秒固定的背景（ssh 讀計數等）攤到比較少的封包，所以只比同一個速率。
+- **A0 沒有解釋的**：三種在 80 kpps 都只有少量網卡丟包（B0 0.09%、F2 0.36–0.38%、B2 0.54%），CPU0 平均只用了 33–60%，不是 CPU 不夠；推測是 CPU0 被其他工作（USB 的中斷、softirq 的批次）短暫佔住時 RX ring 滿了。速率點 50 → 80 太粗，A0 的容量比不出差別；F2 在 80k 的丟包比 B0 多，原因沒查。
+- 只有一條大的 flow：RPS 依 flow 分，所以這個情境只看中斷放在哪裡；很多條信任 flow 時要另外量。
+
+原始資料：筆電 `~/datasets/throughput/cpu_alloc/e1.kvl`、`e1.log`（`python3 tests/cpu_alloc/alloc.py cap e1.kvl`）。
+
+## E2：寫入一筆信任的成本（Pi、鎖 1000 MHz、root、單執行緒）
+
+`ebpf-bench mapbench <n>`：對 `TRUST`（65,536 筆的 hash map）逐筆 insert、lookup、delete，每筆一次 bpf syscall。
+
+| 操作 | 1 萬筆（3 次） | 3 萬筆 |
+|---|---|---|
+| insert | 2.79–2.81 µs | 2.88 |
+| lookup | 2.12–2.17 µs | 2.16 |
+| delete | 2.57–2.60 µs | 2.67 |
+
+對照 ctnetlink 設 ct mark（DECISIONS.md §7）：一筆 14.5 µs、一次 100 筆時每筆 2.4 µs。一條連線信任兩個方向要寫兩筆 map（約 5.6 µs）。map＋ct mark 的做法兩邊都要寫（約 20 µs），還要定期從 conntrack 對帳（每次讀表固定約 7 ms＋每條 9.4 µs，DECISIONS.md §19）。這次 map 沒有用批次操作（`BPF_MAP_UPDATE_BATCH`）。
+

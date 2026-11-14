@@ -1,11 +1,13 @@
 use std::env;
 use std::error::Error;
 use std::ffi::CString;
+use std::fs;
 use std::io::Write;
 use std::net::IpAddr;
 use std::process::ExitCode;
+use std::time::Instant;
 
-use aya::maps::{HashMap, PerCpuArray};
+use aya::maps::{HashMap, MapData, PerCpuArray};
 use aya::programs::{LinkOrder, SchedClassifier, TcAttach, TcAttachType};
 use aya::{Ebpf, Pod};
 
@@ -14,10 +16,10 @@ struct Aligned<T: ?Sized>(T);
 
 static ELF: &Aligned<[u8]> = &Aligned(*include_bytes!(concat!(env!("OUT_DIR"), "/bench-ebpf")));
 
-const USAGE: &str =
-    "usage: ebpf-bench <v1|v2|v3> [--flow <tcp|udp> <src ip> <src port> <dst ip> <dst port>] <interface>...";
+const USAGE: &str = "usage: ebpf-bench <v1|v2|v3|v4> [--flow <tcp|udp> <src ip> <src port> <dst ip> <dst port>] \
+                     [--flows <file>] <interface>...\n       ebpf-bench mapbench <entries>";
 
-// 和 ebpf/src/main.rs 的 FlowKey 一樣：位址和 port 照封包裡的 bytes 存
+// 和 ebpf/src/main.rs 一樣：位址和 port 照封包裡的 bytes 存
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct FlowKey {
@@ -28,7 +30,28 @@ struct FlowKey {
     proto: u32,
 }
 
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+struct FlowStats {
+    packets: u64,
+    bytes: u64,
+    last_ns: u64,
+}
+
 unsafe impl Pod for FlowKey {}
+unsafe impl Pod for FlowStats {}
+
+impl FlowKey {
+    fn reverse(&self) -> Self {
+        Self {
+            saddr: self.daddr,
+            daddr: self.saddr,
+            sport: self.dport,
+            dport: self.sport,
+            proto: self.proto,
+        }
+    }
+}
 
 fn main() -> ExitCode {
     match run() {
@@ -45,30 +68,65 @@ fn run() -> Result<(), Box<dyn Error>> {
     if args.is_empty() {
         return Err(USAGE.into());
     }
-    let program = match args.remove(0).as_str() {
+    let variant = args.remove(0);
+    if variant == "mapbench" {
+        let entries = args.first().ok_or(USAGE)?.parse()?;
+        return mapbench(entries);
+    }
+    let program = match variant.as_str() {
         "v1" => "v1_empty",
         "v2" => "v2_count",
         "v3" => "v3_lookup",
+        "v4" => "v4_redirect",
         _ => return Err(USAGE.into()),
     };
-    let flow = if args.first().map(String::as_str) == Some("--flow") {
-        if args.len() < 7 {
-            return Err(USAGE.into());
+    let mut flows = Vec::new();
+    loop {
+        match args.first().map(String::as_str) {
+            Some("--flow") => {
+                if args.len() < 7 {
+                    return Err(USAGE.into());
+                }
+                let spec: Vec<String> = args.drain(..6).collect();
+                flows.push(flow_key(&spec[1..])?);
+            }
+            Some("--flows") => {
+                if args.len() < 2 {
+                    return Err(USAGE.into());
+                }
+                let path = args.drain(..2).nth(1).unwrap_or_default();
+                for line in fs::read_to_string(&path)?.lines().filter(|l| !l.trim().is_empty()) {
+                    let spec: Vec<String> = line.split_whitespace().map(str::to_owned).collect();
+                    if spec.len() != 5 {
+                        return Err(format!("bad line in {path}: {line:?}").into());
+                    }
+                    flows.push(flow_key(&spec)?);
+                }
+            }
+            _ => break,
         }
-        let spec: Vec<String> = args.drain(..6).collect();
-        Some(flow_key(&spec[1..])?)
-    } else {
-        None
-    };
-    if args.is_empty() {
+    }
+    if args.is_empty() || (program == "v4_redirect" && args.len() != 2) {
         return Err(USAGE.into());
     }
     let signals = block_stop_signals();
 
     let mut ebpf = Ebpf::load(&ELF.0)?;
-    if let Some(key) = flow {
-        let mut flows: HashMap<_, FlowKey, u64> = HashMap::try_from(ebpf.map_mut("FLOWS").ok_or("no map FLOWS")?)?;
-        flows.insert(&key, &0, 0)?;
+    if program == "v4_redirect" {
+        let mut trust: HashMap<_, FlowKey, FlowStats> = HashMap::try_from(ebpf.map_mut("TRUST").ok_or("no map TRUST")?)?;
+        for key in &flows {
+            trust.insert(key, &FlowStats::default(), 0)?;
+            trust.insert(&key.reverse(), &FlowStats::default(), 0)?;
+        }
+        let (a, b) = (ifindex(&args[0])?, ifindex(&args[1])?);
+        let mut peer: HashMap<_, u32, u32> = HashMap::try_from(ebpf.map_mut("PEER").ok_or("no map PEER")?)?;
+        peer.insert(&a, &b, 0)?;
+        peer.insert(&b, &a, 0)?;
+    } else {
+        let mut lookup: HashMap<_, FlowKey, u64> = HashMap::try_from(ebpf.map_mut("FLOWS").ok_or("no map FLOWS")?)?;
+        for key in &flows {
+            lookup.insert(key, &0, 0)?;
+        }
     }
     let prog: &mut SchedClassifier = ebpf.program_mut(program).ok_or("no such program")?.try_into()?;
     prog.load()?;
@@ -80,15 +138,63 @@ fn run() -> Result<(), Box<dyn Error>> {
         };
         prog.attach(&name, order)?;
     }
-    println!("prog_id={}", prog.info()?.id());
+    println!("prog_id={} flows={}", prog.info()?.id(), flows.len());
     std::io::stdout().flush()?;
 
     wait_for(&signals);
     let counts: PerCpuArray<_, u64> = PerCpuArray::try_from(ebpf.map("COUNT").ok_or("no map COUNT")?)?;
     let packets: u64 = counts.get(&0, 0)?.iter().sum();
     let hits: u64 = counts.get(&1, 0)?.iter().sum();
-    println!("packets={packets} hits={hits}");
+    let trust: HashMap<_, FlowKey, FlowStats> = HashMap::try_from(ebpf.map("TRUST").ok_or("no map TRUST")?)?;
+    let trusted = trust.keys().filter(Result::is_ok).count();
+    println!("packets={packets} hits={hits} trust_entries={trusted}");
     Ok(())
+}
+
+fn mapbench(entries: u32) -> Result<(), Box<dyn Error>> {
+    let mut ebpf = Ebpf::load(&ELF.0)?;
+    let mut trust: HashMap<&mut MapData, FlowKey, FlowStats> =
+        HashMap::try_from(ebpf.map_mut("TRUST").ok_or("no map TRUST")?)?;
+    let keys: Vec<FlowKey> = (0..entries)
+        .map(|i| FlowKey {
+            saddr: [u32::from_ne_bytes([10, 1, (i >> 8) as u8, i as u8]), 0, 0, 0],
+            daddr: [u32::from_ne_bytes([10, 2, 0, 1]), 0, 0, 0],
+            sport: ((i % 50000) as u16 + 1024).to_be(),
+            dport: 443u16.to_be(),
+            proto: 6,
+        })
+        .collect();
+    let start = Instant::now();
+    for key in &keys {
+        trust.insert(key, &FlowStats::default(), 0)?;
+    }
+    let insert = start.elapsed();
+    let start = Instant::now();
+    for key in &keys {
+        trust.get(key, 0)?;
+    }
+    let lookup = start.elapsed();
+    let start = Instant::now();
+    for key in &keys {
+        trust.remove(key)?;
+    }
+    let remove = start.elapsed();
+    let per = |d: std::time::Duration| d.as_secs_f64() * 1e6 / f64::from(entries);
+    println!(
+        "entries={entries} insert_us={:.2} lookup_us={:.2} remove_us={:.2}",
+        per(insert),
+        per(lookup),
+        per(remove)
+    );
+    Ok(())
+}
+
+fn ifindex(name: &str) -> Result<u32, Box<dyn Error>> {
+    let c = CString::new(name)?;
+    match unsafe { libc::if_nametoindex(c.as_ptr()) } {
+        0 => Err(format!("unknown interface {name:?}").into()),
+        index => Ok(index),
+    }
 }
 
 fn flow_key(spec: &[String]) -> Result<FlowKey, Box<dyn Error>> {

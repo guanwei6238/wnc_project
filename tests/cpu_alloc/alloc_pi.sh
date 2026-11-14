@@ -9,6 +9,8 @@
 #   alloc_pi.sh burner_start <cpu|mem|mlp> <threads> <cpus|any> <normal|idle> [duty%，預設 100]   背景跑替身
 #   alloc_pi.sh burner_stop
 #   alloc_pi.sh acct <0|1>           wgw 裡的 net.netfilter.nf_conntrack_acct（之後建立的 conntrack entry 才有計數）
+#   alloc_pi.sh fastpath_start <flows 檔>  在 eth0、eth1.20 的 TCX ingress 最前面掛 ebpf-bench v4（tests/ebpf/bench）：查到信任的五元組就直接 redirect 到另一個 port
+#   alloc_pi.sh fastpath_stop        拿掉 fast path，印出它 redirect 的封包數
 # 忙碌時間＝經過時間 − idle − iowait（/proc/stat 的 idle 在 NO_HZ 下是精確的，而且 idle 時處理的中斷不算 idle）；
 # schedstat 的 rq_cpu_time 只當輔助（idle 時處理的中斷算不到）
 W="ip netns exec wgw"
@@ -78,6 +80,15 @@ acct)
   ;;
 burner_stop)
   pkill -x burner; sleep 0.5; rm -f $OPS; echo stopped
+  ;;
+fastpath_start)
+  pkill -INT -x ebpf-bench; sleep 0.5
+  $W $B/ebpf-bench v4 --flows $2 eth0 eth1.20 > /dev/shm/fastpath.out 2>&1 &
+  for i in $(seq 1 50); do grep -q "prog_id=" /dev/shm/fastpath.out && break; sleep 0.1; done
+  cat /dev/shm/fastpath.out
+  ;;
+fastpath_stop)
+  pkill -INT -x ebpf-bench; sleep 0.5; tail -1 /dev/shm/fastpath.out
   ;;
 *) sed -n '2,13p' "$0"; exit 2 ;;
 esac

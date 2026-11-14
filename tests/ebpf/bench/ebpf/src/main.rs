@@ -3,7 +3,10 @@
 
 use core::mem::size_of;
 
+use aya_ebpf::EbpfContext;
+use aya_ebpf::bindings::__sk_buff;
 use aya_ebpf::bindings::tcx_action_base::TCX_NEXT;
+use aya_ebpf::helpers::{bpf_ktime_get_ns, bpf_redirect};
 use aya_ebpf::macros::{classifier, map};
 use aya_ebpf::maps::{HashMap, PerCpuArray};
 use aya_ebpf::programs::TcContext;
@@ -18,12 +21,32 @@ pub struct FlowKey {
     proto: u32,
 }
 
-// 0：封包數，1：V3 查到的次數
+// 0：封包數，1：V3 查到的次數、V4 redirect 的次數
 #[map]
 static COUNT: PerCpuArray<u64> = PerCpuArray::with_max_entries(2, 0);
 
 #[map]
 static FLOWS: HashMap<FlowKey, u64> = HashMap::with_max_entries(65536, 0);
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct FlowStats {
+    packets: u64,
+    bytes: u64,
+    last_ns: u64,
+}
+
+// V4：信任的五元組（每個方向一筆）和收到的 port → 送出的 port
+#[map]
+static TRUST: HashMap<FlowKey, FlowStats> = HashMap::with_max_entries(65536, 0);
+
+#[map]
+static PEER: HashMap<u32, u32> = HashMap::with_max_entries(8, 0);
+
+const TCP_FIN: u8 = 0x01;
+const TCP_SYN: u8 = 0x02;
+const TCP_RST: u8 = 0x04;
+const TCP_ACK: u8 = 0x10;
 
 #[inline(always)]
 fn count(index: u32) {
@@ -89,6 +112,90 @@ fn lookup(ctx: &TcContext) -> Option<()> {
         count(1);
     }
     Some(())
+}
+
+#[inline(always)]
+fn fast_path(ctx: &TcContext) -> Option<i32> {
+    let ethertype = u16::from_be(read::<u16>(ctx, 12)?);
+    // 廣播、多播交回 bridge：它們也要送給 gateway 自己。
+    // 先讀 offset 12 才讀 0：offset 0 自己的邊界檢查會被 LLVM 改成 data >= data_end，verifier 不認得
+    if read::<u8>(ctx, 0)? & 1 != 0 {
+        return None;
+    }
+    let (proto, saddr, daddr, l4): (u8, [u32; 4], [u32; 4], L4) = match ethertype {
+        0x0800 => {
+            let vhl = read::<u8>(ctx, 14)?;
+            // 分片沒有 L4 header，交回 netfilter（conntrack 會先組回）
+            if u16::from_be(read::<u16>(ctx, 20)?) & 0x3fff != 0 {
+                return None;
+            }
+            let l4 = if vhl == 0x45 { L4::At34 } else { L4::At(14 + (vhl & 0x0f) as usize * 4) };
+            (read(ctx, 23)?, [read(ctx, 26)?, 0, 0, 0], [read(ctx, 30)?, 0, 0, 0], l4)
+        }
+        0x86dd => (
+            read(ctx, 20)?,
+            [read(ctx, 22)?, read(ctx, 26)?, read(ctx, 30)?, read(ctx, 34)?],
+            [read(ctx, 38)?, read(ctx, 42)?, read(ctx, 46)?, read(ctx, 50)?],
+            L4::At54,
+        ),
+        _ => return None,
+    };
+    if proto != 6 && proto != 17 {
+        return None;
+    }
+    let (sport, dport, flags): (u16, u16, u8) = match l4 {
+        L4::At34 => (read(ctx, 34)?, read(ctx, 36)?, if proto == 6 { read(ctx, 47)? } else { 0 }),
+        L4::At54 => (read(ctx, 54)?, read(ctx, 56)?, if proto == 6 { read(ctx, 67)? } else { 0 }),
+        L4::At(offset) => {
+            let ports: [u16; 2] = ctx.load(offset).ok()?;
+            let flags = if proto == 6 { ctx.load(offset + 13).ok()? } else { 0 };
+            (ports[0], ports[1], flags)
+        }
+    };
+    let key = FlowKey {
+        saddr,
+        daddr,
+        sport,
+        dport,
+        proto: u32::from(proto),
+    };
+    if flags & (TCP_SYN | TCP_FIN | TCP_RST) != 0 {
+        // 純 SYN：同一組五元組的新連線，不沿用舊的信任
+        if flags & (TCP_SYN | TCP_ACK) == TCP_SYN {
+            let reverse = FlowKey {
+                saddr: daddr,
+                daddr: saddr,
+                sport: dport,
+                dport: sport,
+                proto: u32::from(proto),
+            };
+            let _ = TRUST.remove(&key);
+            let _ = TRUST.remove(&reverse);
+        }
+        return None;
+    }
+    let stats = TRUST.get_ptr_mut(&key)?;
+    let skb = ctx.as_ptr() as *const __sk_buff;
+    let (ifindex, len) = unsafe { ((*skb).ifindex, (*skb).len) };
+    let peer = unsafe { PEER.get(&ifindex) }?;
+    unsafe {
+        (*stats).packets += 1;
+        (*stats).bytes += u64::from(len);
+        (*stats).last_ns = bpf_ktime_get_ns();
+    }
+    Some(unsafe { bpf_redirect(*peer, 0) } as i32)
+}
+
+#[classifier]
+pub fn v4_redirect(ctx: TcContext) -> i32 {
+    count(0);
+    match fast_path(&ctx) {
+        Some(action) => {
+            count(1);
+            action
+        }
+        None => TCX_NEXT,
+    }
 }
 
 #[classifier]

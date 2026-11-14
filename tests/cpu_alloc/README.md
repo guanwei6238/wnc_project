@@ -321,3 +321,7 @@ Suricata 自己的檢查容量（Suricata 漏掉的複本 ≤ 0.1%）：
 品質檢查：312 個量測點全部 `throttled=0x0`（量測前後）、時脈 1000 MHz、swap 0、最高溫 63.3°C；沒有 ssh 讀取失敗的點。exp1c、exp1d 的 392 個點和 exp3 的 18 個點也都是 `throttled=0x0`、1000 MHz、swap 0、PAUSE 0 個，最高溫 67.6°C。實驗 3b（Docker）在實驗 1 第二輪的 B1 期間跑過約 6 分鐘，B1 兩輪的容量在 5 kpps 的速率間隔內一致。實驗 4、5 的 776 個點（含重跑）也都是 `throttled=0x0`、1000 MHz、swap 0、PAUSE 0 個、沒有 ssh 讀取失敗，最高溫 68.1°C。
 
 限制：Pi 4 鎖 1000 MHz；流量是 IoT-23 切片重播（S_m17 掃描、S_m60 單一 UDP flow）；edge AI 是替身，不是合作方的模型；實驗 2 只量 40 kpps 一個速率；`µs/封包（全機）` 在有 AI 時包含 AI 的 CPU，那一欄只在沒有 AI 時有意義。
+
+## 實驗 9（exp9，2026-11-14）：TC fast path 對 ct mark 信任
+
+B0、B2 和 F2（B2 加上 TC fast path：`alloc_pi.sh fastpath_start` 掛 `tests/ebpf/bench` 的 ebpf-bench v4）× A0、I1，都用 S_m60，2 輪。結果和解讀在 `tests/ebpf/README.md`「E1」；原始資料 `~/datasets/throughput/cpu_alloc/e1.kvl`。
