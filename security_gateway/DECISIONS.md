@@ -201,6 +201,8 @@ rp_filter 不另外檢查：路由設對時 strict 模式不會擋正常流量�
 
 ## 5. 信任：ct mark，以一條連線為單位
 
+> **2026-11-14 決定改掉**（步驟 C，還沒實作）：trust 只放在 TC 的 BPF map（五元組、每個方向一筆），不再用 ct mark：信任的封包在 TC 直接 redirect，不進 bridge、netfilter、conntrack。核心程式掛不上時就沒有信任（全部檢查，D001／D005 維持 warning、log 寫明信任停用）。沒有 conntrack 的 TCP 序號窗檢查：偽造五元組相同的封包可以不經檢查送進內網，這是 RQ3 第 4 項（SYNTHESIS §6.1）的實驗條件，緩解（TC 自己檢查序號窗）在那個實驗做，map 的 value 先預留欄位。依據：E1（Pi 實體網卡、bridge）：信任的封包 TC redirect 比 ct mark 少 5–6 µs（−39～−46%），IRQ 在 CPU1 時容量 80 → 150 kpps；E2：map 寫一筆 2.8 µs、ctnetlink 14.5 µs；兩種做法查到時每封包成本相同，map＋ct mark 還要每 5 秒對帳（`tests/ebpf/README.md`）；選項與差別見架構 skill 的 `decisions.md` O17。下面是 10-28 的做法，C 實作完之前仍是現況。
+
 **決定**：已信任的連線在 conntrack entry 上設 mark 的最高位元（`0x80000000`），forward chain 看到就直接 accept、不進 Suricata。〔已實作〕O17，2026-10-28。目前用 `wnc-gw trust add／del／list` 手動設定；自動判定（控制迴路）還沒做。
 
 **選項**：(a) ct mark；(b) nft set 放五元組，元素帶 TTL。
@@ -539,6 +541,7 @@ rp_filter 不另外檢查：路由設對時 strict 模式不會擋正常流量�
 | edge AI 的 CPU 分配（O19） | 純運算的替身綁在 Suricata 以外的核心時 0 干擾；共用核心時即使 `SCHED_IDLE` 也丟 28–47%；吃記憶體的負載綁在別的核心仍讓 Suricata 每個封包貴 2 倍；6 MiB 的 MLP 貴 15–17%；IRQ 搬到 CPU1 後 CPU0 可以放 AI | 合作方的真實模型；傳輸方式、權限 |
 | 已信任 flow 的部分檢查（O20）、稽核前要不要讓 Suricata 忘掉 flow（O21） | Docker 實驗（`tests/partial_inspect/README.md`）：只檢查每段開頭可以抓到後段攻擊，約送 5–8% 的封包；固定長度會被「先塞資料再攻擊」繞過，隨機長度 83–90% 抓得到 | tc eBPF 的實作成本、Pi 上的量測 |
 | 拆成多個 process（O1） | 沒有實驗 | 做控制迴路之前要決定 |
+| 步驟 C：trust 只放在 TC 的 map，還是 map＋ct mark（2026-11-14 已決定：只放 TC，§5） | E1（`tests/ebpf/README.md`，Pi 實體網卡、bridge、單一大 flow）：信任的封包 TC redirect 比 ct mark 少 5–6 µs（−39～−46%），IRQ 搬到 CPU1 時容量 80 → 150 kpps；兩種做法查到時的每封包成本相同。E2：map 寫一筆 2.8 µs、刪一筆 2.6 µs，ctnetlink 14.5 µs（批次 2.4） | 開發者決定；很多條信任 flow、routed 模式還沒量 |
 
 **還沒解釋的量測**
 - 8.0.7 下 wnc-gw 和直接跑 Suricata NFQ 的每個封包成本比值是 0.81–1.21（7.0.10 時 0.97–1.01）：60-1 wnc-gw 便宜 18%，Honeypot-7-1 full 貴 21%。wnc-gw 多傳了 midstream、exception policy、delayed-detect、fail-open 等設定，原因沒查；這組每格只量 1 次（`tests/ids_inline/results/compare2.kvl`）。
