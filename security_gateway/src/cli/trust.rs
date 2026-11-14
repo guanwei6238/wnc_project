@@ -75,20 +75,23 @@ fn tuple(args: &ConnectionArgs) -> Result<FiveTuple, impl fmt::Display> {
 
 fn print_flows(flows: &[Flow]) {
     out!(
-        "{:<5} {:<40} {:<40} {:>10} {:>12} {:>10} {:>12}",
-        "PROTO", "SOURCE", "DESTINATION", "PACKETS->", "BYTES->", "PACKETS<-", "BYTES<-"
+        "{:<5} {:<40} {:<40} {:>10} {:>12} {:>10} {:>12}  {}",
+        "PROTO", "SOURCE", "DESTINATION", "PACKETS->", "BYTES->", "PACKETS<-", "BYTES<-", "NEXT HOP -> / <-"
     );
     for flow in flows {
         let c = &flow.connection;
+        let hop = |ip: Option<IpAddr>| ip.map_or_else(|| "-".to_owned(), |ip| ip.to_string());
         out!(
-            "{:<5} {:<40} {:<40} {:>10} {:>12} {:>10} {:>12}",
+            "{:<5} {:<40} {:<40} {:>10} {:>12} {:>10} {:>12}  {} / {}",
             c.protocol,
             c.src.to_string(),
             c.dst.to_string(),
             flow.packets_original,
             flow.bytes_original,
             flow.packets_reply,
-            flow.bytes_reply
+            flow.bytes_reply,
+            hop(flow.next_hop_original),
+            hop(flow.next_hop_reply)
         );
     }
 }

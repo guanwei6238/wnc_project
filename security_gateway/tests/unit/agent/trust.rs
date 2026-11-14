@@ -272,6 +272,10 @@ impl Privd for FakePrivd {
         self.untrusted.push(*tuple);
         Ok(())
     }
+
+    fn trusted(&self) -> Result<Vec<crate::datapath::TrustedFlow>, PrivdError> {
+        Ok(Vec::new())
+    }
 }
 
 #[test]

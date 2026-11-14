@@ -28,7 +28,7 @@ eBPF 程式同一個 ELF 在 x86 和 arm64 都能用（只分 endian），授權
 |---|---|
 | `wnc-gw doctor` | 檢查設定、port、每個 port 的 TCX 程式、kernel 模組、nft、Suricata 和權限，不改任何東西 |
 | `wnc-gw run` | 先跑 doctor，再裝 nft table、啟動並監督 Suricata，直到收到 SIGINT／SIGTERM／SIGHUP；結束時移除 table |
-| `wnc-gw trust add／del／list` | 手動信任或取消信任一條連線，或列出信任中的連線和每個方向的封包數、bytes：透過 `/run/wnc-gw/control.sock` 請 `run` 寫 trust map，所以 `run` 要在跑、要用 root；只能信任 gateway 轉送的 TCP、UDP 連線 |
+| `wnc-gw trust add／del／list` | 手動信任或取消信任一條連線，或列出信任中的連線和每個方向的封包數、bytes、routed 時目前有效的下一跳：透過 `/run/wnc-gw/control.sock` 請 `run` 寫 trust map，所以 `run` 要在跑、要用 root；只能信任 gateway 轉送的 TCP、UDP 連線 |
 | `wnc-gw show interfaces` | 列出網卡，方便在設定檔裡指定 port |
 | `wnc-gw explain [代碼]`、`explain --all` | doctor 的每個 error／warning／note 都有代碼（例如 `warning[R006]`），`run` 的每個 WARN／ERROR log 也有（`code=S015`，json 是 `"code":"S015"`）；不帶參數列出全部代碼，帶代碼印出說明（cause：什麼情況會出現；action：怎麼處理），`--all` 印出全部的詳細說明 |
 
@@ -156,9 +156,10 @@ Suricata 就緒或停止時，wnc-gw 只換掉 `ids` chain 的規則，不重裝
 | 怎麼進 nftables | 經過 `br_netfilter`（沒載入時規則完全被繞過） | 一般的 IP 轉送 |
 | doctor 檢查 | LAN、WAN 在同一個 bridge；`br_netfilter`、`bridge-nf-call-iptables`／`ip6tables` | LAN、WAN 不在 bridge 裡；`ip_forward`；兩個 port 都有 IPv4 位址（沒有是 warning）、網段不和彼此或其他介面重疊（error）、預設路由走 WAN（warning）；note 寫出內網 gateway 和上游要加的路由 |
 | 封包從哪個 port 進來 | `iifname` 都是 `br0`，要靠 ingress 打的 mark〔已決定，未實作〕 | 同樣用 ingress 的 mark，兩種模式共用規則 |
-| fast path（tc eBPF） | `bpf_redirect` 到另一個 port | 減 TTL（IPv4 修 checksum）＋`bpf_redirect_neigh`（kernel 自己查限定在出口網卡的路由；不是 GPL-only） |
+| fast path（tc eBPF） | `bpf_redirect` 到另一個 port | 減 TTL（IPv4 修 checksum）＋`bpf_redirect_neigh` 帶下一跳（信任時 wnc-gw 用 kernel 轉送時的查法查好；路由一變全部失效、回到 kernel 每個封包自己查，安靜 10 秒後再填）；不是 GPL-only |
 | 轉送成本（Pi、veth） | 10.7 µs／封包 | 7.9 µs／封包 |
 | 轉送成本（Pi、實體網卡，2026-11-04） | 只轉送 @100k：9.97 µs，A0 容量 100 kpps | 8.02 µs，A0 容量 150 kpps；有檢查時只少 2–9%、容量一樣 |
+| 信任的封包（TC fast path，Pi、實體網卡、I1，2026-11-14） | 7.79 µs @120k，容量 150–180 kpps | 8.28 µs @120k（帶下一跳；不帶時 9.16），容量 150–180 kpps |
 | 非 IP 的封包（ARP 等） | 照常轉送 | 不轉送 |
 
 nft table 兩種模式完全相同，差別只在 `forwarding/` 的環境檢查。
@@ -223,7 +224,7 @@ wnc-gw 從 suricata.yaml 設定的 eve-log 檔讀 alert，每 `eve_interval` 秒
 |---|---|---|
 | 誰信任連線 | 只有管理者用 `wnc-gw trust add` | wnc-gw 自己判斷，`wnc-gw trust add` 也照樣能用 |
 | 什麼時候信任 | — | Suricata 在檢查的期間，這條連線兩個方向都已經有 `min_packets`（預設 10）個封包、觀察滿 `min_age`（預設 5）秒、沒有任何 alert；只限 TCP（已建立）和 UDP |
-| 信任多久 | 到 `trust del`、同一組五元組的新 TCP 連線（純 SYN）或 run 停止；連線結束不會自己清掉（閒置清除還沒做） | `ttl`（預設 900）秒，之後回到檢查，再觀察一次才會再信任 |
+| 信任多久 | 到 `trust del`、同一組五元組的新 TCP 連線（純 SYN）、閒置（UDP 120 秒、TCP 600 秒沒有封包；每 10 秒檢查一次）或 run 停止 | `ttl`（預設 900）秒，之後回到檢查，再觀察一次才會再信任 |
 | 有 alert 時 | — | 還在觀察的：之後都不信任；已經信任的：立刻撤銷，記 WARN |
 | 需要 | 核心 eBPF 程式有掛上（D001） | 同左（掛不上時自動信任關閉、全部檢查，T014）；`net.netfilter.nf_conntrack_acct = 1`、Suricata 把 alert 寫進 eve 檔；doctor 確定沒有就報 error（T002），讀不到 Suricata 設定而無法確認時是 warning，run 照常啟動但關掉自動信任、全部送檢查（T012）；執行中 EVE 讀不到或落後時暫停新增信任（T013） |
 | 風險 | — | 信任之後才送的攻擊，到 TTL 結束前都看不到；doctor 一律給 warning |

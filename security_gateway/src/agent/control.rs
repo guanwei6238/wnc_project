@@ -1,6 +1,6 @@
 use std::fs;
 use std::io::{self, BufRead, BufReader, Read, Write};
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::os::unix::{fs::{MetadataExt, PermissionsExt}, net::UnixStream as StdUnixStream};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -13,6 +13,7 @@ use crate::kernel::conntrack::{FiveTuple, Protocol};
 
 pub const SOCKET_NAME: &str = "control.sock";
 const MAX_MESSAGE: u64 = 64 * 1024;
+const MAX_REPLY: u64 = 16 * 1024 * 1024;
 const SERVER_READ_TIMEOUT: Duration = Duration::from_secs(1);
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -53,6 +54,8 @@ pub struct Flow {
     pub bytes_original: u64,
     pub packets_reply: u64,
     pub bytes_reply: u64,
+    pub next_hop_original: Option<IpAddr>,
+    pub next_hop_reply: Option<IpAddr>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -99,7 +102,7 @@ pub fn request(path: &Path, request: &Request) -> Result<Response, ControlError>
     line.push('\n');
     stream.write_all(line.as_bytes()).map_err(io_error)?;
     let mut reply = String::new();
-    BufReader::new(stream.take(MAX_MESSAGE)).read_line(&mut reply).map_err(io_error)?;
+    BufReader::new(stream.take(MAX_REPLY)).read_line(&mut reply).map_err(io_error)?;
     serde_json::from_str(&reply).map_err(|e| ControlError::Malformed(e.to_string()))
 }
 

@@ -57,3 +57,35 @@ fn a_request_gets_its_reply() {
     drop(server);
     assert!(!path.exists(), "the socket is removed when run stops");
 }
+
+#[test]
+fn a_long_list_is_read_in_full() {
+    let path = std::env::temp_dir().join(format!("wnc-gw-test-long-{}.sock", std::process::id()));
+    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+    let server = runtime.block_on(async { ControlServer::bind(&path) }).unwrap();
+    let flows: Vec<Flow> = (0..2000)
+        .map(|port| Flow {
+            connection: Tuple {
+                protocol: "udp".into(),
+                src: format!("192.168.1.195:{}", 10000 + port).parse().unwrap(),
+                dst: "68.206.48.206:80".parse().unwrap(),
+            },
+            packets_original: 1,
+            bytes_original: 60,
+            packets_reply: 0,
+            bytes_reply: 0,
+            next_hop_original: Some("10.99.2.2".parse().unwrap()),
+            next_hop_reply: None,
+        })
+        .collect();
+    let reply = Response::Trusted { flows };
+    assert!(serde_json::to_string(&reply).unwrap().len() as u64 > MAX_MESSAGE, "longer than a request may be");
+    let client_path = path.clone();
+    let client = std::thread::spawn(move || request(&client_path, &Request::List));
+    runtime.block_on(async {
+        let mut incoming = server.accept().await.unwrap();
+        incoming.read().await.unwrap();
+        incoming.reply(&reply).await;
+    });
+    assert_eq!(client.join().unwrap().unwrap(), reply);
+}

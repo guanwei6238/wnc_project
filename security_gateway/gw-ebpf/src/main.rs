@@ -5,12 +5,15 @@ use core::mem::size_of;
 use core::ptr;
 
 use aya_ebpf::EbpfContext;
-use aya_ebpf::bindings::{__sk_buff, tcx_action_base::TCX_NEXT};
+use aya_ebpf::bindings::{__sk_buff, bpf_redir_neigh, tcx_action_base::TCX_NEXT};
 use aya_ebpf::helpers::{bpf_ktime_get_ns, bpf_redirect, bpf_redirect_neigh};
 use aya_ebpf::macros::{classifier, map};
 use aya_ebpf::maps::{Array, HashMap, PerCpuArray};
 use aya_ebpf::programs::TcContext;
-use gw_common::{COUNTER_PACKETS, COUNTER_REDIRECTED, FlowKey, FlowStats, MODE_ROUTED, TRUST_ENTRIES};
+use gw_common::{
+    CONFIG_MODE, CONFIG_ROUTE_GENERATION, COUNTER_PACKETS, COUNTER_REDIRECTED, FlowKey, FlowStats, MODE_ROUTED, NH_INET,
+    NH_INET6, TRUST_ENTRIES,
+};
 
 #[map]
 static COUNTERS: PerCpuArray<u64> = PerCpuArray::with_max_entries(2, 0);
@@ -22,7 +25,14 @@ static TRUST: HashMap<FlowKey, FlowStats> = HashMap::with_max_entries(TRUST_ENTR
 static PEER: HashMap<u32, u32> = HashMap::with_max_entries(8, 0);
 
 #[map]
-static CONFIG: Array<u32> = Array::with_max_entries(1, 0);
+static CONFIG: Array<u32> = Array::with_max_entries(2, 0);
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct RedirNeigh {
+    family: u32,
+    addr: [u32; 4],
+}
 
 const TCP_FIN: u8 = 0x01;
 const TCP_SYN: u8 = 0x02;
@@ -105,7 +115,7 @@ fn fast_path(ctx: &TcContext) -> Option<i32> {
     let skb = ctx.as_ptr() as *const __sk_buff;
     let (ifindex, len) = unsafe { ((*skb).ifindex, (*skb).len) };
     let peer = *unsafe { PEER.get(&ifindex) }?;
-    let routed = CONFIG.get(0).copied() == Some(MODE_ROUTED);
+    let routed = CONFIG.get(CONFIG_MODE).copied() == Some(MODE_ROUTED);
     if routed {
         if ipv4 {
             let ttl: u8 = read(ctx, 22)?;
@@ -130,7 +140,16 @@ fn fast_path(ctx: &TcContext) -> Option<i32> {
         (*stats).last_ns = bpf_ktime_get_ns();
     }
     let action = if routed {
-        unsafe { bpf_redirect_neigh(peer, ptr::null_mut(), 0, 0) }
+        let generation = CONFIG.get(CONFIG_ROUTE_GENERATION).copied().unwrap_or(0);
+        let (family, nh_generation, addr) = unsafe { ((*stats).nh_family, (*stats).nh_generation, (*stats).nh) };
+        if nh_generation == generation && family == if ipv4 { NH_INET } else { NH_INET6 } {
+            let mut nh = RedirNeigh { family, addr };
+            unsafe {
+                bpf_redirect_neigh(peer, &mut nh as *mut RedirNeigh as *mut bpf_redir_neigh, size_of::<RedirNeigh>() as i32, 0)
+            }
+        } else {
+            unsafe { bpf_redirect_neigh(peer, ptr::null_mut(), 0, 0) }
+        }
     } else {
         unsafe { bpf_redirect(peer, 0) }
     };

@@ -96,6 +96,8 @@ issues! {
     TcxUnchecked,
     TcxUnsupported,
     ForeignTcxPrograms,
+    RoutesUnstable,
+    NextHopsOff,
     TableRemoveFailed,
     TableRemoved,
     StartInspectionFailed,
@@ -1021,6 +1023,31 @@ impl Issue {
                         tell which one is wnc-gw's.",
                 action: "Check that you know what they are: bpftool net show dev <port>, and \
                          bpftool prog show id <id>.",
+            },
+            Self::RoutesUnstable => &Explanation {
+                code: "D007",
+                title: "routes keep changing, so trusted connections use the kernel's route lookup",
+                reported_by: RUN,
+                severity: "warning",
+                cause: "In routed mode the core eBPF program sends trusted packets to a next hop that \
+                        run looked up; every route change makes all of them invalid at once, and run \
+                        looks them up again only after routes have been quiet for 10 seconds. Routes \
+                        changed again and again for 60 seconds (a routing daemon, IPv6 router \
+                        advertisements with accept_ra = 2, a flapping link), so trusted packets have the \
+                        kernel look up the route for each of them: correct, about 0.7 us slower on the \
+                        Pi. Logged once; an INFO follows when routes are stable again.",
+                action: "Find what keeps changing the routes with: ip monitor route.",
+            },
+            Self::NextHopsOff => &Explanation {
+                code: "D008",
+                title: "next hops are not used",
+                reported_by: RUN,
+                severity: "warning",
+                cause: "In routed mode run could not follow route changes (subscribing to them failed, \
+                        or the subscription ended), or could not invalidate the next hops. Without \
+                        that, a stored next hop could go stale, so run stops using them: trusted packets \
+                        have the kernel look up the route for each of them, correct but slower.",
+                action: "Check the error in the message; restart run to use next hops again.",
             },
             Self::TableRemoveFailed => &Explanation {
                 code: "F002",

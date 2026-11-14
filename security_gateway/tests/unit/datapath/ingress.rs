@@ -64,3 +64,24 @@ fn both_directions_are_listed_as_one_connection() {
     let udp = flows.iter().find(|f| f.tuple.protocol() == Protocol::Udp).unwrap();
     assert_eq!((udp.tuple, udp.original.packets, udp.reply.packets), (t, 7, 3), "shown in the trusted direction");
 }
+
+fn numbered(i: u32) -> FiveTuple {
+    let [_, _, a, b] = i.to_be_bytes();
+    tuple(Protocol::Udp, &format!("10.1.{a}.{b}:4000"), "10.2.0.1:53")
+}
+
+// 要 CAP_BPF：在 testbed 的 gw 裡用 root 跑 `--ignored`
+#[test]
+#[ignore = "needs CAP_BPF and CAP_NET_ADMIN"]
+fn the_trust_map_holds_16384_connections_and_then_reports_full() {
+    let mut core = CoreProgram::attach(&[], Mode::Bridge).unwrap();
+    for i in 0..16384 {
+        core.trust(&numbered(i)).unwrap();
+    }
+    let full = core.trust(&numbered(16384)).unwrap_err();
+    assert!(matches!(full, TrustError::Bpf(BpfError::MapFull { .. })), "{full}");
+    assert_eq!(full.to_string(), "map \"TRUST\" is full");
+    assert_eq!(core.trusted().unwrap().len(), 16384, "a failed trust leaves no half entry behind");
+    assert!(core.untrust(&numbered(0)).unwrap());
+    core.trust(&numbered(16384)).unwrap();
+}

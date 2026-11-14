@@ -31,6 +31,9 @@ pub struct FlowStats {
     pub bytes: u64,
     pub last_ns: u64,
     pub direction: u32,
+    pub nh_family: u32,
+    pub nh: [u32; 4],
+    pub nh_generation: u32,
     pub pad: u32,
     pub reserved: [u64; 2],
 }
@@ -40,6 +43,11 @@ pub const MODE_BRIDGE: u32 = 0;
 pub const MODE_ROUTED: u32 = 1;
 pub const COUNTER_PACKETS: u32 = 0;
 pub const COUNTER_REDIRECTED: u32 = 1;
+pub const CONFIG_MODE: u32 = 0;
+pub const CONFIG_ROUTE_GENERATION: u32 = 1;
+pub const NH_NONE: u32 = 0;
+pub const NH_INET: u32 = 2;
+pub const NH_INET6: u32 = 10;
 pub const DIRECTION_ORIGINAL: u32 = 1;
 pub const DIRECTION_REPLY: u32 = 2;
 

@@ -1,8 +1,8 @@
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
 use gw_common::{
-    COUNTER_PACKETS, COUNTER_REDIRECTED, DIRECTION_ORIGINAL, DIRECTION_REPLY, FlowKey, FlowStats, MODE_BRIDGE,
-    MODE_ROUTED,
+    CONFIG_MODE, CONFIG_ROUTE_GENERATION, COUNTER_PACKETS, COUNTER_REDIRECTED, DIRECTION_ORIGINAL, DIRECTION_REPLY,
+    FlowKey, FlowStats, MODE_BRIDGE, MODE_ROUTED, NH_INET, NH_INET6, NH_NONE,
 };
 
 use crate::config::ports::Port;
@@ -27,6 +27,34 @@ pub struct TrustedFlow {
     pub reply: FlowStats,
 }
 
+impl TrustedFlow {
+    pub fn next_hop_original(&self, generation: Option<u32>) -> Option<IpAddr> {
+        next_hop(&self.original, generation?)
+    }
+
+    pub fn next_hop_reply(&self, generation: Option<u32>) -> Option<IpAddr> {
+        next_hop(&self.reply, generation?)
+    }
+}
+
+fn next_hop(stats: &FlowStats, generation: u32) -> Option<IpAddr> {
+    if stats.nh_generation != generation {
+        return None;
+    }
+    let words = stats.nh;
+    match stats.nh_family {
+        NH_INET => Some(IpAddr::V4(Ipv4Addr::from(words[0].to_ne_bytes()))),
+        NH_INET6 => {
+            let mut bytes = [0u8; 16];
+            for (chunk, word) in bytes.chunks_exact_mut(4).zip(words) {
+                chunk.copy_from_slice(&word.to_ne_bytes());
+            }
+            Some(IpAddr::V6(Ipv6Addr::from(bytes)))
+        }
+        _ => None,
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 #[error("only TCP and UDP connections can be trusted, not {0}")]
 pub struct UntrustableProtocol(Protocol);
@@ -41,6 +69,8 @@ pub enum TrustError {
 
 pub struct CoreProgram {
     program: TcxProgram,
+    ports: Vec<u32>,
+    route_generation: u32,
 }
 
 impl CoreProgram {
@@ -50,7 +80,8 @@ impl CoreProgram {
             Mode::Bridge => MODE_BRIDGE,
             Mode::Routed => MODE_ROUTED,
         };
-        program.set_u32(CONFIG, 0, mode)?;
+        program.set_u32(CONFIG, CONFIG_MODE, mode)?;
+        program.set_u32(CONFIG, CONFIG_ROUTE_GENERATION, 1)?;
         if let [a, b] = ports {
             program.insert_u32(PEER, a.interface.index, b.interface.index)?;
             program.insert_u32(PEER, b.interface.index, a.interface.index)?;
@@ -58,7 +89,52 @@ impl CoreProgram {
         for port in ports {
             program.attach_ingress_first(port.interface.index)?;
         }
-        Ok(Self { program })
+        Ok(Self {
+            program,
+            ports: ports.iter().map(|port| port.interface.index).collect(),
+            route_generation: 1,
+        })
+    }
+
+    pub fn ports(&self) -> &[u32] {
+        &self.ports
+    }
+
+    pub fn route_generation(&self) -> u32 {
+        self.route_generation
+    }
+
+    pub fn invalidate_next_hops(&mut self) -> Result<(), BpfError> {
+        let next = self.route_generation.wrapping_add(1).max(1);
+        self.program.set_u32(CONFIG, CONFIG_ROUTE_GENERATION, next)?;
+        self.route_generation = next;
+        Ok(())
+    }
+
+    // 回傳 false：這條連線已經不被信任了
+    pub fn set_next_hops(
+        &mut self,
+        tuple: &FiveTuple,
+        original: Option<IpAddr>,
+        reply: Option<IpAddr>,
+        generation: u32,
+    ) -> Result<bool, TrustError> {
+        let key = key_of(tuple)?;
+        for (key, hop) in [(key, original), (key.reverse(), reply)] {
+            let Some(mut stats) = self.program.get_flow(TRUST, &key)? else {
+                return Ok(false);
+            };
+            (stats.nh_family, stats.nh) = match hop {
+                Some(ip @ IpAddr::V4(_)) => (NH_INET, address(ip)),
+                Some(ip @ IpAddr::V6(_)) => (NH_INET6, address(ip)),
+                None => (NH_NONE, [0; 4]),
+            };
+            stats.nh_generation = generation;
+            if !self.program.update_flow(TRUST, &key, &stats)? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
 
     pub fn id(&self) -> u32 {

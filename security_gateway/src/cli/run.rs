@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use clap::Args;
 use security_gateway::agent::{
     LocalPrivd, Privd, PrivdError, control::{self, ControlServer, Flow, Incoming, Request, Response, Tuple},
-    trust::{TrustAgent, TrustPolicy},
+    idle::IdleSweep, nexthop::NextHops, trust::{TrustAgent, TrustPolicy},
 };
 use security_gateway::config::{self, Config, Overrides, TrustSettings, ports::{self, Port}};
 use security_gateway::datapath::{
@@ -16,7 +16,10 @@ use security_gateway::ids::{
     delivery::Delivery, lifecycle::{Event, Lifecycle}, spawned::{self, Options, SpawnedSuricata}, suricata::Suricata,
 };
 use security_gateway::issue::Issue;
-use security_gateway::kernel::{bpf, conntrack::{Conntrack, ConntrackError}, netif::Netlink, nflog, nft::Nft};
+use security_gateway::forwarding::Mode;
+use security_gateway::kernel::{
+    bpf, conntrack::{Conntrack, ConntrackError}, netif::{Netlink, RouteChanges}, nflog, nft::Nft,
+};
 use security_gateway::monitor::{
     alerts::AlertWatch, conntrack::ConntrackMonitor, nflog::CopyMonitor, tcx::{CoreWatch, WatchedPort},
 };
@@ -214,6 +217,13 @@ async fn serve(
     let mut core_watch = core_watch;
     let mut core_tick = time::interval(CoreWatch::INTERVAL);
     core_tick.set_missed_tick_behavior(MissedTickBehavior::Delay);
+    let mut idle = IdleSweep::default();
+    let mut idle_tick = time::interval(IdleSweep::INTERVAL);
+    idle_tick.set_missed_tick_behavior(MissedTickBehavior::Delay);
+    let (mut route_changes, mut next_hops, route_lookups) = next_hops(config, privd);
+    privd.record_newly_trusted(next_hops.is_some());
+    let mut hop_tick = time::interval(NextHops::INTERVAL);
+    hop_tick.set_missed_tick_behavior(MissedTickBehavior::Delay);
     let mut suricata = match SpawnedSuricata::start(suricata_options(config)) {
         Ok(suricata) => suricata,
         Err(e) => {
@@ -255,6 +265,27 @@ async fn serve(
             } => {
                 if let Ok(incoming) = incoming {
                     handle_request(incoming, privd).await;
+                }
+            }
+            _ = idle_tick.tick(), if privd.core().is_some() => idle.check(privd, Instant::now()),
+            changed = async {
+                match route_changes.as_mut() {
+                    Some(changes) => changes.next().await,
+                    None => std::future::pending().await,
+                }
+            } => match (changed, next_hops.as_mut()) {
+                (Some(()), Some(hops)) => hops.route_changed(privd, Instant::now()),
+                _ => {
+                    warn!(code = %Issue::NextHopsOff, "stopped following route changes; next hops are no longer used");
+                    let _ = privd.invalidate_next_hops();
+                    privd.record_newly_trusted(false);
+                    route_changes = None;
+                    next_hops = None;
+                }
+            },
+            _ = hop_tick.tick(), if next_hops.is_some() => {
+                if let (Some(hops), Some(netlink)) = (next_hops.as_mut(), route_lookups.as_ref()) {
+                    hops.check(privd, netlink, Instant::now()).await;
                 }
             }
             _ = core_tick.tick(), if core_watch.is_some() => {
@@ -358,6 +389,25 @@ async fn tick(interval: &mut Option<time::Interval>) {
     }
 }
 
+fn next_hops(config: &Config, privd: &LocalPrivd) -> (Option<RouteChanges>, Option<NextHops>, Option<Netlink>) {
+    let ports = match privd.core().map(|core| core.ports()) {
+        Some(&[a, b]) if config.mode.value == Mode::Routed => [a, b],
+        _ => return (None, None, None),
+    };
+    let subscribed = RouteChanges::subscribe().and_then(|changes| Ok((changes, Netlink::connect()?)));
+    match subscribed {
+        Ok((changes, netlink)) => (Some(changes), Some(NextHops::new(ports)), Some(netlink)),
+        Err(e) => {
+            warn!(
+                code = %Issue::NextHopsOff,
+                error = %e,
+                "cannot follow route changes; trusted packets have the kernel look up their route"
+            );
+            (None, None, None)
+        }
+    }
+}
+
 fn trust_agent(config: &Config, alerts: bool, fast_path: bool) -> Option<(TrustAgent, Duration)> {
     let trust = match &config.trust {
         TrustSettings::Manual { .. } => return None,
@@ -447,6 +497,8 @@ fn answer(request: Request, privd: &mut LocalPrivd, uid: i64) -> Response {
                         bytes_original: flow.original.bytes,
                         packets_reply: flow.reply.packets,
                         bytes_reply: flow.reply.bytes,
+                        next_hop_original: flow.next_hop_original(privd.route_generation()),
+                        next_hop_reply: flow.next_hop_reply(privd.route_generation()),
                     })
                     .collect(),
             },

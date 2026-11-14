@@ -36,7 +36,9 @@ security_gateway/
 │   ├── lib.rs              只宣告功能模組：agent、config、datapath、forwarding、ids、issue、kernel、monitor、platform、system
 │   ├── issue.rs            Issue（doctor 結果和 run 的 WARN／ERROR log 的代碼，issues! macro 同時產生 enum 和 ALL）、explanation()（exhaustive match，新增 Issue 不寫說明就編不過）、FromStr 不分大小寫
 │   ├── agent/              3d：wnc-gw 自己判斷信任（之後拆成無特權的 agent process）
-│   │   ├── mod.rs          trait Privd（forwarded_connections、trust、untrust；之後由有權限的 process 實作）、PrivdError（NoFastPath、NotTrusted、Trust）、LocalPrivd（持有 CoreProgram 和 ctnetlink socket，socket 壞了就下次重連；connection()、trusted() 給 control socket 用）
+│   │   ├── mod.rs          trait Privd（forwarded_connections、trust、untrust、trusted；之後由有權限的 process 實作）、PrivdError（NoFastPath、NotTrusted、Trust）、LocalPrivd（持有 CoreProgram 和 ctnetlink socket，socket 壞了就下次重連；connection()、trusted() 給 control socket 用）
+│   │   ├── idle.rs         IdleSweep（INTERVAL 10 秒）：列 trust map，兩個方向的封包數合計沒變超過 UDP 120 秒、TCP 600 秒就 untrust；observe() 純函式（用 Instant 記上次變動，不讀 kernel 的時間）
+│   │   ├── nexthop.rs      NextHops（routed）：信任後排進佇列，每秒最多 100 條用 Netlink::output_route／forwarding_route 查兩個方向的下一跳，經 LocalPrivd::set_next_hops 寫入；route_changed() 把路由版本號加一（全部失效）；安靜 10 秒才重新填；settle() 純函式判斷 D007（60 秒一直在變）和恢復
 │   │   ├── control.rs      wnc-gw trust 和 run 之間的 unix socket（<runtime_dir>/control.sock，0600）：一個連線一個請求，各一行 JSON（Request：trust、untrust、list；Response：done、trusted、error）；ControlServer（bind 時刪掉舊檔、Drop 時刪掉，accept 用 SO_PEERCRED，只收 root 和 socket 擁有者的帳號）、Incoming（讀一行，1 秒逾時、64 KiB 上限）、request()（CLI 端，同步）
 │   │   └── trust.rs        TrustAgent：TrustPolicy（min_packets、min_age、ttl）；每個連線（五元組不分方向，配 conntrack id）的狀態 Watching（開始時間和當時的計數）→ Trusted（到期時間）→ 或 Refused（有 alert）；observe()（純函式，輸入連線清單和時間，輸出 Decision：Trust、Expire、Revoke）、alert()；check()、on_alert() 經 Privd 寫入並記 log（信任 INFO、撤銷 WARN、到期 DEBUG、有變動時每 60 秒摘要）；Suricata 停止時（set_inspecting）觀察中的連線全部重來；連線沒有計數時記一次 WARN
 │   ├── config/             設定和它的值型別（2026-11-14 從頂層搬進來）
@@ -68,7 +70,7 @@ security_gateway/
 │   │   └── instance.rs     同一台機器只跑一個 wnc-gw：flock <runtime_dir>/wnc-gw.lock 並寫入 pid；InstanceError::AlreadyRunning 帶持有者的 pid
 │   └── kernel/             跟 Linux kernel 打交道的薄模組
 │       ├── mod.rs
-│       ├── netif.rs        rtnetlink 列介面、sysfs 讀 driver、MacAddr、LinkStatus；ipv4_routing()：IPv4 位址、main table 的路由（NextHop、metric、RouteKind）、rule（是否無條件查表）→ Ipv4Routing、Ipv4Net
+│       ├── netif.rs        RouteTo、Netlink::output_route／forwarding_route（route get 帶目的地，forwarding 再帶來源和入口，等同 ip route get … from … iif …；不是 unicast、multipath、via 回傳 None）、RouteChanges（訂閱 IPv4／IPv6 的路由變更）；rtnetlink 列介面、sysfs 讀 driver、MacAddr、LinkStatus；ipv4_routing()：IPv4 位址、main table 的路由（NextHop、metric、RouteKind）、rule（是否無條件查表）→ Ipv4Routing、Ipv4Net
 │       ├── bpf.rs          包住 aya 0.16：TcxProgram（load(elf, name)、attach_ingress_first(ifindex)、id()、per_cpu_sum(map)）、BpfError（aya 的錯誤轉成字串，error_chain() 串起 source 但跳過已經包含在訊息裡的）；aya 的型別不出現在對外介面。tcx_ingress(ifindex) → TcxChain（revision、依序的 prog id）：自己呼叫 bpf(BPF_PROG_QUERY)，只要 CAP_NET_ADMIN（aya 的 query_tcx 會順便用 id 拿 fd，要 CAP_SYS_ADMIN，privd 沒有）；QueryAttr 照 kernel bpf_attr 的 query 段排列，測試用 offset_of! 檢查；錯誤分成 NotPermitted（EPERM／EACCES）、Unsupported（EINVAL：沒有 TCX）、NoDevice（ENODEV）、Io。program_names()：aya 的 loaded_programs() 列出 id → 名稱，要 CAP_SYS_ADMIN，doctor 只拿來顯示
 │       ├── conntrack.rs    手寫 ctnetlink（netlink-sys 的同步 Socket，non-blocking）：set_mark（只動 mask 內的位元）、set_marks（一次 100 筆，只有最後一筆要 ACK，回傳失敗的那幾筆）、get、list（kernel 依 mark 過濾）、stats（IPCTNL_MSG_CT_GET_STATS 的筆數和上限，加上 GET_STATS_CPU 每個 CPU 的 drop、early_drop、insert_failed；筆電 kernel 沒有 /proc/net/stat/nf_conntrack，所以不讀 procfs）；Stats、CpuStats；FiveTuple（兩個位址要同一版本）、Protocol、TcpState、Connection（含兩個方向的 Counters：封包數、bytes，要 nf_conntrack_acct = 1 才有）；任一方向的五元組都找到同一筆
 │       ├── modules.rs      /proc/modules + modules.{builtin,dep} → ModuleState；RequiredModule

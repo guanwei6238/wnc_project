@@ -4,11 +4,14 @@ use std::net::{IpAddr, Ipv4Addr};
 use std::path::Path;
 use std::str::FromStr;
 
-use futures::TryStreamExt;
-use rtnetlink::{IpVersion, RouteMessageBuilder};
+use futures::channel::mpsc::UnboundedReceiver;
+use futures::{StreamExt, TryStreamExt};
+use netlink_packet_core::{NetlinkMessage, NetlinkPayload};
+use rtnetlink::{IpVersion, MulticastGroup, RouteMessageBuilder};
 use rtnetlink::packet_route::{
     AddressFamily, address::{AddressAttribute, AddressMessage},
     link::{LinkAttribute, LinkFlags, LinkInfo, LinkLayerType, LinkMessage, LinkXdp, State, XdpAttached},
+    RouteNetlinkMessage,
     route::{RouteAddress, RouteAttribute, RouteMessage, RouteType},
     rule::{RuleAction, RuleAttribute, RuleFlags, RuleMessage},
 };
@@ -146,6 +149,41 @@ pub enum NetifError {
     Connect(io::Error),
     #[error("failed to dump {what}: {reason}")]
     Dump { what: &'static str, reason: String },
+    #[error("route lookup failed: {0}")]
+    Route(String),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RouteTo {
+    pub oif: u32,
+    pub gateway: Option<IpAddr>,
+}
+
+pub struct RouteChanges {
+    messages: UnboundedReceiver<(NetlinkMessage<RouteNetlinkMessage>, netlink_sys::SocketAddr)>,
+}
+
+impl RouteChanges {
+    pub fn subscribe() -> Result<Self, NetifError> {
+        let (connection, _, messages) =
+            rtnetlink::new_multicast_connection(&[MulticastGroup::Ipv4Route, MulticastGroup::Ipv6Route])
+                .map_err(NetifError::Connect)?;
+        tokio::spawn(connection);
+        Ok(Self { messages })
+    }
+
+    // None：通知的連線斷了，之後收不到路由的變更
+    pub async fn next(&mut self) -> Option<()> {
+        while let Some((message, _)) = self.messages.next().await {
+            if matches!(
+                message.payload,
+                NetlinkPayload::InnerMessage(RouteNetlinkMessage::NewRoute(_) | RouteNetlinkMessage::DelRoute(_))
+            ) {
+                return Some(());
+            }
+        }
+        None
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -299,6 +337,57 @@ impl Netlink {
             rules: rules.into_iter().map(from_rule_message).collect(),
         })
     }
+}
+
+impl Netlink {
+    pub async fn output_route(&self, dst: IpAddr) -> Result<Option<RouteTo>, NetifError> {
+        let message = RouteMessageBuilder::<IpAddr>::new()
+            .destination_prefix(dst, host_prefix(dst))
+            .map_err(|e| NetifError::Route(e.to_string()))?
+            .build();
+        self.route_get(message).await
+    }
+
+    // 和 ip route get <dst> from <src> iif <iif> 一樣：kernel 轉送這個封包時的查法
+    pub async fn forwarding_route(&self, src: IpAddr, dst: IpAddr, iif: u32) -> Result<Option<RouteTo>, NetifError> {
+        let message = RouteMessageBuilder::<IpAddr>::new()
+            .destination_prefix(dst, host_prefix(dst))
+            .and_then(|b| b.source_prefix(src, host_prefix(src)))
+            .map_err(|e| NetifError::Route(e.to_string()))?
+            .input_interface(iif)
+            .build();
+        self.route_get(message).await
+    }
+
+    async fn route_get(&self, message: RouteMessage) -> Result<Option<RouteTo>, NetifError> {
+        let mut replies = self.handle.route().get(message).execute();
+        match replies.try_next().await {
+            Ok(Some(reply)) => Ok(route_of(&reply)),
+            Ok(None) | Err(rtnetlink::Error::NetlinkError(_)) => Ok(None),
+            Err(e) => Err(NetifError::Route(e.to_string())),
+        }
+    }
+}
+
+fn host_prefix(ip: IpAddr) -> u8 {
+    if ip.is_ipv4() { 32 } else { 128 }
+}
+
+fn route_of(reply: &RouteMessage) -> Option<RouteTo> {
+    if reply.header.kind != RouteType::Unicast {
+        return None;
+    }
+    let (mut oif, mut gateway) = (None, None);
+    for attr in &reply.attributes {
+        match attr {
+            RouteAttribute::Oif(index) => oif = Some(*index),
+            RouteAttribute::Gateway(RouteAddress::Inet(a)) => gateway = Some(IpAddr::V4(*a)),
+            RouteAttribute::Gateway(RouteAddress::Inet6(a)) => gateway = Some(IpAddr::V6(*a)),
+            RouteAttribute::MultiPath(_) | RouteAttribute::Via(_) => return None,
+            _ => {}
+        }
+    }
+    Some(RouteTo { oif: oif?, gateway })
 }
 
 fn dump_error(what: &'static str) -> impl Fn(rtnetlink::Error) -> NetifError {

@@ -11,6 +11,7 @@ use gw_common::{FlowKey, FlowStats};
 const BPF_PROG_QUERY: libc::c_long = 16;
 const BPF_TCX_INGRESS: u32 = 46;
 const BPF_MPROG_MAX: usize = 64;
+const BPF_EXIST: u64 = 2;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BpfError {
@@ -109,6 +110,17 @@ impl TcxProgram {
         })
     }
 
+    // 只改已經有的：讀和寫之間 kernel 刪掉的（純 SYN）不能被寫回來。回傳 false：已經沒有這筆
+    pub fn update_flow(&mut self, map: &'static str, key: &FlowKey, value: &FlowStats) -> Result<bool, BpfError> {
+        let mut hash: BpfHashMap<_, FlowKey, FlowStats> =
+            self.map_mut(map)?.try_into().map_err(|e| map_error(map, &e))?;
+        match hash.insert(key, value, BPF_EXIST) {
+            Ok(()) => Ok(true),
+            Err(e) if errno(&e) == Some(libc::ENOENT) => Ok(false),
+            Err(e) => Err(map_error(map, &e)),
+        }
+    }
+
     // 回傳 false：本來就沒有這筆
     pub fn remove_flow(&mut self, map: &'static str, key: &FlowKey) -> Result<bool, BpfError> {
         let mut hash: BpfHashMap<_, FlowKey, FlowStats> =
@@ -116,6 +128,16 @@ impl TcxProgram {
         match hash.remove(key) {
             Ok(()) => Ok(true),
             Err(e) if errno(&e) == Some(libc::ENOENT) => Ok(false),
+            Err(e) => Err(map_error(map, &e)),
+        }
+    }
+
+    pub fn get_flow(&self, map: &'static str, key: &FlowKey) -> Result<Option<FlowStats>, BpfError> {
+        let hash: BpfHashMap<_, FlowKey, FlowStats> = self.map(map)?.try_into().map_err(|e| map_error(map, &e))?;
+        match hash.get(key, 0) {
+            Ok(stats) => Ok(Some(stats)),
+            Err(MapError::KeyNotFound) => Ok(None),
+            Err(e) if errno(&e) == Some(libc::ENOENT) => Ok(None),
             Err(e) => Err(map_error(map, &e)),
         }
     }
