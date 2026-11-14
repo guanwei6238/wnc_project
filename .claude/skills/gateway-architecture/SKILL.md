@@ -32,16 +32,16 @@ description: 這個專案（Rust 實作的 security gateway：Suricata 8 + nftab
 | NAT | 不做 | [已決定] 10-20 |
 | 雲端 | 不看 payload；一部分用 Jev 類決策模型，一部分用 ML；特徵格式未定 | [已決定] 10-20 |
 | Edge AI | 地端有 rule（Suricata）和 edge AI，再加上雲端。edge AI 和雲端一樣是和其他教授合作的部分，輸入、任務、模型都未定；跑在 gateway 同一台機器上（研究在 Pi 4，正式設備不是 Pi）。設計上當外部元件，先用我們自己的替身；介面和 CPU 分配見 `references/decisions.md` O19 | [已決定] 11-02（老師討論） |
-| Fast path | tc eBPF，不用 XDP 當 fast path | [已決定] 10-20 |
+| Fast path | tc eBPF，不用 XDP 當 fast path；有 native XDP 的硬體上也一樣，轉送和 trust 一律在 TCX | [已決定] 10-20，11-14 確認 |
 | 框架定位 | 框架只定描述語法（型別、合併規則、CEL 計算式）；eBPF 程式、它輸出的欄位、送雲端的欄位和計算方式都由使用者設定 | [已決定] 10-22 |
 | Suricata 擷取方式 | 走 NFQUEUE，不用 AF_PACKET＋XDP；行為由使用者設定，預設不做 inline drop（verdict 一律 accept，擋人由 nft 執行） | [已決定] 10-22 |
 | eBPF 外掛 | 支援完整功能（掛點不限，可以 drop、redirect），由管理者負責；框架負責揭露（doctor 列出每個 port 上的程式） | [已決定] 10-22 |
-| XDP | 可以設定要不要用。預設只有 port 有 native XDP 才掛，否則核心程式掛 TC，不會自動選 generic。使用者的 XDP 外掛遇到沒有 native 的網卡就不載入，請使用者改成 TC 程式，除非明確指定 generic。doctor 顯示每個 port 用 native 或 generic（`references/ebpf-plugins.md` §7） | [已決定] 10-24 |
+| XDP | XDP 只負責算特徵（看得到 GRO 合併前的原始 frame，大小和 IAT 準；PASS 的封包照樣建 skb，所以不是為了省 CPU），之後可能加 ban（DROP 在建 skb 之前，這才省 CPU）；轉送和 trust 不放 XDP（11-14）。可以設定要不要用。預設只有 port 有 native XDP 才掛，否則特徵程式掛 TC，不會自動選 generic。使用者的 XDP 外掛遇到沒有 native 的網卡就不載入，請使用者改成 TC 程式，除非明確指定 generic。doctor 顯示每個 port 用 native 或 generic（`references/ebpf-plugins.md` §7） | [已決定] 10-24 |
 | L2 bridge 或 L3 routing | 兩種都支援，用設定 `mode` 選，預設 bridge。bridge 預設由 OS 建立、wnc-gw 只檢查（之後可以設定成由 wnc-gw 建立）。bridge 模式走 `br_netfilter`，nft 規則和 L3 共用 `inet`；方向用 netdev ingress 打的 mark 判斷，不用 `iifname`。依模式而不同的功能寫成 trait（SYNTHESIS §11 D3 有實測結果） | [已決定] 10-24 |
 | 怎麼操作 nftables（O4） | 用 nft JSON：`nftables` crate 產生 JSON，spawn `/usr/sbin/nft`；不自己寫 netlink，也不連結 GPL 的 libnftnl。nft 每次寫入約 7.7 ms（Pi 實測），所以 set 元素要批次寫入（`references/decisions.md` O4） | [已決定] 10-25 |
 | 我們的 nft table 與黑名單（O11） | table 骨架寫死在程式裡（`src/firewall.rs`），只有參數從設定檔讀；使用者只能管理 set 的內容。黑名單放在 nft set，Suricata 只負責偵測 | [已決定] 10-25 |
 | 雲端 API 的格式（O12） | request 由設定檔描述：endpoint、path、上傳欄位（型別加 CEL 計算式，輸入可以是使用者 eBPF 的輸出、EVE、conntrack）。回應先做可設定的對應（R2），動作固定只有 trust/block/observe；之後可能改成固定格式（R1） | [已決定] 10-25 |
-| 雲端迴路的時機（O13） | 階段 1 的地端執行點做完後，先接最小的雲端迴路，排在階段 2 前面；模擬的雲端由我們自己做 | [已決定] 10-25 |
+| 實作順序（O13） | 階段 1 之後先做 eBPF 骨架，再把 trust 的路徑從 netfilter 搬到 TC（fast path）；算特徵送 user space 最後和 edge AI、雲端一起做。edge AI、雲端是插件：我們提供介面與規格，eBPF 的資料先到 user space 驗證再送出。模擬的雲端由我們自己做 | [已決定] 10-25，11-14 改順序 |
 | Suricata 怎麼啟動（O14） | 先由 wnc-gw 自己啟動（設 `NOTIFY_SOCKET` 收 `READY=1`），之後加上 systemd 管理，兩者實作同一個生命週期介面；wnc-gw 啟動時 doctor 和啟動訊息給 warning（共用帳號）。queue 編號由設定指定、預設 0、型別是範圍。Suricata 沒在運作時可設定，預設放行，而且一定要記 log。執行檔和設定檔路徑可設定，doctor 警告非 root 可改 | [已決定] 10-26 |
 | 多個 queue 的分流（O14） | 改用 `queue to symhash mod N`（含 port、對稱），和階段 1 的 ct mark 一起實作：沒有 conntrack 時 kernel 不會先組回分片，symhash 會把分片分到別的 worker。table 裡一定有 ct mark 規則，conntrack 一定啟用（10-28 實作，Pi 分片 0/24） | [已決定] 10-27 |
 | log 存在哪裡（O15） | wnc-gw 只印到 stderr。Debian 上用 systemd 的 `LogNamespace=wnc-gw`，只有 wnc-gw 的 log 持久保存（Pi OS 預設 journald 只存在記憶體）；OpenWrt 另外決定 | [已決定] 10-26 |
@@ -49,7 +49,8 @@ description: 這個專案（Rust 實作的 security gateway：Suricata 8 + nftab
 | 信任狀態（O17、N5） | ct mark，以 ctnetlink 寫入；信任以 conntrack 的一條連線為單位（五元組的 nft set 會被 port 重用、偽造封包繞過）。wnc-gw 自己管 TTL、啟動時清舊 mark。地基實驗：信任每個封包省 39–67 µs。L2（SYN／FIN／RST 一律送 Suricata）要放，規則在信任之前。信任用 mark 最高位元，寫入帶 mask。ctnetlink 手寫（netlink-proto、crate 編碼在 Pi 慢 1.5–4 倍） | [已決定] 10-28 |
 | 3d 讀 alert（O22） | alert 從 suricata.yaml 的 eve-log 檔讀（regular、有 alert），只讀新增的部分，每 `eve_interval` 秒（預設 0.5）讀一次（poll；inotify 量過後刪掉）。觀察期間的計數用 conntrack（`nf_conntrack_acct`），EVE 只讀 alert。wnc-gw 的 log 只放重要資訊：alert 細節是 DEBUG，每 60 秒一行摘要 | [已決定] 11-04 |
 | 3d 自動信任（O22） | `[trust] auto` 打開後，Suricata 在檢查的期間，兩個方向封包夠多、觀察夠久、沒有 alert 就信任，TTL 到期回到檢查，alert 立刻撤銷；只看 forward chain 設了 `0x40000000` 的連線；寫入走 `agent::Privd` trait | [建議] 11-04 實作，數值與預設關待確認 |
-| 分三階段做 | 1 nftables + NFQUEUE + ct mark → 2 tc eBPF 算特徵 → 3 tc eBPF 轉送信任 flow | [建議]（SYNTHESIS §4.4） |
+| 分階段做 | 1 nftables + NFQUEUE + ct mark → eBPF 骨架 → 3 tc eBPF 轉送信任 flow → 2 tc eBPF 算特徵（和 edge AI、雲端一起） | [已決定] 11-14（原本 2 在 3 前面，SYNTHESIS §4.4） |
+| 核心 eBPF 程式 | Rust（aya-ebpf），user space 用 aya 載入。排在 TCX 第一，讓 fast path 最早執行；kernel 沒有鎖定位置的機制，被插隊時由 run 和 doctor 揭露。授權先用 GPL 相容的開源授權（字串待定，建議 `Dual MIT/GPL`），之後要閉源再改；不從 GPL-only 程式碼複製 | [已決定] 11-14 |
 | 和 Suricata 的整合方式 | 方案 A：Suricata 是獨立的 process（原版套件），封包經 NFQUEUE 送給它，結果經 EVE 回來，控制走 unix socket；不內嵌 libsuricata、不寫 plugin（B、C 都會讓 wnc-gw 變 GPL）。Suricata 送出就緒通知（`READY=1`）之後才能裝 queue 規則，否則 7.0 和 8.0.7 都會在 NFQ 初始化時 segfault | [已決定] 10-25（`suricata-integration.md` §9） |
 
 ## 2. 封包怎麼走
@@ -57,11 +58,11 @@ description: 這個專案（Rust 實作的 security gateway：Suricata 8 + nftab
 ```
 某個 port 收到封包
   │
-  ├─ XDP：port 有 native XDP 才掛核心程式，否則改掛 TC；Pi 4 兩個 port 都不支援
-  │       核心程式在這裡做 ban（DROP）和算特徵（PASS）[建議]
+  ├─ XDP：port 有 native XDP 才掛特徵程式，否則特徵也在 TC 算；Pi 4 兩個 port 都不支援
+  │       只算特徵（PASS），之後可能加 ban（DROP）；不做轉送和 trust
   ▼
-tc ingress（TCX：核心 eBPF 程式排第一 [建議]，使用者外掛排在後面）
-  │  解析 header → 更新 flow 特徵 map → 查信任 map
+tc ingress（TCX：核心 eBPF 程式排第一，使用者外掛排在後面）
+  │  解析 header → 查信任 map（沒有 native XDP 時同一次查詢順便更新特徵）
   │  階段 3：信任 flow 直接 redirect 到另一個 port，下面全部跳過
   ▼
 netfilter（我們自己的 table）
@@ -167,13 +168,13 @@ privd 的 IPC 走 unix socket，用 `SO_PEERCRED` 檢查呼叫者的 uid，只�
 
 ## 7. 實作順序 [建議]
 
-每一步開始前都先跟開發者討論，做完就停下來讓開發者確認。第 2 步排在階段 2 前面是 2026-10-25 的決定（O13），其他還是建議。
+每一步開始前都先跟開發者討論，做完就停下來讓開發者確認。第 1–4 步的順序是 2026-11-14 的決定（O13），其他還是建議。
 
-1. 階段 1：nftables（自己的 table）+ NFQUEUE + ct mark；agent 讀 EVE、改 ct mark。privd 介面先定成 trait。
-2. 最小的雲端迴路：我們自己做的模擬雲端，加上 connector（request 照設定組、回應照設定對應，O12）和欄位腳本（CEL）。特徵先用 EVE 和 conntrack 計數。什麼時候拆 process 要再決定（O1）。
-3. 階段 2：tc 核心 eBPF 算特徵，要處理 GRO（見 `references/ebpf-plugins.md` §8）。算出來的特徵只是雲端迴路多一個輸入來源。
-4. 規則管線，以及 nft set 的操作 API。
-5. 階段 3：fast path 後端（tc redirect；L3 模式可以加 flowtable 後端）。
+1. 階段 1：nftables（自己的 table）+ NFQUEUE + ct mark；agent 讀 EVE、改 ct mark。privd 介面先定成 trait。（已完成）
+2. eBPF 骨架：最小的 TC 程式（計數、回傳 PASS），載入、掛到兩個 port 的 TCX 第一位、停止時卸載，doctor 列出程式；在 Pi 上量掛程式本身的成本。
+3. 階段 3：trust 從 netfilter 搬到 TC：trust 存在五元組的 BPF map（TC 讀不到 ct mark），已信任的 flow 在 TC redirect；SYN／FIN／RST 照樣交回 netfilter；TTL 和計數改由 map 管。L3 模式可以加 flowtable 後端（O5）。
+4. 階段 2 和插件：tc 核心 eBPF 算特徵送 user space，要處理 GRO（見 `references/ebpf-plugins.md` §8）；和 edge AI、雲端的 connector 一起做：我們自己做的模擬雲端、connector（request 照設定組、回應照設定對應，O12）和欄位腳本（CEL），資料先在 user space 驗證再送出。什麼時候拆 process 要再決定（O1）。
+5. 規則管線，以及 nft set 的操作 API。
 6. eBPF 外掛的載入與揭露、XDP probe、OpenWrt 後端。
 
 ## 8. 什麼時候讀哪份文件

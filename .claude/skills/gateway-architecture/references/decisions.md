@@ -15,7 +15,7 @@
 | D3 | **[已決定] 2026-10-24：兩種都支援，預設 bridge**，bridge 預設由 OS 建立（SKILL.md §1）。Pi 上 `nf_conntrack_bridge` 確認沒有，走 `br_netfilter`；實測結果在 SYNTHESIS §11 D3。還沒決定：wire mode 要不要當第三種模式 | SYNTHESIS §11；`platform-backends.md` §3、§5 |
 | D4 | 要不要在 Pi 4 上量決策模型 | SYNTHESIS §11 |
 | D5 | 特徵來源表 | SYNTHESIS §11 |
-| D6 | 階段 2 要不要提前。CLAUDE.md 的平台已改成 Pi 4，但「eBPF 是後期的事」那條規則還在。2026-10-25 決定最小的雲端迴路排在階段 2 前面（O13），所以 D6 的選項 (a)「把階段 2 列為第二步」已經不成立；CLAUDE.md 要不要改還沒決定 | SYNTHESIS §11 |
+| D6 | 階段 2 要不要提前。CLAUDE.md 的平台已改成 Pi 4，但「eBPF 是後期的事」那條規則還在。2026-11-14 順序改成 eBPF 骨架 → 階段 3 → 階段 2（O13），D6 的選項都不再適用；CLAUDE.md 已經沒有「eBPF 是後期的事」這條 | SYNTHESIS §11 |
 
 ## 框架調查（2026-10-20）新增的待決事項
 
@@ -52,7 +52,8 @@
 
 - (c) 列的代價仍然成立。框架不擋，改成揭露：載入前掃描 ELF 產生能力報告，doctor 列出每個 port 上的程式（`ebpf-plugins.md` §1、§4）。
 - ELF 掃描的結果用來揭露，不拿來拒絕載入。
-- [建議] 開發者還沒確認：只有本機管理者能裝外掛，bundle 要有簽章；核心程式在 TCX 排第一，對永不封鎖清單回傳 PASS，預設開啟、可以關。
+- [建議] 開發者還沒確認：只有本機管理者能裝外掛，bundle 要有簽章；對永不封鎖清單回傳 PASS，預設開啟、可以關。
+- [已決定] 2026-11-14：核心程式在 TCX 排第一，讓 fast path 最早執行。kernel 沒有鎖定位置的機制（之後用 `BPF_F_BEFORE` 掛上的程式會排到前面，Pi OS 也沒有 BPF LSM），所以 run 和 doctor 要用 `BPF_PROG_QUERY` 確認還在第一位，被插隊就 warning 並記 log。XDP 程式一定比 TC 早。
 
 ### O4. nft 操作用哪個 crate，以及專案授權
 
@@ -101,6 +102,7 @@
   - (b) 關掉 GRO
   - (c) 有 native XDP 的硬體上用 XDP 算特徵
 - 要看雲端特徵需不需要每個封包的大小和到達間隔（IAT），也要在 Pi 4 上量 GRO 關掉之後的 CPU 成本。
+- 2026-11-14：XDP 只負責算特徵、轉送和 trust 一律在 TCX（`ebpf-plugins.md` §7），XDP 存在的理由就是 (c)。
 - 2026-10-24：XDP 預設原則（SKILL.md §1）定了之後，(c) 在有 native XDP 的硬體上就是預設。Pi 4 還是走 TC，(a)、(b) 的問題仍在。掛 generic XDP 雖然也會關掉 GRO，但還多了複製的成本，不能當成 (b) 的做法。
 - [建議] 同一個特徵在 XDP 和 TC 算出來的值不同，上傳的資料要記錄是在哪個 hook 算的（`ebpf-plugins.md` §8）。
 
@@ -184,6 +186,11 @@
 - 影響：
   - O1 原本是「雲端 connector 上線時才拆 process」，這個時機跟著提前了，做雲端迴路之前要再決定一次。
   - D6 的選項 (a) 不成立。
+
+**[已決定] 2026-11-14：改順序**。階段 1 之後先做 eBPF 骨架，再把 trust 的路徑從 netfilter 搬到 TC（階段 3），算特徵送 user space（階段 2）最後和 edge AI、雲端一起做。開發者的說法：「算特徵給 user space 最後跟 edge ai, cloud ai 一起做」。
+- edge AI、雲端當插件：我們提供介面與規格（框架只定描述語法，10-22），eBPF 的資料先到 user space 驗證再送出（`field-scripts.md`）。[建議] 插件是獨立的無特權 process，不用 dlopen 載進 wnc-gw。
+- 模擬的雲端仍由我們自己做，排到第 4 步（SKILL.md §7）。
+- 代價：研究核心的卸載成本（上傳 bytes、判定延遲、送雲端比例）要比較晚才量得到；先量的是 trust 省下的地端成本，對應論文主軸。
 
 ### O14. Suricata 怎麼啟動、queue 編號、Suricata 沒在運作時怎麼辦
 
