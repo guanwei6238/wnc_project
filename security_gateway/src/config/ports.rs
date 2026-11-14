@@ -180,5 +180,5 @@ fn single(
 }
 
 #[cfg(test)]
-#[path = "../tests/unit/ports.rs"]
+#[path = "../../tests/unit/config/ports.rs"]
 mod tests;

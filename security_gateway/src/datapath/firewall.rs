@@ -2,9 +2,10 @@ use std::fmt;
 use std::str::FromStr;
 
 use crate::ids::delivery::Delivery;
-use crate::kernel::conntrack::{Connection, Conntrack, ConntrackError};
-use crate::kernel::nflog::GroupRange;
-use crate::kernel::nft::{BaseChain, Family, Hook, Nft, NftError, Policy, RegularChain, Statement, Table};
+use crate::kernel::{
+    conntrack::{Connection, Conntrack, ConntrackError}, nflog::GroupRange,
+    nft::{BaseChain, Family, Hook, Nft, NftError, Policy, RegularChain, Statement, Table},
+};
 
 pub const FAMILY: Family = Family::Inet;
 pub const TABLE: &str = "wnc_gw";
@@ -151,5 +152,5 @@ fn unavailable_rules(when_unavailable: WhenUnavailable) -> Vec<Vec<Statement>> {
 }
 
 #[cfg(test)]
-#[path = "../tests/unit/firewall.rs"]
+#[path = "../../tests/unit/datapath/firewall.rs"]
 mod tests;

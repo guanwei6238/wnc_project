@@ -290,7 +290,7 @@ rp_filter 不另外檢查：路由設對時 strict 模式不會擋正常流量�
 
 ## 9. table 骨架寫死在程式裡、黑名單放 nft set
 
-**決定**：chain、hook、priority、規則都寫在 `src/firewall.rs`，設定檔只能改參數；使用者只能管理 set 的內容。黑名單放在 nft set，不交給 Suricata。〔已實作〕（set 還沒做）O11，2026-10-25。
+**決定**：chain、hook、priority、規則都寫在 `src/datapath/firewall.rs`，設定檔只能改參數；使用者只能管理 set 的內容。黑名單放在 nft set，不交給 Suricata。〔已實作〕（set 還沒做）O11，2026-10-25。
 
 **依據（設計，不是量測）**
 - 程式依賴 table 的結構（ct mark 的值、queue 編號、chain 名稱）；讓使用者改整張 table 等於開放 `nft -f`，可能把信任模型改壞。
@@ -530,7 +530,7 @@ rp_filter 不另外檢查：路由設對時 strict 模式不會擋正常流量�
 - 讀表是同步的，讀的期間 wnc-gw 的事件迴圈會停住：1 萬條約 0.1 秒，6 萬條〔推算〕約 0.57 秒（§7：整表 dump 每筆 7.25 µs，其餘是 wnc-gw 解析和觀察表的成本）。可能的改法（待決）：讀表放到另一個執行緒；或改用 conntrack 的 NEW／DESTROY 事件維護觀察表，只查觀察中連線的計數。
 - forward chain 多的那條 forwarded 規則沒有單獨量；同類的 ct mark 規則以前量過，每條每個封包 52–159 ns（§6）。
 
-**腳本與結果**：`src/agent/`（`trust.rs`、`mod.rs`）、`src/firewall.rs`（`FORWARDED_MARK`、`forwarded()`）、`src/kernel/conntrack.rs`（`Counters`）和對應的單元測試；`tests/ids_inline/protection_docker.sh autotrust`、`protection_pi.sh autotrust`、`autotrust_cost_pi.sh saving|check`。
+**腳本與結果**：`src/agent/`（`trust.rs`、`mod.rs`）、`src/datapath/firewall.rs`（`FORWARDED_MARK`、`forwarded()`）、`src/kernel/conntrack.rs`（`Counters`）和對應的單元測試；`tests/ids_inline/protection_docker.sh autotrust`、`protection_pi.sh autotrust`、`autotrust_cost_pi.sh saving|check`。
 
 ---
 

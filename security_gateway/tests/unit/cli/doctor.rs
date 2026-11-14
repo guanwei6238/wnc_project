@@ -1,8 +1,7 @@
-use super::*;
-use security_gateway::config::Source;
+use security_gateway::config::{Source, ports::{MatchedBy, PortSelector, Role}};
 use security_gateway::forwarding::{EnvCheck, EnvState, Level};
 use security_gateway::kernel::netif::OperState;
-use security_gateway::ports::{MatchedBy, PortSelector, Role};
+use super::*;
 
 fn port(role: Role, name: &str, admin_up: bool, oper_state: OperState) -> Port {
     Port {

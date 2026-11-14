@@ -4,11 +4,11 @@ use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 
 use netlink_packet_core::{
-    NLA_F_NESTED, NLA_TYPE_MASK, NLM_F_ACK, NLM_F_DUMP, NLM_F_REQUEST, NLMSG_DONE, NLMSG_ERROR,
-    NetlinkBuffer, NlasIterator, parse_i32, parse_ip, parse_u8, parse_u16_be, parse_u32_be, parse_u64_be,
+    NLA_F_NESTED, NLA_TYPE_MASK, NLMSG_DONE, NLMSG_ERROR, NLM_F_ACK, NLM_F_DUMP, NLM_F_REQUEST, NetlinkBuffer,
+    NlasIterator, parse_i32, parse_ip, parse_u16_be, parse_u32_be, parse_u64_be, parse_u8,
 };
-use netlink_sys::protocols::NETLINK_NETFILTER;
 use netlink_sys::{Socket, SocketAddr as NetlinkAddr};
+use netlink_sys::protocols::NETLINK_NETFILTER;
 
 const RECV_BUF: usize = 64 * 1024;
 const BATCH: usize = 100;

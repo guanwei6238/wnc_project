@@ -1,8 +1,8 @@
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
-use super::*;
 use crate::kernel::nfqueue::QueueRange;
+use super::*;
 
 fn options(dir: &Path, path: PathBuf, ready_timeout: Duration) -> Options {
     Options {

@@ -1,6 +1,6 @@
-use super::*;
 use clap::CommandFactory;
 use clap::error::ErrorKind;
+use super::*;
 
 #[test]
 fn cli_definition_is_valid() {

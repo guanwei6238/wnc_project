@@ -7,8 +7,8 @@ use std::time::Duration;
 use tokio::time::{self, Instant, Interval, MissedTickBehavior};
 use tracing::{debug, info, warn};
 
-use crate::issue::Issue;
 use crate::ids::eve::{self, Alert, EveFile, EveInterval, ParseAlertError, ReadReport, Restart};
+use crate::issue::Issue;
 
 const MAX_CONNECTIONS: usize = 10_000;
 const MAX_SIGNATURES: usize = 1_000;

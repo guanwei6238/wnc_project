@@ -2,8 +2,8 @@ use std::ffi::OsStr;
 use std::path::Path;
 use std::process::ExitStatus;
 
+use crate::system::command;
 use super::{BootConfig, BootState, Dirs, Services};
-use crate::command;
 
 const MODULES_LOAD_DIR: &str = "/etc/modules-load.d/";
 const SYSCTL_DIR: &str = "/etc/sysctl.d/";

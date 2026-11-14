@@ -1,8 +1,8 @@
-use super::*;
+use crate::config::ports::Role;
 use crate::forwarding::tests::{iface, port};
 use crate::kernel::netif::InterfaceAddress;
-use crate::ports::Role;
 use std::net::Ipv4Addr;
+use super::*;
 
 fn interfaces(wan_master: Option<u32>) -> Vec<Interface> {
     vec![

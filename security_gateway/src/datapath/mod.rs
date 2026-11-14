@@ -1,3 +1,4 @@
+pub mod firewall;
 pub mod hook;
 pub mod ingress;
 

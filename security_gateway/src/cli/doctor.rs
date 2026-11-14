@@ -4,30 +4,27 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::Args;
-use security_gateway::access::{self, Writable, Writer};
 use security_gateway::config::{
     self, AbsolutePath, AutoTrust, Config, ConfigError, Overrides, Setting, SuricataSettings, TrustSettings,
+    ports::{self, Port, ResolveError}, protection::Protection,
 };
-use security_gateway::datapath::{CORE_PROGRAM_NAME, CoreHook, XdpPolicy, core_hook};
-use security_gateway::firewall::WhenUnavailable;
+use security_gateway::datapath::{CORE_PROGRAM_NAME, CoreHook, XdpPolicy, core_hook, firewall::WhenUnavailable};
 use security_gateway::forwarding::{self, EnvCheck, EnvState, Forwarding, Level, Mode, Note};
-use security_gateway::ids::delivery::Delivery;
-use security_gateway::ids::spawned;
-use security_gateway::issue::Issue;
-use security_gateway::ids::suricata::{
-    self, Capture, Owner, RuleFile, RuleFileState, RunningSuricata, Suricata, SuricataConfig, SuricataError,
-    SuricataInfo, SuricataScan,
+use security_gateway::ids::{
+    delivery::Delivery, spawned,
+    suricata::{
+        self, Capture, Owner, RuleFile, RuleFileState, RunningSuricata, Suricata, SuricataConfig, SuricataError,
+        SuricataInfo, SuricataScan,
+    },
 };
-use security_gateway::kernel::bpf::{self, TcxChain, TcxQueryError};
-use security_gateway::kernel::modules::{ModuleIndex, ModuleState, RequiredModule};
-use security_gateway::kernel::netdev::{Netdev, XdpFeatures};
-use security_gateway::kernel::netif::{Interface, Ipv4Routing, LinkStatus, Netlink, XdpAttachment, XdpMode};
-use security_gateway::kernel::nfqueue::QueueRange;
-use security_gateway::kernel::nft::{Nft, NftError, NftInfo};
-use security_gateway::kernel::sysctl;
+use security_gateway::issue::Issue;
+use security_gateway::kernel::{
+    bpf::{self, TcxChain, TcxQueryError}, modules::{ModuleIndex, ModuleState, RequiredModule},
+    netdev::{Netdev, XdpFeatures}, netif::{Interface, Ipv4Routing, LinkStatus, Netlink, XdpAttachment, XdpMode},
+    nfqueue::QueueRange, nft::{Nft, NftError, NftInfo}, sysctl,
+};
 use security_gateway::platform::{BootConfig, BootState, Current, Dirs, Services};
-use security_gateway::ports::{self, Port, ResolveError};
-use security_gateway::protection::Protection;
+use security_gateway::system::access::{self, Writable, Writer};
 
 #[derive(Debug, Args)]
 pub struct DoctorArgs {}

@@ -1,9 +1,8 @@
+pub mod control;
 pub mod trust;
 
-use crate::datapath::{CoreProgram, TrustError, TrustedFlow};
-use crate::firewall;
-use crate::kernel::bpf::BpfError;
-use crate::kernel::conntrack::{Connection, Conntrack, ConntrackError, FiveTuple};
+use crate::datapath::{CoreProgram, TrustError, TrustedFlow, firewall};
+use crate::kernel::{bpf::BpfError, conntrack::{Connection, Conntrack, ConntrackError, FiveTuple}};
 
 #[derive(Debug, thiserror::Error)]
 pub enum PrivdError {

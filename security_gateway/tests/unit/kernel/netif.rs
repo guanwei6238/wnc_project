@@ -1,6 +1,5 @@
+use rtnetlink::packet_route::{link::InfoKind, route::RouteNextHop};
 use super::*;
-use rtnetlink::packet_route::link::InfoKind;
-use rtnetlink::packet_route::route::RouteNextHop;
 
 fn message(link_layer_type: LinkLayerType, attributes: Vec<LinkAttribute>) -> LinkMessage {
     let mut msg = LinkMessage::default();

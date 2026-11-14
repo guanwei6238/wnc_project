@@ -1,11 +1,10 @@
+use crate::config::ports::Port;
+use crate::issue::Issue;
+use crate::kernel::{modules::RequiredModule, netif::{Interface, Ipv4Net, Ipv4Routing, NextHop, Route, RouteKind, Rule}};
 use super::{
     EnvCheck, EnvState, Forwarding, Level, Note, RequiredSysctl, describe, is_bridge, master_of, port_pair, read_sysctl,
     sysctl_checks, unresolved,
 };
-use crate::issue::Issue;
-use crate::kernel::modules::RequiredModule;
-use crate::kernel::netif::{Interface, Ipv4Net, Ipv4Routing, NextHop, Route, RouteKind, Rule};
-use crate::ports::Port;
 
 pub struct Routed;
 

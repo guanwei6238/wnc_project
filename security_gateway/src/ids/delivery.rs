@@ -1,7 +1,6 @@
 use std::fmt;
 
-use crate::kernel::nflog::GroupRange;
-use crate::kernel::nfqueue::QueueRange;
+use crate::kernel::{nflog::GroupRange, nfqueue::QueueRange};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Delivery {

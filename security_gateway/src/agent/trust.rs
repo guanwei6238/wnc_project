@@ -5,10 +5,10 @@ use std::time::{Duration, Instant};
 
 use tracing::{debug, error, info, warn};
 
-use super::{Privd, PrivdError};
-use crate::issue::Issue;
 use crate::ids::eve::Alert;
+use crate::issue::Issue;
 use crate::kernel::conntrack::{Connection, FiveTuple, Protocol, TcpState};
+use super::{Privd, PrivdError};
 
 pub const DEFAULT_MIN_PACKETS: u64 = 10;
 pub const DEFAULT_MIN_AGE: Duration = Duration::from_secs(5);

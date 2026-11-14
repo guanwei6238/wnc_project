@@ -1,10 +1,10 @@
 use super::*;
 
 use netlink_packet_core::{DefaultNla, NLM_F_MULTIPART, NetlinkHeader, NetlinkMessage, NetlinkPayload};
+use netlink_packet_netfilter::{NetfilterHeader, NetfilterMessage, NetfilterProtoFamily};
 use netlink_packet_netfilter::conntrack::{
     ConntrackAttribute as A, ConntrackMessage, IPTuple, ProtoInfo, ProtoInfoTCP, ProtoTuple, Protocol as P, Tuple,
 };
-use netlink_packet_netfilter::{NetfilterHeader, NetfilterMessage, NetfilterProtoFamily};
 
 fn v4() -> FiveTuple {
     FiveTuple::new(Protocol::Tcp, "10.0.1.2:40000".parse().unwrap(), "10.0.2.2:5001".parse().unwrap()).unwrap()

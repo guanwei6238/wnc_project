@@ -5,14 +5,13 @@ use std::path::Path;
 use std::str::FromStr;
 
 use futures::TryStreamExt;
-use rtnetlink::packet_route::AddressFamily;
-use rtnetlink::packet_route::address::{AddressAttribute, AddressMessage};
-use rtnetlink::packet_route::link::{
-    LinkAttribute, LinkFlags, LinkInfo, LinkLayerType, LinkMessage, LinkXdp, State, XdpAttached,
-};
-use rtnetlink::packet_route::route::{RouteAddress, RouteAttribute, RouteMessage, RouteType};
-use rtnetlink::packet_route::rule::{RuleAction, RuleAttribute, RuleFlags, RuleMessage};
 use rtnetlink::{IpVersion, RouteMessageBuilder};
+use rtnetlink::packet_route::{
+    AddressFamily, address::{AddressAttribute, AddressMessage},
+    link::{LinkAttribute, LinkFlags, LinkInfo, LinkLayerType, LinkMessage, LinkXdp, State, XdpAttached},
+    route::{RouteAddress, RouteAttribute, RouteMessage, RouteType},
+    rule::{RuleAction, RuleAttribute, RuleFlags, RuleMessage},
+};
 
 const SYS_CLASS_NET: &str = "/sys/class/net";
 const DEVICE_DRIVER: &str = "device/driver";

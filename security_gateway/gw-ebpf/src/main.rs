@@ -5,8 +5,7 @@ use core::mem::size_of;
 use core::ptr;
 
 use aya_ebpf::EbpfContext;
-use aya_ebpf::bindings::__sk_buff;
-use aya_ebpf::bindings::tcx_action_base::TCX_NEXT;
+use aya_ebpf::bindings::{__sk_buff, tcx_action_base::TCX_NEXT};
 use aya_ebpf::helpers::{bpf_ktime_get_ns, bpf_redirect, bpf_redirect_neigh};
 use aya_ebpf::macros::{classifier, map};
 use aya_ebpf::maps::{Array, HashMap, PerCpuArray};

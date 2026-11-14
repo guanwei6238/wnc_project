@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
-use super::*;
 use crate::kernel::conntrack::{ConntrackError, Counters};
+use super::*;
 
 const POLICY: TrustPolicy = TrustPolicy {
     min_packets: 10,

@@ -4,29 +4,24 @@ use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
 use clap::Args;
-use security_gateway::agent::{LocalPrivd, Privd, PrivdError};
-use security_gateway::agent::trust::{TrustAgent, TrustPolicy};
-use security_gateway::config::{self, Config, Overrides, TrustSettings};
-use security_gateway::control::{self, ControlServer, Flow, Incoming, Request, Response, Tuple};
-use security_gateway::datapath::CoreProgram;
-use security_gateway::firewall::{self, FAMILY, FORWARDED_MARK, Inspection, TABLE, WhenUnavailable};
-use security_gateway::ids::delivery::Delivery;
-use security_gateway::ids::lifecycle::{Event, Lifecycle};
-use security_gateway::ids::spawned::{self, Options, SpawnedSuricata};
-use security_gateway::ids::suricata::Suricata;
-use security_gateway::instance::{self, InstanceError};
+use security_gateway::agent::{
+    LocalPrivd, Privd, PrivdError, control::{self, ControlServer, Flow, Incoming, Request, Response, Tuple},
+    trust::{TrustAgent, TrustPolicy},
+};
+use security_gateway::config::{self, Config, Overrides, TrustSettings, ports::{self, Port}};
+use security_gateway::datapath::{
+    CoreProgram, firewall::{self, FAMILY, FORWARDED_MARK, Inspection, TABLE, WhenUnavailable},
+};
+use security_gateway::ids::{
+    delivery::Delivery, lifecycle::{Event, Lifecycle}, spawned::{self, Options, SpawnedSuricata}, suricata::Suricata,
+};
 use security_gateway::issue::Issue;
-use security_gateway::kernel::conntrack::{Conntrack, ConntrackError};
-use security_gateway::kernel::bpf;
-use security_gateway::kernel::netif::Netlink;
-use security_gateway::kernel::nflog;
-use security_gateway::kernel::nft::Nft;
-use security_gateway::monitor::alerts::AlertWatch;
-use security_gateway::monitor::conntrack::ConntrackMonitor;
-use security_gateway::monitor::nflog::CopyMonitor;
-use security_gateway::monitor::tcx::{CoreWatch, WatchedPort};
+use security_gateway::kernel::{bpf, conntrack::{Conntrack, ConntrackError}, netif::Netlink, nflog, nft::Nft};
+use security_gateway::monitor::{
+    alerts::AlertWatch, conntrack::ConntrackMonitor, nflog::CopyMonitor, tcx::{CoreWatch, WatchedPort},
+};
 use security_gateway::platform::{Current, Dirs};
-use security_gateway::ports::{self, Port};
+use security_gateway::system::instance::{self, InstanceError};
 use tokio::signal::unix::{Signal, SignalKind, signal};
 use tokio::time::{self, MissedTickBehavior};
 use tracing::{error, info, warn};

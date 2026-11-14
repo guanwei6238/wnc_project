@@ -1,3 +1,6 @@
+pub mod ports;
+pub mod protection;
+
 use std::fmt;
 use std::io;
 use std::num::NonZeroU64;
@@ -7,18 +10,12 @@ use std::time::Duration;
 
 use serde::Deserialize;
 
-use crate::datapath::XdpPolicy;
-use crate::firewall::WhenUnavailable;
-use crate::forwarding::Mode;
-use crate::ids::delivery::Delivery;
 use crate::agent::trust;
-use crate::ids::eve::EveInterval;
-use crate::ids::{lifecycle, suricata};
-use crate::kernel::nflog::GroupRange;
-use crate::kernel::nfqueue::QueueRange;
-use crate::kernel::nft;
-use crate::ports::{PortSelector, PortSpec, Role};
-use crate::protection::Protection;
+use crate::config::{ports::{PortSelector, PortSpec, Role}, protection::Protection};
+use crate::datapath::{XdpPolicy, firewall::WhenUnavailable};
+use crate::forwarding::Mode;
+use crate::ids::{delivery::Delivery, eve::EveInterval, lifecycle, suricata};
+use crate::kernel::{nflog::GroupRange, nfqueue::QueueRange, nft};
 
 pub const DEFAULT_PATH: &str = "/etc/wnc-gw/setting.toml";
 
@@ -424,5 +421,5 @@ fn file_or_path(from_file: Option<AbsolutePath>, default: &str) -> Setting<Absol
 }
 
 #[cfg(test)]
-#[path = "../tests/unit/config.rs"]
+#[path = "../../tests/unit/config/mod.rs"]
 mod tests;

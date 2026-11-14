@@ -1,8 +1,7 @@
 use std::fs;
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::net::SocketAddr;
-use std::os::unix::fs::{MetadataExt, PermissionsExt};
-use std::os::unix::net::UnixStream as StdUnixStream;
+use std::os::unix::{fs::{MetadataExt, PermissionsExt}, net::UnixStream as StdUnixStream};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -173,5 +172,5 @@ impl Incoming {
 }
 
 #[cfg(test)]
-#[path = "../tests/unit/control.rs"]
+#[path = "../../tests/unit/agent/control.rs"]
 mod tests;

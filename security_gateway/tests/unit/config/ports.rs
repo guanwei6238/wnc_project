@@ -1,5 +1,5 @@
-use super::*;
 use crate::kernel::netif::OperState;
+use super::*;
 
 const PHY: MacAddr = MacAddr([0x9c, 0x69, 0xd3, 0x2a, 0x11, 0x54]);
 const VETH: MacAddr = MacAddr([0x02, 0, 0, 0, 0x01, 0x01]);

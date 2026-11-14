@@ -13,10 +13,10 @@ use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 use tracing::{error, info, warn};
 
-use super::delivery::Delivery;
-use super::lifecycle::{Event, Exit, Lifecycle};
 use crate::issue::Issue;
 use crate::kernel::nflog::GroupRange;
+use super::delivery::Delivery;
+use super::lifecycle::{Event, Exit, Lifecycle};
 
 const NOTIFY_SOCKET: &str = "notify.sock";
 const CONTROL_SOCKET: &str = "suricata.sock";

@@ -331,17 +331,15 @@ flowchart LR
 |---|---|
 | `src/cli/` | 子命令（doctor、run、trust、show、explain）和 log 初始化 |
 | `src/issue.rs` | doctor 結果和 `run` 的 WARN／ERROR log 的代碼（`Issue`），以及 `explain` 印的說明 |
-| `src/config.rs` | 讀設定檔，CLI 參數可以蓋過 |
-| `src/ports.rs` | 依名稱或 MAC 找出 LAN、WAN 是哪張網卡 |
+| `src/config/` | 讀設定檔，CLI 參數可以蓋過（`mod.rs`）；依名稱或 MAC 找出 LAN、WAN 是哪張網卡（`ports.rs`）；ids／ips（`protection.rs`） |
 | `src/forwarding/` | bridge、routed 兩種模式各自的環境檢查（trait） |
 | `gw-ebpf/`、`build.rs` | 在 kernel 裡跑的 eBPF 程式（`no_std`，用 nightly 編）；`build.rs` 編好後由 `src/datapath/ingress.rs` 嵌進 wnc-gw |
-| `src/datapath/` | 核心 eBPF 程式：掛在哪（`hook.rs`：xdp 設定的判斷）、載入並掛到兩個 port 的 TCX ingress 第一位（`ingress.rs`） |
-| `src/firewall.rs` | 我們的 nft table、信任與取消信任 |
-| `src/agent/` | 3d：自動信任的狀態機（`trust.rs`）和 `Privd` trait（之後拆出有權限的 process 時，換成跨 process 的實作） |
-| `src/protection.rs`、`src/ids/` | ids／ips、啟動和監督 Suricata、讀 Suricata 的資訊和 EVE 檔裡的 alert |
+| `src/datapath/` | 封包怎麼走：核心 eBPF 程式掛在哪（`hook.rs`：xdp 設定的判斷）、載入並掛到兩個 port 的 TCX ingress 第一位和 trust map（`ingress.rs`）、我們的 nft table（`firewall.rs`） |
+| `src/agent/` | 3d：自動信任的狀態機（`trust.rs`）、`Privd` trait 和 `LocalPrivd`（持有核心程式；之後拆出有權限的 process 時，換成跨 process 的實作）、`wnc-gw trust` 和 `run` 之間的 unix socket（`control.rs`，一行 JSON 的請求和回應） |
+| `src/ids/` | 啟動和監督 Suricata、讀 Suricata 的資訊和 EVE 檔裡的 alert |
 | `src/kernel/` | 和 kernel 溝通：nft、ctnetlink、NFLOG／NFQUEUE、eBPF（`bpf.rs`，包住 aya）、模組、sysctl、netlink |
 | `gw-common/` | kernel 和 user space 共用的 trust map key、value（`#[repr(C)]`） |
-| `src/control.rs` | `wnc-gw trust` 和 `run` 之間的 unix socket：一行 JSON 的請求和回應 |
+| `src/system/` | 檔案能不能被非 root 修改（`access.rs`）、執行外部程式（`command.rs`）、同一台機器只跑一個 wnc-gw（`instance.rs`） |
 | `src/monitor/` | 執行中的監控（conntrack 表、NFLOG 漏掉的複本、Suricata 的 alert 摘要） |
 | `src/platform/` | 依 OS 而不同的部分（目前只有 Debian） |
 | `tests/unit/` | 單元測試，路徑對應 `src/` |

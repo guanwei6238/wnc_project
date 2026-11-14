@@ -20,8 +20,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
-use security_gateway::config::Overrides;
-use security_gateway::ports::PortSelector;
+use security_gateway::config::{Overrides, ports::PortSelector};
 
 use logging::{LogFormat, LogLevel};
 

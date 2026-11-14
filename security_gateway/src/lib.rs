@@ -1,16 +1,10 @@
-pub mod access;
 pub mod agent;
-pub mod command;
 pub mod config;
-pub mod control;
 pub mod datapath;
-pub mod firewall;
 pub mod forwarding;
 pub mod ids;
-pub mod instance;
 pub mod issue;
 pub mod kernel;
 pub mod monitor;
 pub mod platform;
-pub mod ports;
-pub mod protection;
+pub mod system;

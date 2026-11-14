@@ -1,6 +1,6 @@
-use super::*;
+use crate::config::ports::Role;
 use crate::forwarding::tests::{iface, port};
-use crate::ports::Role;
+use super::*;
 
 const BR0: u32 = 10;
 const BR1: u32 = 11;

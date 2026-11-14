@@ -39,7 +39,7 @@ description: 這個專案（Rust 實作的 security gateway：Suricata 8 + nftab
 | XDP | XDP 只負責算特徵（看得到 GRO 合併前的原始 frame，大小和 IAT 準；PASS 的封包照樣建 skb，所以不是為了省 CPU），之後可能加 ban（DROP 在建 skb 之前，這才省 CPU）；轉送和 trust 不放 XDP（11-14）。可以設定要不要用。預設只有 port 有 native XDP 才掛，否則特徵程式掛 TC，不會自動選 generic。使用者的 XDP 外掛遇到沒有 native 的網卡就不載入，請使用者改成 TC 程式，除非明確指定 generic。doctor 顯示每個 port 用 native 或 generic（`references/ebpf-plugins.md` §7） | [已決定] 10-24 |
 | L2 bridge 或 L3 routing | 兩種都支援，用設定 `mode` 選，預設 bridge。bridge 預設由 OS 建立、wnc-gw 只檢查（之後可以設定成由 wnc-gw 建立）。bridge 模式走 `br_netfilter`，nft 規則和 L3 共用 `inet`；方向用 netdev ingress 打的 mark 判斷，不用 `iifname`。依模式而不同的功能寫成 trait（SYNTHESIS §11 D3 有實測結果） | [已決定] 10-24 |
 | 怎麼操作 nftables（O4） | 用 nft JSON：`nftables` crate 產生 JSON，spawn `/usr/sbin/nft`；不自己寫 netlink，也不連結 GPL 的 libnftnl。nft 每次寫入約 7.7 ms（Pi 實測），所以 set 元素要批次寫入（`references/decisions.md` O4） | [已決定] 10-25 |
-| 我們的 nft table 與黑名單（O11） | table 骨架寫死在程式裡（`src/firewall.rs`），只有參數從設定檔讀；使用者只能管理 set 的內容。黑名單放在 nft set，Suricata 只負責偵測 | [已決定] 10-25 |
+| 我們的 nft table 與黑名單（O11） | table 骨架寫死在程式裡（`src/datapath/firewall.rs`），只有參數從設定檔讀；使用者只能管理 set 的內容。黑名單放在 nft set，Suricata 只負責偵測 | [已決定] 10-25 |
 | 雲端 API 的格式（O12） | request 由設定檔描述：endpoint、path、上傳欄位（型別加 CEL 計算式，輸入可以是使用者 eBPF 的輸出、EVE、conntrack）。回應先做可設定的對應（R2），動作固定只有 trust/block/observe；之後可能改成固定格式（R1） | [已決定] 10-25 |
 | 實作順序（O13） | 階段 1 之後先做 eBPF 骨架，再把 trust 的路徑從 netfilter 搬到 TC（fast path）；算特徵送 user space 最後和 edge AI、雲端一起做。edge AI、雲端是插件：我們提供介面與規格，eBPF 的資料先到 user space 驗證再送出。模擬的雲端由我們自己做 | [已決定] 10-25，11-14 改順序 |
 | Suricata 怎麼啟動（O14） | 先由 wnc-gw 自己啟動（設 `NOTIFY_SOCKET` 收 `READY=1`），之後加上 systemd 管理，兩者實作同一個生命週期介面；wnc-gw 啟動時 doctor 和啟動訊息給 warning（共用帳號）。queue 編號由設定指定、預設 0、型別是範圍。Suricata 沒在運作時可設定，預設放行，而且一定要記 log。執行檔和設定檔路徑可設定，doctor 警告非 root 可改 | [已決定] 10-26 |

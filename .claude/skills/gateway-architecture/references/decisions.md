@@ -140,7 +140,7 @@
 
 **[已決定] 2026-10-25：(A)。** 開發者的說法：nft 只負責決定封包往哪走，流程由我們定，不然程式會掛掉。
 
-- table 的骨架（chain、hook、priority、policy、規則）寫在 `src/firewall.rs`。之後可以設定的只有參數，例如要不要送 IDS、queue 編號、bypass、set 的大小和 timeout，用到時才加進設定檔。
+- table 的骨架（chain、hook、priority、policy、規則）寫在 `src/datapath/firewall.rs`。之後可以設定的只有參數，例如要不要送 IDS、queue 編號、bypass、set 的大小和 timeout，用到時才加進設定檔。
 - 使用者只能管理 set 的**內容**。
 - 使用者自己的防火牆規則寫在 OS 自己的 nftables 設定裡；我們只動 `wnc_gw` 這張 table。
 - **黑名單放在 nft set，不交給 Suricata。** 分工是：Suricata 偵測、我們的程式判斷、nft 執行。理由：

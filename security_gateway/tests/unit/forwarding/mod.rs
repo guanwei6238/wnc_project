@@ -1,6 +1,6 @@
-use super::*;
+use crate::config::ports::MatchedBy;
 use crate::kernel::netif::OperState;
-use crate::ports::MatchedBy;
+use super::*;
 
 pub(super) fn iface(index: u32, name: &str, kind: Option<&str>, master: Option<u32>) -> Interface {
     Interface {

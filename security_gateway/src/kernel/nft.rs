@@ -3,13 +3,15 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::path::{Path, PathBuf};
 
+use crate::system::command::{self, CommandError};
 use nftables::batch::Batch;
-use nftables::expr::{BinaryOperation, CT, Expression, NamedExpression, Payload, PayloadField, SetItem, SymHash, Verdict};
+use nftables::expr::{
+    BinaryOperation, CT, Expression, NamedExpression, Payload, PayloadField, SetItem, SymHash, Verdict,
+};
 use nftables::schema::{self, FlushObject, NfCmd, NfListObject};
 use nftables::stmt::{self, Counter, JumpTarget, Log, Operator, QueueFlag, VerdictMap};
 use nftables::types::{NfChainPolicy, NfChainType, NfFamily, NfHook};
 use super::nfqueue::QueueRange;
-use crate::command::{self, CommandError};
 
 pub const DEFAULT_PATH: &str = "/usr/sbin/nft";
 

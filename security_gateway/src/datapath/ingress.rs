@@ -1,13 +1,13 @@
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
 use gw_common::{
-    COUNTER_PACKETS, COUNTER_REDIRECTED, DIRECTION_ORIGINAL, DIRECTION_REPLY, FlowKey, FlowStats, MODE_BRIDGE, MODE_ROUTED,
+    COUNTER_PACKETS, COUNTER_REDIRECTED, DIRECTION_ORIGINAL, DIRECTION_REPLY, FlowKey, FlowStats, MODE_BRIDGE,
+    MODE_ROUTED,
 };
 
+use crate::config::ports::Port;
 use crate::forwarding::Mode;
-use crate::kernel::bpf::{BpfError, TcxProgram};
-use crate::kernel::conntrack::{FiveTuple, Protocol};
-use crate::ports::Port;
+use crate::kernel::{bpf::{BpfError, TcxProgram}, conntrack::{FiveTuple, Protocol}};
 
 #[repr(C, align(8))]
 struct Aligned<T: ?Sized>(T);

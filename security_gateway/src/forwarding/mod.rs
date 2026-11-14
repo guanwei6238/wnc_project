@@ -4,12 +4,10 @@ pub mod routed;
 use std::fmt;
 use std::str::FromStr;
 
+use crate::config::ports::{Port, Role};
 use crate::issue::Issue;
-use crate::kernel::modules::RequiredModule;
-use crate::kernel::netif::{Interface, Ipv4Routing};
-use crate::kernel::sysctl;
+use crate::kernel::{modules::RequiredModule, netif::{Interface, Ipv4Routing}, sysctl};
 use crate::platform::{BootConfig, Current};
-use crate::ports::{Port, Role};
 
 pub use bridge::Bridged;
 pub use routed::Routed;

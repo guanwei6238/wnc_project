@@ -5,10 +5,9 @@ use std::io::{self, BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::str::Lines;
 
+use crate::kernel::{nfqueue::QueueRange, procs::{self, Process}};
+use crate::system::command::{self, CommandError};
 use super::eve;
-use crate::command::{self, CommandError};
-use crate::kernel::nfqueue::QueueRange;
-use crate::kernel::procs::{self, Process};
 
 pub const DEFAULT_PATH: &str = "/usr/bin/suricata";
 pub const DEFAULT_CONFIG: &str = "/etc/suricata/suricata.yaml";

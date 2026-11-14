@@ -1,6 +1,6 @@
-use super::*;
 use crate::datapath::XdpPolicy;
 use crate::kernel::netif::MacAddr;
+use super::*;
 
 const PHY: MacAddr = MacAddr([0x9c, 0x69, 0xd3, 0x2a, 0x11, 0x54]);
 

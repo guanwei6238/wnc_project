@@ -3,7 +3,7 @@ use std::net::{IpAddr, SocketAddr};
 use std::process::ExitCode;
 
 use clap::{Args, Subcommand};
-use security_gateway::control::{self, Flow, Request, Response, Tuple};
+use security_gateway::agent::control::{self, Flow, Request, Response, Tuple};
 use security_gateway::kernel::conntrack::{FiveTuple, Protocol};
 use security_gateway::platform::{Current, Dirs};
 
