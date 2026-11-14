@@ -1,3 +1,4 @@
+use std::io::{self, Write};
 use std::process::ExitCode;
 
 use clap::Args;
@@ -24,7 +25,7 @@ pub fn run(args: ExplainArgs) -> ExitCode {
             .join("\n"),
         (None, false) => list(Issue::ALL),
     };
-    print!("{text}");
+    let _ = io::stdout().write_all(text.as_bytes());
     ExitCode::SUCCESS
 }
 

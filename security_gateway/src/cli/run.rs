@@ -62,7 +62,7 @@ pub async fn run(
         error!(code = %Issue::ChecksFailed, "not starting because the checks above found errors");
         return ExitCode::FAILURE;
     }
-    println!();
+    out!();
     let alert_file = alert_file(&config).await;
 
     let mut signals = match StopSignals::listen() {

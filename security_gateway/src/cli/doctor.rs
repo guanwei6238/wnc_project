@@ -51,7 +51,7 @@ impl Finding {
             Severity::Warning => "warning",
             Severity::Note => "note",
         };
-        println!("{label}[{}]: {}", self.issue, self.message);
+        out!("{label}[{}]: {}", self.issue, self.message);
     }
 }
 
@@ -77,14 +77,14 @@ pub async fn run(config_path: Option<&Path>, overrides: Overrides, _args: Doctor
 
 pub async fn passes(config: &Config, starting: bool) -> bool {
     match &config.file {
-        Some(path) => println!("config: {}", path.display()),
-        None => println!("config: none ({} not found)", config::DEFAULT_PATH),
+        Some(path) => out!("config: {}", path.display()),
+        None => out!("config: none ({} not found)", config::DEFAULT_PATH),
     }
-    println!("mode:   {} ({})", config.mode.value, config.mode.source);
-    println!("xdp:    {} ({})", config.xdp.value, config.xdp.source);
-    println!("protection: {} ({}), suricata receives {}", config.protection.value, config.protection.source, config.delivery());
-    println!("trust:  {}", trust_summary(&config.trust));
-    println!();
+    out!("mode:   {} ({})", config.mode.value, config.mode.source);
+    out!("xdp:    {} ({})", config.xdp.value, config.xdp.source);
+    out!("protection: {} ({}), suricata receives {}", config.protection.value, config.protection.source, config.delivery());
+    out!("trust:  {}", trust_summary(&config.trust));
+    out!();
 
     let netlink = match Netlink::connect() {
         Ok(netlink) => netlink,
@@ -113,7 +113,7 @@ pub async fn passes(config: &Config, starting: bool) -> bool {
     let results = ports::resolve(&config.port_specs(), &interfaces);
     print_ports(config, &results);
     let mut findings = port_findings(&results);
-    println!();
+    out!();
 
     let mode = config.mode.value;
     let forwarding = forwarding::for_mode(mode);
@@ -121,33 +121,33 @@ pub async fn passes(config: &Config, starting: bool) -> bool {
     let routing = netlink.ipv4_routing().await.map_err(|e| e.to_string());
     let routing = routing.as_ref().map_err(String::as_str);
     findings.extend(check_environment(mode, forwarding.as_ref(), &ports, &interfaces, routing));
-    println!();
+    out!();
 
     findings.extend(check_xdp(config.xdp.value, &ports).await);
-    println!();
+    out!();
 
     findings.extend(check_modules(forwarding.required_modules(), config.delivery()));
-    println!();
+    out!();
 
     findings.extend(check_nft(&config.nftables.path).await);
-    println!();
+    out!();
 
     findings.extend(check_suricata(config).await);
-    println!();
+    out!();
 
     findings.extend(check_other_suricata(config.delivery(), !starting).await);
-    println!();
+    out!();
 
     findings.extend(check_access(config));
 
     if !findings.is_empty() {
-        println!();
+        out!();
     }
     for finding in &findings {
         finding.print();
     }
     if let Some(first) = findings.first() {
-        println!("\nfor more about a finding, run: wnc-gw explain <code> (for example wnc-gw explain {})", first.issue);
+        out!("\nfor more about a finding, run: wnc-gw explain <code> (for example wnc-gw explain {})", first.issue);
     }
     !findings.iter().any(|f| f.severity == Severity::Error)
 }
@@ -259,7 +259,7 @@ fn note_findings(mode: Mode, notes: &[Note]) -> Vec<Finding> {
 }
 
 fn print_environment(mode: Mode, checks: &[EnvCheck]) {
-    println!("{:<36} {}", format!("{} MODE CHECK", mode.to_string().to_uppercase()), "RESULT");
+    out!("{:<36} {}", format!("{} MODE CHECK", mode.to_string().to_uppercase()), "RESULT");
     for check in checks {
         let result = match &check.state {
             EnvState::Met { actual } if actual.is_empty() => "ok".to_owned(),
@@ -267,7 +267,7 @@ fn print_environment(mode: Mode, checks: &[EnvCheck]) {
             EnvState::Unmet { actual, .. } => format!("not met ({actual})"),
             EnvState::Unknown { .. } => "unknown".to_owned(),
         };
-        println!("{:<36} {}", check.item, result);
+        out!("{:<36} {}", check.item, result);
     }
 }
 
@@ -345,7 +345,7 @@ fn xdp_findings(policy: XdpPolicy, detection_error: Option<&str>, rows: &[XdpRow
 }
 
 fn print_xdp(rows: &[XdpRow]) {
-    println!(
+    out!(
         "{:<4} {:<15} {:<10} {:<28} {:<18} {}",
         "ROLE", "INTERFACE", "DRIVER", "NATIVE XDP", "ATTACHED XDP", "CORE HOOK"
     );
@@ -361,7 +361,7 @@ fn print_xdp(rows: &[XdpRow]) {
             Some(XdpAttachment { mode, prog_id: None }) => mode.to_string(),
             Some(XdpAttachment { mode, prog_id: Some(id) }) => format!("{mode} (id {id})"),
         };
-        println!(
+        out!(
             "{:<4} {:<15} {:<10} {:<28} {:<18} {}",
             row.port.role.to_string(),
             iface.name,
@@ -492,10 +492,10 @@ fn module_findings(release: &str, states: &[(&RequiredModule, ModuleState)]) -> 
 }
 
 fn print_modules(release: &str, states: &[(&RequiredModule, ModuleState)]) {
-    println!("kernel: {release}");
-    println!("{:<20} {:<9} {}", "KERNEL MODULE", "STATE", "NEEDED FOR");
+    out!("kernel: {release}");
+    out!("{:<20} {:<9} {}", "KERNEL MODULE", "STATE", "NEEDED FOR");
     for (module, state) in states {
-        println!("{:<20} {:<9} {}", module.name, state.to_string(), module.purpose);
+        out!("{:<20} {:<9} {}", module.name, state.to_string(), module.purpose);
     }
 }
 
@@ -548,8 +548,8 @@ fn print_nft(path: &Setting<AbsolutePath>, info: &Result<NftInfo, NftError>) {
         Err(NftError::NotFound { .. }) => ("not found", "-"),
         Err(_) => ("unknown", "unknown"),
     };
-    println!("{:<18} {:<12} {:<10} {}", "COMMAND", "SOURCE", "VERSION", "JSON");
-    println!(
+    out!("{:<18} {:<12} {:<10} {}", "COMMAND", "SOURCE", "VERSION", "JSON");
+    out!(
         "{:<18} {:<12} {version:<10} {json}",
         path.value.to_string(),
         path.source.to_string()
@@ -568,7 +568,7 @@ async fn check_suricata(config: &Config) -> Vec<Finding> {
     let mut alerts = None;
     let mut tcp_established_timeout = None;
     if info.is_ok() {
-        println!();
+        out!();
         let yaml = settings.config.value.as_path();
         let dump = suricata.dump_config(yaml, &spawned::FORCED_SETTINGS).await;
         let rule_files = dump.as_ref().map(SuricataConfig::check_rule_files).unwrap_or_default();
@@ -783,12 +783,12 @@ fn queue_list(queues: &[QueueRange]) -> String {
 }
 
 fn print_other_suricata(scan: &io::Result<SuricataScan>, service: &str, boot: Option<&BootState>) {
-    println!(
+    out!(
         "{:<18} {:<14} {:<9} {:<8} {}",
         "RUNNING SURICATA", "CAPTURE", "RSS", "NETNS", "STARTED BY"
     );
     match scan {
-        Ok(scan) if scan.running.is_empty() => println!("none"),
+        Ok(scan) if scan.running.is_empty() => out!("none"),
         Ok(scan) => {
             for s in &scan.running {
                 let capture = match &s.capture {
@@ -809,10 +809,10 @@ fn print_other_suricata(scan: &io::Result<SuricataScan>, service: &str, boot: Op
                     Owner::LeftByWncGw => "previous wnc-gw".to_owned(),
                     Owner::Other => service_unit(s).unwrap_or_else(|| "-".to_owned()),
                 };
-                println!("{:<18} {capture:<14} {rss:<9} {net_ns:<8} {started_by}", s.pid);
+                out!("{:<18} {capture:<14} {rss:<9} {net_ns:<8} {started_by}", s.pid);
             }
         }
-        Err(_) => println!("unknown"),
+        Err(_) => out!("unknown"),
     }
     let at_boot = match boot {
         None => "not checked",
@@ -821,8 +821,8 @@ fn print_other_suricata(scan: &io::Result<SuricataScan>, service: &str, boot: Op
         Some(BootState::NotInstalled) => "not installed",
         Some(BootState::Unknown(_)) => "unknown",
     };
-    println!("{:<18} {}", "SURICATA SERVICE", "AT BOOT");
-    println!("{service:<18} {at_boot}");
+    out!("{:<18} {}", "SURICATA SERVICE", "AT BOOT");
+    out!("{service:<18} {at_boot}");
 }
 
 fn suricata_findings(path: &Path, info: &Result<SuricataInfo, SuricataError>, delivery: Delivery) -> Vec<Finding> {
@@ -963,11 +963,11 @@ fn print_suricata(path: &Setting<AbsolutePath>, info: &Result<SuricataInfo, Suri
         Err(SuricataError::NotFound { .. }) => ("not found", "-", "-", "-"),
         Err(_) => ("unknown", "unknown", "unknown", "unknown"),
     };
-    println!(
+    out!(
         "{:<18} {:<12} {:<10} {:<8} {:<8} {}",
         "COMMAND", "SOURCE", "VERSION", "NFQUEUE", "NFLOG", "READY NOTIFY"
     );
-    println!(
+    out!(
         "{:<18} {:<12} {version:<10} {nfqueue:<8} {nflog:<8} {ready_notify}",
         path.value.to_string(),
         path.source.to_string()
@@ -1199,8 +1199,8 @@ fn print_suricata_config(
         Err(SuricataError::Failed { .. }) => "error",
         Err(_) => "unknown",
     };
-    println!("{:<40} {:<12} {}", "SURICATA CONFIG", "SOURCE", "RESULT");
-    println!(
+    out!("{:<40} {:<12} {}", "SURICATA CONFIG", "SOURCE", "RESULT");
+    out!(
         "{:<40} {:<12} {result}",
         config.value.to_string(),
         config.source.to_string()
@@ -1213,18 +1213,18 @@ fn print_suricata_config(
             RuleFileState::Unreadable(_) => "unreadable",
             RuleFileState::Wildcard | RuleFileState::NoRulePath => "not checked",
         };
-        println!("{:<40} {:<12} {result}", rule_file_name(file), "rule-files");
+        out!("{:<40} {:<12} {result}", rule_file_name(file), "rule-files");
     }
     if dump.is_ok() {
         match alert_file {
-            Some(path) => println!(
+            Some(path) => out!(
                 "{:<40} {:<12} alerts, read every {} ({})",
                 path.display().to_string(),
                 "eve-log",
                 settings.eve_interval.value,
                 settings.eve_interval.source
             ),
-            None => println!("{:<40} {:<12} no alerts", "(none)", "eve-log"),
+            None => out!("{:<40} {:<12} no alerts", "(none)", "eve-log"),
         }
     }
 }
@@ -1318,7 +1318,7 @@ fn describe_writers(writers: &[(Writable, Option<String>)]) -> String {
 }
 
 fn print_access(rows: &[AccessRow]) {
-    println!("{:<40} {:<22} {}", "FILE", "USED AS", "MODIFIABLE BY NON-ROOT");
+    out!("{:<40} {:<22} {}", "FILE", "USED AS", "MODIFIABLE BY NON-ROOT");
     for row in rows {
         let result = match &row.writers {
             Ok(writers) if writers.is_empty() => "no",
@@ -1326,12 +1326,12 @@ fn print_access(rows: &[AccessRow]) {
             Err(e) if e.kind() == io::ErrorKind::NotFound => "not found",
             Err(_) => "unknown",
         };
-        println!("{:<40} {:<22} {result}", row.path.display().to_string(), row.used_as);
+        out!("{:<40} {:<22} {result}", row.path.display().to_string(), row.used_as);
     }
 }
 
 fn print_ports(config: &Config, results: &[Result<Port, ResolveError>]) {
-    println!(
+    out!(
         "{:<4} {:<17} {:<12} {:<15} {:<4} {:<13} {:<5} {}",
         "ROLE", "SPECIFIED", "SOURCE", "INTERFACE", "IDX", "MATCHED BY", "ADMIN", "OPER"
     );
@@ -1347,7 +1347,7 @@ fn print_ports(config: &Config, results: &[Result<Port, ResolveError>]) {
             Err(_) => Default::default(),
         };
         let dash = |s: String| if s.is_empty() { "-".to_owned() } else { s };
-        println!(
+        out!(
             "{:<4} {:<17} {:<12} {:<15} {:<4} {:<13} {:<5} {}",
             role.to_string(),
             setting.value.to_string(),

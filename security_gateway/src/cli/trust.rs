@@ -89,12 +89,12 @@ fn list() -> ExitCode {
 }
 
 fn print_connections(connections: &[Connection]) {
-    println!(
+    out!(
         "{:<10} {:<5} {:<24} {:<24} {:<11} {:>7} {}",
         "ID", "PROTO", "SOURCE", "DESTINATION", "STATE", "TIMEOUT", "MARK"
     );
     for c in connections {
-        println!(
+        out!(
             "{:<10} {:<5} {:<24} {:<24} {:<11} {:>7} {:#010x}",
             c.id,
             c.original.protocol().to_string(),

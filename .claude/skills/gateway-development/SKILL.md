@@ -23,7 +23,7 @@ security_gateway/
 ├── src/
 │   ├── main.rs             #[tokio::main(flavor = "current_thread")]，只呼叫 cli::run()
 │   ├── cli/                ← bin：只放參數與膠水
-│   │   ├── mod.rs          Cli（全域參數 -c/--config、--lan、--wan、--log-format、--log-level）、Command、run()
+│   │   ├── mod.rs          out! macro（取代 println!：stdout 被關掉時不 panic，cli 一律用它）；Cli（全域參數 -c/--config、--lan、--wan、--log-format、--log-level）、Command、run()
 │   │   ├── doctor.rs       doctor：載入設定 → passes()（各項檢查、印報告，沒有 error 才回傳 true）→ 結束碼；每個 Finding 帶 Issue，印成 warning[R006]: …
 │   │   ├── explain.rs      explain：列出全部代碼、印一條（explain R006）或全部（--all）的說明（cause、action），100 字元折行
 │   │   ├── logging.rs      LogFormat（text、json）、LogLevel（預設 info）、init()：tracing 的輸出設定（stderr、UTC 時間、text 在終端機才上色、寫入失敗不回報，否則 stderr 斷掉時會 panic），run 和 trust add/del 會呼叫

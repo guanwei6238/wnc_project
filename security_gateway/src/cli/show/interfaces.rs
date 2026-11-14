@@ -24,7 +24,7 @@ async fn load() -> Result<Vec<Interface>, NetifError> {
 }
 
 fn print_interfaces(interfaces: &[Interface]) {
-    println!(
+    out!(
         "{:<4} {:<15} {:<17} {:<17} {:<5} {:<14} {:<8} {:<15} {}",
         "IDX", "NAME", "MAC", "PERM", "ADMIN", "OPER", "KIND", "MASTER", "DRIVER"
     );
@@ -35,7 +35,7 @@ fn print_interfaces(interfaces: &[Interface]) {
                 .find(|other| other.index == index)
                 .map_or_else(|| format!("#{index}"), |other| other.name.clone())
         });
-        println!(
+        out!(
             "{:<4} {:<15} {:<17} {:<17} {:<5} {:<14} {:<8} {:<15} {}",
             iface.index,
             iface.name,

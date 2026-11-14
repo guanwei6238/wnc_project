@@ -1,3 +1,14 @@
+// 不用 println!：stdout 被關掉時（wnc-gw doctor | head）println! 會 panic
+macro_rules! out {
+    () => {
+        out!("")
+    };
+    ($($arg:tt)*) => {{
+        use ::std::io::Write as _;
+        let _ = ::std::writeln!(::std::io::stdout(), $($arg)*);
+    }};
+}
+
 pub mod doctor;
 pub mod explain;
 mod logging;
