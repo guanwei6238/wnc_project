@@ -16,7 +16,7 @@
 | | 實機（`TARGET=phys`） | Pi（`TARGET=pi`） | Docker（`TARGET=docker`） |
 |---|---|---|---|
 | client | 筆電上的容器 `dcli`，10.9.0.1，macvlan 掛在 USB 網卡 | netns `fcli`，10.9.0.1 | 容器 `wnc-cli`，10.0.1.2 |
-| gateway | Pi：netns `wgw` 裡的 bridge `br0`，接 **eth0**（LAN）和 **eth1.20**（WAN，eth1 上的 VLAN 20），`mode = "bridge"` | netns `wgw` 裡的 bridge `br0`（g-lan、g-wan、x-lan、x-wan），`mode = "bridge"` | 容器 `wnc-gw`，`mode = "routed"` |
+| gateway | Pi：netns `wgw` 裡的 bridge `br0`，接 **eth0**（LAN）和 **eth1.20**（WAN，eth1 上的 VLAN 20），`mode = "bridge"` | netns `wgw` 裡的 bridge `br0`（g-lan、g-wan、x-lan、x-wan；wnc-gw 的 port 是 x-lan、x-wan），`mode = "bridge"` | 容器 `wnc-gw`，`mode = "routed"` |
 | server | 筆電上的容器 `dsrv`，10.9.0.130，macvlan 掛在 eno2.20 | netns `fsrv`，10.9.0.2 | 容器 `wnc-srv`，10.0.2.2 |
 | 和真實部署的差別 | 兩個 port 是真的網卡，但 WAN 借用管理線（eth1）上的 VLAN 20，SSH 照常走 eth1；Suricata 的 log 目錄是 tmpfs | 全部在 Pi 裡用 veth 接，不經過實體網卡；Suricata 的 log 目錄是 tmpfs | 共用筆電的 kernel；容器的 `nf_conntrack_acct` 由 `docker/compose.yml` 設 |
 

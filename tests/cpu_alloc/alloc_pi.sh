@@ -9,8 +9,10 @@
 #   alloc_pi.sh burner_start <cpu|mem|mlp> <threads> <cpus|any> <normal|idle> [duty%，預設 100]   背景跑替身
 #   alloc_pi.sh burner_stop
 #   alloc_pi.sh acct <0|1>           wgw 裡的 net.netfilter.nf_conntrack_acct（之後建立的 conntrack entry 才有計數）
-#   alloc_pi.sh fastpath_start <flows 檔>  在 eth0、eth1.20 的 TCX ingress 最前面掛 ebpf-bench v4（tests/ebpf/bench）：查到信任的五元組就直接 redirect 到另一個 port
+#   alloc_pi.sh fastpath_start <flows 檔> [版本 [參數...]]  在 eth0、eth1.20 的 TCX ingress 最前面掛 ebpf-bench（tests/ebpf/bench，預設 v4）：查到信任的五元組就直接 redirect 到另一個 port；v5 的參數例如 --via fib
 #   alloc_pi.sh fastpath_stop        拿掉 fast path，印出它 redirect 的封包數
+#   alloc_pi.sh trust_flows <flows 檔> [hops]  用 wnc-gw trust add 逐條信任（wnc-gw run 要在跑；連線要已經在 conntrack 裡），印出成功和失敗的條數；
+#                                    hops（routed）：再等到每條都有下一跳（最多 30 秒），印出有下一跳的條數
 # 忙碌時間＝經過時間 − idle − iowait（/proc/stat 的 idle 在 NO_HZ 下是精確的，而且 idle 時處理的中斷不算 idle）；
 # schedstat 的 rq_cpu_time 只當輔助（idle 時處理的中斷算不到）
 W="ip netns exec wgw"
@@ -83,12 +85,28 @@ burner_stop)
   ;;
 fastpath_start)
   pkill -INT -x ebpf-bench; sleep 0.5
-  $W $B/ebpf-bench v4 --flows $2 eth0 eth1.20 > /dev/shm/fastpath.out 2>&1 &
+  flows=$2; variant=${3:-v4}; shift $(( $# < 3 ? $# : 3 ))
+  $W $B/ebpf-bench $variant "$@" --flows $flows eth0 eth1.20 > /dev/shm/fastpath.out 2>&1 &
   for i in $(seq 1 50); do grep -q "prog_id=" /dev/shm/fastpath.out && break; sleep 0.1; done
   cat /dev/shm/fastpath.out
   ;;
 fastpath_stop)
   pkill -INT -x ebpf-bench; sleep 0.5; tail -1 /dev/shm/fastpath.out
+  ;;
+trust_flows)
+  ok=0; failed=0
+  while read -r proto src sport dst dport; do
+    [ -n "$proto" ] || continue
+    if /tmp/wncgw/wnc-gw trust add $proto $src $sport $dst $dport 2> /dev/null; then ok=$((ok + 1)); else failed=$((failed + 1)); fi
+  done < "$2"
+  hops=-
+  if [ "$3" = hops ]; then
+    for i in $(seq 1 30); do
+      hops=$(/tmp/wncgw/wnc-gw trust list | tail -n +2 | grep -vc -- '- / -$')
+      [ "$hops" -ge "$ok" ] && break; sleep 1
+    done
+  fi
+  echo "trusted=$ok failed=$failed with_next_hops=$hops"
   ;;
 *) sed -n '2,13p' "$0"; exit 2 ;;
 esac

@@ -17,6 +17,7 @@ sudo bash core_pi.sh show    # run 中印 bpftool net show 和每個 CPU 的計�
 sudo bash core_pi.sh tcx     # 別的 TCX 程式：doctor（root、wnc）、run 中被插隊、被拆掉
 sudo bash core_pi.sh fastpath  # 步驟 C：IPv4 TCP、UDP、IPv6 TCP 手動信任，看 forward chain、TTL、trust list
 sudo bash core_pi.sh auto      # 步驟 C：自動信任
+# ROUTED=1（up、down 和其他子命令都要帶）：routed 的拓樸，ecli 10.9.1.2／fd09:1::2、esrv 10.9.2.2／fd09:2::2
 sudo bash core_pi.sh kill9   # kill -9 之後程式是否自動卸下
 sudo bash core_pi.sh down
 ```
@@ -156,4 +157,21 @@ Pi 4、鎖 1000 MHz、eth0 PAUSE 關、bridge；S_m60（102 條 flow，最大的
 | 自動信任 | `protection_docker.sh autotrust`：ids chain 停住（ids 67 → 67、ips 71 → 72）、到期再信任、FIN alert 撤銷，和 11/04 相同 | ids chain 47 → 47、到期再信任、FIN alert 撤銷；250／250 行 |
 | 失敗路徑 | run 沒在跑、找不到連線、送給 gw 自己的連線（`is not forwarded by the gateway`）、沒被信任、nobody（`permission denied`）、沒有 CAP_BPF（D001＋T014） | — |
 
-還沒做：手動信任的閒置清除；用 wnc-gw 本身在 Pi 實體網卡量（E1 用的是 bench 的 V4）、很多條信任 flow、routed 的 Pi 量測。
+補測（C3）：`fastpath_docker.sh options|ttl1|control|kill9|l007|idle`、map 滿的 `--ignored` 單元測試、`ROUTED=1 core_pi.sh fastpath|auto`（Pi routed：IPv4 TCP 63 → 63、UDP 215 → 215、IPv6 TCP 348 → 348，TTL／hop limit 63，160／160），結果見 `security_gateway/DECISIONS.md` §17。
+
+`make_flows_pcap.py`：照樣本 pcap 裡某條 UDP flow 的 MAC，產生 N 條 UDP flow 輪流送的 pcap（來源 port 10000＋編號）和對應的 flows 檔，給 exp10 的 T1k 用（`X_udp1000`：1,000 條、20 萬個 60 bytes 的封包）。
+
+## C3：wnc-gw 本身在 Pi 實體網卡上，bridge 對 routed（exp10）
+
+詳細的表在 `tests/cpu_alloc/README.md` 實驗 10。結論：信任的封包 bridge 比 routed 每個少約 1.4 µs（7.80 對 9.16 µs @120k），沒被信任的 routed 比 bridge 少 3.1–3.9 µs；信任比例約 70% 以上 bridge 才整體便宜。1,000 條信任 flow 時查表沒有變貴。
+
+## routed 的送法（exp11）
+
+`bench` 的 v5（`v5_routed`）：v4 的 routed 版，只處理沒有 option 的 IPv4。`--via neigh|nexthop|fib`：`bpf_redirect_neigh` 不帶參數、帶下一跳（`--nexthop <出口> <IPv4>`，key 是出口的 ifindex）、`bpf_fib_lookup`＋改 MAC＋`bpf_redirect`（出口不是另一個 port、或 neighbor 還沒解析時交回 kernel）。三種都要在沒有 CAP_PERFMON 時通過 verifier：`FibParams` 的 MAC 拆成純量欄位，一個欄位一個欄位用 `write_volatile` 寫、不複製整個 struct（連續的 0 會被合成 memset）。Docker（routed testbed）三種都是 50／50 送達、TTL 63。
+
+結果在 `tests/cpu_alloc/README.md` 實驗 11：帶下一跳最快（7.91 µs @120k，容量 180 kpps），和 bridge 的 fast path 差不多；`bpf_fib_lookup` 沒有比不帶參數快多少。
+
+## routed 帶下一跳（wnc-gw 本身）
+
+`fastpath_docker.sh nexthop`（Docker routed）：信任後 `trust list` 兩個方向都有下一跳（`10.0.1.2 / 10.0.2.2`）、forward chain 停住、TTL 63；`ip route add` 之後 0.3 秒變成 `- / -`、12 秒後填回；每 0.5 秒改一次路由持續 70 秒：WARN D007 一次、999／999 行都在 TC 送出（forward chain 43 → 43）、停止後 INFO「stable again」。Pi（`ROUTED=1 core_pi.sh fastpath`、方案 B 的 routed）：IPv4／IPv6 照常；1,000 條信任後幾秒內全部有下一跳（`alloc_pi.sh trust_flows … hops`）。
+Pi 實體網卡（exp12）：routed 的信任封包 8.28 µs @120k（不帶下一跳時 9.16），bridge 7.79。

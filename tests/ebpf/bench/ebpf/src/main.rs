@@ -1,14 +1,16 @@
 #![no_std]
 #![no_main]
 
-use core::mem::size_of;
+use core::mem::{MaybeUninit, size_of};
+use core::ptr::{self, addr_of, addr_of_mut, read_volatile, write_volatile};
 
 use aya_ebpf::EbpfContext;
 use aya_ebpf::bindings::__sk_buff;
 use aya_ebpf::bindings::tcx_action_base::TCX_NEXT;
-use aya_ebpf::helpers::{bpf_ktime_get_ns, bpf_redirect};
+use aya_ebpf::bindings::{bpf_fib_lookup, bpf_redir_neigh};
+use aya_ebpf::helpers::{bpf_fib_lookup as fib_lookup, bpf_ktime_get_ns, bpf_redirect, bpf_redirect_neigh};
 use aya_ebpf::macros::{classifier, map};
-use aya_ebpf::maps::{HashMap, PerCpuArray};
+use aya_ebpf::maps::{Array, HashMap, PerCpuArray};
 use aya_ebpf::programs::TcContext;
 
 #[repr(C)]
@@ -190,6 +192,179 @@ fn fast_path(ctx: &TcContext) -> Option<i32> {
 pub fn v4_redirect(ctx: TcContext) -> i32 {
     count(0);
     match fast_path(&ctx) {
+        Some(action) => {
+            count(1);
+            action
+        }
+        None => TCX_NEXT,
+    }
+}
+
+// V5：routed 的三種送法。0 = bpf_redirect_neigh 不帶參數（kernel 查路由和 neighbor，wnc-gw 現在的做法）；
+// 1 = bpf_redirect_neigh 帶下一跳（kernel 只查 neighbor，下一跳從 NEXTHOP 查，key 是出口的 ifindex）；
+// 2 = bpf_fib_lookup（kernel 查路由和 neighbor 給 MAC）＋自己改 MAC＋bpf_redirect（GPL-only）
+#[map]
+static ROUTE_VIA: Array<u32> = Array::with_max_entries(1, 0);
+
+#[map]
+static NEXTHOP: HashMap<u32, u32> = HashMap::with_max_entries(8, 0);
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct FibParams {
+    family: u8,
+    l4_protocol: u8,
+    sport: u16,
+    dport: u16,
+    tot_len: u16,
+    ifindex: u32,
+    tos: u32,
+    src: [u32; 4],
+    dst: [u32; 4],
+    vlan: u32,
+    // MAC 拆成純量欄位：全部是 0 的陣列會被編成 memset，沒有 CAP_PERFMON 時 verifier 不接受
+    smac0: u16,
+    smac1: u16,
+    smac2: u16,
+    dmac0: u16,
+    dmac1: u16,
+    dmac2: u16,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct RedirNeigh {
+    family: u32,
+    addr: [u32; 4],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct EthAddrs {
+    dmac0: u16,
+    dmac1: u16,
+    dmac2: u16,
+    smac0: u16,
+    smac1: u16,
+    smac2: u16,
+}
+
+const AF_INET: u32 = 2;
+
+#[inline(always)]
+fn routed_path(ctx: &TcContext) -> Option<i32> {
+    let ethertype = u16::from_be(read::<u16>(ctx, 12)?);
+    if read::<u8>(ctx, 0)? & 1 != 0 || ethertype != 0x0800 {
+        return None;
+    }
+    let vhl = read::<u8>(ctx, 14)?;
+    if vhl != 0x45 || u16::from_be(read::<u16>(ctx, 20)?) & 0x3fff != 0 {
+        return None;
+    }
+    let proto: u8 = read(ctx, 23)?;
+    if proto != 6 && proto != 17 {
+        return None;
+    }
+    let (saddr, daddr): (u32, u32) = (read(ctx, 26)?, read(ctx, 30)?);
+    let (sport, dport): (u16, u16) = (read(ctx, 34)?, read(ctx, 36)?);
+    if proto == 6 && read::<u8>(ctx, 47)? & (TCP_SYN | TCP_FIN | TCP_RST) != 0 {
+        return None;
+    }
+    let key = FlowKey {
+        saddr: [saddr, 0, 0, 0],
+        daddr: [daddr, 0, 0, 0],
+        sport,
+        dport,
+        proto: u32::from(proto),
+    };
+    let stats = TRUST.get_ptr_mut(&key)?;
+    let skb = ctx.as_ptr() as *const __sk_buff;
+    let (ifindex, len) = unsafe { ((*skb).ifindex, (*skb).len) };
+    let peer = *unsafe { PEER.get(&ifindex) }?;
+    let ttl: u8 = read(ctx, 22)?;
+    if ttl <= 1 {
+        return None;
+    }
+    let via = ROUTE_VIA.get(0).copied().unwrap_or(0);
+    // 一個欄位一個欄位用 write_volatile 寫：連續的 0 會被 LLVM 合成 memset，沒有 CAP_PERFMON 時 verifier 不接受。
+    // FibParams 沒有 padding，所以每個 byte 都寫到了
+    let mut slot = MaybeUninit::<FibParams>::uninit();
+    let f = slot.as_mut_ptr();
+    let tot_len = u16::from_be(read::<u16>(ctx, 16)?);
+    let tos = u32::from(read::<u8>(ctx, 15)?);
+    unsafe {
+        write_volatile(addr_of_mut!((*f).family), AF_INET as u8);
+        write_volatile(addr_of_mut!((*f).l4_protocol), proto);
+        write_volatile(addr_of_mut!((*f).sport), sport);
+        write_volatile(addr_of_mut!((*f).dport), dport);
+        write_volatile(addr_of_mut!((*f).tot_len), tot_len);
+        write_volatile(addr_of_mut!((*f).ifindex), ifindex);
+        write_volatile(addr_of_mut!((*f).tos), tos);
+        write_volatile(addr_of_mut!((*f).src), [saddr, 0, 0, 0]);
+        write_volatile(addr_of_mut!((*f).dst[0]), daddr);
+        write_volatile(addr_of_mut!((*f).dst[1]), 0);
+        write_volatile(addr_of_mut!((*f).dst[2]), 0);
+        write_volatile(addr_of_mut!((*f).dst[3]), 0);
+        write_volatile(addr_of_mut!((*f).vlan), 0);
+        write_volatile(addr_of_mut!((*f).smac0), 0);
+        write_volatile(addr_of_mut!((*f).smac1), 0);
+        write_volatile(addr_of_mut!((*f).smac2), 0);
+        write_volatile(addr_of_mut!((*f).dmac0), 0);
+        write_volatile(addr_of_mut!((*f).dmac1), 0);
+        write_volatile(addr_of_mut!((*f).dmac2), 0);
+    }
+    if via == 2 {
+        let ret = unsafe {
+            fib_lookup(ctx.as_ptr(), f as *mut bpf_fib_lookup, size_of::<FibParams>() as i32, 0)
+        };
+        // 查不到、neighbor 還沒解析、出口不是另一個 port：交回 kernel
+        if ret != 0 || unsafe { read_volatile(addr_of!((*f).ifindex)) } != peer {
+            return None;
+        }
+    }
+    let old: u16 = read(ctx, 22)?;
+    let new = u16::from_ne_bytes([ttl - 1, proto]);
+    ctx.store(22, &(ttl - 1), 0).ok()?;
+    ctx.l3_csum_replace(24, u64::from(old), u64::from(new), 2).ok()?;
+    unsafe {
+        (*stats).packets += 1;
+        (*stats).bytes += u64::from(len);
+        (*stats).last_ns = bpf_ktime_get_ns();
+    }
+    let action = match via {
+        2 => {
+            let eth = unsafe {
+                EthAddrs {
+                    dmac0: read_volatile(addr_of!((*f).dmac0)),
+                    dmac1: read_volatile(addr_of!((*f).dmac1)),
+                    dmac2: read_volatile(addr_of!((*f).dmac2)),
+                    smac0: read_volatile(addr_of!((*f).smac0)),
+                    smac1: read_volatile(addr_of!((*f).smac1)),
+                    smac2: read_volatile(addr_of!((*f).smac2)),
+                }
+            };
+            ctx.store(0, &eth, 0).ok()?;
+            unsafe { bpf_redirect(peer, 0) }
+        }
+        1 => {
+            let hop = *unsafe { NEXTHOP.get(&peer) }?;
+            let mut nh = RedirNeigh {
+                family: AF_INET,
+                addr: [hop, 0, 0, 0],
+            };
+            unsafe {
+                bpf_redirect_neigh(peer, &mut nh as *mut RedirNeigh as *mut bpf_redir_neigh, size_of::<RedirNeigh>() as i32, 0)
+            }
+        }
+        _ => unsafe { bpf_redirect_neigh(peer, ptr::null_mut(), 0, 0) },
+    };
+    Some(action as i32)
+}
+
+#[classifier]
+pub fn v5_routed(ctx: TcContext) -> i32 {
+    count(0);
+    match routed_path(&ctx) {
         Some(action) => {
             count(1);
             action

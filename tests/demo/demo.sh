@@ -40,7 +40,8 @@ else
     LAN=eth0; WAN=eth1.20
   else
     C="ip netns exec fcli"; S="ip netns exec fsrv"; CLI=10.9.0.1; SRV=10.9.0.2
-    LAN=g-lan; WAN=g-wan
+    # port 是 fcli、fsrv 接上的 x-lan、x-wan：信任的封包在這兩個 port 的 TC 轉送（g-lan、g-wan 是 env.sh 給 tcpreplay 用的）
+    LAN=x-lan; WAN=x-wan
     ENV_SH=${ENV_SH:-$HERE/../ids_inline/env.sh}
   fi
 fi

@@ -325,3 +325,79 @@ Suricata 自己的檢查容量（Suricata 漏掉的複本 ≤ 0.1%）：
 ## 實驗 9（exp9，2026-11-14）：TC fast path 對 ct mark 信任
 
 B0、B2 和 F2（B2 加上 TC fast path：`alloc_pi.sh fastpath_start` 掛 `tests/ebpf/bench` 的 ebpf-bench v4）× A0、I1，都用 S_m60，2 輪。結果和解讀在 `tests/ebpf/README.md`「E1」；原始資料 `~/datasets/throughput/cpu_alloc/e1.kvl`。
+
+## 實驗 10（exp10，2026-11-14）：wnc-gw 本身的 TC fast path，bridge 對 routed（步驟 C3）
+
+Pi 4、鎖 1000 MHz、方案 B、eth0 PAUSE 關、I1（IRQ 29 → CPU1）；2 輪，每輪兩種模式的順序對調、工作負載的順序隨機。T1、T1k 啟動後先以 20 kpps 送一次整個 pcap（讓 conntrack 有這些連線），再 `alloc_pi.sh trust_flows` 逐條 `wnc-gw trust add`。原始資料：筆電 `~/datasets/throughput/cpu_alloc/e3.kvl`（`e3_try.kvl` 是一個試跑的點）。
+
+| 工作負載 | 內容 |
+|---|---|
+| B0 | 只有 bridge／routing（沒有 wnc-gw） |
+| U1 | wnc-gw ips、full、1 queue，沒有信任（全部檢查），S_m60 |
+| T1 | U1 再用 `wnc-gw trust add` 信任 S_m60 的 101 條 flow（1 條 TCP 在暖身時已經結束），信任的封包走 TC fast path |
+| T1k | 同 T1，1,000 條合成的 UDP flow（`X_udp1000`，60 bytes） |
+
+每封包 CPU（µs，整台 Pi＝經過時間 − idle，兩輪平均，只算沒丟包的點）：
+
+| 速率 | B0 bridge | B0 routed | T1 bridge | T1 routed | T1k bridge | T1k routed | U1 bridge | U1 routed |
+|---|---|---|---|---|---|---|---|---|
+| 10k | — | — | — | — | — | — | 57.55 | 53.65 |
+| 30k | — | — | — | — | — | — | 48.33 | 45.22 |
+| 50k | 13.71 | 11.71 | 9.01 | 10.40 | 8.82 | 10.34 | — | — |
+| 80k | 10.13 | 8.09 | 8.72 | 10.02 | 8.51 | 10.05 | — | — |
+| 120k | 9.21 | 7.37 | 7.80 | 9.16 | 7.61 | 8.96 | — | — |
+| 150k | 丟 | 6.92 | 7.32 | 8.31 | 7.11 | 8.09 | — | — |
+
+容量（cap_loss ≤ 0.1%，kpps，兩輪相同）：
+
+| | B0 | U1 | T1 | T1k |
+|---|---|---|---|---|
+| bridge | 120 | 30 | 150（180 時丟 0.33%） | 180 |
+| routed | 180 | 30 | 150 | 150 |
+
+怎麼讀：
+- **信任的封包：bridge 比 routed 每個少約 1.4 µs**（T1、T1k 各速率都是），T1k 的容量 180 對 150 kpps。routed 的 fast path 要多做減 TTL、修 checksum（兩次 helper 寫入）和 `bpf_redirect_neigh` 裡的路由查詢、neighbor 輸出。
+- **沒被信任（檢查）的封包：routed 比 bridge 每個少 3.1–3.9 µs**（約 7%），容量一樣（Suricata 是瓶頸）；只轉送的 B0 也是 routed 少約 2 µs、容量 180 對 120，和 11/04 相同。
+- 所以整體哪個便宜看信任的比例 f：bridge − routed ≈ −1.4 f + 3.5 (1 − f) µs，**f 大於約 70% 時 bridge 才比較便宜**（只用這組 pcap 和 I1 估的）。
+- bridge 的 fast path 比只有 bridge 的 B0 還便宜（7.80 對 9.21 µs @120k），routed 的 fast path 反而比只有 routing 的 B0 貴（9.16 對 7.37）：kernel 的 routing 本身很便宜，`bpf_redirect_neigh` 每個封包重新查路由和 neighbor。可能的改善（沒試）：在 map 裡記下一跳的 MAC，自己改寫 MAC 後用 `bpf_redirect`（不用 GPL-only 的 `bpf_fib_lookup`）。
+- 1,000 條信任 flow 的 T1k 和單一大 flow 的 T1 一樣或更便宜（60 bytes 的 UDP，沒有 TCP 控制封包），map 有 2,000 筆時看不出查表變貴。
+- 和 E1 的 bench V4（F2，bridge）一致：T1 bridge 50k 9.01、80k 8.72 µs 對 F2 9.02、8.53 µs；E1 的 ct mark 信任（B2）80k 是 13.96 µs。
+- 限制：只用 I1（IRQ 搬到 CPU1）、S_m60 和一個合成 pcap、2 輪；U1 的差主要在 bridge＋br_netfilter 對 routing，與 fast path 無關。
+
+## 實驗 11（exp11，2026-11-14）：routed 的三種送法
+
+routed、I1、S_m60、2 輪；F5n／F5h／F5f 是 U1（wnc-gw ips、沒有信任）再在 TCX 最前面掛 `tests/ebpf/bench` 的 v5（信任 S_m60 的 102 條 flow；98.9–99.3% 在 TC 送出），T1 是 wnc-gw 本身（`bpf_redirect_neigh` 不帶參數）。原始資料 `~/datasets/throughput/cpu_alloc/e4.kvl`（`e4_try.kvl` 是一個試跑的點）。
+
+| 送法 | 50k | 80k | 120k | 150k | 容量（kpps） |
+|---|---|---|---|---|---|
+| F5n `bpf_redirect_neigh` 不帶參數（kernel 查路由＋neighbor） | 9.96 | 9.55 | 8.57 | 7.84 | 150／150 |
+| **F5h `bpf_redirect_neigh` 帶下一跳**（kernel 只查 neighbor） | **9.15** | **8.76** | **7.91** | **7.38** | **180／180** |
+| F5f `bpf_fib_lookup`＋自己改 MAC＋`bpf_redirect` | 9.84 | 9.41 | 8.48 | 7.78 | 150／150 |
+| T1 wnc-gw 本身（同 F5n 的送法） | 10.46 | 10.06 | 9.20 | 8.27 | 150／150 |
+
+（µs／封包，整台 Pi，兩輪平均，只算沒丟包的點。）
+
+怎麼讀：
+- 貴的是**查路由**，不是 neighbor：帶下一跳（不查路由）每個少約 0.7 µs、容量 150 → 180；`bpf_fib_lookup` 也要查路由，只比不帶參數少 0.1 µs，還是 GPL-only，沒有好處。
+- 帶下一跳的 routed（7.91 µs @120k）和 bridge 的 fast path（exp10 T1 bridge 7.80）差不多。
+- wnc-gw 本身（T1）比同樣送法的 bench（F5n）貴約 0.6 µs，原因沒查（bridge 時 exp10 的 T1 對 E1 的 F2 也貴約 0.3 µs）。
+- 沒量的：(a) 把下一跳的 MAC 記在 map 裡，因為 MAC 會過期（IP 換到別台機器時，最多 10 秒送錯）而排除。
+
+## 實驗 12（exp12，2026-11-14）：routed 改成帶下一跳之後重量
+
+exp10 的 T1、T1k（wnc-gw 本身），兩種模式、I1、2 輪；routed 的 wnc-gw 帶下一跳（`agent/nexthop.rs`），`trust_flows … hops` 確認每條都有下一跳之後才開始量（`with_next_hops=101`、`102`、`1000`）。原始資料 `~/datasets/throughput/cpu_alloc/e5.kvl`（`e5_try.kvl` 是一個試跑的點）。
+
+| 速率 | T1 bridge | T1 routed | T1k bridge | T1k routed |
+|---|---|---|---|---|
+| 50k | 9.00 | 9.53 | 8.76 | 9.30 |
+| 80k | 8.75 | 9.23 | 8.55 | 9.23 |
+| 120k | 7.79 | 8.28 | 7.60 | 8.29 |
+| 150k | 7.38 | 7.74 | 7.06 | 7.53 |
+| 容量（kpps） | 150／150 | 150／150（180k 丟 0.13–0.18%） | 180／180 | 180／150 |
+
+（µs／封包，整台 Pi，兩輪平均。）
+
+怎麼讀：
+- routed 的信任封包比 exp10（不帶下一跳）每個少 0.7–0.9 µs（T1 9.16 → 8.28、T1k 8.96 → 8.29 @120k），bridge 不變（7.80 → 7.79）。
+- bridge 和 routed 的差從 1.4 µs 縮到約 0.5 µs。沒被信任的封包 routed 少 3.1–3.9 µs（exp10 的 U1），所以只有信任的封包佔約 87% 以上時 bridge 才整體便宜（−0.5 f + 3.5 (1 − f)）。
+- wnc-gw 本身仍比 exp11 的 bench F5h（7.91）貴約 0.4 µs，原因沒查。

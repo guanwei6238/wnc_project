@@ -11,6 +11,9 @@
 #           K0 = B6（ids 1 group）、K1／K2 再多 1／2 份完整的 NFLOG 複本給只讀的讀取端、K2h 多 2 份只有前 128 bytes 的複本；
 #           U2 = K0 加 1 份 kernel 複本、由 user space 的 fanout 分給 2 個讀取端；K0g3、K2g3、U2g3 是 3 個 group 的版本
 #           F2 = B2 加上 TC fast path（ebpf-bench v4，信任 S_m60 的全部五元組）：信任的封包在 TC 就 redirect，不進 bridge、netfilter
+#           F5n、F5h、F5f = U1 再掛 ebpf-bench v5（信任 S_m60）：bpf_redirect_neigh 不帶參數、帶下一跳、bpf_fib_lookup＋bpf_redirect
+#           U1 = wnc-gw ips full 1 queue，沒有信任（全部檢查）；T1 = U1 啟動後先送一次整個 pcap（20 kpps）再用 wnc-gw trust add 信任它的
+#           全部 flow（S_m60）；T1k = 同 T1，用 1,000 條合成 UDP flow 的 X_udp1000（tests/ebpf/make_flows_pcap.py）
 # 策略：alpha = 中斷在 CPU0、Suricata 綁 1,2、AI 1 執行緒綁 3；beta = RPS→CPU1、Suricata 綁 2,3、AI 2 執行緒在 2,3 用 SCHED_IDLE；
 #       gamma = 都不綁、AI 3 執行緒；delta = IRQ 29 搬到 CPU1、Suricata 綁 2,3、AI 1 執行緒綁 CPU0
 #   bash alloc_run.sh exp1b <round>       延伸：B4（3 queue）、B5（4 queue）× A0 I1 T1
@@ -29,6 +32,10 @@
 #   bash alloc_run.sh exp8 <round>        exp6 的 K0g3、K2g3 重跑（exp6 時 fanout 沒結束、佔著 group 20）
 #   bash alloc_run.sh night1104d          exp7 1、exp8 1、exp7 2、exp8 2
 #   bash alloc_run.sh exp9 <round>        TC fast path 對 ct mark 信任（步驟 C 的 E1）：B0 B2 F2 × A0 I1，都用 S_m60（前置：Pi 的 ~/cpu_alloc 有 ebpf-bench、S_m60.flows）
+#   bash alloc_run.sh exp10 <round>       wnc-gw 本身的 TC fast path，bridge 對 routed（C3）：B0 U1 T1 T1k × I1，兩種模式（順序每輪對調）
+#   bash alloc_run.sh exp12 <round>       exp10 的 T1、T1k 重量（routed 改成帶下一跳）：兩種模式（順序每輪對調）
+#   bash alloc_run.sh exp11 <round>       routed 的三種送法（ebpf-bench v5）：F5n F5h F5f T1 × I1（拓樸要先是 routed：alloc_run.sh mode routed）
+#                                         前置：Pi 的 ~/cpu_alloc 有 S_m60.flows、X_udp1000.flows；筆電 planb_run.sh setup／routed_pcap S_m60 X_udp1000
 # MODE=routed：sweep 用 routed 的 pcap、結果多 mode=；EXP：結果的 exp=（預設 1）
 # 結果一行一點寫進 $OUT/$KVL（預設 alloc.kvl）；連續兩個速率 cap_loss > 1% 就停
 LAN=${LAN:-enx9c69d3241bd9}; WAN=${WAN:-eno2}; PI=${PI:-wnc@10.254.254.2}
@@ -52,6 +59,16 @@ pi_start() {
   B0) $SSH "sudo pkill -INT -x wnc-gw; echo bridge only" ;;
   B1) r=$($SSH "sudo $E bash ~/ids_inline/planb_pi.sh start full 2 0" | tail -1) ;;
   B2) r=$($SSH "sudo $E bash ~/ids_inline/planb_pi.sh start full 1 1" | tail -1) ;;
+  U1) r=$($SSH "sudo $E bash ~/ids_inline/planb_pi.sh start full 1 0" | tail -1) ;;
+  F5n|F5h|F5f) r=$($SSH "sudo $E bash ~/ids_inline/planb_pi.sh start full 1 0" | tail -1)
+      case $1 in F5n) via=neigh ;; F5h) via=nexthop ;; F5f) via=fib ;; esac
+      echo "  $($SSH "$P fastpath_start /home/wnc/cpu_alloc/S_m60.flows v5 --via $via --nexthop eth1.20 10.99.2.2 --nexthop eth0 10.99.1.2" | tail -1)" ;;
+  T1|T1k) r=$($SSH "sudo $E bash ~/ids_inline/planb_pi.sh start full 1 0" | tail -1)
+      case "$r" in ready*) ;; *) echo "  $r"; return 1 ;; esac
+      if [ "${MODE:-bridge}" = routed ]; then f=/out/$WARM_PC.rt.pcap; c=/out/$WARM_PC.rt.cache; else f=/pcaps/$WARM_PC.pcap; c=/out/$WARM_PC.cache; fi
+      $G tcpreplay -i $WAN.20 -I $LAN -c $c --pps=20000 $f > /dev/null 2>&1
+      hops=; [ "${MODE:-bridge}" = routed ] && hops=hops
+      echo "  warm-up sent; $($SSH "$P trust_flows /home/wnc/cpu_alloc/$WARM_PC.flows $hops")" ;;
   F2) r=$($SSH "sudo $E bash ~/ids_inline/planb_pi.sh start full 1 1" | tail -1)
       echo "  $($SSH "$P fastpath_start /home/wnc/cpu_alloc/S_m60.flows" | tail -1)" ;;
   B3) r=$($SSH "sudo $E PROTECTION=ids bash ~/ids_inline/planb_pi.sh start full 2 0" | tail -1) ;;
@@ -74,7 +91,7 @@ pi_start() {
   echo "  $r"; case "$r" in ready*) return 0 ;; *) return 1 ;; esac
 }
 pi_stop() {
-  [ "$1" = F2 ] && echo "  fast path: $($SSH "$P fastpath_stop")"
+  case $1 in F2|F5n|F5h|F5f) echo "  fast path: $($SSH "$P fastpath_stop")" ;; esac
   [ "$1" = B0 ] || $SSH "sudo bash ~/ids_inline/planb_pi.sh stop" | grep reader | sed 's/^/  /'
 }
 # point <pcap> <pps> <loop> k=v...：送一次流量，前後各 snap 一次，寫一行
@@ -103,12 +120,12 @@ case "$1" in
 sweep)
   wl=$2; pl=$3; pc=$4; round=$5; shift 5
   echo "$(date -u +%T) sweep $wl $pl $pc round=$round mode=${MODE:-bridge}"
-  pi_start $wl || { echo "$(date -u +%T) start failed" ; $SSH "sudo bash ~/ids_inline/planb_pi.sh stop" > /dev/null; exit 1; }
+  WARM_PC=$pc pi_start $wl || { echo "$(date -u +%T) start failed" ; $SSH "sudo bash ~/ids_inline/planb_pi.sh stop" > /dev/null; exit 1; }
   $SSH "$P place $pl"
   fails=0
   for rate in "$@"; do
     n=200000; [ $pc = bulk_fixed ] && n=31433
-    loop=1; case $wl in B0|B2|F2) loop=$(( (5 * rate + n - 1) / n )) ;; esac
+    loop=1; case $wl in B0|B2|F2|T1|T1k|F5n|F5h|F5f) loop=$(( (5 * rate + n - 1) / n )) ;; esac
     [ $pc = bulk_fixed ] && loop=$(( (5 * rate + n - 1) / n ))
     point $pc $rate $loop exp=${EXP:-1} mode=${MODE:-bridge} workload=$wl placement=$pl round=$round || continue
     l=$(tail -1 $OUT/$KVL | grep -o 'cap_loss_pct=[^ ]*' | cut -d= -f2)
@@ -128,6 +145,40 @@ exp1)
     for pl in $(printf '%s\n' A0 R1 R123 I1 T1 | shuf); do bash "$0" sweep $wl $pl $pc $round $rates; done
   done
   echo "EXP1 ROUND $round DONE $(date -u +%FT%TZ)"
+  ;;
+exp12)
+  round=$2; modes="bridge routed"; [ $((round % 2)) = 0 ] && modes="routed bridge"
+  for m in $modes; do
+    bash "$0" mode $m
+    for wl in $(printf '%s\n' T1 T1k | shuf); do
+      pc=S_m60; [ $wl = T1k ] && pc=X_udp1000
+      EXP=12 MODE=$m bash "$0" sweep $wl I1 $pc $round 50000 80000 100000 120000 150000 180000 220000 260000 300000 350000 400000
+    done
+  done
+  echo "EXP12 ROUND $round DONE $(date -u +%FT%TZ)"
+  ;;
+exp11)
+  round=$2
+  for wl in $(printf '%s\n' F5n F5h F5f T1 | shuf); do
+    EXP=11 MODE=routed bash "$0" sweep $wl I1 S_m60 $round 50000 80000 100000 120000 150000 180000 220000 260000 300000 350000 400000
+  done
+  echo "EXP11 ROUND $round DONE $(date -u +%FT%TZ)"
+  ;;
+exp10)
+  round=$2; modes="bridge routed"; [ $((round % 2)) = 0 ] && modes="routed bridge"
+  for m in $modes; do
+    bash "$0" mode $m
+    for wl in $(printf '%s\n' B0 U1 T1 T1k | shuf); do
+      case $wl in
+      B0) pc=S_m60; rates="50000 80000 100000 120000 150000 180000 220000 260000 300000 350000 400000" ;;
+      U1) pc=S_m60; rates="10000 20000 30000 40000 50000 60000 80000" ;;
+      T1) pc=S_m60; rates="50000 80000 100000 120000 150000 180000 220000 260000 300000 350000 400000" ;;
+      T1k) pc=X_udp1000; rates="50000 80000 100000 120000 150000 180000 220000 260000 300000 350000 400000" ;;
+      esac
+      EXP=10 MODE=$m bash "$0" sweep $wl I1 $pc $round $rates
+    done
+  done
+  echo "EXP10 ROUND $round DONE $(date -u +%FT%TZ)"
   ;;
 exp9)
   round=$2

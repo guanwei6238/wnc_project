@@ -16,8 +16,9 @@ struct Aligned<T: ?Sized>(T);
 
 static ELF: &Aligned<[u8]> = &Aligned(*include_bytes!(concat!(env!("OUT_DIR"), "/bench-ebpf")));
 
-const USAGE: &str = "usage: ebpf-bench <v1|v2|v3|v4> [--flow <tcp|udp> <src ip> <src port> <dst ip> <dst port>] \
-                     [--flows <file>] <interface>...\n       ebpf-bench mapbench <entries>";
+const USAGE: &str = "usage: ebpf-bench <v1|v2|v3|v4|v5> [--flow <tcp|udp> <src ip> <src port> <dst ip> <dst port>] \
+                     [--flows <file>] [--via <neigh|nexthop|fib>] [--nexthop <interface> <ipv4>]... <interface>...\n       \
+                     ebpf-bench mapbench <entries>";
 
 // 和 ebpf/src/main.rs 一樣：位址和 port 照封包裡的 bytes 存
 #[repr(C)]
@@ -78,11 +79,30 @@ fn run() -> Result<(), Box<dyn Error>> {
         "v2" => "v2_count",
         "v3" => "v3_lookup",
         "v4" => "v4_redirect",
+        "v5" => "v5_routed",
         _ => return Err(USAGE.into()),
     };
     let mut flows = Vec::new();
+    let mut via = 0u32;
+    let mut nexthops: Vec<(String, std::net::Ipv4Addr)> = Vec::new();
     loop {
         match args.first().map(String::as_str) {
+            Some("--via") => {
+                via = match args.get(1).map(String::as_str) {
+                    Some("neigh") => 0,
+                    Some("nexthop") => 1,
+                    Some("fib") => 2,
+                    _ => return Err(USAGE.into()),
+                };
+                args.drain(..2);
+            }
+            Some("--nexthop") => {
+                if args.len() < 3 {
+                    return Err(USAGE.into());
+                }
+                let spec: Vec<String> = args.drain(..3).collect();
+                nexthops.push((spec[1].clone(), spec[2].parse()?));
+            }
             Some("--flow") => {
                 if args.len() < 7 {
                     return Err(USAGE.into());
@@ -106,13 +126,14 @@ fn run() -> Result<(), Box<dyn Error>> {
             _ => break,
         }
     }
-    if args.is_empty() || (program == "v4_redirect" && args.len() != 2) {
+    let redirects = program == "v4_redirect" || program == "v5_routed";
+    if args.is_empty() || (redirects && args.len() != 2) {
         return Err(USAGE.into());
     }
     let signals = block_stop_signals();
 
     let mut ebpf = Ebpf::load(&ELF.0)?;
-    if program == "v4_redirect" {
+    if redirects {
         let mut trust: HashMap<_, FlowKey, FlowStats> = HashMap::try_from(ebpf.map_mut("TRUST").ok_or("no map TRUST")?)?;
         for key in &flows {
             trust.insert(key, &FlowStats::default(), 0)?;
@@ -122,6 +143,14 @@ fn run() -> Result<(), Box<dyn Error>> {
         let mut peer: HashMap<_, u32, u32> = HashMap::try_from(ebpf.map_mut("PEER").ok_or("no map PEER")?)?;
         peer.insert(&a, &b, 0)?;
         peer.insert(&b, &a, 0)?;
+        if program == "v5_routed" {
+            let mut config: aya::maps::Array<_, u32> = aya::maps::Array::try_from(ebpf.map_mut("ROUTE_VIA").ok_or("no map ROUTE_VIA")?)?;
+            config.set(0, &via, 0)?;
+            let mut hops: HashMap<_, u32, u32> = HashMap::try_from(ebpf.map_mut("NEXTHOP").ok_or("no map NEXTHOP")?)?;
+            for (interface, hop) in &nexthops {
+                hops.insert(&ifindex(interface)?, &u32::from_ne_bytes(hop.octets()), 0)?;
+            }
+        }
     } else {
         let mut lookup: HashMap<_, FlowKey, u64> = HashMap::try_from(ebpf.map_mut("FLOWS").ok_or("no map FLOWS")?)?;
         for key in &flows {
