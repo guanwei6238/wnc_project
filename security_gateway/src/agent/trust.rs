@@ -221,8 +221,6 @@ impl TrustAgent {
                 state: watching,
             });
             if tracked.id != c.id {
-                // 信任中的封包不經過 conntrack，entry 逾時後控制封包會建新的 entry（id 不同）；
-                // 信任在 map 裡，要留到 TTL 才刪，所以只換 id
                 let (tuple, state) = match tracked.state {
                     State::Trusted { until } => (tracked.tuple, State::Trusted { until }),
                     _ => (c.original, watching),
@@ -273,7 +271,6 @@ impl TrustAgent {
                 State::Refused => {}
             }
         }
-        // 信任中的連線不在 conntrack 表裡也要留著（UDP 的 entry 會逾時），到期才刪 map
         self.tracked.retain(|key, tracked| match tracked.state {
             _ if seen.contains(key) => true,
             State::Trusted { until } if now < until => true,

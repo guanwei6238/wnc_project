@@ -185,7 +185,6 @@ fn ct_mark_bits_and_tcp_flags() {
 
 #[test]
 fn clearing_a_ct_mark_bit_on_a_bare_syn() {
-    // 期望值是 nft 1.1.3 對 `tcp flags & (syn | ack) == syn … ct mark set ct mark & 0x7fffffff` 的 nft -j 輸出
     let json = |s: Statement| serde_json::to_value(statement(&s)).unwrap();
     assert_eq!(
         json(Statement::TcpFlagsEq {
@@ -202,7 +201,6 @@ fn clearing_a_ct_mark_bit_on_a_bare_syn() {
 
 #[test]
 fn setting_a_ct_mark_bit_once() {
-    // 期望值是 nft 1.1.3 對 `ct mark & 0x40000000 == 0 ct mark set ct mark | 0x40000000` 的 nft -j 輸出
     let json = |s: Statement| serde_json::to_value(statement(&s)).unwrap();
     assert_eq!(
         json(Statement::CtMarkLacks(0x4000_0000)),

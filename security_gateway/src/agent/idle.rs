@@ -11,7 +11,6 @@ use crate::kernel::conntrack::{FiveTuple, Protocol};
 pub const TCP_IDLE: Duration = Duration::from_secs(600);
 pub const UDP_IDLE: Duration = Duration::from_secs(120);
 
-// 用封包數有沒有變判斷閒置，不用讀 kernel 的時間（bpf_ktime_get_ns 是 CLOCK_MONOTONIC，std 拿不到）
 #[derive(Debug, Default)]
 pub struct IdleSweep {
     last: HashMap<FiveTuple, (u64, Instant)>,

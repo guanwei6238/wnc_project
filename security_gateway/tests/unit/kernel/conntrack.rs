@@ -134,7 +134,6 @@ fn set_mark_request_matches_reference_encoding() {
 
 #[test]
 fn set_mark_never_sends_bits_outside_the_mask() {
-    // kernel 算 (old & ~mask) ^ mark：mask 外的位元若送出去會被翻轉
     let t = v4();
     assert_eq!(set_mark_request(1, &t, 0xffff_ffff, 0x8000_0000), set_mark_request(1, &t, 0x8000_0000, 0x8000_0000));
     assert_eq!(set_mark_request(1, &t, 0x7fff_ffff, 0x8000_0000), set_mark_request(1, &t, 0, 0x8000_0000));

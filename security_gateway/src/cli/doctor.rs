@@ -1010,7 +1010,6 @@ fn spawned_finding() -> Finding {
 }
 
 fn when_unavailable_finding(when_unavailable: WhenUnavailable, protection: Protection) -> Option<Finding> {
-    // ids 時跟不上不受 when_unavailable 影響，另外由 protection_findings 說明
     let when = match protection {
         Protection::Ips => "starts, restarts or falls behind",
         Protection::Ids => "starts or restarts",

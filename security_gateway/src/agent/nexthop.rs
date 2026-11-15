@@ -101,7 +101,6 @@ impl NextHops {
     }
 }
 
-// 和 kernel 轉送時一樣查：先查來源在哪個 port，再用那個 port 當入口查兩個方向；出口一定要是另一個 port
 async fn resolve(netlink: &Netlink, tuple: &FiveTuple, ports: [u32; 2]) -> (Option<IpAddr>, Option<IpAddr>) {
     let (src, dst) = (tuple.src().ip(), tuple.dst().ip());
     let Ok(Some(toward_src)) = netlink.output_route(src).await else { return (None, None) };

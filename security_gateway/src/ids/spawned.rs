@@ -243,7 +243,6 @@ fn suricata_args(options: &Options) -> Vec<OsString> {
             let fail_open = if options.fail_open { "nfq.fail-open=yes" } else { "nfq.fail-open=no" };
             (fail_open, options.fail_open)
         }
-        // 複本裡 GRO 合併過的封包 checksum 不完整；Suricata 在 NFLOG 模式本來就不能丟封包，exception policy 一律 ignore
         Delivery::Copy(_) => {
             args.extend(["--nflog".into(), "--include".into(), options.runtime_dir.join(NFLOG_CONFIG).into()]);
             ("capture.checksum-validation=none", true)

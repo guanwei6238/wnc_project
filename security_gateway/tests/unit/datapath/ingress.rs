@@ -70,7 +70,6 @@ fn numbered(i: u32) -> FiveTuple {
     tuple(Protocol::Udp, &format!("10.1.{a}.{b}:4000"), "10.2.0.1:53")
 }
 
-// 要 CAP_BPF：在 testbed 的 gw 裡用 root 跑 `--ignored`
 #[test]
 #[ignore = "needs CAP_BPF and CAP_NET_ADMIN"]
 fn the_trust_map_holds_16384_connections_and_then_reports_full() {

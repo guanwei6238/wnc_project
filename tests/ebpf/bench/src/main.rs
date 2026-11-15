@@ -20,7 +20,6 @@ const USAGE: &str = "usage: ebpf-bench <v1|v2|v3|v4|v5> [--flow <tcp|udp> <src i
                      [--flows <file>] [--via <neigh|nexthop|fib>] [--nexthop <interface> <ipv4>]... <interface>...\n       \
                      ebpf-bench mapbench <entries>";
 
-// 和 ebpf/src/main.rs 一樣：位址和 port 照封包裡的 bytes 存
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct FlowKey {

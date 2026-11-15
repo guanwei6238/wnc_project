@@ -23,7 +23,6 @@ pub struct FlowKey {
     proto: u32,
 }
 
-// 0：封包數，1：V3 查到的次數、V4 redirect 的次數
 #[map]
 static COUNT: PerCpuArray<u64> = PerCpuArray::with_max_entries(2, 0);
 
@@ -38,7 +37,6 @@ pub struct FlowStats {
     last_ns: u64,
 }
 
-// V4：信任的五元組（每個方向一筆）和收到的 port → 送出的 port
 #[map]
 static TRUST: HashMap<FlowKey, FlowStats> = HashMap::with_max_entries(65536, 0);
 
@@ -72,11 +70,8 @@ enum L4 {
     At(usize),
 }
 
-// 沒有 CAP_PERFMON 時 verifier 不接受「變數 offset ＋ 封包指標」（編譯器會產生 scalar += pkt），
-// 所以常見的兩種位置用固定 offset 直接讀，IPv4 帶 option 時改用 bpf_skb_load_bytes
 #[inline(always)]
 fn lookup(ctx: &TcContext) -> Option<()> {
-    // key 一次組好：先清成 0 再填欄位會被編成逐 byte 的 memset，沒有 CAP_PERFMON 時 verifier 也不接受
     let (proto, saddr, daddr, l4): (u8, [u32; 4], [u32; 4], L4) = match u16::from_be(read::<u16>(ctx, 12)?) {
         0x0800 => {
             let vhl = read::<u8>(ctx, 14)?;
@@ -119,15 +114,12 @@ fn lookup(ctx: &TcContext) -> Option<()> {
 #[inline(always)]
 fn fast_path(ctx: &TcContext) -> Option<i32> {
     let ethertype = u16::from_be(read::<u16>(ctx, 12)?);
-    // 廣播、多播交回 bridge：它們也要送給 gateway 自己。
-    // 先讀 offset 12 才讀 0：offset 0 自己的邊界檢查會被 LLVM 改成 data >= data_end，verifier 不認得
     if read::<u8>(ctx, 0)? & 1 != 0 {
         return None;
     }
     let (proto, saddr, daddr, l4): (u8, [u32; 4], [u32; 4], L4) = match ethertype {
         0x0800 => {
             let vhl = read::<u8>(ctx, 14)?;
-            // 分片沒有 L4 header，交回 netfilter（conntrack 會先組回）
             if u16::from_be(read::<u16>(ctx, 20)?) & 0x3fff != 0 {
                 return None;
             }
@@ -162,7 +154,6 @@ fn fast_path(ctx: &TcContext) -> Option<i32> {
         proto: u32::from(proto),
     };
     if flags & (TCP_SYN | TCP_FIN | TCP_RST) != 0 {
-        // 純 SYN：同一組五元組的新連線，不沿用舊的信任
         if flags & (TCP_SYN | TCP_ACK) == TCP_SYN {
             let reverse = FlowKey {
                 saddr: daddr,
@@ -200,9 +191,6 @@ pub fn v4_redirect(ctx: TcContext) -> i32 {
     }
 }
 
-// V5：routed 的三種送法。0 = bpf_redirect_neigh 不帶參數（kernel 查路由和 neighbor，wnc-gw 現在的做法）；
-// 1 = bpf_redirect_neigh 帶下一跳（kernel 只查 neighbor，下一跳從 NEXTHOP 查，key 是出口的 ifindex）；
-// 2 = bpf_fib_lookup（kernel 查路由和 neighbor 給 MAC）＋自己改 MAC＋bpf_redirect（GPL-only）
 #[map]
 static ROUTE_VIA: Array<u32> = Array::with_max_entries(1, 0);
 
@@ -222,7 +210,6 @@ struct FibParams {
     src: [u32; 4],
     dst: [u32; 4],
     vlan: u32,
-    // MAC 拆成純量欄位：全部是 0 的陣列會被編成 memset，沒有 CAP_PERFMON 時 verifier 不接受
     smac0: u16,
     smac1: u16,
     smac2: u16,
@@ -286,8 +273,6 @@ fn routed_path(ctx: &TcContext) -> Option<i32> {
         return None;
     }
     let via = ROUTE_VIA.get(0).copied().unwrap_or(0);
-    // 一個欄位一個欄位用 write_volatile 寫：連續的 0 會被 LLVM 合成 memset，沒有 CAP_PERFMON 時 verifier 不接受。
-    // FibParams 沒有 padding，所以每個 byte 都寫到了
     let mut slot = MaybeUninit::<FibParams>::uninit();
     let f = slot.as_mut_ptr();
     let tot_len = u16::from_be(read::<u16>(ctx, 16)?);
@@ -317,7 +302,6 @@ fn routed_path(ctx: &TcContext) -> Option<i32> {
         let ret = unsafe {
             fib_lookup(ctx.as_ptr(), f as *mut bpf_fib_lookup, size_of::<FibParams>() as i32, 0)
         };
-        // 查不到、neighbor 還沒解析、出口不是另一個 port：交回 kernel
         if ret != 0 || unsafe { read_volatile(addr_of!((*f).ifindex)) } != peer {
             return None;
         }

@@ -172,7 +172,6 @@ impl RouteChanges {
         Ok(Self { messages })
     }
 
-    // None：通知的連線斷了，之後收不到路由的變更
     pub async fn next(&mut self) -> Option<()> {
         while let Some((message, _)) = self.messages.next().await {
             if matches!(
@@ -348,7 +347,6 @@ impl Netlink {
         self.route_get(message).await
     }
 
-    // 和 ip route get <dst> from <src> iif <iif> 一樣：kernel 轉送這個封包時的查法
     pub async fn forwarding_route(&self, src: IpAddr, dst: IpAddr, iif: u32) -> Result<Option<RouteTo>, NetifError> {
         let message = RouteMessageBuilder::<IpAddr>::new()
             .destination_prefix(dst, host_prefix(dst))

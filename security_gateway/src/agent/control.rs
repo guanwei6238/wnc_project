@@ -126,7 +126,6 @@ impl ControlServer {
         }
         let listener = UnixListener::bind(path)?;
         fs::set_permissions(path, fs::Permissions::from_mode(0o600))?;
-        // socket 的擁有者就是 run 自己的帳號（不用 unsafe 的 geteuid）
         let owner = fs::metadata(path)?.uid();
         Ok(Self {
             listener,

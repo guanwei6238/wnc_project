@@ -1,6 +1,3 @@
-// fanout <group> <readers> [snaplen]：從一個 NFLOG group 收 kernel 給的一份複本，在 user space 分給 N 個讀取端。
-// 讀取端是同一個 process 裡的執行緒，各有一個環狀緩衝區（單一寫入者、單一讀取者，8 MiB），每 1 ms 把新的封包讀完；
-// 緩衝區滿就丟掉那個讀取端的那一份並計數。統計每 200 ms 寫到 /dev/shm/fanout.stats（fo_in fo_drop fo_out fo_readers）。
 use std::cell::UnsafeCell;
 use std::io;
 use std::sync::Arc;

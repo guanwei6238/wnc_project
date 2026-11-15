@@ -56,7 +56,6 @@ fn parse_selector_rejects_invalid() {
     }
 }
 
-// 少一組的 MAC 若用 '-' 分隔，仍是合法的介面名稱，會被當成名稱，在 resolve 時找不到
 #[test]
 fn partial_dashed_mac_is_a_name() {
     assert_eq!(

@@ -22,7 +22,6 @@ pub struct Writable {
     pub writer: Writer,
 }
 
-// 檢查路徑上每一層目錄，也檢查跟著 symlink 之後的實際檔案和它的每一層目錄
 pub fn non_root_writers(path: &Path) -> io::Result<Vec<Writable>> {
     let written = std::path::absolute(path)?;
     let real = fs::canonicalize(path)?;

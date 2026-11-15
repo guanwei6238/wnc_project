@@ -13,7 +13,6 @@ fn main() {
     println!("cargo::rerun-if-changed={}", manifest_dir.join("ebpf").display());
     println!("cargo::rerun-if-changed={}", manifest_dir.join("Cargo.lock").display());
 
-    // 另外的 target 目錄：和外層的 cargo 共用會互相鎖住
     let target_dir = out_dir.join("ebpf-target");
     let output = Command::new("rustup")
         .args(["run", EBPF_TOOLCHAIN, "cargo", "build", "--quiet", "--release"])
@@ -21,7 +20,6 @@ fn main() {
         .arg("--target-dir")
         .arg(&target_dir)
         .current_dir(&manifest_dir)
-        // 外層 cargo 設的 RUSTC 指向 stable，留著會讓 nightly 的 cargo 用錯編譯器
         .env_remove("RUSTC")
         .env_remove("RUSTC_WRAPPER")
         .env_remove("RUSTC_WORKSPACE_WRAPPER")

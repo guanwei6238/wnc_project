@@ -1,4 +1,3 @@
-// 不用 println!：stdout 被關掉時（wnc-gw doctor | head）println! 會 panic
 macro_rules! out {
     () => {
         out!("")

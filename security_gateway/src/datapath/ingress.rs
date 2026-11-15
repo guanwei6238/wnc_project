@@ -111,7 +111,6 @@ impl CoreProgram {
         Ok(())
     }
 
-    // 回傳 false：這條連線已經不被信任了
     pub fn set_next_hops(
         &mut self,
         tuple: &FiveTuple,
@@ -163,7 +162,6 @@ impl CoreProgram {
         Ok(())
     }
 
-    // 回傳 false：本來就沒有被信任
     pub fn untrust(&mut self, tuple: &FiveTuple) -> Result<bool, TrustError> {
         let key = key_of(tuple)?;
         let original = self.program.remove_flow(TRUST, &key)?;

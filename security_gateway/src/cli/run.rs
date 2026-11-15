@@ -509,7 +509,6 @@ fn answer(request: Request, privd: &mut LocalPrivd, uid: i64) -> Response {
                 Ok(tuple) => tuple,
                 Err(e) => return error(e),
             };
-            // 只信任 gateway 轉送的連線：送給 gateway 自己的連線 redirect 出去就錯了
             match privd.connection(&tuple) {
                 Ok(c) if c.mark & FORWARDED_MARK != 0 => {}
                 Ok(_) => return error(format!("{tuple} is not forwarded by the gateway")),

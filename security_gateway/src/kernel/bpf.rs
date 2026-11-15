@@ -110,7 +110,6 @@ impl TcxProgram {
         })
     }
 
-    // 只改已經有的：讀和寫之間 kernel 刪掉的（純 SYN）不能被寫回來。回傳 false：已經沒有這筆
     pub fn update_flow(&mut self, map: &'static str, key: &FlowKey, value: &FlowStats) -> Result<bool, BpfError> {
         let mut hash: BpfHashMap<_, FlowKey, FlowStats> =
             self.map_mut(map)?.try_into().map_err(|e| map_error(map, &e))?;
@@ -121,7 +120,6 @@ impl TcxProgram {
         }
     }
 
-    // 回傳 false：本來就沒有這筆
     pub fn remove_flow(&mut self, map: &'static str, key: &FlowKey) -> Result<bool, BpfError> {
         let mut hash: BpfHashMap<_, FlowKey, FlowStats> =
             self.map_mut(map)?.try_into().map_err(|e| map_error(map, &e))?;
@@ -144,7 +142,6 @@ impl TcxProgram {
 
     pub fn flows(&self, map: &'static str) -> Result<Vec<(FlowKey, FlowStats)>, BpfError> {
         let hash: BpfHashMap<_, FlowKey, FlowStats> = self.map(map)?.try_into().map_err(|e| map_error(map, &e))?;
-        // 列舉途中被 kernel 刪掉的（純 SYN）會在這裡失敗，跳過
         Ok(hash.iter().filter_map(Result::ok).collect())
     }
 
@@ -214,7 +211,6 @@ pub fn tcx_ingress(ifindex: u32) -> Result<TcxChain, TcxQueryError> {
         prog_cnt: BPF_MPROG_MAX as u32,
         ..Default::default()
     };
-    // QueryAttr 照 kernel bpf_attr 的 query 段排列（測試檢查 offset）；prog_ids 指向的陣列在呼叫期間有效、長度是 prog_cnt
     let ret = unsafe {
         libc::syscall(
             libc::SYS_bpf,
@@ -249,7 +245,6 @@ pub fn program_names() -> Result<HashMap<u32, String>, BpfError> {
             Ok(info) => {
                 names.insert(info.id(), info.name_as_str().unwrap_or_default().to_owned());
             }
-            // 列舉途中結束的程式會在這裡失敗，只有一筆都拿不到時才算錯
             Err(e) if names.is_empty() => return Err(BpfError::List(error_chain(&e))),
             Err(_) => {}
         }
