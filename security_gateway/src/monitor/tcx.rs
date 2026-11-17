@@ -94,5 +94,4 @@ fn log(port: &str, prog_id: u32, now: &Position) {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/monitor/tcx.rs"]
 mod tests;

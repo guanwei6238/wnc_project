@@ -1,6 +1,6 @@
 ---
 name: gateway-development
-description: 在 security_gateway/（執行檔 wnc-gw）加功能或改程式時的實作慣例：程式該放哪一層（cli/、config、ports、forwarding/、datapath/、kernel/、platform/，之後的 ids/）、型別與英文錯誤訊息怎麼寫、設定欄位與 CLI 參數怎麼加、單元測試放 tests/unit/ 並鏡像 src、新功能要在 wnc-gw doctor 補哪些檢查，以及「先在 Docker testbed 驗證、再上 Pi」的流程。只要要在 wnc-gw 新增或修改子命令、setting.toml 欄位、kernel 互動（netlink、sysfs、procfs、nftables、conntrack、eBPF 載入）、doctor 檢查或測試，或要在 Docker／Pi 上驗證 gateway，都先讀這份 skill，即使使用者只說「加一個功能」「檢查一下環境」「接下來做 X」。目標架構與安全底線另見 gateway-architecture。
+description: 在 security_gateway/（執行檔 wnc-gw）加功能或改程式時的實作慣例：程式該放哪一層（cli/、config、ports、forwarding/、datapath/、kernel/、platform/，之後的 ids/）、型別與英文錯誤訊息怎麼寫、設定欄位與 CLI 參數怎麼加、單元測試放在被測檔案旁的 <模組>/tests.rs、新功能要在 wnc-gw doctor 補哪些檢查，以及「先在 Docker testbed 驗證、再上 Pi」的流程。只要要在 wnc-gw 新增或修改子命令、setting.toml 欄位、kernel 互動（netlink、sysfs、procfs、nftables、conntrack、eBPF 載入）、doctor 檢查或測試，或要在 Docker／Pi 上驗證 gateway，都先讀這份 skill，即使使用者只說「加一個功能」「檢查一下環境」「接下來做 X」。目標架構與安全底線另見 gateway-architecture。
 ---
 
 # wnc-gw 開發指南
@@ -80,7 +80,7 @@ security_gateway/
 │       ├── procs.rs        /proc 裡 comm 符合的程序：State、PPid、cmdline、VmRSS、cgroup、network namespace（Process）；讀不到 status 就當成已經結束；others_hidden()：hidepid 而且不是 root
 │       ├── nft.rs          Nft（路徑由設定決定）：自己的 Table/BaseChain/RegularChain/Statement（Counter、Jump、Queue、Drop、Accept、CtMarkHas、CtMarkLacks、CtMarkSet、CtMarkClear、TcpFlagsAny、TcpFlagsEq、Log、JumpBySymhash）型別，queue 範圍產生 symhash → nftables crate 的 JSON → nft -j -f -（有逾時）；replace_table、replace_rules（同一個 transaction 裡 flush chain 再加規則）、delete_table；nft -V → NftInfo
 │       └── sysctl.rs       讀 /proc/sys（key 不存在時回傳 None）
-└── tests/unit/             白箱單元測試，路徑鏡像 src/（見 §3.7）
+└── src/**/<模組>/tests.rs  白箱單元測試（見 §3.7）；tests/ 留給黑箱測試
 ```
 
 ## 2. 分層：程式該放哪裡
@@ -100,7 +100,7 @@ security_gateway/
 | `ids/` | 跟 IDS engine 打交道：執行 Suricata、解析它的輸出，之後的 EVE、unix socket 也放這裡。整合方式是 A（2026-10-25 決定）：Suricata 是獨立的 process，不內嵌 libsuricata。`suricata.rs` 是探測（`--build-info`、`--dump-config`、規則檔、寫 alert 的 eve-log 檔，給 doctor 和 run 用）。`eve.rs` 讀 EVE 檔並解析 alert（EVE 是不可信的輸入：壞掉的行跳過並計數，字串只在 log 裡用 Debug 格式跳脫）。`lifecycle.rs` 是 O14 的生命週期介面，對外只有「已就緒」「已停止」兩種事件；`spawned.rs` 是 wnc-gw 自己啟動 Suricata 的實作，之後 systemd 管理的實作也實作同一個 trait。實作自己記 log（啟動、就緒、結束、退避），用介面的一方（`run`、之後的 queue 管理）只依事件行動，不重複記錄 | 判斷好壞或嚴重程度（由 doctor 決定）；把封包導進 queue 的 nft 規則（`firewall.rs`） |
 | `agent/` | 3d 的判斷：讀連線和 alert、決定信任或撤銷；判斷寫成純函式（`observe()`、`alert()` 輸出 Decision），寫入經 `Privd` trait，記 log 另外一層。之後拆成無特權的 agent process 時，`Privd` 換成跨 process 的實作 | 直接碰 ctnetlink 或 nft（經 `Privd`）；讀 EVE 檔（`ids/eve.rs`） |
 | `monitor/` | `run` 執行中定期讀 kernel 的計數，判斷要不要記 log、用什麼等級（目前是 conntrack、ids 漏掉的複本、Suricata 的 alert 摘要；之後 Suricata 跟不上被 fail-open 放行的封包數、3d 的狀態表大小也放這裡）。判斷寫成純函式（輸入上一次和這一次的數字，輸出發現的事），記 log 另外一層 | 讀取本身（`kernel/`）；doctor 的一次性檢查（表滿不滿是執行中的狀態，不是「能不能運作」） |
-| `platform/` | 真正因 OS 而異的東西：設定怎麼在開機後保留、服務管理（systemd 對 procd）、設定來源（檔案對 UCI）。每種差異定一個 trait，每個 OS 一個 struct 實作全部 trait；`Current` 在編譯時指向目前的 OS。目前有 `BootConfig`（kernel 模組和 sysctl 寫在哪裡才會在開機後保留，給 doctor 的修法提示用）、`Dirs`（wnc-gw 自己的執行期目錄和 log 目錄：使用者不能改，但不同 OS 不同，例如 OpenWrt 的 `/var` 在記憶體裡）和 `Debian`。每個 OS 的實作一律編譯（`pub mod`），只有 `Current` 依 feature 選，所以每次建置都會測到所有 OS。新增 OS：加 `<os>.rs`、`tests/unit/platform/<os>.rs`、一個 cargo feature，再讓 `Current` 依 feature 選 | netlink、nft、eBPF、`modprobe`、`sysctl -w`、`ip link` 這類 kernel 介面和立即生效的指令：在每個 OS 上都一樣，屬於 `kernel/` 或直接寫在呼叫端；不是由 OS 決定的選擇（fast path 後端依 probe、IDS engine 依 O6）也不放這裡 |
+| `platform/` | 真正因 OS 而異的東西：設定怎麼在開機後保留、服務管理（systemd 對 procd）、設定來源（檔案對 UCI）。每種差異定一個 trait，每個 OS 一個 struct 實作全部 trait；`Current` 在編譯時指向目前的 OS。目前有 `BootConfig`（kernel 模組和 sysctl 寫在哪裡才會在開機後保留，給 doctor 的修法提示用）、`Dirs`（wnc-gw 自己的執行期目錄和 log 目錄：使用者不能改，但不同 OS 不同，例如 OpenWrt 的 `/var` 在記憶體裡）和 `Debian`。每個 OS 的實作一律編譯（`pub mod`），只有 `Current` 依 feature 選，所以每次建置都會測到所有 OS。新增 OS：加 `<os>.rs`、`<os>/tests.rs`、一個 cargo feature，再讓 `Current` 依 feature 選 | netlink、nft、eBPF、`modprobe`、`sysctl -w`、`ip link` 這類 kernel 介面和立即生效的指令：在每個 OS 上都一樣，屬於 `kernel/` 或直接寫在呼叫端；不是由 OS 決定的選擇（fast path 後端依 probe、IDS engine 依 O6）也不放這裡 |
 
 規則：
 
@@ -130,7 +130,7 @@ security_gateway/
   2. `Config` 的對應欄位與合併邏輯。
   3. 只在某個選項下才有作用的欄位：`Config` 裡用 enum 分開（例如 `TrustSettings::Auto(AutoTrust)`、`Delivery`），不要放一個「有時沒用」的欄位；另一個選項下設了就在 `merge()` 加進 `ConfigError::Inapplicable`（C004）（2026-11-14，DECISIONS.md §21）。
   4. `setting.example.toml`：用英文說明，值**註解掉**（範本不能替使用者決定）。現有測試會確認範本原樣解析後什麼都沒設、去掉 `# ` 後能解析，但**新欄位沒寫進範本時測試抓不到**，要自己記得補。
-  5. `tests/unit/config/mod.rs` 的測試。
+  5. `src/config/tests.rs` 的測試。
 - 只有跨子命令共用的參數才設成 `global = true`（例如 `--config`、`--lan`、`--wan`、`--log-format`）。
 - 每個子命令都有自己的 `Args` struct，即使是空的，例如 `DoctorArgs {}`；之後加參數只要新增欄位。分類多的功能用巢狀子命令，例如 `wnc-gw show interfaces`。
 - clap 的 `///` 是 `--help` 的說明文字，不只是註解。開發者傾向刪掉說明性註解；遇到時提醒這會讓 help 變空，由開發者決定，不要自己加回去。
@@ -156,7 +156,7 @@ security_gateway/
 - 用 `tracing`（`tracing-subscriber` 只開 `fmt`、`std`、`ansi`、`json`）。lib 只用 `info!`、`warn!`、`error!` 這類 macro 發出事件，**不設定輸出**；輸出由 bin 的 `cli/logging.rs` 決定，目前 `run` 和 `trust add/del` 會呼叫 `init()`。
 - **格式**：`--log-format text|json`（全域參數，預設 text，2026-10-29）。放命令列而不是 setting.toml：log 在讀設定檔之前就開始（讀設定失敗也要記），而且格式取決於誰讀輸出，是執行環境的事。json 每行一個物件，欄位攤平在最外層（`{"timestamp":…,"level":"INFO","message":…,"uninspected_ms":97}`），數字欄位是 JSON 數字，不輸出 target 和 span。doctor 的報告（stdout）和 CLI 的 `error: …`（例如 `trust add` 找不到連線）不是事件，維持純文字；分析 `run` 的 log 時只讀 stderr。
 - **報告和事件分開**：doctor 的報告印在 stdout（它是報告，見 `references/doctor-checks.md` §2）；`run` 這類長時間執行的命令，過程中發生的事一律記成事件，印在 stderr。用 systemd 執行時 stderr 直接進 journald。
-- **每個 WARN、ERROR 事件的第一個欄位是 `code = %Issue::X`**（2026-11-14），`wnc-gw explain` 查得到說明；`tests/unit/issue.rs` 會掃 `src/`，漏了就失敗。新的事件要在 `src/issue.rs` 加 variant 和 cause／action。INFO、DEBUG 不用。
+- **每個 WARN、ERROR 事件的第一個欄位是 `code = %Issue::X`**（2026-11-14），`wnc-gw explain` 查得到說明；`src/issue/tests.rs` 會掃 `src/`（跳過 `tests.rs`），漏了就失敗。新的事件要在 `src/issue.rs` 加 variant 和 cause／action。INFO、DEBUG 不用。
 - 訊息照錯誤訊息的規則：英文、小寫開頭、結尾不加句號。會變的值放欄位，不要塞進訊息：`info!(table = table.as_str(), "table installed")`，錯誤放 `error = %e`。欄位名稱用 snake_case，有單位的寫在名稱裡（`ready_ms`、`uptime_s`）。字串欄位用 `as_str()` 記錄，輸出時會加引號，含空白也不會跟其他欄位混在一起。
 - **會讓流量沒經過檢查的事件，一定要記**（開發者 2026-10-26 的要求）：Suricata 啟動、就緒、結束（結束碼或 signal、執行多久）、重啟，以及 queue 規則的裝上和拆掉。「從什麼時候到什麼時候沒有檢查」要能直接從 log 讀出來：目前是 WARN「forwarded traffic passes without inspection」（或 `is dropped without inspection`）到 INFO「forwarded traffic is inspected」（帶 `uninspected_ms`）。
 - 時間是 UTC。Pi 沒有校時時，log 的時間不可信（2026-10-26 時 Pi 慢了 6 天）。
@@ -169,19 +169,18 @@ security_gateway/
 
 ### 3.7 測試
 
-- 白箱單元測試放 `tests/unit/<與 src 相同的路徑>.rs`。src 檔案結尾只留三行：
+- 白箱單元測試放在被測檔案旁邊的 `<模組>/tests.rs`（2026-11-17 從 `tests/unit/` 搬過來）：`src/config/ports.rs` 的測試在 `src/config/ports/tests.rs`；`mod.rs` 的測試在同一個目錄（`src/config/mod.rs` → `src/config/tests.rs`）。src 檔案結尾只留兩行，不用 `#[path]`：
 
   ```rust
   #[cfg(test)]
-  #[path = "../../tests/unit/config/ports.rs"]   // 路徑相對於這個 src 檔所在的目錄（這是 src/config/ports.rs）
   mod tests;
   ```
 
-  例如 `src/kernel/modules.rs` 用 `"../../tests/unit/kernel/modules.rs"`，`src/cli/doctor.rs` 用 `"../../tests/unit/cli/doctor.rs"`。測試檔用 `use super::*;`，所以私有函式也測得到。
+  測試檔用 `use super::*;`，所以私有函式也測得到。
 - 不要把測試寫在 src 檔案裡，也不要為了測試把函式改成 `pub`（那會讓外部 crate 的型別流出薄模組）。
-- `tests/*.rs` 和 `tests/*/main.rs` 會被 Cargo 當成整合測試（黑箱，只看得到 `pub`）。`tests/unit/` 不會被自動偵測，所以不衝突。之後的黑箱測試放在 `tests/` 的另一個子目錄，名稱跟開發者確認。
+- `tests/` 只放黑箱測試：`tests/*.rs` 和 `tests/*/main.rs` 是 Cargo 的整合測試（獨立的 crate，只看得到 `pub`，或執行 `wnc-gw` 本身）。要 root、netns、Suricata 的測試留在 repo 根目錄 `tests/` 的 Docker／Pi 腳本。
 - 把 I/O 和邏輯分開，讓邏輯可以餵假資料測：例如 `ModuleIndex::load()` 讀檔，`from_parts()` 只解析字串；`config::load()` 讀檔，`parse()`、`merge()` 是純函式。
-- 預期文字裡跟 OS 有關的部分用 `Current` 產生（例如 `Current.persist_module_hint("br_netfilter")`），各 OS 的完整文字只在 `tests/unit/platform/<os>.rs` 逐字檢查。這樣換 OS 建置時，其他測試不用改。
+- 預期文字裡跟 OS 有關的部分用 `Current` 產生（例如 `Current.persist_module_hint("br_netfilter")`），各 OS 的完整文字只在 `src/platform/<os>/tests.rs` 逐字檢查。這樣換 OS 建置時，其他測試不用改。
 - 要讓 repo 內的檔案和程式保持同步時，用 `include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/…"))` 在測試裡讀進來檢查（`setting.example.toml` 就是這樣）。
 
 ### 3.8 use

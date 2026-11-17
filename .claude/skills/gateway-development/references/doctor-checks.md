@@ -86,8 +86,8 @@ warning: …
    - 每個 `Finding` 帶一個 `Issue`（`src/issue.rs`，印成 `warning[R006]: …`）。新的情況在 `issues!` 加一個 variant、在 `explanation()` 給代碼（字母依類別：C 設定、P port、B／R 模式、X XDP、K 模組、N nft、S Suricata、O 其他 Suricata、T 信任、A 權限）和說明：照 Oracle `oerr`、Cisco system message 的寫法只有 cause（什麼情況會觸發，要寫到驗證方照著做就能重現）和 action（怎麼處理），各 1–3 句（2026-11-14，開發者覺得分 meaning／check／impact 太細；驗證方要用這些說明做測試）。同一個檢查的「無法確認」用同一個代碼，嚴重程度寫 `error or warning`。forwarding 的 `EnvCheck`、`Note` 也帶 `Issue`。
 4. **接上**：在 `run()` 裡加一行 `findings.extend(check_x());`，位置放在相關段落的後面。
 5. **測試**：
-   - 探測的解析放在 `tests/unit/<lib 路徑>.rs`。
-   - 判斷的規則放在 `tests/unit/cli/doctor.rs`，每個嚴重程度至少一個例子，並檢查完整的訊息文字。
+   - 探測的解析放在 `src/<lib 路徑去掉 .rs>/tests.rs`。
+   - 判斷的規則放在 `src/cli/doctor/tests.rs`，每個嚴重程度至少一個例子，並檢查完整的訊息文字。
 6. **在 Docker 驗證**：正常情況，加上能模擬的失敗情況（見 `testbed.md`）。不能模擬的失敗（例如拿掉正在執行的 kernel 的模組）就靠單元測試，並在回報時說明。
 7. **確認 Docker 和 Pi 的差異**：容器用的是筆電的 kernel，Docker 的結果不代表 Pi。回報時列出哪些項目要到 Pi 上再確認。
 

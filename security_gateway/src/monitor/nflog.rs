@@ -83,5 +83,4 @@ fn log(finding: Finding) {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/monitor/nflog.rs"]
 mod tests;

@@ -152,5 +152,4 @@ fn unavailable_rules(when_unavailable: WhenUnavailable) -> Vec<Vec<Statement>> {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/datapath/firewall.rs"]
 mod tests;

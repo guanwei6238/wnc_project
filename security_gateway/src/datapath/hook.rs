@@ -74,5 +74,4 @@ pub fn core_hook(policy: XdpPolicy, native: Option<XdpFeatures>) -> CoreHook {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/datapath/hook.rs"]
 mod tests;

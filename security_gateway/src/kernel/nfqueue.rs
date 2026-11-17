@@ -86,5 +86,4 @@ impl<'de> serde::Deserialize<'de> for QueueRange {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/kernel/nfqueue.rs"]
 mod tests;

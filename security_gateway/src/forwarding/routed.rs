@@ -363,5 +363,4 @@ fn not_bridged_check(ports: &[Port], interfaces: &[Interface]) -> EnvCheck {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/forwarding/routed.rs"]
 mod tests;

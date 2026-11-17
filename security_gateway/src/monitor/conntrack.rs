@@ -100,5 +100,4 @@ fn log(finding: Finding) {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/monitor/conntrack.rs"]
 mod tests;

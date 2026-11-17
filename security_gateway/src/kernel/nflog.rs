@@ -128,5 +128,4 @@ fn parse_netlink(text: &str) -> Vec<NetfilterSocket> {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/kernel/nflog.rs"]
 mod tests;

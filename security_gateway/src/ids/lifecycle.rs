@@ -60,5 +60,4 @@ pub trait Lifecycle {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/ids/lifecycle.rs"]
 mod tests;

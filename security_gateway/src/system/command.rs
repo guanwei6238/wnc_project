@@ -78,5 +78,4 @@ pub async fn run(path: &Path, args: &[&OsStr], input: &[u8]) -> Result<Vec<u8>, 
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/system/command.rs"]
 mod tests;

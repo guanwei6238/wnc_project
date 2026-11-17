@@ -675,5 +675,4 @@ fn malformed(e: impl fmt::Display) -> ConntrackError {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/kernel/conntrack.rs"]
 mod tests;

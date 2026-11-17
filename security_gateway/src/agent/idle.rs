@@ -82,5 +82,4 @@ fn idle_after(protocol: Protocol) -> Duration {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/agent/idle.rs"]
 mod tests;

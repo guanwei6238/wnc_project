@@ -239,5 +239,4 @@ fn address(ip: IpAddr) -> [u32; 4] {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/datapath/ingress.rs"]
 mod tests;

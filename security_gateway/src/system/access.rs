@@ -79,5 +79,4 @@ fn name_of(text: &str, id: u32) -> Option<String> {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/system/access.rs"]
 mod tests;

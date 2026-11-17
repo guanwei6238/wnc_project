@@ -372,5 +372,4 @@ impl TrustAgent {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/agent/trust.rs"]
 mod tests;

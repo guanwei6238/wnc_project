@@ -127,5 +127,4 @@ fn module_name(path: &str) -> Option<String> {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/kernel/modules.rs"]
 mod tests;

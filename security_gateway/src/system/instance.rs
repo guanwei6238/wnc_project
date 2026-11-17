@@ -50,5 +50,4 @@ pub fn lock(runtime_dir: &Path) -> Result<InstanceLock, InstanceError> {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/system/instance.rs"]
 mod tests;

@@ -1411,5 +1411,4 @@ impl FromStr for Issue {
 }
 
 #[cfg(test)]
-#[path = "../tests/unit/issue.rs"]
 mod tests;

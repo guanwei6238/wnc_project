@@ -567,5 +567,4 @@ fn read_driver(name: &str) -> Option<String> {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/kernel/netif.rs"]
 mod tests;

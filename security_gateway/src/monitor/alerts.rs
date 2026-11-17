@@ -287,5 +287,4 @@ impl AlertWatch {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/monitor/alerts.rs"]
 mod tests;

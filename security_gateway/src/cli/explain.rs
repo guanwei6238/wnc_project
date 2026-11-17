@@ -69,5 +69,4 @@ fn wrap(text: &str, first: &str, rest: &str) -> String {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/cli/explain.rs"]
 mod tests;

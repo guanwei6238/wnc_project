@@ -421,5 +421,4 @@ fn file_or_path(from_file: Option<AbsolutePath>, default: &str) -> Setting<Absol
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/config/mod.rs"]
 mod tests;

@@ -75,5 +75,4 @@ fn boot_state(stdout: &str, status: ExitStatus, stderr: &str) -> BootState {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/platform/debian.rs"]
 mod tests;

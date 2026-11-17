@@ -174,5 +174,4 @@ impl Incoming {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/agent/control.rs"]
 mod tests;

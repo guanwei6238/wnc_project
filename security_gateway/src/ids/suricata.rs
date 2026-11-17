@@ -389,5 +389,4 @@ fn queue(value: &str) -> Option<QueueRange> {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/ids/suricata.rs"]
 mod tests;

@@ -1473,5 +1473,4 @@ fn print_ports(config: &Config, results: &[Result<Port, ResolveError>]) {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/cli/doctor.rs"]
 mod tests;

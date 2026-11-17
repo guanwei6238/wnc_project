@@ -343,4 +343,4 @@ flowchart LR
 | `src/system/` | 檔案能不能被非 root 修改（`access.rs`）、執行外部程式（`command.rs`）、同一台機器只跑一個 wnc-gw（`instance.rs`） |
 | `src/monitor/` | 執行中的監控（conntrack 表、NFLOG 漏掉的複本、Suricata 的 alert 摘要） |
 | `src/platform/` | 依 OS 而不同的部分（目前只有 Debian） |
-| `tests/unit/` | 單元測試，路徑對應 `src/` |
+| `src/**/<模組>/tests.rs` | 白箱單元測試，放在它測的檔案旁邊（`src/agent/trust.rs` 的測試在 `src/agent/trust/tests.rs`）；`tests/` 留給黑箱測試 |

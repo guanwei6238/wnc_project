@@ -122,5 +122,4 @@ fn other_port(ports: [u32; 2], ifindex: u32) -> Option<u32> {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/agent/nexthop.rs"]
 mod tests;

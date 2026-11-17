@@ -26,5 +26,4 @@ fn path(key: &str) -> PathBuf {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/kernel/sysctl.rs"]
 mod tests;

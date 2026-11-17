@@ -318,5 +318,4 @@ fn ends_with_newline(file: &File, len: u64) -> bool {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/ids/eve.rs"]
 mod tests;

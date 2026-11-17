@@ -267,5 +267,4 @@ fn error_chain(e: &dyn std::error::Error) -> String {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/kernel/bpf.rs"]
 mod tests;

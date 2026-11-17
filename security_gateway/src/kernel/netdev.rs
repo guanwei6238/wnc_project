@@ -171,5 +171,4 @@ impl ParseableParametrized<[u8], GenlHeader> for DevMessage {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/kernel/netdev.rs"]
 mod tests;

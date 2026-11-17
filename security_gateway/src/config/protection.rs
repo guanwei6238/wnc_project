@@ -41,5 +41,4 @@ impl<'de> serde::Deserialize<'de> for Protection {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/config/protection.rs"]
 mod tests;

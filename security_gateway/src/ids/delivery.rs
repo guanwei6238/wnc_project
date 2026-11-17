@@ -18,5 +18,4 @@ impl fmt::Display for Delivery {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/ids/delivery.rs"]
 mod tests;

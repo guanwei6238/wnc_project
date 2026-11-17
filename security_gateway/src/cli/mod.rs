@@ -71,5 +71,4 @@ pub async fn run() -> ExitCode {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/cli/mod.rs"]
 mod tests;

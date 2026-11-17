@@ -172,5 +172,4 @@ fn describe(port: &Port) -> String {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/forwarding/mod.rs"]
 mod tests;

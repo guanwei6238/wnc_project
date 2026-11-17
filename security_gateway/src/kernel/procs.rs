@@ -121,5 +121,4 @@ fn parse_cgroup(text: &str) -> Option<String> {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/kernel/procs.rs"]
 mod tests;

@@ -150,5 +150,4 @@ fn up_check(bridge: &Interface) -> EnvCheck {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/forwarding/bridge.rs"]
 mod tests;

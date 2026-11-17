@@ -354,5 +354,4 @@ fn queue_num(queue: QueueRange) -> Expression<'static> {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/kernel/nft.rs"]
 mod tests;

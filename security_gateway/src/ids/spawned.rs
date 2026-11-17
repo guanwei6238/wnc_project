@@ -408,5 +408,4 @@ impl Backoff {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/ids/spawned.rs"]
 mod tests;
