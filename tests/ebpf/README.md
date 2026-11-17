@@ -175,3 +175,57 @@ Pi 4、鎖 1000 MHz、eth0 PAUSE 關、bridge；S_m60（102 條 flow，最大的
 
 `fastpath_docker.sh nexthop`（Docker routed）：信任後 `trust list` 兩個方向都有下一跳（`10.0.1.2 / 10.0.2.2`）、forward chain 停住、TTL 63；`ip route add` 之後 0.3 秒變成 `- / -`、12 秒後填回；每 0.5 秒改一次路由持續 70 秒：WARN D007 一次、999／999 行都在 TC 送出（forward chain 43 → 43）、停止後 INFO「stable again」。Pi（`ROUTED=1 core_pi.sh fastpath`、方案 B 的 routed）：IPv4／IPv6 照常；1,000 條信任後幾秒內全部有下一跳（`alloc_pi.sh trust_flows … hops`）。
 Pi 實體網卡（exp12）：routed 的信任封包 8.28 µs @120k（不帶下一跳時 9.16），bridge 7.79。
+
+# `[trust] backend`：tc 和 ctmark（2026-11-17）
+
+`fastpath_docker.sh` 加 `BACKEND=ctmark`：用 `docker/wnc-gw/ctmark.toml`。ctmark 時信任的封包還是經過 forward chain，所以改看 ids chain 的 counter；`stale` 只在 ctmark 跑（`kill -9` 之後 mark 留在 conntrack，下一次啟動先清掉）。
+
+| case | tc | ctmark |
+|---|---|---|
+| tcp／udp：信任期間的 counter | forward 65 → 65、32 → 32；del 後恢復；160／160 收到 | ids 63 → 63、32 → 32；del 後恢復；160／160 收到 |
+| reuse（純 SYN） | 信任 1 → 0 | 1 → 0 |
+| errors、options、ttl1、kill9 | 和 11-14 相同 | 相同（ctmark 也只信任 TCP、UDP） |
+| idle（UDP 不再送） | 141 秒後被閒置清除 | 31 秒後 conntrack 的 UDP 項目到期，mark 跟著消失（srv 不回，算 unreplied，30 秒） |
+| nexthop | 和 11-14 相同 | 不適用（kernel 自己轉送） |
+| stale | 不適用 | kill -9 後 marked 1 筆；下一次啟動 `cleared trust left by an earlier run cleared=1`，marked 0 筆 |
+
+`trust list` 的封包數：tc 是信任之後 TC 轉送的封包，ctmark 是 conntrack 的計數（整條連線，含信任之前）。
+
+# HTTPS 長連線回到 Suricata 時會不會斷（`tls_idle.sh`，2026-11-17）
+
+一條 TLS 1.3 長連線（`tls_idle.py`：用戶端每送一行就等伺服器回音，5 秒沒回就算斷），自動信任用預設值（10 個封包、5 秒、ttl 900）。
+
+- `idle`：忙 20 秒 → 閒置 640 秒 → 每秒一行再 330 秒。tc 在閒置 600 秒後被閒置清除，恢復時就送檢查；ctmark 沒有閒置清除，到 ttl（約 905 秒）才送檢查。兩種都是 Suricata 已經忘掉這條 flow（`flow-timeouts.tcp.established` 600 秒）之後從中途接手。
+- `gap`：忙 20 秒 → `wnc-gw trust del` → 再忙 30 秒。Suricata 還記得這條 flow，中間少了信任期間的資料。
+- `WHEN=accept|drop`：`[suricata] when_unavailable`。ips 時 drop 會讓 wnc-gw 把 `app-layer.error-policy` 設成 `drop-flow`（DECISIONS.md §11）。
+- `CAPTURE=1`：兩端各抓這條連線（關掉 TSO／GSO／GRO，一筆對一筆），列出一邊送出、另一邊沒收到的封包。
+
+## Docker（routed testbed）
+
+| | ids | ips、accept | ips、drop |
+|---|---|---|---|
+| idle，tc | 不斷，430／430 | 不斷 | 不斷 |
+| idle，ctmark | 不斷 | 不斷 | 不斷 |
+| gap，tc | 不斷，250／250 | 不斷 | **斷**：del 之後第一行就沒有回音 |
+| gap，ctmark | 不斷 | 不斷 | **斷** |
+
+- gap：Suricata 記一次 `tcp.reassembly_gap`、`app_layer.error.tls.gap`。drop 時 `exception_policy.app_layer.error.drop_flow=1`，之後 `ips.drop_reason.exception_policy_flow_drop`：抓包看到 del 之後第一個資料段（兩個方向）和它的重傳全部被丟。accept 時同樣的錯誤只記數、不丟。
+- idle：恢復時 `tcp.midstream_pickups=1`、`app_layer.flow.tls` 再加 1（從中途也認得出 TLS）、一個 anomaly `APPLAYER_WRONG_DIRECTION_FIRST_DATA`，沒有 TLS 錯誤，恢復後最慢的回音 1 ms。
+- **ips 時關連線的 FIN 被丟**：idle 的 ips 兩種 when 都有 `ips.drop_reason.stream_error` 6–10 個。抓包（tc、ctmark 各一次）：沒收到的全是測試結束時用戶端的 FIN 和它的重傳（7 個），資料一個都沒丟。打開 `stats.stream-events`：接手之後這條連線每個封包都記 `stream.est_invalid_ack`（659 個，放行），FIN 是 `stream.fin_invalid_ack`（6 個，丟掉）。也就是 Suricata 從中途接手後，對這條連線的 ACK 判斷一直不對；資料照樣放行，但 FIN 被丟，伺服器收不到關連線。為什麼 ACK 對不上還沒查（anomaly 說第一筆資料方向和它以為的相反，可能有關，沒有驗證）。這和 backend 無關：TTL 到期、閒置清除、Suricata 重啟都會讓它從中途接手。
+
+## Pi（bridge，`protection_pi.sh net up` 的 fcli — wgw — fsrv，2026-11-17）
+
+| | ids | ips、accept | ips、drop |
+|---|---|---|---|
+| idle，tc | 不斷，430／430 | 不斷 | 不斷 |
+| idle，ctmark | 不斷 | 不斷，FIN 被丟 | 不斷，FIN 被丟 |
+| gap，tc | 不斷，250／250 | 不斷 | **斷**：del 之後第一行就沒有回音 |
+| gap，ctmark | 不斷 | 不斷 | **斷** |
+
+- 第一次全部 12 個 case 的抓包比對都是 0：Pi 上 fcli、fsrv 是同一個檔案系統的兩個 netns，兩邊的 tcpdump 寫同一個 `cap.pcap`，比的是同一個檔。改成 `cap-c.pcap`、`cap-s.pcap` 之後重跑 3 個 case 抓包（`tls_idle_pi_cap.*`），Suricata 的計數和第一次相同。
+- gap、ips、drop（tc）：和 Docker 一樣，del 之後兩個方向的第一個資料段（31 bytes）和它的重傳都被丟（7＋8 個），`exception_policy_flow_drop` 12 個。ctmark 的計數相同（第一次跑）。
+- idle、ips、ctmark：和 Docker 一樣，沒收到的只有用戶端最後的 FIN 和重傳（7 個），`stream.est_invalid_ack` 19、`fin_invalid_ack` 6、`stream_error` 6；資料一個都沒丟。
+- **idle、ips、tc 和 Docker 不同**：沒有 `stream_error`、沒有 `est_invalid_ack`，FIN 有收到（`tcp.sessions=3`、`midstream_pickups=2`、`flow.end.state.closed=1`，兩次都一樣）。Docker 的 tc 也有 FIN 被丟（`ack_unseen_data` 329，Pi 是 0）。兩種 backend 在 Pi 上的差別是恢復檢查的時間點：tc 在閒置之後第一個封包就送檢查（Suricata 從閒置後的第一筆資料接手），ctmark 在 ttl 到期時（每秒一行的中間）才送檢查。為什麼 Docker 的 tc 也會錯、Pi 不會，沒有查。
+- 結論（兩個環境都一樣的部分）：連線本身都不斷，除了 gap 加 `when_unavailable = "drop"`；ips 從中途接手之後，關連線的 FIN 可能被丟，伺服器那端的連線要等逾時才關。
+
+原始資料：`~/datasets/throughput/tls_idle_docker.{kvl,log}`、`tls_idle_docker_cap.log`、`tls_idle_docker_cap2.log`；Pi：`tls_idle_pi.{kvl,log}`（抓包比對無效）、`tls_idle_pi_cap.{kvl,log}`。
