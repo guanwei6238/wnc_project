@@ -39,11 +39,14 @@
 |---|---|
 | `alloc_pi.sh` | Pi 端：snap、place、pin_suricata、pause、burner_start／stop |
 | `alloc_run.sh` | 筆電端：sweep（實驗 1）、ai（實驗 2）、exp1、exp2、exp1b、exp2b、exp1c、exp1d、exp3（acctpt）、exp4（routed 對 bridge）、exp5–exp8（多份複本） |
-| `alloc.py` | 兩次 snap 相減、彙整成表（`cap`、`ai`、`modes`、`copies`）；ids 另算複本丟失（copy_loss）和檢查容量，多份複本另算讀取端的丟失（xcopy_loss） |
+| `alloc.py` | 兩次 snap 相減、彙整成表（`cap`、`ai`、`modes`、`copies`、`trust`）；ids 另算複本丟失（copy_loss）和檢查容量，多份複本另算讀取端的丟失（xcopy_loss） |
 | `burner.c` | edge AI 替身：cpu（L1 內運算）、mem（STREAM triad，每執行緒 3×8 MiB）、mlp（float32 MLP 256-1024-1024-256，權重約 6 MiB） |
 | `fanout/` | 實驗 5 的 user space 分發程式（Rust）：從一個 NFLOG group 收複本，分給 N 個讀取執行緒（各一個 8 MiB 環狀緩衝，每 1 ms 讀一次），統計寫在 `/dev/shm/fanout.stats` |
+| `trust_run.sh` | 實驗 13 筆電端：不信任（U）、ct mark 信任（C，`16137e0` 的 wnc-gw）、TC 信任（T）的速率掃描，`round` 跑兩種模式 × 切片 × U C T × ips ids |
+| `gw_pcap.py` | 實驗 13 的切片處理：留下經過 gateway 的封包（`.gw`）、信任後會走 fast path 的封包和它們的連線（`.fp`、`.fp.flows`）、只留開頭有 SYN 的 TCP 連線（`.whole`） |
+| `drop_check.sh`、`trust_diag_*.sh`、`core_counters.sh` | 實驗 13 的診斷：U 的 Suricata 丟包原因、兩張網卡的順序、wnc-gw 自己的 CPU、量測期間走 fast path 的比例 |
 
-原始資料：筆電 `~/datasets/throughput/cpu_alloc/alloc.kvl`（每點一行，含 exp1b、exp2b、exp1c、exp1d、exp3）、`main.log`、`ext.log`、`exp1c.log`、`exp1d.log`、`night_laptop.log`（exp3）；實驗 4、5 在 `night1104.kvl`、`night1104.log`、`night1104b.log`、`night1104d.log`，routed 丟包的診斷在 `routed_diag.log`、`routed_ct_diag.txt`、`diag.kvl`；複本在 `results/`。
+原始資料：筆電 `~/datasets/throughput/cpu_alloc/alloc.kvl`（每點一行，含 exp1b、exp2b、exp1c、exp1d、exp3）、`main.log`、`ext.log`、`exp1c.log`、`exp1d.log`、`night_laptop.log`（exp3）；實驗 4、5 在 `night1104.kvl`、`night1104.log`、`night1104b.log`、`night1104d.log`，routed 丟包的診斷在 `routed_diag.log`、`routed_ct_diag.txt`、`diag.kvl`；實驗 13 在 `trust.kvl`、`trust_run.log`（`pilot.kvl` 是試跑），診斷在 `drop_check.kvl`、`probe*.log`、`probe3.kvl`、`probe4.kvl`、`top_*.log`、`run_*.log`，切片在 `~/datasets/throughput/planb/trust/`；複本在 `results/`。
 
 ## 實驗 1 結果（2 輪，數字是「輪 1／輪 2」）
 
@@ -401,3 +404,94 @@ exp10 的 T1、T1k（wnc-gw 本身），兩種模式、I1、2 輪；routed 的 w
 - routed 的信任封包比 exp10（不帶下一跳）每個少 0.7–0.9 µs（T1 9.16 → 8.28、T1k 8.96 → 8.29 @120k），bridge 不變（7.80 → 7.79）。
 - bridge 和 routed 的差從 1.4 µs 縮到約 0.5 µs。沒被信任的封包 routed 少 3.1–3.9 µs（exp10 的 U1），所以只有信任的封包佔約 87% 以上時 bridge 才整體便宜（−0.5 f + 3.5 (1 − f)）。
 - wnc-gw 本身仍比 exp11 的 bench F5h（7.91）貴約 0.4 µs，原因沒查。
+
+## 實驗 13（2026-11-16）：不信任、ct mark 信任、TC 信任，四個 dataset 的切片
+
+問題：fast path 從 ct mark（netfilter 裡放行）換到 TC（`tests/trust_sim/` 的 B）之後，真實流量的每個信任封包省多少？E1（實驗 9）只量了 S_m60 一個切片、只有一條大 flow，而且 ct mark 是在 prerouting 每個封包設一次。
+
+做法（`trust_run.sh round 1`、`round 2`；Pi 4、鎖 1000 MHz、PAUSE 關、I1、每個速率至少 5 秒、2 輪）：
+
+| 工作負載 | wnc-gw | 信任 | 送的封包 |
+|---|---|---|---|
+| U | 現在的版本 | 沒有 | `<切片>.gw`：經過 gateway 的全部封包（一端在內網、一端在外網，含控制封包） |
+| C | `16137e0`（eBPF 之前） | 暖身送完一次之後，`conntrack -U -m 0x80000000/0x80000000` 一次設好全部連線（和舊版自動信任用 ctnetlink 設 mark 一樣，不是每個封包設） | `<切片>.fp` |
+| T | 現在的版本 | 暖身之後 `wnc-gw trust add` 逐條信任；routed 等到每條都有下一跳 | `<切片>.fp` |
+
+- `.fp`（`gw_pcap.py`）只有信任後會走 fast path 的封包：TCP 去掉 SYN／FIN／RST、UDP、單播、沒有分片。純 SYN 會刪掉 TC 的信任，同一個 pcap 重送時 T 的信任會不見、C 不會；控制封包在兩版都一律檢查，成本相同，所以拿掉之後 C 和 T 的差就是「每個信任封包的差」，可以直接乘上 `tests/trust_sim/` 算出的比例。
+- 切片（每個 20 萬個封包，`../ids_throughput/` 實驗 5 的）：IoT-23 S_m60、S_h5，CIC-IDS2017 C17_Benign、C17_FTP-Patator，CIC-DDoS2019 D12_Benign，CICIoT2023 I23_Benign_Final、I23_DNS_Spoofing（`tests/trust_sim/` 模擬時信任比例高的；攻擊為主的切片幾乎不信任，C、T 沒有差別）。連線數 31–8,362 條。
+- 內網網段：IoT-23 的 192.168.100.0/24、192.168.1.0/24、10.0.1.0/24、192.168.2.0/24，CIC-IDS2017 192.168.10.0/24，CIC-DDoS2019 192.168.50.0/24，CICIoT2023 192.168.137.0/24；tcpprep 用 `--cidr` 決定從哪一側送，routed 的路由（`planb_pi.sh`）也加了這幾段。
+- `trust add` 加不上的：I23_DNS_Spoofing 3,002 條裡 37 條、I23_Benign_Final 2 條、C17_Benign 1 條；C 設 mark 時也有少數連線已經不在 conntrack。
+- 彙整：`python3 -I alloc.py trust ~/datasets/throughput/cpu_alloc/trust.kvl 20 50 80`。
+
+**50 kpps 時的每封包 CPU（µs，整台 Pi，兩輪平均，C → T）**
+
+| 切片 | bridge ips | bridge ids | routed ips | routed ids |
+|---|---|---|---|---|
+| S_m60 | 14.2 → 8.8（−5.4） | 13.9 → 8.8（−5.1） | 11.1 → 9.2（−1.9） | 11.1 → 9.2（−1.9） |
+| S_h5 | 30.5 → 24.7（−5.7） | 30.4 → 24.8（−5.7） | 29.4 → 25.2（−4.2） | 29.4 → 25.2（−4.2） |
+| C17_Benign | 30.8 → 26.4（−4.5） | 30.5 → 26.5（−4.0） | 28.6 → 26.9（−1.7） | 28.5 → 26.9（−1.6） |
+| C17_FTP-Patator | 30.1 → 22.6（−7.5） | 30.1 → 22.7（−7.4） | 27.2 → 23.2（−4.0） | 27.3 → 23.1（−4.2） |
+| D12_Benign | 29.5 → 26.6（−2.9） | 29.6 → 26.7（−2.9） | 27.3 → 25.3（−1.9） | 27.3 → 24.0（−3.3） |
+| I23_Benign_Final | 29.6 → 25.7（−3.9） | 29.6 → 26.3（−3.3） | 27.3 → 29.5（**+2.3**） | 27.3 → 29.6（**+2.4**） |
+| I23_DNS_Spoofing | 28.3 → 25.7（−2.6） | 27.1 → 23.9（−3.1） | 26.4 → 25.8（−0.6） | 25.1 → 23.3（−1.9） |
+
+**容量（cap_loss ≤ 0.1% 的最高速率，kpps；每輪；U；C；T）**
+
+| 切片 | bridge ips | bridge ids | routed ips | routed ids |
+|---|---|---|---|---|
+| S_m60 | 25／30；80／80；180／180 | 20／20；80／80；180／180 | 30／30；120／120；180／180 | 50／50；120／120；180／180 |
+| S_h5 | 40／40；50／80；127 ↑／127 ↑ | 20／20；80／80；127 ↑／127 ↑ | 50／50；100／100；127 ↑／127 ↑ | 20／20；100／100；127 ↑／127 ↑ |
+| C17_Benign | 25／25；80／80；80／80 | 50／50；80／80；80／80 | 30／30；80／80；80／120 | 50／50；80／80；80／80 |
+| C17_FTP-Patator | 15／15；80／80；193 ↑／197 ↑ | 50／50；80／100；195 ↑／196 ↑ | 15／15；120／100；196 ↑／195 ↑ | 50／50；100／120；197 ↑／196 ↑ |
+| D12_Benign | 20／20；80／80；80／50 | 50／50；80／80；80／80 | 10 ↑／10 ↑；80／80；50／100 | 50 ↑／50 ↑；80／80；100／100 |
+| I23_Benign_Final | 15／20；80／80；100／100 | 50／50；80／80；100／100 | 10 ↑／10 ↑；80／80；50／50 | 50 ↑／50 ↑；80／80；50／50 |
+| I23_DNS_Spoofing | 30／30；50／50；50／80 | 50／50；80／80；100／100 | 10 ↑／10 ↑；80／80；80／80 | 50 ↑／50 ↑；100／100；100／100 |
+
+（↑：掃到最後都沒有超過。routed 的 U 扣掉了 `.gw.rt.pcap` 裡目的 MAC 是多播的幀（tcprewrite 保留多播位元，routed 的網卡不收，S_h5 40、C17_Benign 377、C17_FTP-Patator 52、D12_Benign 2,965、I23_Benign_Final 3,120、I23_DNS_Spoofing 2,304 個），掃描時用的是沒扣的數字，超過 1% 就停，所以有幾組只量到 10 kpps。ids 的 U 只看轉送，Suricata 的複本丟失另算。）
+
+怎麼讀：
+- **bridge：TC 每個信任封包比 ct mark 少 2.6–7.5 µs（−9%～−38%，50 kpps），7 個切片都是**。S_m60（−5.1～−5.4）和 E1 的 −5.4～−5.9 一致；E1 的 ct mark 每個封包多跑一條 prerouting 規則，這次沒有，差距沒有變小。ids 和 ips 幾乎一樣（信任的封包兩版都不送 Suricata）。
+- **routed：差距小一半**（−0.6～−4.2），因為 ct mark 在 routed 本來就比 bridge 便宜（S_m60 11.1 對 13.9，沒有 bridge 和 br_netfilter）；TC 兩種模式差不多（8.8 對 9.2）。
+- **容量**：C 大多 80 kpps（routed 100–120），T 80–197 kpps；大封包（C17_FTP-Patator 1,289 bytes）、少連線（S_m60、S_h5）時 T 是 C 的 1.5–2.4 倍，C17_Benign、D12_Benign 兩者都是 80（T 在 100 kpps 丟 0.1% 以上，原因沒查）。
+- **例外：routed 的 I23_Benign_Final，T 比 C 貴 2.3–2.4 µs**（20 kpps 時 +12.7～+13.0）。查過的（`trust_diag_redirect.sh`、`trust_diag_gwcpu.sh`，2026-11-16）：量測期間 99.96% 的封包都有 redirect（194,088／194,167），不是掉回 kernel；Suricata 的 CPU 是 0；這個切片沒有 IPv6；wnc-gw 程序本身的 CPU 在 bridge 和 routed 一樣（見下一點）。多出來的在 CPU1（網卡中斷）：20 kpps 時 bridge 14.4%、routed 23.3%（每封包 39.55 對 47.15 µs）；同樣做法的 D12_Benign 是 routed 比較便宜（41.35 對 36.20）。原因沒有找到（Pi 的 `perf_event_paranoid=4`，沒有用 perf），它是 8,360 條連線最多、平均封包最小（301 bytes）的切片。
+- **wnc-gw 本身的固定成本**：8,360 條連線信任之後，wnc-gw 程序一直用約 130 ms／秒（一顆核心的 13%），沒有流量時也一樣，bridge、routed 相同（`trust_diag_gwcpu.sh`：信任後 0–30 秒 129.8、60–90 秒 129.4、20 kpps 時 143.0 ms／秒）。20 kpps 時等於每個封包多 6.5 µs，所以低速率、連線多的切片 T 省得少（I23_Benign_Final bridge 20 kpps 只差 −0.3～+1.3）。是哪一段程式在用沒有查（閒置清除每 10 秒讀整個 trust map、下一跳、control socket 都有可能），連線數和這個成本的關係也沒量。
+- **U（不信任）的數字偏低，不能當成「檢查一個封包的成本」**：Suricata 在 ips 會把很多封包判決丟掉（S_h5 99.6%、C17_Benign 31%、D12_Benign 20%，第一次送就這樣），丟掉的封包不用轉送。`drop_check.sh`（Suricata 的 `ips.drop_reason.*`）：幾乎都是 `exception_policy_flow_drop`，觸發的全是 app-layer error（TLS 的 gap → `app-layer.error-policy=drop-flow`）；只送開頭有 SYN 的連線（C）結果一樣，所以不是從中途接上；同一個 wnc-gw 重送第 2、3 次時丟得更多（被 drop 的 flow 還在 Suricata 的 flow 表裡）。gap 的來源有兩個：CIC 的切片有很多超過 1,514 bytes 的幀（D12_Benign 32,334 個、C17_Benign 9,373 個，最大 38,014，錄製時的 offload），網卡送不出去（tcpreplay `Failed packets`）；S_h5 沒有大幀（最大 1,474），但 5,000 pps 時有 8–9 次 midstream pickup、32–34 次 ack_unseen_data、2–3 條 flow 有 gap，500 pps 送同樣 15,000 個封包時 0 個丟包、midstream 1 次（`trust_diag_order.sh`，各 2 次），是兩個方向從兩張網卡（LAN 側是 USB 網卡）送、到 Pi 的順序和 pcap 不同造成的。實機的連線不會有這兩種情況，所以 U 要另外用沒有大幀、單一網卡或低速率的流量重量。
+
+**套到 dataset**（`tests/trust_sim/` 的 fast path 比例 × 這裡 bridge ips 50 kpps 的差）：CIC-IDS2017 43.1% × C17_Benign −4.5 µs ≈ 每個封包平均 −1.9 µs；CICIoT2023 Benign 55.5% × I23_Benign_Final −3.9 ≈ −2.2 µs；攻擊為主的 dataset（IoT-23 0.14%、CIC-DDoS2019 0.07%、CICIoT2023 全部 0.39%）不到 0.03 µs。和全部檢查的成本相比是幾 %，但 U 的數字現在不可靠，百分比要等 U 重量。
+
+## 實驗 14（2026-11-17）：`[trust] backend` 的 ctmark 對 tc，以及加選項有沒有變慢
+
+問題：（1）`[trust] backend = "ctmark"`（9d1826a）在真實切片上比 TC 貴多少；核心 eBPF 程式在 ctmark 時照樣掛著（之後算特徵要用），每個封包多一次查不到的 trust map lookup。（2）加了 backend 這個選項之後，TC 的路徑有沒有變慢（選項只在啟動時看一次，每個封包的路徑在 kernel 裡）。
+
+做法：和實驗 13 相同的 7 個切片、`.fp` pcap、Pi 設定（`EXP=14 WORKLOADS="K T O" KVL=trust14.kvl bash trust_run.sh round 1`、`round 2`，2 輪，168 次掃描）。
+
+| 工作負載 | wnc-gw | 信任 |
+|---|---|---|
+| K | 9d1826a，`[trust] backend = "ctmark"`（`planb_pi.sh` 的 `TRUST_BACKEND`） | 暖身之後 `wnc-gw trust add` 逐條設 ct mark；routed 沒有下一跳 |
+| T | 9d1826a，預設 `tc` | 同實驗 13 的 T |
+| O | 46a96d2（加選項之前），`tc` | 同 T |
+
+- 每次掃描後讀 nft 的 counter：K 的 forward chain 裡，信任的 mark 那條 accept 收到暖身之後的封包（例如 I23_DNS_Spoofing bridge 一次掃描 1,576,791 個），純 SYN 清 mark 那條是 0（`.fp` 沒有 SYN）。
+- `trust add` 加不上的條數和實驗 13 一樣（I23_DNS_Spoofing ips 36–38 條，ids 0 條），兩種 backend 相同。
+- 彙整：`python3 -I alloc.py trust14 ~/datasets/throughput/cpu_alloc/trust14.kvl 50 120`。
+
+**50 kpps 時的每封包 CPU（µs，整台 Pi，兩輪平均；T−K、T−O 是兩輪各自相減再平均）**
+
+| 切片 | bridge ips K／T／O | T−K | T−O | routed ips K／T／O | T−K | T−O |
+|---|---|---|---|---|---|---|
+| S_m60 | 15.59／8.55／8.48 | −7.04 | +0.07 | 11.03／9.03／9.11 | −2.00 | −0.08 |
+| S_h5 | 30.67／24.37／24.46 | −6.30 | −0.09 | 29.04／24.94／24.98 | −4.11 | −0.05 |
+| C17_Benign | 31.43／26.14／26.11 | −5.29 | +0.04 | 28.61／26.62／26.54 | −1.98 | +0.09 |
+| C17_FTP-Patator | 30.80／22.33／22.26 | −8.46 | +0.07 | 27.30／22.91／23.00 | −4.38 | −0.09 |
+| D12_Benign | 30.43／26.20／26.17 | −4.23 | +0.02 | 27.50／23.66／23.62 | −3.84 | +0.04 |
+| I23_Benign_Final | 30.44／24.67／25.21 | −5.77 | −0.54 | 27.44／28.93／29.16 | **+1.49** | −0.23 |
+| I23_DNS_Spoofing | 29.11／25.38／25.47 | −3.72 | −0.08 | 26.57／25.74／25.15 | −0.83 | +0.59 |
+
+ids 的 T−O 在 ±0.2 µs 以外的：bridge I23_Benign_Final −1.74（−2.45／−1.03）、routed D12_Benign +1.40（+2.80／+0.00）、routed I23_Benign_Final +0.83（−0.26／+1.91）、routed I23_DNS_Spoofing −0.48（−1.18／+0.22）。容量：K 在 bridge 50–80 kpps、routed 50–120 kpps，T 和 O 一樣（50–197 kpps，同實驗 13 的 T）。
+
+**K 和實驗 13 的 C（16137e0，沒有核心 eBPF 程式的 ct mark）比，50 kpps**：bridge 貴 +0.19～+1.54 µs（14 格平均 +0.8），routed −0.39～+0.33（平均 +0.1）。同一台 Pi、隔一天，T 本身變了 −0.2～−0.5（排除 I23_Benign_Final、D12_Benign 的 ±1–1.7），所以扣掉之後 bridge 約 +1 µs、routed 約 +0.3 µs。
+
+怎麼讀：
+- **加選項沒有讓 TC 變慢**：T−O 28 格裡 21 格在 ±0.2 µs 內；其餘 7 格裡 5 格是一輪偏大、另一輪在 ±0.3 內，I23_Benign_Final bridge ids（−2.45／−1.03）和 routed ips（−0.17／−0.30）兩輪同向但都是 T 比較快；沒有兩輪都是 T 變慢的格子。
+- **ctmark 比 tc 貴**：bridge 每個信任封包多 3.7–8.5 µs，routed 多 0.8–4.4 µs；容量 bridge 少一半以上（例如 C17_FTP-Patator 80 對 195 ↑）。和實驗 13 的 C 對 T 一樣，只有 routed 的 I23_Benign_Final 反過來（+1.5，原因同實驗 13，沒找到）。所以 `tc` 維持預設，`ctmark` 只在 TCX 不能用時用。
+- **ctmark 時掛著的核心 eBPF 程式**：bridge 約多 1 µs，routed 約 0.3 µs，比 C 和 T 的差小一個數量級。bridge 比 routed 多的原因沒有查（兩種模式每個封包都查一次 map；K 的 forward chain 也比 16137e0 多幾條規則：FORWARDED mark、SYN／FIN／RST 送 ids，沒有拆開量）。

@@ -14,9 +14,11 @@
 #   PROTECTION=ips|ids（start，預設 ips）：wnc-gw 的 protection；ids 時 <queues> 是 group 數（10 起）
 #   counters 另外印 eth0 送出、收到的 PAUSE（pause_tx0、pause_rx0）
 #   MODE=routed（up、start）：eth0（10.99.1.1/24）、eth1.20（10.99.2.1/24）不接 bridge，Pi 做 IP 轉送；下一跳是假的 MAC
-#     （02:00:00:99:0x:02，筆電的網卡不收，轉送出去的封包不會被筆電再轉到別的網路），pcap 的 LAN 網段（192.168.100.0/24、
-#     192.168.1.0/24、10.0.1.0/24）經 eth0，其餘走 eth1.20；送進來的封包目的 MAC 要先改成 Pi 的（planb_run.sh routed_pcap）。
+#     （02:00:00:99:0x:02，筆電的網卡不收，轉送出去的封包不會被筆電再轉到別的網路），pcap 的 LAN 網段（IoT-23 的 192.168.100.0/24、
+#     192.168.1.0/24、10.0.1.0/24、192.168.2.0/24，CIC-IDS2017 192.168.10.0/24、CIC-DDoS2019 192.168.50.0/24、CICIoT2023
+#     192.168.137.0/24）經 eth0，其餘走 eth1.20；送進來的封包目的 MAC 要先改成 Pi 的（planb_run.sh routed_pcap）。
 #     start 寫 mode = "routed"
+#   TRUST_BACKEND=tc|ctmark（start）：寫進 setting.toml 的 [trust] backend；沒設就不寫（wnc-gw 預設 tc）
 #   COPIES=N（start，ids）：另外一個 table inet wnc_copy（forward priority 10，在 wnc-gw 之後）對每個封包多送 N 份 NFLOG 複本
 #     （group 20..），每份由一個 tcpdump -i nflog:<group> -w /dev/null（只讀不做事，buffer 1 MiB，和 Suricata 的 group 一樣）接收；
 #     SNAPLEN=n 時每份只複製前 n bytes。stop 時印每個讀取端的收到／丟掉數
@@ -43,7 +45,9 @@ up)
       net.ipv4.conf.all.send_redirects=0 net.ipv4.conf.eth0.send_redirects=0 net.ipv4.conf.eth1/20.send_redirects=0
     ip -n wgw neigh replace 10.99.1.2 lladdr 02:00:00:99:01:02 dev eth0 nud permanent
     ip -n wgw neigh replace 10.99.2.2 lladdr 02:00:00:99:02:02 dev eth1.20 nud permanent
-    for n in 192.168.100.0/24 192.168.1.0/24 10.0.1.0/24; do ip -n wgw route add $n via 10.99.1.2 dev eth0; done
+    for n in 192.168.100.0/24 192.168.1.0/24 10.0.1.0/24 192.168.2.0/24 192.168.10.0/24 192.168.50.0/24 192.168.137.0/24; do
+      ip -n wgw route add $n via 10.99.1.2 dev eth0
+    done
     ip -n wgw route add default via 10.99.2.2 dev eth1.20
   else
     modprobe br_netfilter
@@ -82,10 +86,13 @@ start)
     exit 0
   fi
   P=${PROTECTION:-ips}
+  # 上一次的 Suricata 統計（含 ips.drop_reason.*）先留下來，log 目錄下面會清掉
+  [ -s $LOG/stats.log ] && cp $LOG/stats.log $L/stats-$(date -u +%Y%m%dT%H%M%S).log
   { printf 'mode = "%s"\nxdp = "off"\nprotection = "%s"\n\n[ports]\nlan = "eth0"\nwan = "eth1.20"\n\n[suricata]\nconfig = "%s"\nwhen_unavailable = "drop"\n' ${MODE:-bridge} $P "$M/suricata-$rs.yaml"
     if [ "$q" -gt 1 ]; then
       if [ $P = ids ]; then printf 'group = "10-%d"\n' $((9 + q)); else printf 'queue = "0-%d"\n' $((q - 1)); fi
-    fi; } > $L/setting.toml
+    fi
+    [ -n "$TRUST_BACKEND" ] && printf '\n[trust]\nbackend = "%s"\n' "$TRUST_BACKEND"; } > $L/setting.toml
   rm -f $LOG/*
   $W $GW -c $L/setting.toml run > $L/run.out 2> $L/run.log &
   for i in $(seq 1 300); do grep -q "traffic is inspected" $L/run.log && break; sleep 1; done

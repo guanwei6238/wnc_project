@@ -331,6 +331,7 @@ wnc-gw 只把 log 印到 stderr，不自己寫檔案。用 systemd 執行時 std
 - 和 (a) 的功能差別：核心程式掛不上時沒有信任（開發者同意，多檢查不會少檢查）；沒有 conntrack 的 TCP 序號窗檢查（開發者同意：是 RQ3 第 4 項的實驗條件，緩解在那個實驗做）；信任連線的分片交回 netfilter 檢查（比 (a) 多檢查）；port 重用改由 TC 看到純 SYN 刪掉兩個方向的 entry；CLI 的 `trust add／del` 要寫得到 map（pin 在 bpffs）；routed 要在 TC 減 TTL、修 checksum，路由由 `bpf_redirect_neigh` 查（不是 GPL-only，不給 nexthop 時 kernel 自己查限定在出口網卡的路由，kernel `net/core/filter.c`）。
 - 10-28 擔心的五元組問題：port 重用由 TC 的純 SYN 處理（和 (a) 的 netfilter 規則效果相同）；UDP 兩種做法都沒有訊號，只能靠 TTL；偽造見上。
 - 2026-11-14 開發者同意（C1＋C2 一起做）：HASH、32,768 筆、value 預留序號欄位；CLI 經 run 的 unix socket 寫 map（privd IPC 的雛形，不 pin）；手動信任沒有 TTL（閒置清除之後做）；nft 的信任規則和 L2 規則一起拿掉。已實作，驗證見 `security_gateway/DECISIONS.md` §17。
+- **2026-11-17：(a) 拿回來當選項**（`[trust] backend = "tc"`〔預設〕／`"ctmark"`，二選一；`security_gateway/DECISIONS.md` §22）：TCX 不能用時改 ctmark，不自動切換、給 warning；ctmark 時核心 eBPF 程式照樣掛（之後算特徵要用）。實驗 14（Pi，7 個切片，2 輪，50 kpps）：ctmark 每個信任封包比 tc 貴 bridge 3.7–8.5 µs、routed 0.8–4.4 µs，bridge 容量少一半以上；加選項後 tc 和加之前差在 ±0.2 µs 內；空的 trust map 每個封包多一次 lookup，和沒有核心程式的舊 ct mark 比 bridge 約 +1 µs、routed 約 +0.3 µs（`tests/cpu_alloc/README.md` 實驗 14）。
 
 **地基實驗（3a，2026-10-28，Docker routed + Pi bridge）**：queue 規則前放 `ct mark & 0x1 == 0x1 accept`，用 ctnetlink 對傳輸中的 TCP 連線設 mark → 之後不進 Suricata、連線不斷；清掉 mark → 回到 Suricata，中間漏看一段仍照常 alert（AUDIT 的情況）。效能（Pi、10,000 pps、`full`、2 輪；整台機器 µs／封包，含 tcpreplay 自己）：
 

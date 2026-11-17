@@ -7,6 +7,8 @@
   python3 alloc.py ai <kvl>                                                  實驗 2：每個（strategy, ai, round）的丟包、µs／封包、AI 吞吐
   python3 alloc.py modes <kvl>                                               exp4：routed 對 bridge
   python3 alloc.py copies <kvl>                                              exp5–8：ids 複製多份（exp5 的 K2h、exp6 的 K0g3／K2g3 不算，用 exp7、exp8 重跑的）
+  python3 alloc.py trust <kvl> [速率 kpps ...]                               exp13：U／C／T 的容量與同速率的 µs／封包（預設 20 50 80 kpps，兩輪平均）
+  python3 alloc.py trust14 <kvl> [速率 kpps ...]                             exp14：K（ctmark）／T（tc）／O（加選項前的 tc）的容量與同速率的 µs／封包、T−K、T−O（預設 50 120）
 
 忙碌時間＝經過時間 − idle − iowait（USER_HZ = 100）。
 cap_loss＝處理不過來而丟：nfq queue 滿 + qdisc 丟（含 eth1 tx 丟）+ max(沒收到 + softnet backlog 丟, 網卡 miss + rx_dropped)。
@@ -171,6 +173,74 @@ def summary(path, exps, keys, ref, skip=lambda r: False):
               f"{at(rs, pps, 'reader_us_per_pkt')} |")
 
 
+# routed 的 <切片>.gw.rt.pcap 裡目的 MAC 是多播的幀數（tcprewrite 保留多播位元，routed 的網卡不收，算在 short；.fp 沒有）
+ROUTED_MULTICAST = {"S_m60": 0, "S_h5": 40, "C17_Benign": 377, "C17_FTP-Patator": 52, "D12_Benign": 2965,
+                    "I23_Benign_Final": 3120, "I23_DNS_Spoofing": 2304}
+
+
+def trust(path, rates):
+    groups = defaultdict(lambda: defaultdict(list))
+    for r in read(path, {"exp": "13"}):
+        if r["mode"] == "routed" and r["workload"] == "U":
+            gone = min(int(r["short"]), ROUTED_MULTICAST[r["slice"]] * int(r["loop"]))
+            r = dict(r, cap_loss_pct=f"{float(r['cap_loss_pct']) - 100 * gone / int(r['sent']):.3f}")
+        groups[(r["mode"], r["protection"], r["slice"])][(r["workload"], r["round"])].append(r)
+
+    def cap_of(rs):
+        return capacity(sorted(rs, key=lambda r: float(r["pps"])), "cap_loss_pct")
+
+    def mean_at(g, wl, pps, k="us_per_pkt"):
+        v = [float(x) for (w, _), rs in g.items() if w == wl for x in [at(rs, pps, k)] if x != "-"]
+        return sum(v) / len(v) if v else None
+
+    for mode, prot in sorted({k[:2] for k in groups}):
+        print(f"\n{mode} {prot}（容量 kpps：每輪；µs／封包：整台 Pi，兩輪平均）\n")
+        head = ["切片", "U 容量", "U µs@5k", "C 容量", "T 容量"] + [f"{x} @{p}k" for p in rates for x in ("C", "T", "T−C")]
+        print("| " + " | ".join(head) + " |")
+        print("|" + "---|" * len(head))
+        for key in sorted(k for k in groups if k[:2] == (mode, prot)):
+            g = groups[key]
+            caps = {wl: "／".join(cap_of(rs) for (w, rnd), rs in sorted(g.items()) if w == wl) or "-" for wl in "UCT"}
+            u = mean_at(g, "U", 5000)
+            row = [key[2], caps["U"], f"{u:.1f}" if u else "-", caps["C"], caps["T"]]
+            for p in rates:
+                c, t = mean_at(g, "C", p * 1000), mean_at(g, "T", p * 1000)
+                row += [f"{c:.2f}" if c else "-", f"{t:.2f}" if t else "-",
+                        f"{t - c:+.2f}（{100 * (t - c) / c:+.0f}%）" if c and t else "-"]
+            print("| " + " | ".join(row) + " |")
+
+
+def trust14(path, rates):
+    groups = defaultdict(lambda: defaultdict(list))
+    for r in read(path, {"exp": "14"}):
+        groups[(r["mode"], r["protection"], r["slice"])][(r["workload"], r["round"])].append(r)
+
+    def per_round(g, wl, pps):
+        return {rnd: float(x) for (w, rnd), rs in g.items() if w == wl for x in [at(rs, pps, "us_per_pkt")] if x != "-"}
+
+    def diff(g, a, b, pps):
+        x, y = per_round(g, a, pps), per_round(g, b, pps)
+        d = [x[k] - y[k] for k in sorted(x) if k in y]
+        return f"{sum(d) / len(d):+.2f}（{'／'.join(f'{v:+.2f}' for v in d)}）" if d else "-"
+
+    for mode, prot in sorted({k[:2] for k in groups}):
+        print(f"\n{mode} {prot}（容量 kpps：每輪；µs／封包：整台 Pi，兩輪平均；差：平均（每輪））\n")
+        head = ["切片", "K 容量", "T 容量", "O 容量"] + [f"{x} @{p}k" for p in rates for x in ("K", "T", "O", "T−K", "T−O")]
+        print("| " + " | ".join(head) + " |")
+        print("|" + "---|" * len(head))
+        for key in sorted(k for k in groups if k[:2] == (mode, prot)):
+            g = groups[key]
+            caps = {wl: "／".join(capacity(sorted(rs, key=lambda r: float(r["pps"])), "cap_loss_pct")
+                                 for (w, _), rs in sorted(g.items()) if w == wl) or "-" for wl in "KTO"}
+            row = [key[2], caps["K"], caps["T"], caps["O"]]
+            for p in rates:
+                for wl in "KTO":
+                    v = list(per_round(g, wl, p * 1000).values())
+                    row.append(f"{sum(v) / len(v):.2f}" if v else "-")
+                row += [diff(g, "T", "K", p * 1000), diff(g, "T", "O", p * 1000)]
+            print("| " + " | ".join(row) + " |")
+
+
 def ai(path):
     print("| strategy | ai | threads | round | traffic | loss % | µs/pkt 全機 | Suricata W µs/pkt | AI ops/s | AI CPU 秒/秒 | AI ops/CPU 秒 | util0-3 |")
     print("|---|---|---|---|---|---|---|---|---|---|---|---|")
@@ -194,6 +264,10 @@ if __name__ == "__main__":
     elif sys.argv[1] == "copies":
         summary(sys.argv[2], {"5", "6", "7", "8"}, ["pcap", "placement", "workload", "round"], {"S_m17": 30000, "bulk_fixed": 20000},
                 lambda r: (r.get("exp"), r.get("workload")) in {("5", "K2h"), ("6", "K0g3"), ("6", "K2g3")})
+    elif sys.argv[1] == "trust":
+        trust(sys.argv[2], [int(x) for x in sys.argv[3:]] or [20, 50, 80])
+    elif sys.argv[1] == "trust14":
+        trust14(sys.argv[2], [int(x) for x in sys.argv[3:]] or [50, 120])
     elif sys.argv[1] == "ai":
         ai(sys.argv[2])
     else:

@@ -230,6 +230,7 @@ wnc-gw 從 suricata.yaml 設定的 eve-log 檔讀 alert，每 `eve_interval` 秒
 | routed 的下一跳 | 信任時查好，TC 直接送 | 不用（kernel 每個封包自己查） |
 | run 重啟 | map 跟著程式消失 | mark 留在 conntrack，run 啟動時先清掉（失敗是 T005） |
 | TCP 序號窗 | 沒有檢查（RQ3 第 4 項的實驗條件） | conntrack 照常檢查 |
+| Pi 上的成本（實驗 14，50 kpps） | 基準 | 每個信任封包多 3.7–8.5 µs（bridge）、0.8–4.4 µs（routed）；bridge 容量少一半以上（`tests/cpu_alloc/README.md`） |
 | `trust list` 的計數 | 信任之後 TC 轉送的封包 | conntrack 的計數（整條連線，含信任之前） |
 | 每個信任封包（Pi、實體網卡，實驗 13） | 少 2.6–7.5 µs（bridge）、0.6–4.2 µs（routed） | 基準 |
 

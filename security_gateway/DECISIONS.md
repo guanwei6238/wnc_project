@@ -578,6 +578,6 @@ rp_filter 不另外檢查：路由設對時 strict 模式不會擋正常流量�
 - ctmark 時核心 eBPF 程式照樣掛（開發者：「要，因為還是會用到 eBPF 做特徵分析」）；trust map 是空的，每個封包多一次查不到的 lookup（量測見下）。掛不上也不影響信任。
 - ctmark 不做閒置清除、不做 routed 的下一跳；run 啟動時、裝 table 之前先清掉上一次留下的 mark（`untrust_all`，失敗是 T005，和 10-28 一樣）。
 - 程式：`datapath::TrustStore` trait（trust、untrust、trusted），`CoreProgram` 和 `firewall::CtMarks` 各實作一份；`LocalPrivd` 依設定在 `store()` 選一次。nft table 依 backend 產生（`firewall::forward_rules`）。
-- 執行期成本：設定只在啟動時選一次。每個封包的路徑都在 kernel（TC 程式或 nft 規則），Rust 的判斷不在上面；agent 每 5 秒對每條連線一次 trait 呼叫，相對於一次寫入（map 2.8 µs、ctnetlink 14.5 µs）可以忽略。實際量測見實驗 14（`tests/cpu_alloc/README.md`）。
+- 執行期成本：設定只在啟動時選一次。每個封包的路徑都在 kernel（TC 程式或 nft 規則），Rust 的判斷不在上面；agent 每 5 秒對每條連線一次 trait 呼叫，相對於一次寫入（map 2.8 µs、ctnetlink 14.5 µs）可以忽略。實驗 14（`tests/cpu_alloc/README.md`，Pi，7 個切片 × bridge／routed × ips／ids，2 輪）：加選項後的 tc 和加選項前（46a96d2）50 kpps 時 28 格裡 21 格差在 ±0.2 µs 內，沒有兩輪都變慢的格子。ctmark 比 tc 每個信任封包貴：bridge 3.7–8.5 µs、routed 0.8–4.4 µs（例外：routed 的 I23_Benign_Final 是 ctmark 便宜 1.5 µs，同實驗 13）；和沒有核心程式的舊 ct mark（實驗 13 的 C）比，掛著核心程式的 ctmark 在 bridge 約多 1 µs、routed 約 0.3 µs（扣掉隔天的漂移）。
 - 驗證：單元測試（設定、table 規則、doctor 的 D005、ct mark 的 `trusted_flow`）；Docker `tests/ebpf/fastpath_docker.sh all` 和 `BACKEND=ctmark … all`（`tests/ebpf/README.md`）；Pi 方案 B 的實驗 14。
 
