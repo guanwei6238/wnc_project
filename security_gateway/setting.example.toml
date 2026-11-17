@@ -109,6 +109,19 @@
 # warns when a non-root account can modify them or the directories they are in.
 
 [trust]
+# How trusted packets skip inspection (default: "tc"). Both apply to automatic
+# trust and to `wnc-gw trust add`; only one is used at a time.
+#   - "tc":     the core eBPF program forwards them from TC ingress, before the
+#               bridge, netfilter and conntrack (the fastest). Needs TCX (Linux
+#               6.6 or later); without it nothing is trusted, and run and
+#               `wnc-gw doctor` say so.
+#   - "ctmark": a conntrack mark that the gateway's nftables forward chain
+#               accepts. Works without the core eBPF program, but every trusted
+#               packet still goes through the bridge, netfilter and conntrack.
+# Either way SYN/FIN/RST are always inspected, and a bare SYN ends the trust.
+# Run `wnc-gw doctor` to see the backend in effect.
+# backend = "tc"
+
 # Trust connections automatically (default: false). A connection is trusted
 # once it has carried min_packets packets in each direction, for at least
 # min_age seconds, while Suricata was inspecting and without a Suricata alert.

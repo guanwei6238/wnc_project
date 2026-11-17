@@ -1,4 +1,4 @@
-use crate::datapath::XdpPolicy;
+use crate::datapath::{TrustBackend, XdpPolicy};
 use crate::kernel::netif::MacAddr;
 use super::*;
 
@@ -177,6 +177,7 @@ fn example_sets_nothing_by_default() {
     assert_eq!(config.suricata.stop_timeout, None);
     assert_eq!(config.suricata.when_unavailable, None);
     assert_eq!(config.suricata.eve_interval, None);
+    assert_eq!(config.trust.backend, None);
     assert_eq!(config.trust.auto, None);
     assert_eq!(config.trust.min_packets, None);
     assert_eq!(config.trust.min_age, None);
@@ -215,6 +216,7 @@ fn example_values_are_valid() {
     assert!(config.suricata.stop_timeout.is_some());
     assert!(config.suricata.when_unavailable.is_some());
     assert!(config.suricata.eve_interval.is_some());
+    assert!(config.trust.backend.is_some());
     assert!(config.trust.auto.is_some());
     assert!(config.trust.min_packets.is_some());
     assert!(config.trust.min_age.is_some());
@@ -254,6 +256,29 @@ fn trust_defaults_to_manual() {
     let file_config = parse("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n").unwrap();
     let config = merge(None, file_config, Overrides::default()).unwrap();
     assert_eq!(config.trust, TrustSettings::Manual { source: Source::Default });
+}
+
+#[test]
+fn trust_backend_defaults_to_tc() {
+    let file_config = parse("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n").unwrap();
+    let config = merge(None, file_config, Overrides::default()).unwrap();
+    assert_eq!(config.trust_backend, Setting { value: TrustBackend::Tc, source: Source::Default });
+}
+
+#[test]
+fn trust_backend_from_file_applies_to_manual_and_automatic_trust() {
+    for auto in ["", "auto = true\n"] {
+        let file_config =
+            parse(&format!("[ports]\nlan = \"eth0\"\nwan = \"eth1\"\n[trust]\nbackend = \"ctmark\"\n{auto}")).unwrap();
+        let config = merge(None, file_config, Overrides::default()).unwrap();
+        assert_eq!(config.trust_backend, Setting { value: TrustBackend::CtMark, source: Source::File });
+    }
+}
+
+#[test]
+fn parse_rejects_unknown_trust_backend() {
+    let err = parse("[trust]\nbackend = \"xdp\"\n").unwrap_err();
+    assert!(err.contains("invalid trust backend \"xdp\""), "{err}");
 }
 
 #[test]

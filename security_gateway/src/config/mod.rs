@@ -12,7 +12,7 @@ use serde::Deserialize;
 
 use crate::agent::trust;
 use crate::config::{ports::{PortSelector, PortSpec, Role}, protection::Protection};
-use crate::datapath::{XdpPolicy, firewall::WhenUnavailable};
+use crate::datapath::{TrustBackend, XdpPolicy, firewall::WhenUnavailable};
 use crate::forwarding::Mode;
 use crate::ids::{delivery::Delivery, eve::EveInterval, lifecycle, suricata};
 use crate::kernel::{nflog::GroupRange, nfqueue::QueueRange, nft};
@@ -96,6 +96,7 @@ pub struct Config {
     pub wan: Setting<PortSelector>,
     pub nftables: NftablesSettings,
     pub suricata: SuricataSettings,
+    pub trust_backend: Setting<TrustBackend>,
     pub trust: TrustSettings,
 }
 
@@ -192,6 +193,7 @@ struct FileConfig {
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct FileTrust {
+    backend: Option<TrustBackend>,
     auto: Option<bool>,
     min_packets: Option<Bounded<1, 1_000_000>>,
     min_age: Option<Bounded<1, 3_600>>,
@@ -308,6 +310,7 @@ fn merge(file: Option<PathBuf>, file_config: FileConfig, overrides: Overrides) -
             when_unavailable: file_or_default(file_config.suricata.when_unavailable),
             eve_interval: file_or_default(file_config.suricata.eve_interval),
         },
+        trust_backend: file_or_default(file_config.trust.backend),
         trust,
         file,
     })

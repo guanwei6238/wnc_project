@@ -80,6 +80,7 @@ issues! {
     AutoTrustPaused,
     ConntrackAcct,
     TrustTtlTooShort,
+    EarlierTrustKept,
     WritableByNonRoot,
     AccessUnchecked,
     AlreadyRunning,
@@ -804,11 +805,12 @@ impl Issue {
                 title: "automatic trust is off because the core eBPF program is not attached",
                 reported_by: RUN,
                 severity: "warning",
-                cause: "[trust] auto = true, but the core eBPF program could not be attached (D001). \
-                        Trust is kept in that program's map and trusted packets are forwarded by it, \
-                        so without it nothing can be trusted: every connection is inspected and only \
-                        the CPU that trust saves is lost.",
-                action: "Fix what D001 reports, then restart run.",
+                cause: "[trust] auto = true with backend = \"tc\" (the default), but the core eBPF \
+                        program could not be attached (D001). Trust is kept in that program's map and \
+                        trusted packets are forwarded by it, so without it nothing can be trusted: every \
+                        connection is inspected and only the CPU that trust saves is lost.",
+                action: "Fix what D001 reports, then restart run; or set [trust] backend = \"ctmark\", \
+                         which keeps trust in conntrack marks and does not need the program.",
             },
             Self::AutoTrustPaused => &Explanation {
                 code: "T013",
@@ -842,6 +844,19 @@ impl Issue {
                         flow-timeouts.tcp.established. When trust ends, suricata may still hold \
                         the connection's old state and drop its packets as out of sync.",
                 action: "Set [trust] ttl above flow-timeouts.tcp.established (600 s by default).",
+            },
+            Self::EarlierTrustKept => &Explanation {
+                code: "T005",
+                title: "trust left by an earlier run cannot be cleared",
+                reported_by: RUN,
+                severity: "error",
+                cause: "With [trust] backend = \"ctmark\", run clears at start the trust mark of every \
+                        connection an earlier wnc-gw trusted (the marks stay in conntrack after it exits), \
+                        and that failed for some connections, or ctnetlink could not be used at all (for \
+                        example without CAP_NET_ADMIN). Connections still marked keep skipping inspection \
+                        until they end; when ctnetlink fails, wnc-gw cannot tell whether there are any.",
+                action: "Run as root; list the marked connections with: wnc-gw trust list, and remove \
+                         them with wnc-gw trust del (TCP and UDP) or conntrack -D (any protocol).",
             },
             Self::WritableByNonRoot => &Explanation {
                 code: "A001",
@@ -956,11 +971,13 @@ impl Issue {
                 cause: "At start, run loads its eBPF program and attaches it first on TCX ingress of \
                         both ports, and that failed: run lacks CAP_BPF or CAP_NET_ADMIN, the kernel \
                         has no TCX (it needs Linux 6.6 or later) or rejected the program, or a port \
-                        went away. run keeps running without it: trust lives in the program's \
-                        map, so no connection is trusted and every packet is inspected (more CPU, \
-                        nothing skips inspection); automatic trust is turned off (T014).",
+                        went away. run keeps running without it. With [trust] backend = \"tc\" (the \
+                        default) trust lives in the program's map, so no connection is trusted and \
+                        every packet is inspected (more CPU, nothing skips inspection); automatic trust \
+                        is turned off (T014). With backend = \"ctmark\" trust keeps working.",
                 action: "Run as root on Linux 6.6 or later; the message has the kernel's error. See \
-                         what is attached with: bpftool net show.",
+                         what is attached with: bpftool net show. If the kernel cannot run it, set \
+                         [trust] backend = \"ctmark\" to keep trust in conntrack marks instead.",
             },
             Self::CoreProgramNotFirst => &Explanation {
                 code: "D002",
@@ -1007,9 +1024,10 @@ impl Issue {
                 reported_by: DOCTOR,
                 severity: "warning",
                 cause: "The kernel rejected the query for TCX ingress programs, so it has no TCX \
-                        (added in Linux 6.6) and run cannot attach its core eBPF program (D001), \
-                        which holds trust: every connection is inspected.",
-                action: "Use Linux 6.6 or later.",
+                        (added in Linux 6.6) and run cannot attach its core eBPF program (D001). \
+                        With [trust] backend = \"tc\" (the default) that program holds trust, so every \
+                        connection is inspected; with backend = \"ctmark\" trust still works.",
+                action: "Use Linux 6.6 or later, or set [trust] backend = \"ctmark\".",
             },
             Self::ForeignTcxPrograms => &Explanation {
                 code: "D006",

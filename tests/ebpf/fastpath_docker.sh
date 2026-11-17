@@ -1,16 +1,20 @@
 #!/bin/bash
 # fastpath_docker.sh — 步驟 C：信任的連線在 TC 直接轉送（routed testbed：cli 10.0.1.2 — gw — srv 10.0.2.2）
-# 用法: bash fastpath_docker.sh <tcp|udp|reuse|errors|options|ttl1|control|kill9|l007|idle|nexthop|all>
+# 用法: bash fastpath_docker.sh <tcp|udp|reuse|errors|options|ttl1|control|kill9|l007|idle|nexthop|stale|all>
+#   BACKEND=ctmark：用 docker/wnc-gw/ctmark.toml（[trust] backend = "ctmark"）；信任的封包仍經過 forward chain，
+#   所以改看 ids chain 的 counter 有沒有停（tc 時兩個都會停）；nexthop 只有 tc 有；stale 只有 ctmark 有
 GW="docker exec wnc-gw"; CLI="docker exec wnc-cli"; SRV="docker exec wnc-srv"; B=/opt/sg/wnc-gw
+BACKEND=${BACKEND:-tc}; CONF=; CHAIN=forward
+[ "$BACKEND" = ctmark ] && { CONF="-c /etc/wnc-gw/ctmark.toml"; CHAIN=ids; }
 
 start() {
-  stop; $GW sh -c "rm -f /tmp/fp.log; ($B run > /dev/null 2> /tmp/fp.log &)"
+  stop; $GW sh -c "rm -f /tmp/fp.log; ($B $CONF run > /dev/null 2> /tmp/fp.log &)"
   for i in $(seq 1 50); do $GW grep -q "traffic is inspected" /tmp/fp.log 2>/dev/null && return 0; sleep 0.2; done
   echo "run did not start"; $GW tail -5 /tmp/fp.log; return 1
 }
 # 容器的 PID 1 不回收子程序，結束的 wnc-gw 會留成 zombie，所以只等不是 Z 的
 stop() { $GW sh -c 'pkill -INT -x wnc-gw; while ps -eo stat=,comm= | grep -q "^[^Z].* wnc-gw$"; do sleep 0.2; done'; }
-fwd() { $GW nft list chain inet wnc_gw forward | grep -m1 -o "packets [0-9]*" | cut -d" " -f2; }
+fwd() { $GW nft list chain inet wnc_gw $CHAIN | grep -m1 -o "packets [0-9]*" | cut -d" " -f2; }
 events() { $GW grep -E "$1" /tmp/fp.log | cut -c28-220 | sed 's/^/   /'; }
 
 SRVPY='import socket, sys
@@ -68,11 +72,11 @@ case_flow() {  # $1 = tcp|udp
   client $1 41000 16; sleep 3
   $GW $B trust add $1 10.0.1.2 41000 10.0.2.2 5001 && echo "   trust add: ok"
   f0=$(fwd); sleep 3; f1=$(fwd)
-  echo "   forward chain while trusted: $f0 -> $f1"
+  echo "   $CHAIN chain while trusted: $f0 -> $f1"
   $GW $B trust list | sed 's/^/   /'
   [ $1 = tcp ] && $SRV timeout 2 tcpdump -c 3 -n -v -i eth0 "tcp port 5001 and src 10.0.1.2" 2>/dev/null | grep -o "ttl [0-9]*" | sort | uniq -c | sed 's/^/   tcpdump: /'
   sleep 3; $GW $B trust del $1 10.0.1.2 41000 10.0.2.2 5001 && echo "   trust del: ok"
-  f2=$(fwd); sleep 2; f3=$(fwd); echo "   forward chain after del: $f2 -> $f3"
+  f2=$(fwd); sleep 2; f3=$(fwd); echo "   $CHAIN chain after del: $f2 -> $f3"
   wait; sleep 1; $SRV cat /tmp/fpsrv.out | tail -1 | sed 's/^/   srv: /'
   stop; events "trusted by request|no longer trusted|core ebpf program detached"
 }
@@ -112,7 +116,7 @@ options)
   start || exit 1; server udp
   udp_send 41020 5 ""; $GW $B trust add udp 10.0.1.2 41020 10.0.2.2 5001 && echo "   trust add: ok"
   f0=$(fwd); udp_send 41020 50 "s.setsockopt(socket.IPPROTO_IP, socket.IP_OPTIONS, bytes([1, 1, 1, 0]))"; sleep 0.5; f1=$(fwd)
-  echo "   forward chain while 50 datagrams with options were sent: $f0 -> $f1"
+  echo "   $CHAIN chain while 50 datagrams with options were sent: $f0 -> $f1"
   $SRV tail -1 /tmp/fpsrv.out | sed 's/^/   srv: /'; $GW $B trust list | tail -n +2 | sed 's/^/   /'
   stop
   ;;
@@ -177,19 +181,34 @@ nexthop)
   client tcp 41040 100; sleep 2
   $GW $B trust add tcp 10.0.1.2 41040 10.0.2.2 5001 && echo "   trust add: ok"
   sleep 2; $GW $B trust list | tail -n +2 | awk '{print "   after trust:", $NF, $(NF-1), $(NF-2)}'
-  f0=$(fwd); sleep 2; f1=$(fwd); echo "   forward chain while trusted: $f0 -> $f1"
+  f0=$(fwd); sleep 2; f1=$(fwd); echo "   $CHAIN chain while trusted: $f0 -> $f1"
   $SRV timeout 2 tcpdump -c 3 -n -v -i eth0 "tcp port 5001 and src 10.0.1.2" 2>/dev/null | grep -o "ttl [0-9]*" | sort | uniq -c | sed 's/^/   tcpdump: /'
   $GW ip route add 10.9.9.0/24 via 10.0.2.2; sleep 0.3
   $GW $B trust list | tail -n +2 | awk '{print "   right after a route change:", $NF, $(NF-1), $(NF-2)}'
   sleep 12; $GW $B trust list | tail -n +2 | awk '{print "   12 s later:", $NF, $(NF-1), $(NF-2)}'
   echo "   changing a route every 0.5 s for 70 s"
   for i in $(seq 1 70); do $GW ip route del 10.9.9.0/24; sleep 0.5; $GW ip route add 10.9.9.0/24 via 10.0.2.2; sleep 0.5; done
-  f2=$(fwd); sleep 2; f3=$(fwd); echo "   forward chain during the changes: $f2 -> $f3"
+  f2=$(fwd); sleep 2; f3=$(fwd); echo "   $CHAIN chain during the changes: $f2 -> $f3"
   $GW ip route del 10.9.9.0/24; sleep 13
   $GW $B trust list | tail -n +2 | awk '{print "   after the changes stop:", $NF, $(NF-1), $(NF-2)}'
   wait; sleep 1; $SRV tail -1 /tmp/fpsrv.out | sed 's/^/   srv: /'
   stop; events "D007|D008|stable again|core ebpf program detached"
   ;;
-all) for c in tcp udp reuse errors options ttl1 control kill9 l007 idle nexthop; do bash "$0" $c; done ;;
-*) echo "usage: bash fastpath_docker.sh <tcp|udp|reuse|errors|options|ttl1|control|kill9|l007|idle|nexthop|all>"; exit 2 ;;
+stale)
+  echo "=== ctmark: kill -9 leaves the trust mark in conntrack; the next run clears it before installing its table"
+  start || exit 1; server tcp
+  client tcp 41050 12; sleep 2
+  $GW $B trust add tcp 10.0.1.2 41050 10.0.2.2 5001 && echo "   trust add: ok"
+  $GW sh -c 'kill -9 $(pgrep -n -x wnc-gw)'; sleep 1
+  $GW conntrack -L -m 0x80000000/0x80000000 2>/dev/null | wc -l | sed 's/^/   marked after kill -9: /'
+  start || exit 1
+  $GW conntrack -L -m 0x80000000/0x80000000 2>/dev/null | wc -l | sed 's/^/   marked after the next start: /'
+  f0=$(fwd); sleep 2; f1=$(fwd); echo "   $CHAIN chain after the next start: $f0 -> $f1"
+  wait; stop; events "earlier run|T005"
+  ;;
+all)
+  cases="tcp udp reuse errors options ttl1 control kill9 l007 idle nexthop"
+  [ "$BACKEND" = ctmark ] && cases="tcp udp reuse errors options ttl1 kill9 idle stale"
+  for c in $cases; do bash "$0" $c; done ;;
+*) echo "usage: bash fastpath_docker.sh <tcp|udp|reuse|errors|options|ttl1|control|kill9|l007|idle|nexthop|stale|all>"; exit 2 ;;
 esac

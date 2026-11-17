@@ -45,6 +45,8 @@
 | 18 | log 只印 stderr | 平台限制 | 〔已實作〕（systemd 部分未做） |
 | 19 | 3d：讀 Suricata 的 alert（EVE 檔、poll）、自動信任、log 只放重要資訊 | 實驗（EVE 行為與成本、poll 對 inotify）＋Docker、Pi 功能驗證 | 〔已實作〕（自動信任的預設值待確認） |
 | 20 | 還沒決定、但已有實驗的事項 | — | 〔待決〕 |
+| 21 | 設定只保留相關的值 | 設計 | 〔已實作〕 |
+| 22 | 信任方式 `[trust] backend`：tc〔預設〕／ctmark，二選一 | 開發者要求＋Pi 量測（實驗 13、14） | 〔已實作〕 |
 
 ---
 
@@ -567,4 +569,15 @@ rp_filter 不另外檢查：路由設對時 strict 模式不會擋正常流量�
 - 考慮過的其他做法：doctor 只給 warning（切換 ids／ips 做實驗比較方便，但容易沒注意到）；改成 `[protection.ips]` 這種格式（格式本身就排除，但現有設定檔、腳本、文件都要改）。
 - 成本：只在讀設定時判斷，沒有執行期成本。省下的記憶體只有幾個欄位，主要的好處是不會讀到沒作用的值。
 - 現有的設定檔和腳本（`docker/wnc-gw/`、`tests/demo/demo.sh`、`tests/ids_inline/*.sh`、`tests/cpu_alloc/`）都只寫相關的欄位，不受影響。
+
+## 22. 信任方式 `[trust] backend`：tc〔預設〕／ctmark，二選一
+
+**決定**（2026-11-17，開發者：「給 forwarding 兩個選項是 TC／ct mark，這樣如果沒辦法用 TC 可以用 ct mark，但是兩個只能用一個」）〔已實作〕：
+- `[trust] backend = "tc"`（預設，§5 的 11-14 做法）或 `"ctmark"`（§5 的 10-28 做法拿回來：ctnetlink 設 `0x80000000`、forward chain 裡純 SYN 清 mark、SYN／FIN／RST 先送檢查、有 mark 的 accept）。手動信任和自動信任都照這個設定。放在 `[trust]` 裡而不是最上層：最上層的 `trust = "tc"` 和既有的 `[trust]` 區塊在 TOML 裡衝突。
+- 不自動切換：設 tc 但核心程式掛不上時照舊沒有信任（D001、T014），log、doctor（D005）和 `wnc-gw explain` 建議改用 ctmark（開發者：「warning 比較好，這樣使用者才會知道」）。
+- ctmark 時核心 eBPF 程式照樣掛（開發者：「要，因為還是會用到 eBPF 做特徵分析」）；trust map 是空的，每個封包多一次查不到的 lookup（量測見下）。掛不上也不影響信任。
+- ctmark 不做閒置清除、不做 routed 的下一跳；run 啟動時、裝 table 之前先清掉上一次留下的 mark（`untrust_all`，失敗是 T005，和 10-28 一樣）。
+- 程式：`datapath::TrustStore` trait（trust、untrust、trusted），`CoreProgram` 和 `firewall::CtMarks` 各實作一份；`LocalPrivd` 依設定在 `store()` 選一次。nft table 依 backend 產生（`firewall::forward_rules`）。
+- 執行期成本：設定只在啟動時選一次。每個封包的路徑都在 kernel（TC 程式或 nft 規則），Rust 的判斷不在上面；agent 每 5 秒對每條連線一次 trait 呼叫，相對於一次寫入（map 2.8 µs、ctnetlink 14.5 µs）可以忽略。實際量測見實驗 14（`tests/cpu_alloc/README.md`）。
+- 驗證：單元測試（設定、table 規則、doctor 的 D005、ct mark 的 `trusted_flow`）；Docker `tests/ebpf/fastpath_docker.sh all` 和 `BACKEND=ctmark … all`（`tests/ebpf/README.md`）；Pi 方案 B 的實驗 14。
 

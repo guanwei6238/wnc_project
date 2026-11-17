@@ -372,6 +372,26 @@ impl Conntrack {
     }
 }
 
+#[derive(Default)]
+pub struct LazyConntrack(Option<Conntrack>);
+
+impl LazyConntrack {
+    pub fn with<T>(&mut self, op: impl FnOnce(&mut Conntrack) -> Result<T, ConntrackError>) -> Result<T, ConntrackError> {
+        let conntrack = match self.0.as_mut() {
+            Some(conntrack) => conntrack,
+            None => self.0.insert(Conntrack::connect()?),
+        };
+        let result = op(conntrack);
+        if matches!(
+            result,
+            Err(ConntrackError::Socket(_) | ConntrackError::NoReply | ConntrackError::Malformed(_))
+        ) {
+            self.0 = None;
+        }
+        result
+    }
+}
+
 fn set_mark_request(seq: u32, tuple: &FiveTuple, value: u32, mask: u32) -> Vec<u8> {
     let mut r = Request::new(MSG_NEW, NLM_F_REQUEST | NLM_F_ACK, seq, tuple.family());
     r.tuple(CTA_TUPLE_ORIG, tuple);

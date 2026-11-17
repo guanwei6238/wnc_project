@@ -10,7 +10,7 @@ use security_gateway::agent::{
 };
 use security_gateway::config::{self, Config, Overrides, TrustSettings, ports::{self, Port}};
 use security_gateway::datapath::{
-    CoreProgram, firewall::{self, FAMILY, FORWARDED_MARK, Inspection, TABLE, WhenUnavailable},
+    CoreProgram, TrustBackend, firewall::{self, FAMILY, FORWARDED_MARK, Inspection, TABLE, WhenUnavailable},
 };
 use security_gateway::ids::{
     delivery::Delivery, lifecycle::{Event, Lifecycle}, spawned::{self, Options, SpawnedSuricata}, suricata::Suricata,
@@ -83,17 +83,21 @@ pub async fn run(
         delivery: config.delivery(),
         when_unavailable: config.suricata.when_unavailable.value,
     };
-    if let Err(e) = firewall::install(&nft, inspection).await {
+    let backend = config.trust_backend.value;
+    if backend == TrustBackend::CtMark {
+        clear_earlier_trust();
+    }
+    if let Err(e) = firewall::install(&nft, inspection, backend).await {
         error!(code = %Issue::TableInstallFailed, table = table.as_str(), error = %e, "failed to install table");
         return ExitCode::FAILURE;
     }
     info!(table = table.as_str(), "table installed; waiting for SIGINT, SIGTERM or SIGHUP");
     log_uninspected(inspection.when_unavailable);
-    let (core, core_watch) = match attach_core(&config).await {
+    let (core, core_watch) = match attach_core(&config, backend).await {
         Some((core, watch)) => (Some(core), Some(watch)),
         None => (None, None),
     };
-    let mut privd = LocalPrivd::new(core);
+    let mut privd = LocalPrivd::new(core, backend);
     let control = match ControlServer::bind(&control::socket_path(Current.runtime_dir())) {
         Ok(server) => Some(server),
         Err(e) => {
@@ -127,7 +131,7 @@ pub async fn run(
     code
 }
 
-async fn attach_core(config: &Config) -> Option<(CoreProgram, CoreWatch)> {
+async fn attach_core(config: &Config, backend: TrustBackend) -> Option<(CoreProgram, CoreWatch)> {
     let attached = match resolve_ports(config).await {
         Ok(ports) => CoreProgram::attach(&ports, config.mode.value).map(|core| (core, ports)).map_err(|e| e.to_string()),
         Err(e) => Err(e),
@@ -152,11 +156,20 @@ async fn attach_core(config: &Config) -> Option<(CoreProgram, CoreWatch)> {
             Some((core, watch))
         }
         Err(e) => {
-            error!(
-                code = %Issue::CoreProgramFailed,
-                error = e.as_str(),
-                "cannot attach the core ebpf program; running without it, so no connection is trusted"
-            );
+            match backend {
+                TrustBackend::Tc => error!(
+                    code = %Issue::CoreProgramFailed,
+                    error = e.as_str(),
+                    "cannot attach the core ebpf program; running without it, so no connection is trusted; \
+                     set [trust] backend = \"ctmark\" to trust with conntrack marks instead"
+                ),
+                TrustBackend::CtMark => error!(
+                    code = %Issue::CoreProgramFailed,
+                    error = e.as_str(),
+                    "cannot attach the core ebpf program; running without it; trust uses conntrack marks and \
+                     still works"
+                ),
+            }
             None
         }
     }
@@ -169,6 +182,36 @@ async fn resolve_ports(config: &Config) -> Result<Vec<Port>, String> {
         .into_iter()
         .map(|port| port.map_err(|e| e.to_string()))
         .collect()
+}
+
+fn clear_earlier_trust() {
+    let start = Instant::now();
+    match Conntrack::connect().and_then(|mut conntrack| firewall::untrust_all(&mut conntrack)) {
+        Ok(untrusted) => {
+            if untrusted.cleared + untrusted.gone > 0 {
+                info!(
+                    cleared = untrusted.cleared,
+                    gone = untrusted.gone,
+                    clear_ms = start.elapsed().as_millis() as u64,
+                    "cleared trust left by an earlier run"
+                );
+            }
+            for (tuple, e) in &untrusted.failed {
+                let connection = tuple.to_string();
+                error!(
+                    code = %Issue::EarlierTrustKept,
+                    connection = connection.as_str(),
+                    error = %e,
+                    "cannot clear trust left by an earlier run; this connection skips inspection until it ends"
+                );
+            }
+        }
+        Err(e) => error!(
+            code = %Issue::EarlierTrustKept,
+            error = %e,
+            "cannot clear trust left by an earlier run; those connections skip inspection until they end"
+        ),
+    }
 }
 
 fn detach_core(core: CoreProgram) {
@@ -233,7 +276,7 @@ async fn serve(
     };
     let mut alert_file = alert_file;
     let mut alerts: Option<AlertWatch> = None;
-    let (mut trust_agent, mut trust_tick) = match trust_agent(config, alert_file.is_some(), privd.core().is_some()) {
+    let (mut trust_agent, mut trust_tick) = match trust_agent(config, alert_file.is_some(), privd.can_trust()) {
         Some((agent, check_interval)) => {
             let mut tick = time::interval(check_interval);
             tick.set_missed_tick_behavior(MissedTickBehavior::Delay);
@@ -267,7 +310,9 @@ async fn serve(
                     handle_request(incoming, privd).await;
                 }
             }
-            _ = idle_tick.tick(), if privd.core().is_some() => idle.check(privd, Instant::now()),
+            _ = idle_tick.tick(), if privd.backend() == TrustBackend::Tc && privd.core().is_some() => {
+                idle.check(privd, Instant::now())
+            }
             changed = async {
                 match route_changes.as_mut() {
                     Some(changes) => changes.next().await,
@@ -391,7 +436,7 @@ async fn tick(interval: &mut Option<time::Interval>) {
 
 fn next_hops(config: &Config, privd: &LocalPrivd) -> (Option<RouteChanges>, Option<NextHops>, Option<Netlink>) {
     let ports = match privd.core().map(|core| core.ports()) {
-        Some(&[a, b]) if config.mode.value == Mode::Routed => [a, b],
+        Some(&[a, b]) if config.mode.value == Mode::Routed && privd.backend() == TrustBackend::Tc => [a, b],
         _ => return (None, None, None),
     };
     let subscribed = RouteChanges::subscribe().and_then(|changes| Ok((changes, Netlink::connect()?)));
@@ -428,6 +473,7 @@ fn trust_agent(config: &Config, alerts: bool, fast_path: bool) -> Option<(TrustA
         return None;
     }
     info!(
+        backend = %config.trust_backend.value,
         min_packets = trust.min_packets.value,
         min_age_s = trust.min_age.value.as_secs(),
         ttl_s = trust.ttl.value.as_secs(),

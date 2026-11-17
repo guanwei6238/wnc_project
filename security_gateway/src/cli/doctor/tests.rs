@@ -245,7 +245,7 @@ fn names(pairs: &[(u32, &str)]) -> HashMap<u32, String> {
 #[test]
 fn empty_tcx_and_the_core_program_alone_have_no_finding() {
     let rows = [tcx_row("eth0", Ok(&[])), tcx_row("eth1", Ok(&[52]))];
-    assert_eq!(tcx_findings(&rows, Some(&names(&[(52, "wnc_gw_ingress")]))), vec![]);
+    assert_eq!(tcx_findings(&rows, Some(&names(&[(52, "wnc_gw_ingress")])), TrustBackend::Tc), vec![]);
 }
 
 #[test]
@@ -253,7 +253,7 @@ fn programs_after_the_core_program_are_disclosed() {
     let rows = [tcx_row("eth0", Ok(&[52, 60, 61]))];
     let names = names(&[(52, "wnc_gw_ingress"), (60, "shaper"), (61, "")]);
     assert_eq!(
-        tcx_findings(&rows, Some(&names)),
+        tcx_findings(&rows, Some(&names), TrustBackend::Tc),
         vec![Finding {
             severity: Severity::Warning,
             issue: Issue::ForeignTcxPrograms,
@@ -269,7 +269,7 @@ fn programs_before_the_core_program_are_a_warning() {
     let rows = [tcx_row("eth0", Ok(&[60, 52, 61]))];
     let names = names(&[(52, "wnc_gw_ingress"), (60, "jumper"), (61, "shaper")]);
     assert_eq!(
-        tcx_findings(&rows, Some(&names)),
+        tcx_findings(&rows, Some(&names), TrustBackend::Tc),
         vec![
             Finding {
                 severity: Severity::Warning,
@@ -293,7 +293,7 @@ fn programs_before_the_core_program_are_a_warning() {
 fn without_names_programs_are_listed_by_id() {
     let rows = [tcx_row("eth0", Ok(&[52]))];
     assert_eq!(
-        tcx_findings(&rows, None),
+        tcx_findings(&rows, None, TrustBackend::Tc),
         vec![Finding {
             severity: Severity::Warning,
             issue: Issue::ForeignTcxPrograms,
@@ -311,7 +311,7 @@ fn tcx_query_failures_are_one_warning() {
         tcx_row("eth1", Err(TcxQueryError::NotPermitted)),
     ];
     assert_eq!(
-        tcx_findings(&rows, None),
+        tcx_findings(&rows, None, TrustBackend::Tc),
         vec![Finding {
             severity: Severity::Warning,
             issue: Issue::TcxUnchecked,
@@ -326,12 +326,28 @@ fn tcx_query_failures_are_one_warning() {
 fn a_kernel_without_tcx_is_a_warning() {
     let rows = [tcx_row("eth0", Err(TcxQueryError::Unsupported))];
     assert_eq!(
-        tcx_findings(&rows, None),
+        tcx_findings(&rows, None, TrustBackend::Tc),
         vec![Finding {
             severity: Severity::Warning,
             issue: Issue::TcxUnsupported,
             message: "the kernel has no TCX (it needs Linux 6.6 or later), so run cannot attach its core eBPF \
-                      program (D001), which holds trust; every connection is inspected"
+                      program (D001), which holds trust; every connection is inspected; set [trust] backend = \
+                      \"ctmark\" to trust with conntrack marks instead"
+                .to_owned(),
+        }]
+    );
+}
+
+#[test]
+fn a_kernel_without_tcx_keeps_ct_mark_trust() {
+    let rows = [tcx_row("eth0", Err(TcxQueryError::Unsupported))];
+    assert_eq!(
+        tcx_findings(&rows, None, TrustBackend::CtMark),
+        vec![Finding {
+            severity: Severity::Warning,
+            issue: Issue::TcxUnsupported,
+            message: "the kernel has no TCX (it needs Linux 6.6 or later), so run cannot attach its core eBPF \
+                      program (D001); trust uses conntrack marks and still works"
                 .to_owned(),
         }]
     );

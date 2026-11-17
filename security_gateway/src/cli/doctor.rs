@@ -8,7 +8,9 @@ use security_gateway::config::{
     self, AbsolutePath, AutoTrust, Config, ConfigError, Overrides, Setting, SuricataSettings, TrustSettings,
     ports::{self, Port, ResolveError}, protection::Protection,
 };
-use security_gateway::datapath::{CORE_PROGRAM_NAME, CoreHook, XdpPolicy, core_hook, firewall::WhenUnavailable};
+use security_gateway::datapath::{
+    CORE_PROGRAM_NAME, CoreHook, TrustBackend, XdpPolicy, core_hook, firewall::WhenUnavailable,
+};
 use security_gateway::forwarding::{self, EnvCheck, EnvState, Forwarding, Level, Mode, Note};
 use security_gateway::ids::{
     delivery::Delivery, spawned,
@@ -82,7 +84,12 @@ pub async fn passes(config: &Config, starting: bool) -> bool {
     out!("mode:   {} ({})", config.mode.value, config.mode.source);
     out!("xdp:    {} ({})", config.xdp.value, config.xdp.source);
     out!("protection: {} ({}), suricata receives {}", config.protection.value, config.protection.source, config.delivery());
-    out!("trust:  {}", trust_summary(&config.trust));
+    out!(
+        "trust:  {}; backend {} ({})",
+        trust_summary(&config.trust),
+        config.trust_backend.value,
+        config.trust_backend.source
+    );
     out!();
 
     let netlink = match Netlink::connect() {
@@ -125,7 +132,7 @@ pub async fn passes(config: &Config, starting: bool) -> bool {
     findings.extend(check_xdp(config.xdp.value, &ports).await);
     out!();
 
-    findings.extend(check_tcx(&ports));
+    findings.extend(check_tcx(&ports, config.trust_backend.value));
     out!();
 
     findings.extend(check_modules(forwarding.required_modules(), config.delivery()));
@@ -381,7 +388,7 @@ struct TcxRow {
     chain: Result<TcxChain, TcxQueryError>,
 }
 
-fn check_tcx(ports: &[Port]) -> Vec<Finding> {
+fn check_tcx(ports: &[Port], backend: TrustBackend) -> Vec<Finding> {
     let rows: Vec<TcxRow> = ports
         .iter()
         .map(|port| TcxRow {
@@ -392,19 +399,24 @@ fn check_tcx(ports: &[Port]) -> Vec<Finding> {
     let any_program = rows.iter().any(|row| matches!(&row.chain, Ok(chain) if !chain.prog_ids.is_empty()));
     let names = if any_program { bpf::program_names().ok() } else { None };
     print_tcx(&rows, names.as_ref());
-    tcx_findings(&rows, names.as_ref())
+    tcx_findings(&rows, names.as_ref(), backend)
 }
 
-fn tcx_findings(rows: &[TcxRow], names: Option<&HashMap<u32, String>>) -> Vec<Finding> {
+fn tcx_findings(rows: &[TcxRow], names: Option<&HashMap<u32, String>>, backend: TrustBackend) -> Vec<Finding> {
     let mut findings = Vec::new();
     let errors: Vec<&TcxQueryError> = rows.iter().filter_map(|row| row.chain.as_ref().err()).collect();
     if errors.iter().any(|e| matches!(e, TcxQueryError::Unsupported)) {
         findings.push(Finding {
             severity: Severity::Warning,
             issue: Issue::TcxUnsupported,
-            message: "the kernel has no TCX (it needs Linux 6.6 or later), so run cannot attach its core eBPF \
-                      program (D001), which holds trust; every connection is inspected"
-                .to_owned(),
+            message: match backend {
+                TrustBackend::Tc => "the kernel has no TCX (it needs Linux 6.6 or later), so run cannot attach its \
+                                     core eBPF program (D001), which holds trust; every connection is inspected; \
+                                     set [trust] backend = \"ctmark\" to trust with conntrack marks instead",
+                TrustBackend::CtMark => "the kernel has no TCX (it needs Linux 6.6 or later), so run cannot attach \
+                                         its core eBPF program (D001); trust uses conntrack marks and still works",
+            }
+            .to_owned(),
         });
     } else if let Some(e) = errors.first() {
         findings.push(Finding {

@@ -7,7 +7,8 @@ use gw_common::{
 
 use crate::config::ports::Port;
 use crate::forwarding::Mode;
-use crate::kernel::{bpf::{BpfError, TcxProgram}, conntrack::{FiveTuple, Protocol}};
+use crate::kernel::{bpf::{BpfError, TcxProgram}, conntrack::{ConntrackError, FiveTuple, Protocol}};
+use super::trust::TrustStore;
 
 #[repr(C, align(8))]
 struct Aligned<T: ?Sized>(T);
@@ -65,6 +66,8 @@ pub enum TrustError {
     Protocol(#[from] UntrustableProtocol),
     #[error(transparent)]
     Bpf(#[from] BpfError),
+    #[error(transparent)]
+    Conntrack(#[from] ConntrackError),
 }
 
 pub struct CoreProgram {
@@ -147,8 +150,10 @@ impl CoreProgram {
     pub fn redirected(&self) -> Result<u64, BpfError> {
         self.program.per_cpu_sum(COUNTERS, COUNTER_REDIRECTED)
     }
+}
 
-    pub fn trust(&mut self, tuple: &FiveTuple) -> Result<(), TrustError> {
+impl TrustStore for CoreProgram {
+    fn trust(&mut self, tuple: &FiveTuple) -> Result<(), TrustError> {
         let key = key_of(tuple)?;
         let stats = |direction| FlowStats {
             direction,
@@ -162,14 +167,14 @@ impl CoreProgram {
         Ok(())
     }
 
-    pub fn untrust(&mut self, tuple: &FiveTuple) -> Result<bool, TrustError> {
+    fn untrust(&mut self, tuple: &FiveTuple) -> Result<bool, TrustError> {
         let key = key_of(tuple)?;
         let original = self.program.remove_flow(TRUST, &key)?;
         let reply = self.program.remove_flow(TRUST, &key.reverse())?;
         Ok(original || reply)
     }
 
-    pub fn trusted(&self) -> Result<Vec<TrustedFlow>, BpfError> {
+    fn trusted(&mut self) -> Result<Vec<TrustedFlow>, TrustError> {
         Ok(pair_flows(self.program.flows(TRUST)?))
     }
 }
@@ -188,6 +193,10 @@ fn pair_flows(mut flows: Vec<(FlowKey, FlowStats)>) -> Vec<TrustedFlow> {
     }
     pairs.sort_by_key(|flow| flow.tuple.to_string());
     pairs
+}
+
+pub(super) fn trustable(tuple: &FiveTuple) -> Result<(), UntrustableProtocol> {
+    key_of(tuple).map(drop)
 }
 
 fn key_of(tuple: &FiveTuple) -> Result<FlowKey, UntrustableProtocol> {

@@ -5,8 +5,8 @@ pub mod trust;
 
 use std::net::IpAddr;
 
-use crate::datapath::{CoreProgram, TrustError, TrustedFlow, firewall};
-use crate::kernel::{bpf::BpfError, conntrack::{Connection, Conntrack, ConntrackError, FiveTuple}};
+use crate::datapath::{CoreProgram, TrustBackend, TrustError, TrustStore, TrustedFlow, firewall::{self, CtMarks}};
+use crate::kernel::conntrack::{Connection, ConntrackError, FiveTuple, LazyConntrack};
 
 #[derive(Debug, thiserror::Error)]
 pub enum PrivdError {
@@ -22,22 +22,34 @@ pub trait Privd {
     fn forwarded_connections(&mut self) -> Result<Vec<Connection>, ConntrackError>;
     fn trust(&mut self, tuple: &FiveTuple) -> Result<(), PrivdError>;
     fn untrust(&mut self, tuple: &FiveTuple) -> Result<(), PrivdError>;
-    fn trusted(&self) -> Result<Vec<TrustedFlow>, PrivdError>;
+    fn trusted(&mut self) -> Result<Vec<TrustedFlow>, PrivdError>;
 }
 
 pub struct LocalPrivd {
-    conntrack: Option<Conntrack>,
+    conntrack: LazyConntrack,
     core: Option<CoreProgram>,
+    backend: TrustBackend,
+    marks: CtMarks,
     newly_trusted: Option<Vec<FiveTuple>>,
 }
 
 impl LocalPrivd {
-    pub fn new(core: Option<CoreProgram>) -> Self {
+    pub fn new(core: Option<CoreProgram>, backend: TrustBackend) -> Self {
         Self {
-            conntrack: None,
+            conntrack: LazyConntrack::default(),
             core,
+            backend,
+            marks: CtMarks::default(),
             newly_trusted: None,
         }
+    }
+
+    pub fn backend(&self) -> TrustBackend {
+        self.backend
+    }
+
+    pub fn can_trust(&self) -> bool {
+        self.backend == TrustBackend::CtMark || self.core.is_some()
     }
 
     pub fn record_newly_trusted(&mut self, on: bool) {
@@ -77,33 +89,24 @@ impl LocalPrivd {
     }
 
     pub fn connection(&mut self, tuple: &FiveTuple) -> Result<Connection, ConntrackError> {
-        self.with(|conntrack| conntrack.get(tuple))
+        self.conntrack.with(|conntrack| conntrack.get(tuple))
     }
 
-    fn with<T>(&mut self, op: impl FnOnce(&mut Conntrack) -> Result<T, ConntrackError>) -> Result<T, ConntrackError> {
-        let conntrack = match self.conntrack.as_mut() {
-            Some(conntrack) => conntrack,
-            None => self.conntrack.insert(Conntrack::connect()?),
-        };
-        let result = op(conntrack);
-        if matches!(
-            result,
-            Err(ConntrackError::Socket(_) | ConntrackError::NoReply | ConntrackError::Malformed(_))
-        ) {
-            self.conntrack = None;
+    fn store(&mut self) -> Result<&mut dyn TrustStore, PrivdError> {
+        match self.backend {
+            TrustBackend::Tc => Ok(self.core.as_mut().ok_or(PrivdError::NoFastPath)?),
+            TrustBackend::CtMark => Ok(&mut self.marks),
         }
-        result
     }
 }
 
 impl Privd for LocalPrivd {
     fn forwarded_connections(&mut self) -> Result<Vec<Connection>, ConntrackError> {
-        self.with(firewall::forwarded)
+        self.conntrack.with(firewall::forwarded)
     }
 
     fn trust(&mut self, tuple: &FiveTuple) -> Result<(), PrivdError> {
-        let core = self.core.as_mut().ok_or(PrivdError::NoFastPath)?;
-        core.trust(tuple)?;
+        self.store()?.trust(tuple)?;
         if let Some(newly) = self.newly_trusted.as_mut() {
             newly.push(*tuple);
         }
@@ -111,15 +114,14 @@ impl Privd for LocalPrivd {
     }
 
     fn untrust(&mut self, tuple: &FiveTuple) -> Result<(), PrivdError> {
-        let core = self.core.as_mut().ok_or(PrivdError::NoFastPath)?;
-        match core.untrust(tuple)? {
+        match self.store()?.untrust(tuple)? {
             true => Ok(()),
             false => Err(PrivdError::NotTrusted),
         }
     }
 
-    fn trusted(&self) -> Result<Vec<TrustedFlow>, PrivdError> {
-        let core = self.core.as_ref().ok_or(PrivdError::NoFastPath)?;
-        core.trusted().map_err(|e: BpfError| PrivdError::Trust(e.into()))
+    fn trusted(&mut self) -> Result<Vec<TrustedFlow>, PrivdError> {
+        Ok(self.store()?.trusted()?)
     }
 }
+
