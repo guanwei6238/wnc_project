@@ -47,6 +47,7 @@
 | 20 | 還沒決定、但已有實驗的事項 | — | 〔待決〕 |
 | 21 | 設定只保留相關的值 | 設計 | 〔已實作〕 |
 | 22 | 信任方式 `[trust] backend`：tc〔預設〕／ctmark，二選一 | 開發者要求＋Pi 量測（實驗 13、14） | 〔已實作〕 |
+| 23 | 特徵：使用者載入自己的 eBPF，JSON 定義檔描述格式和運算，wnc-gw 驗證格式、解碼、計算 | 開發者要求＋設計＋Docker 驗證（掛點、run、試跑） | 〔已實作〕（Pi 的載入確認和成本未量） |
 
 ---
 
@@ -581,3 +582,112 @@ rp_filter 不另外檢查：路由設對時 strict 模式不會擋正常流量�
 - 執行期成本：設定只在啟動時選一次。每個封包的路徑都在 kernel（TC 程式或 nft 規則），Rust 的判斷不在上面；agent 每 5 秒對每條連線一次 trait 呼叫，相對於一次寫入（map 2.8 µs、ctnetlink 14.5 µs）可以忽略。實驗 14（`tests/cpu_alloc/README.md`，Pi，7 個切片 × bridge／routed × ips／ids，2 輪）：加選項後的 tc 和加選項前（46a96d2）50 kpps 時 28 格裡 21 格差在 ±0.2 µs 內，沒有兩輪都變慢的格子。ctmark 比 tc 每個信任封包貴：bridge 3.7–8.5 µs、routed 0.8–4.4 µs（例外：routed 的 I23_Benign_Final 是 ctmark 便宜 1.5 µs，同實驗 13）；和沒有核心程式的舊 ct mark（實驗 13 的 C）比，掛著核心程式的 ctmark 在 bridge 約多 1 µs、routed 約 0.3 µs（扣掉隔天的漂移）。
 - 驗證：單元測試（設定、table 規則、doctor 的 D005、ct mark 的 `trusted_flow`）；Docker `tests/ebpf/fastpath_docker.sh all` 和 `BACKEND=ctmark … all`（`tests/ebpf/README.md`）；Pi 方案 B 的實驗 14。
 
+## 23. 特徵：使用者的 eBPF ＋ JSON 定義檔
+
+**決定**（2026-11-18，開發者）〔已實作〕：
+- **eBPF 由使用者提供、wnc-gw 載入**，我們不預先提供特徵程式（開發者：「eBPF 也是由使用者載入，我們不預先提供」）。延續 10-22「框架只定描述方式」。
+- **不預先定義特徵，只提供運算**（開發者：「我們只提供可能會用到的運算像是速率，不先定義好特徵，單純可以用我們提供的運算做操作」）。使用者用這些運算組出自己的特徵。
+- **格式用我們自己的簡單 JSON**，不用 JSON Schema（開發者：「json schema 有很多功能在這個專案用不到，應該只要簡單的格式支援」）：JSON Schema 沒有整數寬度、byte order、欄位順序，`$ref`、`oneOf` 這些也用不到。
+- **eBPF 照常送 bytes**，wnc-gw 啟動時讀定義檔、建出解碼計畫（每個欄位的 offset 和型別），不是產生程式碼。
+- **padding 自動算**（開發者：「要求明寫 padding 會不會很複雜」）：照 C 的自然對齊（欄位對齊到自己的大小、整個 struct 補到最大的對齊），和 clang 編 BPF、Rust `#[repr(C)]` 相同；`"packed": true` 時不補。doctor 印出算出來的每個欄位 offset 和總長，讓使用者對照自己的 struct。
+- **驗證**用 Docker（功能）；Pi 只做最後一次載入確認（Pi 的 kernel 沒有 vmlinux BTF）和成本量測（讀 map、解碼、運算每筆幾 µs；核心程式如果多一個給使用者程式的呼叫點，每個封包的成本）。
+
+**定義檔**（草案，欄位名稱實作時可能微調）：
+
+```json
+{
+  "map": "FLOWS",
+  "key":   [{"name": "saddr", "type": "ipv4"}, {"name": "sport", "type": "u16", "endian": "big"}, {"name": "proto", "type": "u8"}],
+  "value": [{"name": "packets", "type": "u64", "merge": "sum"}, {"name": "bytes", "type": "u64", "merge": "sum"},
+            {"name": "len_sumsq", "type": "u64", "merge": "sum"}, {"name": "first_ns", "type": "u64", "merge": "min"},
+            {"name": "last_ns", "type": "u64", "merge": "max"}],
+  "derived": [{"name": "pps", "op": "rate", "of": "packets"},
+              {"name": "len_mean", "op": "div", "args": ["bytes", "packets"]},
+              {"name": "len_std", "op": "std", "sum": "bytes", "sumsq": "len_sumsq", "count": "packets"}]
+}
+```
+
+- 型別：u8／u16／u32／u64、i8～i64、`ipv4`、`ipv6`（network order，解成位址字串）、固定長度陣列（`"len": N`）。`endian` 預設 little（BPF 在 Pi 和 x86 都是 bpfel）。
+- `merge`（per-CPU map 才需要）：sum、min、max、or、last。
+- 運算（第一版候選）：add、sub、mul、div、ratio；mean、var、std（由總和、平方和、次數推）；delta、rate（和上一次讀到的值比，第一次讀沒有值）；直方圖陣列的近似百分位數；單位換算、分桶、整數對應成 enum（送雲端只能是數值、bool、enum，SKILL.md §5-9）。除以 0 輸出 null。`derived` 可以引用別的 `derived`，載入時排序、檢查循環。
+- 運算寫成 JSON 物件，不用運算式語言：不需要 parser，避開 CEL parser 那類 DoS 漏洞（`field-scripts.md` §3）。跨 flow 的彙總（依主機分組、時間窗）第一版不做。
+
+**格式驗證**：
+
+| 檢查 | 時機 | 抓得到 |
+|---|---|---|
+| ELF 有這個 map、種類支援 | 載入前（doctor、run） | 名稱打錯、種類不對 |
+| map 的 `key_size`、`value_size` 等於定義算出來的長度 | 載入前，一定做 | 漏欄位、型別寫錯 |
+| ELF 帶 BTF 時逐欄比對名稱、offset、大小；沒有 BTF 給 warning | 載入前 | 長度一樣但順序寫反 |
+| `derived` 引用的欄位存在、型別能做這個運算、沒有循環 | 載入前 | 定義檔本身寫錯 |
+| ring buffer 每筆記錄的長度 | 執行時；不合就丟掉、計數、記 log | ring buffer 在 ELF 裡沒有記錄長度 |
+
+欄位的意思對不對（eBPF 是不是真的把封包數寫進 `packets`）無法自動驗證；另外提供試跑命令：用 `BPF_PROG_TEST_RUN` 把 pcap 的封包餵給使用者的程式，印出解碼和運算後的結果。aya 有沒有對應的 API、需要什麼權限〔待查證〕。
+
+**掛點**（2026-11-18，開發者：「在開發的時候不要先考慮 pi 我要做的就是把所有可能都處理了」）〔設定和 doctor 已實作〕：`hook` 必填、沒有預設（三個位置看到的封包不同，沒有一個涵蓋全部）：
+
+| hook | 程式型別 | 信任的封包 | 被丟掉的封包 | GRO |
+|---|---|---|---|---|
+| `xdp`（`xdp_mode` 預設 native；`"generic"` 要明寫） | XDP（section `xdp`） | 看得到（XDP 在核心程式之前） | 看得到 | native 看到合併前的原始 frame；generic 讓整張網卡不做 GRO |
+| `tc-ingress`（排在核心程式後面） | TC（section `classifier`） | backend tc 時**看不到** | 看得到 | 合併後 |
+| `tc-egress`（另一個 port 的出口） | TC | 看得到 | **看不到**（ips 被 Suricata 丟、之後的 ban） | 合併後 |
+
+- 為什麼 tc-ingress 看不到信任的封包：核心程式對未信任的封包回傳 `TCX_NEXT`，信任的封包回傳 redirect，TCX 的鏈就結束（`gw-ebpf/src/main.rs`）。Docker 驗證（`tests/ebpf/hook_docker.sh`，routed，只數 342 bytes 的 UDP 幀）：backend tc 時 20 個不信任、再 20 個信任，LAN 口 ingress（核心程式後面）20 → 20、WAN 口 egress 20 → 40；backend ctmark 時兩邊都 40。bridge（`bpf_redirect`）經過 egress 是依 kernel 路徑的推論，Pi 上要確認。
+- freplace（核心程式在 redirect 前呼叫使用者替換的函式）沒有做：每個封包都多一次呼叫，沒用特徵的人也要付。
+- doctor 檢查程式型別和 hook 對不對得上（G003）；`xdp` native 時查每個 port 有沒有 native XDP，沒有就是 error（G009）；generic 給 warning（G010）。
+- 限制：aya 0.16 只認 section `classifier`、`xdp`，libbpf 慣用的 `SEC("tc")`、`SEC("tcx/egress")` 讀不到。
+
+**設定**〔已實作〕：
+
+```toml
+[[features]]                  # 最多 16 個
+name = "flows"                # 小寫英文、數字、底線，不能重複
+program = "/etc/wnc-gw/features/flows.o"
+entry = "flows"
+definition = "/etc/wnc-gw/features/flows.json"
+hook = "tc-egress"
+xdp_mode = "native"           # 只能配 hook = "xdp"，否則 C004
+interval = 1                  # 讀 hash／array map 的間隔，1–3600 秒，預設 1
+```
+
+**已實作的部分**（`src/features/`，2026-11-18）：
+- `definition.rs`（定義檔、排列、`derived` 排序）、`record.rs`（解碼、per-CPU 合併：沒寫過的 CPU 副本全是 0，跳過，否則 min 永遠是 0）、`derive.rs`（13 種運算；整數加減乘保持整數、溢位和除以 0 輸出 null；var／std 是母體變異數；percentile 回傳桶的上界）。merge 是 sum、min、max、or、first（`last` 拿掉：分不出哪個 CPU 最後寫）。`ipv4`、`ipv6` 對齊到 4（C 的 `__u32`、`struct in6_addr`）。
+- `elf.rs`（用 aya-obj 讀程式和 map 的種類、大小）、`btf.rs`（自己解析 `.BTF`：aya-obj 的 BTF 型別欄位是私有的）、`check.rs`（比對）、`load.rs`（讀檔，ELF 上限 16 MiB）。BTF 比對只對 libbpf 方式（`.maps`，`__type(key/value)`）或 aya-ebpf `#[btf_map]` 宣告的 map 有效；aya-ebpf `#[map]` 的舊式 map 沒有 BTF，只比長度（G007）。BTF 宣告的 ring buffer 有記錄型別，載入前就比；libbpf 的 ring buffer 不宣告型別，執行時才逐筆查長度。
+- doctor：每個 feature 印出 map、算出來的 offset、`derived`；代碼 G001–G010；ELF 和定義檔加進非 root 可改的檢查（A001）。Docker 驗證（`tests/features/`：一支程式四種 map）：BTF hash／per-CPU hash 通過（key 的 `pad` 成員是 G008 note）、舊式 map G007、`packets`／`bytes` 對調 G006。
+
+**run 和試跑**（2026-11-19）〔已實作〕：
+- 讀 hash／array map 自己呼叫 `bpf(BPF_MAP_LOOKUP_BATCH)`（2026-11-19 起；之前是 `BPF_MAP_GET_NEXT_KEY`＋`BPF_MAP_LOOKUP_ELEM`，現在留作 kernel 不支援 batch 時的退路），試跑呼叫 `bpf(BPF_PROG_TEST_RUN)`：aya 0.16 的型別化 API 要在編譯期知道 key／value 型別，讀 bytes 的包裝是 crate 內部私有。ring buffer 用 aya 的 `RingBuf`，等資料用 tokio 的 `AsyncFd`（tokio 1.54 只剩 `unsafe fn register`）。新增兩處 `unsafe`，都在 `src/kernel/bpf/user.rs`（開發者 11-19：「適當的 unsafe 是可以的」）：一個 `bpf_syscall`，傳進去的指標都指向依 map 的 key_size／value_size（per-CPU 是每個 CPU 一格 8 bytes 對齊）配好的緩衝區；一個 `AsyncFd::register`，fd 屬於同一個物件裡的 `RingBuf`。
+- 一次一個 key 讀 hash map 時有 entry 被刪，kernel 會從第一個 key 重來；同一個 key 出現第二次就停，每次最多讀 `max_entries` 筆。batch 是一個 bucket 一個 bucket 讀，沒有這個問題。array map 全是 0 的 entry 不輸出（沒寫過的 index）。
+- 輸出：`<log 目錄>/features/<name>.jsonl`（目錄 0750、檔案 0640），每筆一行，64 MiB 時改名成 `.jsonl.1`（只留一份舊的）。run 時的代碼：G011（啟動不了，照常執行）、G012（讀不到，恢復時記一次）、G013（記錄長度不合，每分鐘最多一次）、G014（寫不進去）。
+- `wnc-gw features test <name> <pcap>`：程式只載入、不掛；每個封包跑一次 `BPF_PROG_TEST_RUN`，最後讀一次 map，印出和 run 相同格式的 JSON lines 與每種回傳值的封包數。pcap 只支援經典格式、Ethernet，最多 100 萬個封包。
+- Docker 驗證（`tests/features/run_docker.sh`、`test_docker.sh`）：
+  - run，routed，20 個 UDP（342 bytes 的幀）不信任、`trust add` 之後再 20 個：tc backend 時 tc-egress 40、tc-ingress（per-CPU）20、xdp（veth native）40、ringbuf 40 筆；ctmark 時 tc-ingress 也是 40。bytes、長度平方和、直方圖、mean、std、enum、percentile、span、pps（多 20 個的那一秒 19.98）都和手算一致。
+  - 試跑：20 個 UDP＋5 個 TCP 的 pcap，四種都得到 20／5 兩條 flow（ringbuf 25 筆），TC 回傳 `TCX_NEXT` ×25、XDP `XDP_PASS` ×25。
+  - 使用者的程式要在沒有 `CAP_PERFMON` 時通過 verifier（gw 容器只有 `CAP_BPF`、`CAP_NET_ADMIN`，和 privd 的規劃一樣）：測試程式原本的小陣列清零（編成 memset 迴圈）、map value 用變數索引、XDP 的 `data_end - data` 都被拒，改成純量欄位、每個分支固定索引、`bpf_xdp_get_buff_len`。
+
+- Pi 的功能確認（2026-11-19，`tests/features/features_pi.sh`，bridge，veth）：bridge 的 `bpf_redirect` 出去的封包經過另一個 port 的 egress（tc-egress 40、tc-ingress 20）；BTF 宣告的 map 在沒有 vmlinux BTF 的 Pi kernel 上照樣載入；試跑一樣。一張網卡只能掛一個 XDP 程式（native 和 generic 也不能同時），第二個回 `EEXIST`，所以 doctor 加了 G015：兩個以上 `hook = "xdp"`，或 port 上已經有別的 XDP 程式，都是 error。
+
+**讀取的成本**（2026-11-19）〔已實作〕：
+- 實驗 15（`tests/cpu_alloc/README.md`）：C17（每秒讀一次 9,741 筆）掛特徵程式時每個封包多 40 µs 以上，幾乎都是每秒固定的 user space 成本（約 0.75 秒／秒）。改了之後降到 0.07–0.10 秒／秒，Fe−T 在 20 kpps 從 +42.8 降到 +6.8 µs。
+- 拆開量（`tests/features/bench/`；Pi 1000 MHz、hash map 5,079 筆、20 輪中位數，ns／筆）：
+
+  | 做法 | 讀 map | 解碼 | 衍生 | 寫 JSON | 寫檔＋釋放 | 合計 | 每筆配置 |
+  |---|---|---|---|---|---|---|---|
+  | 原本（`Value` 動態型別、`serde_json`、`format!`、next_key＋lookup） | 6,578 | 4,543 | 12,392 | 30,472 | 3,864 | 57,849 | 76 |
+  | 定義檔編譯成步驟、直接寫 JSON | 6,521 | 747 | 1,111 | 2,035 | 822 | 11,236 | 6 |
+  | 再加 batch 256（bench 的版本） | 647 | 747 | 1,179 | 2,032 | 366 | 4,982 | 0 |
+  | 現在的 wnc-gw（`Table`＋`Plan`，bench 的 `gw` 模式；解碼和衍生合在一起量） | 648 | 2,022 | | 2,085 | 360 | 5,115 | 0 |
+  | 同上，強制一次一個 key（kernel 不支援 batch 時） | 3,914 | 2,034 | | 2,074 | 360 | 8,381 | 0 |
+
+  - 原本的成本主要是配置記憶體（每筆 76 次），不是 JSON 本身；Pi 上 musl 的 malloc 特別慢：原本的做法只換 mimalloc 就快 2.05 倍，現在的做法每筆不配置，換不換一樣。
+  - next_key＋lookup 兩次 syscall 約 3.8 µs（Pi 最簡單的 syscall 0.8 µs，筆電 0.1 µs）；batch 64、256、1024 只差 6%，選 256。1,000 筆（map 上限 16,384）時 batch 每筆 0.79 µs，空的 bucket 也要掃，影響不大。
+  - per-CPU hash（4 核心）：原本 64.5 µs，現在的 wnc-gw 6.9 µs（一次一個 key 10.4 µs）。
+  - 二進位輸出（每格一個型別 byte）寫出來每筆 0.47 µs，比 JSON 少 1.6 µs；格式等讀取端（edge AI、雲端）定了再決定，到時把讀取端解析的成本一起量。
+- 正確性：bench 把原本的程式留一份（`legacy.rs`），每次執行前用同一次讀取、同一個時間點跑新舊兩邊，中間打封包讓 rate 變動，比 3 輪：hash 和 per-CPU 都逐字相同，batch 和一次一個 key（`Table::read_one_at_a_time`，強制走退路）也一樣。單元測試保留原本的預期值，另外加了 derived 的 delta、200 個 key 的 rate、浮點數和 serde_json 的寫法一致。Docker 的 `run_docker.sh`、`test_docker.sh` 結果和 11-19 相同；Pi 上 bench 的 `gw` 模式（batch 和一次一個 key）和舊程式比對逐字相同，新舊兩版 `features test` 的輸出（去掉時間欄位、排序後）相同；實驗 15 的 run 沒有 G011–G014，S_m60 每次讀 117 筆、`bad_records=0`。
+- 測試程式 `prog/` 的 per-CPU map 有個問題（不是 wnc-gw 的）：一條 flow 第一次出現在某顆 CPU 時，那顆 CPU 的副本是 0，程式只在 `insert` 時設 `first_ns`，所以合併時 min 是 0、`span_s` 變成開機到現在的秒數。寫 example 時修。
+
+**待決**：
+- Pi 的成本：特徵程式每個封包多幾 µs（三種 hook，實驗 15）；讀 map 的成本見上面，連線多時每次讀要多久（讀的期間事件迴圈停住）還沒量。
+- ring buffer 每筆記錄還是各自配置一次（aya 的 `RingBuf` 給的是借用，現在複製成 `Vec`）。
+- 處理完的記錄之後送 edge AI、雲端（O12、O19）；現在只寫本機檔案。
+- 安全：簽章（SKILL.md §5-2）之後補；現在是 `AbsolutePath`、doctor 檢查非 root 改不改得了 ELF 和定義檔、log 記 prog_id。

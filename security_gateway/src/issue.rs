@@ -129,6 +129,21 @@ issues! {
     ExpireFailed,
     TrustRevoked,
     RevokeFailed,
+    FeatureDefinitionInvalid,
+    FeatureProgramInvalid,
+    FeatureEntry,
+    FeatureMap,
+    FeatureShape,
+    FeatureBtfMismatch,
+    FeatureNoBtf,
+    FeatureUndescribed,
+    FeatureXdpNative,
+    FeatureXdpGeneric,
+    FeatureLoadFailed,
+    FeatureReadFailed,
+    FeatureRecordsDropped,
+    FeatureOutputFailed,
+    FeatureXdpConflict,
 }
 
 pub struct Explanation {
@@ -1397,6 +1412,172 @@ impl Issue {
                         map failed, so the connection keeps skipping inspection until run stops or \
                         the same TCP connection starts again (a new SYN).",
                 action: "Remove it with wnc-gw trust del, and look at the alert.",
+            },
+            Self::FeatureDefinitionInvalid => &Explanation {
+                code: "G001",
+                title: "a feature definition cannot be read or is invalid",
+                reported_by: DOCTOR_AND_RUN,
+                severity: "error",
+                cause: "The JSON file given as features.definition is missing, larger than 64 KiB, not valid JSON, \
+                        or breaks a rule of the format: unknown keys, bad names, an address with endian or a \
+                        numeric merge, a derived field that refers to an unknown or later-unresolvable field, a \
+                        cycle, an operation applied to the wrong kind of field (for example rate of an address), \
+                        or delta and rate without a key. The message names the field.",
+                action: "Fix the definition file; the message says which field and rule.",
+            },
+            Self::FeatureProgramInvalid => &Explanation {
+                code: "G002",
+                title: "a feature program cannot be read",
+                reported_by: DOCTOR_AND_RUN,
+                severity: "error",
+                cause: "The file given as features.program is missing or is not an eBPF object file that can be \
+                        parsed (an ELF built for the bpfel/bpfeb target).",
+                action: "Point features.program at the compiled object (for example clang -target bpf -g -c, or \
+                         an aya-ebpf build).",
+            },
+            Self::FeatureEntry => &Explanation {
+                code: "G003",
+                title: "the feature program's entry is missing or does not fit the hook",
+                reported_by: DOCTOR_AND_RUN,
+                severity: "error",
+                cause: "features.entry names no function in the object, or the function is not the program type \
+                        the hook needs: hook = \"xdp\" needs an XDP program (section xdp), tc-ingress and \
+                        tc-egress need a TC program (section classifier). The message lists the functions the \
+                        object has.",
+                action: "Fix features.entry, or change hook to match the program, or rebuild the program in the \
+                         right section.",
+            },
+            Self::FeatureMap => &Explanation {
+                code: "G004",
+                title: "the map named in the feature definition is missing or cannot be read",
+                reported_by: DOCTOR_AND_RUN,
+                severity: "error",
+                cause: "The definition's map is not in the object, or it is a kind wnc-gw does not read. wnc-gw \
+                        reads hash, lru_hash, array, their percpu kinds, and ringbuf.",
+                action: "Fix map in the definition, or change the program to use one of the supported map kinds.",
+            },
+            Self::FeatureShape => &Explanation {
+                code: "G005",
+                title: "the feature definition does not fit the map",
+                reported_by: DOCTOR_AND_RUN,
+                severity: "error",
+                cause: "The key or value size computed from the definition (C alignment, or none with packed) \
+                        differs from the map's key_size or value_size; or the definition has a key for a \
+                        ringbuf, or none for a map that has keys; or a percpu map has value fields without \
+                        merge, or a map that is not percpu has fields with merge. doctor prints the offsets it \
+                        computed.",
+                action: "Compare doctor's offsets with the struct in the program and fix the definition (field \
+                         order, types, packed) or the program.",
+            },
+            Self::FeatureBtfMismatch => &Explanation {
+                code: "G006",
+                title: "the feature definition does not match the program's BTF",
+                reported_by: DOCTOR_AND_RUN,
+                severity: "error",
+                cause: "The sizes match, but the map's key or value type in the program's BTF has a field with \
+                        another name, offset, size or signedness than the definition says (for example two \
+                        fields written in the wrong order). Decoding with this definition would give wrong \
+                        numbers without any error.",
+                action: "Make the definition list the struct's fields in order with the same names and types.",
+            },
+            Self::FeatureNoBtf => &Explanation {
+                code: "G007",
+                title: "the feature map has no BTF, so only sizes are checked",
+                reported_by: DOCTOR_AND_RUN,
+                severity: "warning",
+                cause: "The program has no BTF, or the map is declared without it (for example in the legacy maps \
+                        section, which aya-ebpf's #[map] uses). Only the total key and value sizes could be \
+                        compared, so fields in the wrong order are not caught.",
+                action: "Build with BTF and declare the map with it: in C, SEC(\".maps\") with __type(key, ...) \
+                         and __type(value, ...) and clang -g; in aya-ebpf, #[btf_map]. Or check the offsets \
+                         doctor prints against the struct by hand.",
+            },
+            Self::FeatureUndescribed => &Explanation {
+                code: "G008",
+                title: "the feature definition skips struct members",
+                reported_by: DOCTOR_AND_RUN,
+                severity: "note",
+                cause: "The map's struct has members the definition does not list. Every listed field matched, \
+                        so the skipped members sit where the definition has padding and are not read.",
+                action: "Nothing, if those members are not needed; otherwise add them to the definition.",
+            },
+            Self::FeatureXdpNative => &Explanation {
+                code: "G009",
+                title: "a port has no native XDP for an XDP feature program",
+                reported_by: DOCTOR_AND_RUN,
+                severity: "error",
+                cause: "hook = \"xdp\" uses native XDP unless xdp_mode = \"generic\", and the port's driver \
+                        does not support native XDP (or support cannot be detected), so the program is not \
+                        loaded.",
+                action: "Use a TC program (hook tc-ingress or tc-egress), or set xdp_mode = \"generic\" if \
+                         generic XDP's cost is acceptable.",
+            },
+            Self::FeatureXdpGeneric => &Explanation {
+                code: "G010",
+                title: "an XDP feature program uses generic XDP",
+                reported_by: DOCTOR_AND_RUN,
+                severity: "warning",
+                cause: "xdp_mode = \"generic\" attaches the program as generic XDP, which turns off GRO on the \
+                        whole port (so every packet goes through the stack one by one) and may copy packets. \
+                        Packet sizes and gaps are seen as on the wire, but forwarding costs more CPU.",
+                action: "Measure the cost, or use a TC program if features of merged packets are good enough.",
+            },
+            Self::FeatureLoadFailed => &Explanation {
+                code: "G011",
+                title: "a feature program cannot be started",
+                reported_by: RUN,
+                severity: "error",
+                cause: "run could not read the program or definition, the definition does not fit the program \
+                        (the same checks as doctor's G001 to G006), the kernel rejected the program (the \
+                        verifier, or missing CAP_BPF), attaching it to a port failed (for example no native \
+                        XDP), or its output file cannot be opened. run continues without this feature program; \
+                        forwarding, inspection and trust are not affected.",
+                action: "Read the error in the log; run wnc-gw doctor for the checks it can do before starting.",
+            },
+            Self::FeatureReadFailed => &Explanation {
+                code: "G012",
+                title: "a feature map cannot be read",
+                reported_by: RUN,
+                severity: "warning",
+                cause: "Reading the map with bpf(BPF_MAP_GET_NEXT_KEY) or bpf(BPF_MAP_LOOKUP_ELEM) failed. The \
+                        records of that read are missing; run tries again at the next interval and logs once \
+                        when reading works again.",
+                action: "Read the error; if it keeps failing, restart run.",
+            },
+            Self::FeatureRecordsDropped => &Explanation {
+                code: "G013",
+                title: "feature records did not match the definition",
+                reported_by: RUN,
+                severity: "warning",
+                cause: "Records from a ring buffer (or entries of a map) had another size than the definition \
+                        describes, so they were dropped and counted. A ring buffer that does not declare its \
+                        record type can only be checked this way. Logged at most once a minute with the number \
+                        dropped.",
+                action: "Make the definition's value match what the program writes with bpf_ringbuf_output or \
+                         reserve.",
+            },
+            Self::FeatureOutputFailed => &Explanation {
+                code: "G014",
+                title: "feature records cannot be written",
+                reported_by: RUN,
+                severity: "warning",
+                cause: "Writing to <log dir>/features/<name>.jsonl failed (for example the disk is full), so those \
+                        records are lost. Logged once until a write works again. Each file is renamed to \
+                        <name>.jsonl.1 when it reaches 64 MiB, replacing the older one.",
+                action: "Free space in the log directory or fix its permissions.",
+            },
+            Self::FeatureXdpConflict => &Explanation {
+                code: "G015",
+                title: "more than one XDP program on a port",
+                reported_by: DOCTOR,
+                severity: "error",
+                cause: "A port holds one XDP program at a time, and native and generic XDP cannot both be \
+                        attached. Either more than one [[features]] uses hook = \"xdp\", or a port already has an \
+                        XDP program (attached by someone else, or left over), so attaching would fail with \
+                        EEXIST and run would start without that feature program (G011). TC hooks do not have \
+                        this limit.",
+                action: "Put the XDP features into one program, or use tc-ingress or tc-egress for the others; \
+                         detach a leftover program with: ip link set dev <port> xdp off (or xdpgeneric off).",
             },
         }
     }

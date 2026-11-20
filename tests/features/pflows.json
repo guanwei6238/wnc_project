@@ -1,0 +1,12 @@
+{
+  "map": "PFLOWS",
+  "key": [{"name": "saddr", "type": "ipv4"}, {"name": "daddr", "type": "ipv4"}, {"name": "sport", "type": "u16", "endian": "big"}, {"name": "dport", "type": "u16", "endian": "big"}, {"name": "proto", "type": "u8"}],
+  "value": [{"name": "packets", "type": "u64", "merge": "sum"}, {"name": "bytes", "type": "u64", "merge": "sum"}, {"name": "len_sumsq", "type": "u64", "merge": "sum"}, {"name": "first_ns", "type": "u64", "merge": "min"}, {"name": "last_ns", "type": "u64", "merge": "max"}, {"name": "hist", "type": "u32", "len": 4, "merge": "sum"}],
+  "derived": [{"name": "pps", "op": "rate", "of": "packets"},
+    {"name": "len_mean", "op": "mean", "sum": "bytes", "count": "packets"},
+    {"name": "len_std", "op": "std", "sum": "bytes", "sumsq": "len_sumsq", "count": "packets"},
+    {"name": "span_ns", "op": "sub", "args": ["last_ns", "first_ns"]},
+    {"name": "span_s", "op": "scale", "of": "span_ns", "by": 1e-9},
+    {"name": "proto_name", "op": "enum", "of": "proto", "values": {"6": "tcp", "17": "udp"}, "other": "other"},
+    {"name": "len_p50", "op": "percentile", "of": "hist", "p": 50, "bounds": [64, 256, 1024, 65535]}]
+}

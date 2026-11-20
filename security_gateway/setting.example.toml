@@ -154,3 +154,37 @@
 
 # Seconds between reads of the conntrack table (default: 5, 1 to 60).
 # check_interval = 5
+
+# Feature programs: eBPF programs you write and wnc-gw loads on both ports, with
+# a JSON definition of the map they fill (field types and order, and the
+# derived fields to compute from them, such as rate or std). wnc-gw checks the
+# definition against the program before loading it: the map's key and value
+# sizes always, and each field's name and offset when the map is declared with
+# BTF. `wnc-gw doctor` prints the layout it computed. `wnc-gw run` writes one
+# JSON line per record to /var/log/wnc-gw/features/<name>.jsonl (renamed to
+# .jsonl.1 at 64 MiB); `wnc-gw features test <name> <pcap>` runs the program on a
+# pcap's packets without attaching it and prints the same lines. Programs must
+# pass the verifier without CAP_PERFMON. One [[features]] table per program, at
+# most 16.
+# [[features]]
+# A name for the records and the log (lowercase letters, digits and _).
+# name = "flows"
+# The compiled object file (absolute path) and the function to load from it.
+# program = "/etc/wnc-gw/features/flows.o"
+# entry = "flows"
+# The JSON definition (absolute path, at most 64 KiB).
+# definition = "/etc/wnc-gw/features/flows.json"
+# Where the program runs, on both ports. No default: each sees other packets.
+#   "xdp"         an XDP program, before the core program: every packet that
+#                 arrives, including trusted ones and ones dropped later.
+#   "tc-ingress"  a TC program, after the core program: with trust backend
+#                 "tc", trusted packets are forwarded before it and not seen.
+#   "tc-egress"   a TC program, on the way out: every packet that is
+#                 forwarded, including trusted ones, but none that is dropped.
+# hook = "tc-egress"
+# Only with hook = "xdp": "native" (default; the port's driver must support
+# it) or "generic" (any port, but turns off GRO on it and costs more CPU).
+# xdp_mode = "native"
+# Seconds between reads of a hash or array map (default: 1, 1 to 3600). A
+# ringbuf is read as records arrive.
+# interval = 1

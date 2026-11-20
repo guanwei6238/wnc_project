@@ -1,6 +1,7 @@
 pub mod agent;
 pub mod config;
 pub mod datapath;
+pub mod features;
 pub mod forwarding;
 pub mod ids;
 pub mod issue;

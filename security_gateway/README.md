@@ -252,6 +252,25 @@ wnc-gw 從 suricata.yaml 設定的 eve-log 檔讀 alert，每 `eve_interval` 秒
 - `ttl` 的預設 900 秒比 Suricata 的 `flow-timeouts.tcp.established`（600 秒）長：信任結束時 Suricata 已經忘了這條連線，會當成從中間開始的連線接手，不會因為序號過時把封包丟掉（O21）。ips 模式下 `ttl` 不夠長時 doctor 會警告。
 - ids 模式下，低流量連線的 payload alert 可能比 `min_age` 晚到（Docker 實測：帶攻擊標記的連線先被信任，連線結束時才因 alert 撤銷；ips 模式下同樣的連線一開始就不被信任）。DECISIONS.md §19 有細節，怎麼處理還沒決定。
 
+**`[[features]]`：使用者的特徵程式**（DECISIONS.md §23）〔已實作〕
+
+使用者寫 eBPF 程式（C 或 Rust），wnc-gw 載入到兩個 port；另外用一份 JSON 定義檔描述程式填的 map（欄位的型別和順序），以及要從這些欄位算出的衍生欄位（rate、mean、std、delta、percentile 等 13 種運算）。wnc-gw 不預先定義特徵，只提供解碼和運算。
+
+| `hook`（必填） | 程式型別 | 信任的封包 | 被丟掉的封包 |
+|---|---|---|---|
+| `xdp`（`xdp_mode` 預設 native，`"generic"` 要明寫） | XDP（section `xdp`） | 看得到（在核心程式之前） | 看得到 |
+| `tc-ingress`（排在核心程式後面） | TC（section `classifier`） | backend tc 時看不到（核心程式 redirect 之後 TCX 的鏈就結束） | 看得到 |
+| `tc-egress`（另一個 port 的出口） | TC | 看得到 | 看不到 |
+
+- 定義檔的排列照 C 的自然對齊自動補 padding（`"packed": true` 時不補）；doctor 印出每個欄位的 offset，讓使用者對照自己的 struct。
+- doctor 載入前檢查（G001–G010、G015）：定義檔本身（名稱、型別、`derived` 引用的欄位、循環）、程式裡有沒有 `entry` 和它的型別合不合 `hook`、map 存不存在和種類、key／value 長度、per-CPU map 每個欄位都要有 `merge`；map 用 BTF 宣告（libbpf 的 `.maps`、aya-ebpf 的 `#[btf_map]`）時再逐欄比對名稱、offset、大小、有號無號，沒有 BTF 時只比長度並給 warning。`xdp` native 時 port 沒有 native XDP 是 error，generic 是 warning（整張網卡不做 GRO）；一張網卡只能掛一個 XDP 程式，所以兩個以上 `hook = "xdp"`、或 port 上已經有別的 XDP 程式時是 error（G015）。
+- 支援的 map：hash、lru_hash、array 和它們的 per-CPU 版本（每 `interval` 秒讀一次）、ringbuf（逐筆）。
+- run：每個 feature 的程式掛到兩個 port（TC 排在最後；XDP 用 native，或明寫的 generic），每 `interval` 秒讀一次 map（ringbuf 有記錄就讀；hash／array 用 `BPF_MAP_LOOKUP_BATCH` 一次 256 筆，kernel 不支援時改成一次一個 key，記一行 INFO），解碼、合併 per-CPU 副本、算 `derived`，每筆寫一行 JSON 到 `/var/log/wnc-gw/features/<name>.jsonl`（`ts_ms`、`feature`，再依定義檔的順序是 key、value、derived 欄位；64 MiB 時改名成 `.jsonl.1`）。掛不上記 ERROR G011、照常執行（轉送、檢查、信任不受影響）；讀不到 G012、記錄長度不合 G013、寫不進去 G014。run 停止時卸下。
+- 定義檔在啟動時編譯成固定的處理步驟（每個欄位在 row 的哪一欄、怎麼合併、每個 `derived` 用哪幾欄），讀 map、解碼、衍生運算和寫 JSON 都用重複使用的 buffer，每筆不配置記憶體。Pi 1000 MHz、5,079 筆的 hash map，每筆從 56.4 µs 降到 5.1 µs；實驗 15 的 C17 裡，掛特徵程式每秒多的 user space 成本從約 0.75 秒降到 0.07–0.10 秒（DECISIONS.md §23「讀取的成本」）。
+- `wnc-gw features test <name> <pcap>`：用設定檔裡同名的 `[[features]]`，程式只載入、不掛到 port，用 `BPF_PROG_TEST_RUN` 把 pcap（經典格式、Ethernet）的每個封包餵給它，最後讀一次 map，印出和 run 相同格式的 JSON lines，以及每種回傳值的封包數（`TCX_NEXT ×25`）。部署前用來確認欄位的意思和數字對不對。需要 root（`CAP_BPF`）。
+- 程式要在沒有 `CAP_PERFMON` 的情況下通過 verifier（和核心程式一樣；privd 也不會有這個權限）：不能做指標相減、堆疊或 map value 上用變數當索引這類指標運算。Docker 驗證時測試程式改過三處（`tests/features/README.md`）。
+- 限制：aya 0.16 只認 section `classifier` 和 `xdp`（libbpf 的 `SEC("tc")`、`SEC("tcx/egress")` 讀不到）。
+
 ### 3. 誰控制什麼
 
 ```mermaid
@@ -330,6 +349,7 @@ flowchart LR
 | Suricata 版本 | 8.0.7；最低 8.0，低於時 doctor 報 error | — | 〔已決定，未實作〕（版本檢查） | 7.0 已 EOL（2026-10-30） |
 | alert 怎麼到 wnc-gw | 讀 suricata.yaml 設定的 **eve-log 檔**，只讀新增的部分；每 `eve_interval` 秒（預設 0.5）讀一次 | unix_stream、wnc-gw 強制 Suricata 另外輸出、inotify | 〔已實作〕 | unix_stream 在 live 模式讀取端跟不上時默默丟事件、沒有計數；inotify 在 Pi 上每筆 alert 51 µs（poll 16 µs）（O22，2026-11-04） |
 | log | stderr，用 tracing；`--log-format json`、`--log-level`。只放重要資訊和出事時能定位的資訊：alert 細節是 DEBUG、每 60 秒一行摘要，講到連線的都帶五元組和 `flow_id` | 自己寫檔 | 〔已實作〕；Debian 的 systemd `LogNamespace` 〔已決定，未實作〕 | O15，2026-10-26；O22，2026-11-04 |
+| 特徵 | 使用者提供 eBPF 和 JSON 定義檔（排列＋衍生運算），wnc-gw 載入前比對格式；`hook` 可選 xdp、tc-ingress、tc-egress | 預先定義特徵、JSON Schema、運算式語言（CEL） | 〔已實作〕 | JSON Schema 沒有整數寬度、byte order、欄位順序；運算寫成 JSON 物件不需要 parser（§23，2026-11-18） |
 
 **還沒決定的**
 
@@ -348,7 +368,7 @@ flowchart LR
 
 | 目錄／檔案 | 內容 |
 |---|---|
-| `src/cli/` | 子命令（doctor、run、trust、show、explain）和 log 初始化 |
+| `src/cli/` | 子命令（doctor、run、trust、show、explain、features）和 log 初始化 |
 | `src/issue.rs` | doctor 結果和 `run` 的 WARN／ERROR log 的代碼（`Issue`），以及 `explain` 印的說明 |
 | `src/config/` | 讀設定檔，CLI 參數可以蓋過（`mod.rs`）；依名稱或 MAC 找出 LAN、WAN 是哪張網卡（`ports.rs`）；ids／ips（`protection.rs`） |
 | `src/forwarding/` | bridge、routed 兩種模式各自的環境檢查（trait） |
@@ -356,6 +376,7 @@ flowchart LR
 | `src/datapath/` | 封包怎麼走：核心 eBPF 程式掛在哪（`hook.rs`：xdp 設定的判斷）、載入並掛到兩個 port 的 TCX ingress 第一位和 trust map（`ingress.rs`）、`[trust] backend` 和兩種信任方式共用的 `TrustStore` trait（`trust.rs`）、我們的 nft table 和 ct mark 信任（`firewall.rs`） |
 | `src/agent/` | 3d：自動信任的狀態機（`trust.rs`）、`Privd` trait 和 `LocalPrivd`（持有核心程式；之後拆出有權限的 process 時，換成跨 process 的實作）、`wnc-gw trust` 和 `run` 之間的 unix socket（`control.rs`，一行 JSON 的請求和回應） |
 | `src/ids/` | 啟動和監督 Suricata、讀 Suricata 的資訊和 EVE 檔裡的 alert |
+| `src/features/` | 使用者的特徵程式：JSON 定義檔和排列（`definition.rs`）、解碼和 per-CPU 合併（`record.rs`）、衍生運算（`derive.rs`）、把兩者和 JSON 輸出串起來的 `plan.rs`、讀 ELF（`elf.rs`，用 aya-obj）和 BTF（`btf.rs`）、定義檔對程式的比對（`check.rs`）、run 時的讀取和輸出（`runtime.rs`）、試跑用的 pcap（`pcap.rs`）；載入、掛上和讀 map（batch，不支援時一次一個 key）的 syscall 在 `src/kernel/bpf/user.rs` |
 | `src/kernel/` | 和 kernel 溝通：nft、ctnetlink、NFLOG／NFQUEUE、eBPF（`bpf.rs`，包住 aya）、模組、sysctl、netlink |
 | `gw-common/` | kernel 和 user space 共用的 trust map key、value（`#[repr(C)]`） |
 | `src/system/` | 檔案能不能被非 root 修改（`access.rs`）、執行外部程式（`command.rs`）、同一台機器只跑一個 wnc-gw（`instance.rs`） |

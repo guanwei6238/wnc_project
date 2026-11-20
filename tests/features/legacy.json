@@ -1,0 +1,5 @@
+{
+  "map": "LEGACY",
+  "key": [{"name": "saddr", "type": "ipv4"}, {"name": "daddr", "type": "ipv4"}, {"name": "sport", "type": "u16", "endian": "big"}, {"name": "dport", "type": "u16", "endian": "big"}, {"name": "proto", "type": "u8"}],
+  "value": [{"name": "packets", "type": "u64"}, {"name": "bytes", "type": "u64"}, {"name": "len_sumsq", "type": "u64"}, {"name": "first_ns", "type": "u64"}, {"name": "last_ns", "type": "u64"}, {"name": "hist", "type": "u32", "len": 4}]
+}

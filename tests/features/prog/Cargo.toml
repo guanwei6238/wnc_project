@@ -1,0 +1,18 @@
+[package]
+name = "feature-prog"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR GPL-2.0-only"
+
+[workspace]
+
+[dependencies]
+aya-ebpf = "0.3.0"
+
+[[bin]]
+name = "feature-prog"
+path = "src/main.rs"
+
+[profile.release]
+panic = "abort"
+debug = 2

@@ -15,6 +15,7 @@ use security_gateway::datapath::{
 use security_gateway::ids::{
     delivery::Delivery, lifecycle::{Event, Lifecycle}, spawned::{self, Options, SpawnedSuricata}, suricata::Suricata,
 };
+use security_gateway::features::runtime::{Features, Spec};
 use security_gateway::issue::Issue;
 use security_gateway::forwarding::Mode;
 use security_gateway::kernel::{
@@ -293,8 +294,10 @@ async fn serve(
     let mut copy_monitor = CopyMonitor::default();
     let mut copy_tick = time::interval(CopyMonitor::INTERVAL);
     copy_tick.set_missed_tick_behavior(MissedTickBehavior::Delay);
+    let mut features = start_features(config).await;
     let mut code = loop {
         tokio::select! {
+            _ = features.step(), if !features.is_empty() => {}
             signal = signals.recv() => {
                 info!(signal, "stopping");
                 break ExitCode::SUCCESS;
@@ -423,6 +426,33 @@ async fn serve(
         alerts.finish();
     }
     code
+}
+
+async fn start_features(config: &Config) -> Features {
+    if config.features.is_empty() {
+        return Features::default();
+    }
+    let ports = match resolve_ports(config).await {
+        Ok(ports) => ports,
+        Err(e) => {
+            error!(code = %Issue::FeatureLoadFailed, error = e.as_str(), "cannot find the ports, so no feature program is started");
+            return Features::default();
+        }
+    };
+    let ifindexes: Vec<u32> = ports.iter().map(|port| port.interface.index).collect();
+    let specs: Vec<Spec<'_>> = config
+        .features
+        .iter()
+        .map(|f| Spec {
+            name: &f.name,
+            program: f.program.as_path(),
+            entry: &f.entry,
+            definition: f.definition.as_path(),
+            hook: f.hook,
+            interval: f.interval,
+        })
+        .collect();
+    Features::start(&specs, &ifindexes, &Current.log_dir().join("features"))
 }
 
 async fn tick(interval: &mut Option<time::Interval>) {

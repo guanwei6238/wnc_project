@@ -10,6 +10,7 @@ macro_rules! out {
 
 pub mod doctor;
 pub mod explain;
+pub mod features;
 mod logging;
 pub mod run;
 pub mod show;
@@ -49,6 +50,7 @@ pub struct Cli {
 pub enum Command {
     Doctor(doctor::DoctorArgs),
     Explain(explain::ExplainArgs),
+    Features(features::FeaturesArgs),
     Run(run::RunArgs),
     Show(show::ShowArgs),
     Trust(trust::TrustArgs),
@@ -64,6 +66,7 @@ pub async fn run() -> ExitCode {
     match cli.command {
         Command::Doctor(args) => doctor::run(cli.config.as_deref(), overrides, args).await,
         Command::Explain(args) => explain::run(args),
+        Command::Features(args) => features::run(cli.config.as_deref(), overrides, args),
         Command::Run(args) => run::run(cli.config.as_deref(), overrides, cli.log_format, cli.log_level, args).await,
         Command::Show(args) => show::run(args).await,
         Command::Trust(args) => trust::run(args),

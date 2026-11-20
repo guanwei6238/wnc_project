@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::io;
 use std::mem::size_of;
 
+pub mod user;
+
 use aya::Ebpf;
 use aya::maps::{Array, HashMap as BpfHashMap, MapError, PerCpuArray};
 use aya::programs::{LinkOrder, SchedClassifier, TcAttach, TcAttachType, loaded_programs};

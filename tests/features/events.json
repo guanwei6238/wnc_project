@@ -1,0 +1,4 @@
+{
+  "map": "EVENTS",
+  "value": [{"name": "saddr", "type": "ipv4"}, {"name": "len", "type": "u32"}]
+}

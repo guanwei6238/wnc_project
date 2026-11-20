@@ -742,10 +742,12 @@ name = "security_gateway"
 version = "0.1.0"
 dependencies = [
  "aya",
+ "aya-obj",
  "clap",
  "futures",
  "genetlink",
  "gw-common",
+ "itoa",
  "libc",
  "netlink-packet-core",
  "netlink-packet-generic",
@@ -760,6 +762,7 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
+ "zmij",
 ]
 
 [[package]]

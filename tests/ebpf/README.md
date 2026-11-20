@@ -229,3 +229,16 @@ Pi 實體網卡（exp12）：routed 的信任封包 8.28 µs @120k（不帶下�
 - 結論（兩個環境都一樣的部分）：連線本身都不斷，除了 gap 加 `when_unavailable = "drop"`；ips 從中途接手之後，關連線的 FIN 可能被丟，伺服器那端的連線要等逾時才關。
 
 原始資料：`~/datasets/throughput/tls_idle_docker.{kvl,log}`、`tls_idle_docker_cap.log`、`tls_idle_docker_cap2.log`；Pi：`tls_idle_pi.{kvl,log}`（抓包比對無效）、`tls_idle_pi_cap.{kvl,log}`。
+
+# 特徵程式掛在哪裡看得到信任的封包（`hook_docker.sh`，2026-11-18）
+
+`tcx_count.py <介面> ingress|egress <skb 長度> <輸出檔>`：用 bpf syscall 載入一段手寫的 bytecode，掛在 TCX ingress 或 egress 的最後，只數 `skb->len` 等於指定長度的封包（含 Ethernet header），每 0.2 秒把計數寫進檔案。`hook_docker.sh`（routed testbed）在 gw 的 LAN 口 ingress（排在核心程式後面）和 WAN 口 egress 各掛一支，只數 342 bytes 的幀（UDP 300 bytes payload），先送 20 個不信任的、`trust add` 之後再送 20 個。
+
+| backend | | LAN 口 ingress（核心程式後面） | WAN 口 egress |
+|---|---|---|---|
+| tc | 20 個不信任 | 20 | 20 |
+| tc | 再 20 個信任 | **20** | **40** |
+| ctmark | 20 個不信任 | 20 | 20 |
+| ctmark | 再 20 個信任 | 40 | 40 |
+
+tc 時信任的封包在核心程式就被 redirect，TCX 的鏈結束，後面的 ingress 程式看不到；redirect（routed 是 `bpf_redirect_neigh`）出去的封包會經過另一個 port 的 egress。ctmark 時核心程式對所有封包都回傳 `TCX_NEXT`。bridge 的 `bpf_redirect` 沒在 Docker 驗。這個結果決定了 `[[features]]` 的 `hook` 三種選擇看得到哪些封包（`security_gateway/DECISIONS.md` §23）。

@@ -1,6 +1,7 @@
 use crate::datapath::{TrustBackend, XdpPolicy};
 use crate::kernel::netif::MacAddr;
 use super::*;
+use crate::features::hook::{Hook, XdpMode};
 
 const PHY: MacAddr = MacAddr([0x9c, 0x69, 0xd3, 0x2a, 0x11, 0x54]);
 
@@ -193,7 +194,8 @@ fn example_values_are_valid() {
             Some(rest)
                 if rest
                     .split_once(" = ")
-                    .is_some_and(|(key, _)| key.bytes().all(|b| b.is_ascii_lowercase() || b == b'_')) =>
+                    .is_some_and(|(key, _)| key.bytes().all(|b| b.is_ascii_lowercase() || b == b'_'))
+                    || rest.starts_with("[[") =>
             {
                 rest
             }
@@ -212,6 +214,8 @@ fn example_values_are_valid() {
     assert!(config.suricata.config.is_some());
     assert!(config.suricata.queue.is_some());
     assert!(config.suricata.group.is_some());
+    assert_eq!(config.features.len(), 1);
+    assert!(config.features[0].xdp_mode.is_some() && config.features[0].interval.is_some());
     assert!(config.suricata.ready_timeout.is_some());
     assert!(config.suricata.stop_timeout.is_some());
     assert!(config.suricata.when_unavailable.is_some());
@@ -520,4 +524,38 @@ fn parse_rejects_unknown_protection_and_group_0() {
     assert!(err.contains("invalid protection \"inline\" (expected \"ids\" or \"ips\")"), "{err}");
     let err = parse("[suricata]\ngroup = 0\n").unwrap_err();
     assert!(err.contains("invalid group \"0\""), "{err}");
+}
+
+const FEATURE: &str = "[[features]]\nname = \"flows\"\nprogram = \"/f.o\"\nentry = \"flows\"\ndefinition = \"/f.json\"\n";
+
+fn features(text: &str) -> Result<Vec<FeatureSettings>, ConfigError> {
+    let file_config = parse(&format!("[ports]\nlan = \"a\"\nwan = \"b\"\n{text}")).unwrap();
+    merge(None, file_config, Overrides::default()).map(|c| c.features)
+}
+
+#[test]
+fn features_need_a_hook_and_default_the_rest() {
+    assert!(parse(FEATURE).unwrap_err().contains("missing field `hook`"));
+    let f = features(&format!("{FEATURE}hook = \"tc-egress\"\n")).unwrap();
+    assert_eq!(f[0].hook, Hook::TcEgress);
+    assert_eq!(f[0].interval, crate::features::DEFAULT_INTERVAL);
+    assert_eq!(f[0].program.as_path(), Path::new("/f.o"));
+    let xdp = features(&format!("{FEATURE}hook = \"xdp\"\ninterval = 5\n")).unwrap();
+    assert_eq!(xdp[0].hook, Hook::Xdp(XdpMode::Native));
+    assert_eq!(xdp[0].interval, Duration::from_secs(5));
+    let generic = features(&format!("{FEATURE}hook = \"xdp\"\nxdp_mode = \"generic\"\n")).unwrap();
+    assert_eq!(generic[0].hook, Hook::Xdp(XdpMode::Generic));
+}
+
+#[test]
+fn feature_rules() {
+    let tc_mode = features(&format!("{FEATURE}hook = \"tc-ingress\"\nxdp_mode = \"native\"\n")).unwrap_err();
+    assert!(matches!(tc_mode, ConfigError::Inapplicable { settings, .. } if settings[0].starts_with("features[0].xdp_mode")));
+    let twice = format!("{FEATURE}hook = \"tc-ingress\"\n{FEATURE}hook = \"tc-egress\"\n");
+    assert!(features(&twice).unwrap_err().to_string().contains("\"flows\" is used more than once"));
+    let bad = features(&FEATURE.replace("\"flows\"\nprogram", "\"Flows\"\nprogram").replace("program", "hook = \"xdp\"\nprogram"));
+    assert!(bad.unwrap_err().to_string().contains("invalid name"));
+    assert!(parse(&format!("{FEATURE}hook = \"tc\"\n")).is_err());
+    assert!(parse(&FEATURE.replace("/f.o", "f.o")).is_err());
+    assert!(parse(&format!("{FEATURE}hook = \"xdp\"\ninterval = 0\n")).is_err());
 }

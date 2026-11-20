@@ -13,6 +13,7 @@ use serde::Deserialize;
 use crate::agent::trust;
 use crate::config::{ports::{PortSelector, PortSpec, Role}, protection::Protection};
 use crate::datapath::{TrustBackend, XdpPolicy, firewall::WhenUnavailable};
+use crate::features::{self, hook::{Hook, HookName, XdpMode}};
 use crate::forwarding::Mode;
 use crate::ids::{delivery::Delivery, eve::EveInterval, lifecycle, suricata};
 use crate::kernel::{nflog::GroupRange, nfqueue::QueueRange, nft};
@@ -98,6 +99,17 @@ pub struct Config {
     pub suricata: SuricataSettings,
     pub trust_backend: Setting<TrustBackend>,
     pub trust: TrustSettings,
+    pub features: Vec<FeatureSettings>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FeatureSettings {
+    pub name: String,
+    pub program: AbsolutePath,
+    pub entry: String,
+    pub definition: AbsolutePath,
+    pub hook: Hook,
+    pub interval: Duration,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -188,6 +200,20 @@ struct FileConfig {
     suricata: FileSuricata,
     #[serde(default)]
     trust: FileTrust,
+    #[serde(default)]
+    features: Vec<FileFeature>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FileFeature {
+    name: String,
+    program: AbsolutePath,
+    entry: String,
+    definition: AbsolutePath,
+    hook: HookName,
+    xdp_mode: Option<XdpMode>,
+    interval: Option<Bounded<1, 3_600>>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -286,6 +312,12 @@ fn merge(file: Option<PathBuf>, file_config: FileConfig, overrides: Overrides) -
     let mut inapplicable = Vec::new();
     let delivery = delivery(protection.value, &file_config.suricata, &mut inapplicable);
     let trust = trust_settings(&file_config.trust, &mut inapplicable);
+    let feature_settings = feature_settings(file_config.features, &mut inapplicable).map_err(|message| {
+        ConfigError::Parse {
+            path: file.clone().unwrap_or_default(),
+            message,
+        }
+    })?;
     if !inapplicable.is_empty() {
         return Err(ConfigError::Inapplicable {
             path: file.unwrap_or_default(),
@@ -312,8 +344,45 @@ fn merge(file: Option<PathBuf>, file_config: FileConfig, overrides: Overrides) -
         },
         trust_backend: file_or_default(file_config.trust.backend),
         trust,
+        features: feature_settings,
         file,
     })
+}
+
+fn feature_settings(files: Vec<FileFeature>, inapplicable: &mut Vec<String>) -> Result<Vec<FeatureSettings>, String> {
+    if files.len() > features::MAX_PROGRAMS {
+        return Err(format!("features: at most {} entries", features::MAX_PROGRAMS));
+    }
+    let mut out: Vec<FeatureSettings> = Vec::with_capacity(files.len());
+    for (i, f) in files.into_iter().enumerate() {
+        if !features::definition::valid_name(&f.name) {
+            return Err(format!(
+                "features: invalid name {:?} (use lowercase letters, digits or _, starting with a letter)",
+                f.name
+            ));
+        }
+        if out.iter().any(|o| o.name == f.name) {
+            return Err(format!("features: name {:?} is used more than once", f.name));
+        }
+        let hook = match f.hook {
+            HookName::Xdp => Hook::Xdp(f.xdp_mode.unwrap_or_default()),
+            HookName::TcIngress | HookName::TcEgress if f.xdp_mode.is_some() => {
+                inapplicable.push(format!("features[{i}].xdp_mode (only with hook = \"xdp\")"));
+                continue;
+            }
+            HookName::TcIngress => Hook::TcIngress,
+            HookName::TcEgress => Hook::TcEgress,
+        };
+        out.push(FeatureSettings {
+            name: f.name,
+            program: f.program,
+            entry: f.entry,
+            definition: f.definition,
+            hook,
+            interval: f.interval.map_or(features::DEFAULT_INTERVAL, seconds),
+        });
+    }
+    Ok(out)
 }
 
 fn delivery(protection: Protection, file: &FileSuricata, inapplicable: &mut Vec<String>) -> Setting<Delivery> {

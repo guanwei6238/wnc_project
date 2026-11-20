@@ -147,6 +147,9 @@ pub async fn passes(config: &Config, starting: bool) -> bool {
     findings.extend(check_other_suricata(config.delivery(), !starting).await);
     out!();
 
+    findings.extend(features::check_features(config, &ports).await);
+    out!();
+
     findings.extend(check_access(config));
 
     if !findings.is_empty() {
@@ -1366,6 +1369,13 @@ fn check_access(config: &Config) -> Vec<Finding> {
     files.push((config.nftables.path.value.as_path(), "nft command"));
     files.push((config.suricata.path.value.as_path(), "suricata command"));
     files.push((config.suricata.config.value.as_path(), "suricata config file"));
+    for feature in &config.features {
+        for (path, used_as) in [(feature.program.as_path(), "feature program"), (feature.definition.as_path(), "feature definition")] {
+            if !files.iter().any(|(p, _)| *p == path) {
+                files.push((path, used_as));
+            }
+        }
+    }
     let rows: Vec<AccessRow> = files
         .into_iter()
         .map(|(path, used_as)| AccessRow {
@@ -1483,6 +1493,8 @@ fn print_ports(config: &Config, results: &[Result<Port, ResolveError>]) {
         );
     }
 }
+
+mod features;
 
 #[cfg(test)]
 mod tests;
