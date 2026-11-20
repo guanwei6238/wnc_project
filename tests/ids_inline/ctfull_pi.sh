@@ -1,13 +1,13 @@
 #!/bin/bash
-# 3b 連線表滿了時（Pi，bridge）：被信任的連線會不會受影響（wgw/wtest 已建好，以 root 執行）
-#   fcli(10.9.0.1) --veth-- x-lan [wgw: br0] x-wan --veth-- fsrv(10.9.0.2)：一條每 0.2 秒送一行的 TCP 連線，t=2 用 conntrack -U 設上信任的 bit
-#   t=4 起 wtest 用 tcpreplay 送 39-1（IRCBot 掃描）經過同一個 br0；每秒印 conntrack 筆數、這條連線的 entry、early_drop 等計數
-#   PROTO=udp：被信任的改成單向 UDP（fcli:40001 每 0.2 秒送一個給 fsrv:5001，fsrv 只收不回 → entry 一直是 UNREPLIED、不會 assured）
-# 前置：sudo sh env.sh up；sh make_configs.sh；系統的 suricata 服務已停；wnc-gw 放在 $GW；nf_conntrack_netlink 已載入
-# 用法: sudo [PROTO=udp] bash ctfull_pi.sh <pps|x1> <掃描秒數>
-#   x1 = 原始時間間隔。39-1 的掃描只在 pcap 最後 78 秒，要先切出來（frame 17234 是第一個 ≥ 505 秒的封包）：
-#     editcap -F pcap -r S_m39.pcap S_m39_scan.pcap 17234-200000；tcpprep --mac=78:8a:20:43:93:d5 --pcap=S_m39_scan.pcap --cachefile=S_m39_scan.cache
-#     再用 PCAP=…/S_m39_scan.pcap CACHE=…/S_m39_scan.cache 指定
+# 3b when the connection table is full (Pi, bridge): are trusted connections affected (wgw/wtest already set up, run as root)
+#   fcli(10.9.0.1) --veth-- x-lan [wgw: br0] x-wan --veth-- fsrv(10.9.0.2): a TCP connection sending a line every 0.2 s; at t=2 conntrack -U sets the trust bit
+#   from t=4 wtest sends 39-1 (IRCBot scan) through the same br0 with tcpreplay; prints the conntrack count, this connection's entry, early_drop and other counters every second
+#   PROTO=udp: the trusted flow becomes one-way UDP (fcli:40001 sends one to fsrv:5001 every 0.2 s, fsrv only receives → the entry stays UNREPLIED, never assured)
+# Prerequisites: sudo sh env.sh up; sh make_configs.sh; system suricata service stopped; wnc-gw at $GW; nf_conntrack_netlink loaded
+# Usage: sudo [PROTO=udp] bash ctfull_pi.sh <pps|x1> <scan seconds>
+#   x1 = original timing. The 39-1 scan is only in the last 78 s of the pcap, so cut it out first (frame 17234 is the first packet ≥ 505 s):
+#     editcap -F pcap -r S_m39.pcap S_m39_scan.pcap 17234-200000; tcpprep --mac=78:8a:20:43:93:d5 --pcap=S_m39_scan.pcap --cachefile=S_m39_scan.cache
+#     then pass PCAP=…/S_m39_scan.pcap CACHE=…/S_m39_scan.cache
 CT=${CT:-/home/wnc/ctbench/root/usr/sbin/conntrack}; GW=${GW:-/tmp/wncgw/wnc-gw}; M=${M:-/tmp/wncgw/m}; L=/tmp/wncgw/ctfull
 PCAP=${PCAP:-/home/wnc/ids_throughput/data/pcaps/S_m39.pcap}; CACHE=${CACHE:-$M/cache/S_m39.cache}; PROTO=${PROTO:-tcp}
 rate=${1:?usage: ctfull_pi.sh <pps|x1> <scan seconds>}; secs=${2:?usage: ctfull_pi.sh <pps|x1> <scan seconds>}

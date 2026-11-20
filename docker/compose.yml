@@ -30,7 +30,7 @@ services:
     hostname: cli
     environment:
       ROLE: cli
-    cap_add: [NET_ADMIN, NET_RAW]   # 改路由 / 抓包需要
+    cap_add: [NET_ADMIN, NET_RAW]   # needed to change routes / capture packets
     networks:
       lan:
         ipv4_address: 10.0.1.2
@@ -44,7 +44,7 @@ services:
     hostname: gw
     environment:
       ROLE: gw
-    cap_add: [NET_ADMIN, NET_RAW, BPF]   # BPF：載入核心 eBPF 程式
+    cap_add: [NET_ADMIN, NET_RAW, BPF]   # BPF: load kernel eBPF programs
     sysctls:
       net.ipv4.ip_forward: "1"
       net.netfilter.nf_conntrack_acct: "1"

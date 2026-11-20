@@ -1,19 +1,19 @@
 #!/bin/bash
-# eve_sock_docker.sh — EVE 改走 unix_stream 時，讀取端慢或停住，Suricata 是卡住還是丟事件（Docker testbed，Suricata 8.0.7）
-#   offline <pcap>  suricata -r（--runmode single、沒有規則，只輸出 flow 事件）：regular 檔案當基準，unix_stream 的讀取端 fast／stall:10／slow:2000，
-#                   比較事件數和 Suricata 的執行時間（卡住 → 時間變長、事件不少；丟 → 時間不變、事件變少）
-#   live <ids|ips>  wnc-gw run（routed、when_unavailable = "drop"、一條 UDP payload 的 alert 規則），EVE 走 unix_stream（alert、flow）；
-#                   cli 10 秒內送 5000 個 UDP（每個一條新連線，每個都 alert），同時 ping 每 10 ms 一次；讀取端前 15 秒不讀：
-#                   看 ping 的丟包和延遲、wnc-gw 記的漏掉的複本、Suricata 的 alert 數與讀取端收到的事件數
-# Suricata 和讀取端都綁 CPU 6、7（筆電同時在跑方案 B 的 tcpreplay）
-# 用法: bash eve_sock_docker.sh offline <筆電上的 pcap>；bash eve_sock_docker.sh live <ids|ips>；最後 bash eve_sock_docker.sh clean
+# eve_sock_docker.sh — with EVE over unix_stream and a slow or stalled reader, does Suricata block or drop events (Docker testbed, Suricata 8.0.7)
+#   offline <pcap>  suricata -r (--runmode single, no rules, flow events only): a regular file as baseline, unix_stream with reader fast/stall:10/slow:2000;
+#                   compare event count and Suricata run time (blocks -> longer time, same events; drops -> same time, fewer events)
+#   live <ids|ips>  wnc-gw run (routed, when_unavailable = "drop", one alert rule on UDP payload), EVE over unix_stream (alert, flow);
+#                   cli sends 5000 UDP packets in 10 s (each a new connection, each alerting) while pinging every 10 ms; the reader does not read for the first 15 s:
+#                   check ping packet loss and latency, missed copies logged by wnc-gw, Suricata's alert count and the events the reader received
+# Suricata and the reader are pinned to CPUs 6, 7 (the laptop is running plan B's tcpreplay at the same time)
+# Usage: bash eve_sock_docker.sh offline <pcap on the laptop>; bash eve_sock_docker.sh live <ids|ips>; finally bash eve_sock_docker.sh clean
 G="docker exec wnc-gw"; GI="docker exec -i wnc-gw"; C="docker exec wnc-cli"
 D=/tmp/eo; HERE=$(cd "$(dirname "$0")" && pwd); T="taskset -c 6,7"
 
 prep() {
   $G mkdir -p $D/log; docker cp -q "$HERE/reader.py" wnc-gw:$D/reader.py; $G sh -c ": > $D/empty.rules"
 }
-yaml() {  # yaml <檔名> <filetype> <filename> [多的設定行]
+yaml() {  # yaml <file name> <filetype> <filename> [extra config lines]
   $GI sh -c "cat > $D/$1" <<EOF
 %YAML 1.1
 ---
@@ -34,7 +34,7 @@ outputs:
       threads: no
 EOF
 }
-reader() {  # reader <mode>：背景啟動，等 socket 出現
+reader() {  # reader <mode>: start in the background, wait for the socket to appear
   $G rm -f $D/eve.sock $D/reader.out
   docker exec -d wnc-gw $T python3 $D/reader.py $D/eve.sock $1 $D/reader.out
   for i in $(seq 1 50); do $G test -S $D/eve.sock && return 0; sleep 0.1; done
@@ -98,7 +98,7 @@ import socket, time
 for i in range(5000):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.sendto(b'EO-MARK %d' % i, ('10.0.2.2', 5555)); s.close(); time.sleep(0.002)"
   wait; grep -E "transmitted|rtt" /tmp/eo-ping.txt | sed 's/^/   ping: /'; rm -f /tmp/eo-ping.txt
-  sleep 21   # 讀取端恢復，wnc-gw 的 CopyMonitor（每 10 秒）也讀到
+  sleep 21   # the reader resumes, and wnc-gw's CopyMonitor (every 10 s) sees it too
   $G sh -c "kill -INT \$(cat $D/pid)"; until $G test -e $D/exit; do sleep 0.2; done
   for i in $(seq 1 60); do $G test -s $D/reader.out && break; sleep 0.5; done
   echo "   reader: $($G cat $D/reader.out)"

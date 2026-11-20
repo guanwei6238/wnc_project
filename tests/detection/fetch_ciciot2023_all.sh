@@ -1,8 +1,8 @@
 #!/bin/bash
-# CICIoT2023 其餘的 pcap（抽樣的 36 個以外）：下載 → Suricata 8.0.7（full，設定同 run_ciciot2023.sh）→ 存到 NAS。
-# 每個檔：從 Hugging Face 鏡像下載到工作站（hf_download.sh 用 sha256 核對）→ 跑 Suricata → 複製到
-# NAS 的 pcap/<資料夾>/ 並再核對一次 sha256 → 刪掉工作站上的檔。偵測讀工作站的檔，不從 NAS 讀回來。
-# 用法: fetch_ciciot2023_all.sh [同時處理的檔數，預設 3]
+# The remaining CICIoT2023 pcaps (beyond the 36 sampled): download -> Suricata 8.0.7 (full, same settings as run_ciciot2023.sh) -> store on the NAS.
+# Per file: download from the Hugging Face mirror to the workstation (hf_download.sh checks sha256) -> run Suricata -> copy to
+# pcap/<folder>/ on the NAS and check sha256 again -> delete the workstation copy. Detection reads the workstation copy, not the NAS.
+# Usage: fetch_ciciot2023_all.sh [files processed at once, default 3]
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 export HERE
@@ -32,11 +32,11 @@ one() {
     fi
     if [ ! -f "$dst/$file.ok" ]; then
         want=$(cat "$s/$file.ok")
-        # 寫到 NAS（CIFS）時 dirty page 算在這個 cgroup：同一時間只讓一個檔寫 NAS（flock），避免記憶體被寫入佔滿
+        # Dirty pages from writing to the NAS (CIFS) count against this cgroup: only one file writes to the NAS at a time (flock), so writes don't fill memory
         exec 8>"$STAGE/.nas.lock"; flock 8
         cp "$s/$file" "$dst/$file.part"
         flock -u 8; exec 8>&-
-        # 核對用 direct read 從 NAS 讀回來（不讀本機 page cache 裡剛寫的資料）
+        # Verify by reading back from the NAS with direct reads (not the just-written data in the local page cache)
         got=$(dd if="$dst/$file.part" iflag=direct bs=16M status=none | sha256sum | cut -d' ' -f1)
         [ "$got" = "$want" ] || { echo "NAS copy mismatch: $folder/$file"; rm -f "$dst/$file.part"; return 1; }
         mv "$dst/$file.part" "$dst/$file"; echo "$want" > "$dst/$file.ok"
@@ -46,8 +46,8 @@ one() {
 }
 export -f one
 
-# 檔名沒有空白或引號（已檢查），一行兩個欄位：資料夾、檔名
-# 跑兩輪：第二輪補第一輪失敗的檔（做完的會直接跳過）
+# File names have no spaces or quotes (checked); two fields per line: folder, file name
+# Two rounds: the second retries files that failed in the first (finished ones are skipped)
 for pass in 1 2; do
     awk -F'\t' 'NR>1 && $4==0 {print $1, $2}' "$HERE/results/ciciot2023_files.tsv" \
         | xargs -n 2 -P "${1:-3}" bash -c 'one "$1" "$2" || true' _

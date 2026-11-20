@@ -1,20 +1,20 @@
 #!/bin/bash
-# autotrust_cost_pi.sh — 3d（讀 alert、自動信任）的成本（Pi，bridge，ids）
-#   fcli(10.9.0.1) --veth-- x-lan [wgw: br0] x-wan --veth-- fsrv(10.9.0.2)（env.sh＋protection_pi.sh net up）
-#   eve      wnc-gw 讀 EVE 的 CPU：每秒 0、100、1000 筆 alert（UDP 每個封包帶 PERF，規則有 content，每個封包都比對），各量 60 秒
-#   latency  alert 從封包進來到 wnc-gw 讀到：每秒 1、10 筆，各 30 秒（--log-level debug，wnc-gw 的 log 時間 − eve 的 timestamp）
-#   saving   自動信任省多少：8 條 TCP 連線，各每秒送 250 個 1000 bytes（TCP_NODELAY），[trust] auto off／on（其他用預設），
-#            量第 15–75 秒的 Suricata、wnc-gw CPU 與 forward、ids chain 的封包數
-#   check    每次讀 conntrack 的成本：0、1000、10000 條 UDP 連線（每 10 秒各送 1 個封包維持），check_interval 1，量 20 秒
-#   2026-11-04 的結果裡 eve_watch=inotify 那幾行是刪掉 inotify 之前的版本量的（~/datasets/throughput/func_20261104/worktree_with_inotify.diff）
-#   CPU 是 /proc/<pid>/task/*/schedstat 第一欄（ns，排程器精確累計）的總和
-# 前置：pi_lab_mode.sh up 1000；sudo sh env.sh up；sudo bash protection_pi.sh net up；系統的 suricata 服務已停；wnc-gw 放在 $GW
-# 用法: sudo bash autotrust_cost_pi.sh <eve|latency|saving|check|all>   結果一行一筆 key=value，附加到 $OUT
+# autotrust_cost_pi.sh — cost of 3d (reading alerts, auto trust) (Pi, bridge, ids)
+#   fcli(10.9.0.1) --veth-- x-lan [wgw: br0] x-wan --veth-- fsrv(10.9.0.2) (env.sh + protection_pi.sh net up)
+#   eve      wnc-gw CPU for reading EVE: 0, 100, 1000 alerts per second (every UDP packet carries PERF, the rule has content, every packet is matched), 60 s each
+#   latency  alert delay from packet arrival to wnc-gw reading it: 1, 10 per second, 30 s each (--log-level debug, wnc-gw log time − eve timestamp)
+#   saving   how much auto trust saves: 8 TCP connections, each sending 250 x 1000 bytes per second (TCP_NODELAY), [trust] auto off/on (rest default),
+#            measure Suricata and wnc-gw CPU and forward/ids chain packet counts over seconds 15-75
+#   check    cost of each conntrack read: 0, 1000, 10000 UDP connections (kept alive with 1 packet each every 10 s), check_interval 1, 20 s
+#   in the 2026-11-04 results, the eve_watch=inotify rows were measured with the version before inotify was removed (~/datasets/throughput/func_20261104/worktree_with_inotify.diff)
+#   CPU is the sum of field 1 of /proc/<pid>/task/*/schedstat (ns, exact scheduler accounting)
+# Prerequisites: pi_lab_mode.sh up 1000; sudo sh env.sh up; sudo bash protection_pi.sh net up; system suricata service stopped; wnc-gw at $GW
+# Usage: sudo bash autotrust_cost_pi.sh <eve|latency|saving|check|all>   one key=value line per result, appended to $OUT
 GW=${GW:-/tmp/wncgw/wnc-gw}; D=/tmp/wncgw/ac; SLOG=/var/log/wnc-gw/suricata
 OUT=${OUT:-/home/wnc/ids_inline/results/autotrust_cost.kvl}
 W="ip netns exec wgw"; C="ip netns exec fcli"; S="ip netns exec fsrv"
 
-setup() {  # $1 = [suricata] 多的設定行，$2 = [trust] 的設定行
+setup() {  # $1 = extra [suricata] lines, $2 = [trust] lines
   mkdir -p $D
   cat > $D/test.rules <<'EOF'
 alert udp any any -> any 9 (msg:"perf udp"; content:"PERF"; sid:1000401; rev:1;)
@@ -41,10 +41,10 @@ suricata_pid() { grep -o "suricata started pid=[0-9]*" $D/run.log | tail -1 | cu
 cpu_ns() { cat /proc/$1/task/*/schedstat 2>/dev/null | awk '{s += $1} END {printf "%d", s}'; }
 counter() { $W nft list chain inet wnc_gw $1 | grep -o "packets [0-9]*" | head -1 | cut -d" " -f2; }
 alerts() { grep -c ':1000401:' $SLOG/fast.log 2>/dev/null; }
-rate() { awk -v a=$1 -v b=$2 -v t=$3 -v f=$4 'BEGIN {printf f, (b - a) / t / 1e6}'; }  # ns 的差 → 每秒幾 ms
+rate() { awk -v a=$1 -v b=$2 -v t=$3 -v f=$4 'BEGIN {printf f, (b - a) / t / 1e6}'; }  # ns difference → ms per second
 clock() { vcgencmd measure_clock arm | cut -d= -f2 | awk '{printf "%d", $1 / 1e6}'; }
 
-udp_alerts() {  # $1 = 每秒幾個，$2 = 秒數
+udp_alerts() {  # $1 = per second, $2 = seconds
   $C python3 -c "
 import socket, time
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); n = 0; t0 = time.time()
@@ -155,7 +155,7 @@ while time.time() - t0 < 35:
     [ $k -gt 0 ] && wait $tp
     stop
     echo "test=check flows=$k conntrack_count=$n gw_cpu_ms_per_s=$(rate $c0 $c1 20 %.3f) clock_mhz=$(clock)" | tee -a $OUT
-    sleep 35  # 等 UDP 的 conntrack 逾時（30 秒），下一輪從乾淨的表開始
+    sleep 35  # wait for the UDP conntrack timeout (30 s) so the next round starts with a clean table
   done
   $S nft flush chain inet t in; $S nft add rule inet t in udp dport 9 counter name got drop
 }

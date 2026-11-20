@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""run_matrix.py -- 跑量測矩陣：(pcap) x (引擎) x (規則集)，各組態「輪流交錯」重複，每次一行寫進 CSV。只用標準函式庫。
+"""run_matrix.py -- run the measurement matrix (pcap) x (engine) x (rule set), interleaving the configs across repeats, one CSV row per run. Standard library only.
 
-用法例（在 Pi 上，native 模式直接呼叫主機的 suricata/snort；批次腳本 run_pi_*.sh 就是這樣呼叫）:
+Examples (on the Pi, native mode calls the host's suricata/snort directly; this is how the run_pi_*.sh batch scripts call it):
   MODE=native ./run_matrix.py --tag pi_try --pcaps C_somfy02.pcap --engines suricata,snort --rules full --reps 1 --warmup 1 --runs-dir $BIG/runs
-  MODE=native ./run_matrix.py --tag pi_x --pcaps S_m39 --rules empty,gw_corp     # 不以 .pcap 結尾 -> 自動加上 S_m39.pcap 與 S_m39.small.pcap
-  MODE=docker 則是在工作站的 Docker 容器（image wnc-ids-lab）裡跑同一支 measure.sh。
+  MODE=native ./run_matrix.py --tag pi_x --pcaps S_m39 --rules empty,gw_corp     # no .pcap suffix -> adds S_m39.pcap and S_m39.small.pcap
+  MODE=docker runs the same measure.sh inside a Docker container (image wnc-ids-lab) on the workstation.
 
-為什麼這樣設計:
-  * 一個 round = 把「所有組態各跑 1 次」(順序每 round 重新洗牌，seed 固定可重現)。round 0 是 warm-up(丟棄)，之後才是正式。
-    -> 不會把同一組態連續跑 5 次，機器負載/溫度漂移會平均分散到各組態，而不是變成「某組態比較慢」的假差異。
-  * 每次量測都在『一個新的』容器/行程裡跑一次 measure.sh，前後讀 load average、溫度、throttled。
-  * Pi 的 throttled 閘門（只看「這次量測期間」）: (1) 量測前或後的『目前』位元 bit0–3 不是 0；(2) bit16–19『開機後曾發生』位元
-    在量測前後有改變（= 量測期間又發生一次）-> 這次標為作廢(void)。開機前就存在且沒變的高位元不算（它們要重開機才會清）。
-    注意: bit16 以上是「開機以來發生過」，不會自己清掉；若曾經欠壓，要重開機才會回到 0x0。
-  * 原始 log 留在 RUNS/<tag>/<run_id>/（repo 外），CSV 只放解析後的數字。
+Design:
+  * One round = every config run once (order reshuffled each round, fixed seed for reproducibility). Round 0 is warm-up (discarded), the rest count.
+    -> No config runs 5 times in a row, so load/temperature drift spreads over all configs instead of showing up as a fake "config X is slower".
+  * Each measurement runs measure.sh once in a *fresh* container/process; load average, temperature and throttled are read before and after.
+  * Pi throttled gate (only "during this measurement"): (1) the *current* bits bit0-3 are nonzero before or after; (2) the "occurred since boot" bits bit16-19
+    changed across the measurement (= it happened again during the run) -> the run is marked void. High bits already set before and unchanged do not count (they clear only on reboot).
+    Note: bit16 and up mean "has occurred since boot" and never clear by themselves; after any undervoltage it takes a reboot to get back to 0x0.
+  * Raw logs stay in RUNS/<tag>/<run_id>/ (outside the repo); the CSV holds only parsed numbers.
 """
 import argparse, csv, json, os, random, re, shutil, signal, subprocess, sys, time, datetime
 
@@ -21,15 +21,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 BIG = os.environ.get("BIG", "/home/sixsquare/datasets/throughput")
 IMAGE = os.environ.get("IMAGE", "wnc-ids-lab")
 
-# ---------------- 硬體 / 狀態讀取（Pi 才有 vcgencmd；沒有就留空，不算作廢） ----------------
+# ---------------- hardware / state readout (vcgencmd only on the Pi; if missing, left empty and not voided) ----------------
 VCG = os.environ.get("VCGENCMD") or shutil.which("vcgencmd")
 
 def throttle_void(before, after):
-    """throttled 閘門。before/after 是 vcgencmd get_throttled 的字串（如 '0xe0008'）；沒有 vcgencmd 時是空字串。
-    回傳作廢理由的 list（空 = 通過）。只看「這次量測期間」的狀態：
-      - 目前位元 bit0–3（欠壓、時脈上限、降頻、溫度上限）在前後都必須是 0
-      - 『開機後曾發生』位元 bit16–19 在前後不可改變（改變 = 量測期間又發生了一次）
-    開機前就存在且沒變的高位元（要重開機才會清）不算作廢。"""
+    """Throttled gate. before/after are vcgencmd get_throttled strings (e.g. '0xe0008'); empty string without vcgencmd.
+    Returns a list of void reasons (empty = pass). Only looks at state "during this measurement":
+      - current bits bit0-3 (undervoltage, freq cap, throttling, temp limit) must be 0 both before and after
+      - the "occurred since boot" bits bit16-19 must not change (change = it happened again during the run)
+    High bits already set before and unchanged (they clear only on reboot) do not void the run."""
     why = []
     if not before or not after:
         return why
@@ -54,7 +54,7 @@ def vcg(*a):
     return sh([VCG, *a]) if VCG else ""
 
 def read_state():
-    """回傳 dict: throttled(字串如 0x0)、temp(°C)、arm_clock(Hz)；沒有 vcgencmd 時是空字串。"""
+    """Return dict: throttled (string like 0x0), temp (°C), arm_clock (Hz); empty strings without vcgencmd."""
     thr = vcg("get_throttled").split("=")[-1] if VCG else ""
     t = re.search(r"temp=([\d.]+)", vcg("measure_temp")) if VCG else None
     c = re.search(r"=(\d+)", vcg("measure_clock", "arm")) if VCG else None
@@ -72,7 +72,7 @@ def cpu_model():
             return line.split(":", 1)[1].strip()
     return sh(["lscpu"]).split("Model name:")[-1].split("\n")[0].strip()
 
-# ---------------- 解析引擎 log ----------------
+# ---------------- parse engine logs ----------------
 def parse_time_v(path):
     d = {}
     try:
@@ -102,7 +102,7 @@ def parse_suricata(rundir):
     m = re.search(r"Threads created -> W: (\d+)", log); d["workers"] = int(m.group(1)) if m else None
     m = re.search(r"pcap: read \d+ files?, (\d+) packets, (\d+) bytes", log)
     if m: d["pcap_read_pkts"], d["pcap_read_bytes"] = int(m.group(1)), int(m.group(2))
-    # stats.log 可能有多個區塊（每 8 秒一個 + 結束時一個），取最後一個 "Date:" 之後的
+    # stats.log may have several blocks (one every 8 s plus one at exit); take the one after the last "Date:"
     try:
         st = open(os.path.join(rundir, "stats.log"), errors="replace").read().split("Date:")[-1]
         def sv(name):
@@ -117,7 +117,7 @@ def parse_suricata(rundir):
 def parse_snort(rundir):
     log = open(os.path.join(rundir, "engine.log"), errors="replace").read()
     d = {}
-    # Snort 的 summary 是「區段標題 + 縮排的 key: value」
+    # Snort's summary is "section title + indented key: value"
     sec, vals = None, {}
     for line in log.splitlines():
         if line and not line[0].isspace() and not line.startswith(("-", "=")):
@@ -141,7 +141,7 @@ def top_sids(rundir, n=3):
     except Exception:
         return ""
 
-# ---------------- 組出一次量測的指令 ----------------
+# ---------------- build the command for one measurement ----------------
 def build_cmd(a, engine, rules, pcap_name, run_id):
     if a.mode == "docker":
         os.makedirs(os.path.join(a.runs, run_id), exist_ok=True)
@@ -169,9 +169,9 @@ def one_run(a, man, job, rnd, order, writer, fh):
     before = read_state()
     load1 = os.getloadavg()[0]
     cmd = build_cmd(a, engine, rules, pcap_name, run_id)
-    # 用新的行程群組執行；逾時就殺掉「整個群組」（measure.sh 底下的 time / taskset / 引擎一起殺）並記成結果，不丟例外。
-    # 為什麼不用 subprocess.run(timeout=)：它逾時只殺直接的子行程，引擎可能變成孤兒繼續吃記憶體；而且逾時會丟例外讓整批崩潰。
-    # 限制：docker 模式下殺掉的是 `docker run` 客戶端，容器可能留著跑完（--rm 會自己清掉）；本步驟的逾時主要用在 native（Pi）模式。
+    # Run in a new process group; on timeout kill the *whole group* (time / taskset / engine under measure.sh) and record it as a result, no exception.
+    # Why not subprocess.run(timeout=): it only kills the direct child, the engine may be orphaned and keep eating memory; and the exception would crash the whole batch.
+    # Limitation: in docker mode this kills the `docker run` client and the container may run to completion (--rm cleans it up); the timeout here is mainly for native (Pi) mode.
     timed_out = False
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     try:
@@ -205,7 +205,7 @@ def one_run(a, man, job, rnd, order, writer, fh):
             row["top_sids"] = top_sids(rundir)
             if row["exit_code"] != 0: void.append("exit=%s" % row["exit_code"])
             if row["self_s"] is None: void.append("no_self_time")
-        except Exception as e:                           # 任何解析失敗都要留下紀錄，不能默默略過
+        except Exception as e:                           # any parse failure must be recorded, never silently skipped
             void.append("parse_error:%s" % e)
     if row.get("user_s") is not None:
         row["cpu_s"] = round(row["user_s"] + row["sys_s"], 3)
@@ -215,7 +215,7 @@ def one_run(a, man, job, rnd, order, writer, fh):
     if row.get("self_s"):
         row["pps_self"] = round(row["pkts_reported"] / row["self_s"]) if row.get("pkts_reported") else ""
         row["mbps_self"] = round(row["bytes_reported"] * 8 / row["self_s"] / 1e6, 2) if row.get("bytes_reported") else ""
-    # throttled 閘門（有 vcgencmd 才檢查）
+    # throttled gate (checked only when vcgencmd exists)
     void.extend(throttle_void(row["throttled_before"], row["throttled_after"]))
     row["void"] = int(bool(void)); row["void_reason"] = "|".join(void)
     writer.writerow(row); fh.flush()
@@ -239,7 +239,7 @@ def write_env(a, path):
     env["suricata_version"] = sh(pre + ["suricata", "-V"])
     env["snort_version"] = sh(pre + ["snort", "-V"]).replace("\n", " ")
     env["rules_sha256"] = read_first(os.path.join(a.rules_dir, "SHA256SUMS")).splitlines()
-    # 範例指令列（每次量測實際用的完整指令在 RUNS/<tag>/<run_id>/timing.kv 的 cmd= 與 docker 參數）
+    # Example command line (the full command of each run is cmd= and the docker args in RUNS/<tag>/<run_id>/timing.kv)
     env["example_docker_cmd"] = " ".join(build_cmd(a, "suricata", "full", "X.pcap", "RUN")) if a.mode == "docker" else ""
     json.dump(env, open(path, "w"), indent=1, ensure_ascii=False)
 
@@ -261,7 +261,7 @@ def main():
     p.add_argument("--pcaps-dir", default=None); p.add_argument("--rules-dir", default=None)
     p.add_argument("--runs-dir", dest="runs", default=None); p.add_argument("--results-dir", default=os.path.join(HERE, "results"))
     a = p.parse_args()
-    a.pcap_names = a.pcaps                      # --pcaps 是檔名清單
+    a.pcap_names = a.pcaps                      # --pcaps is a list of file names
     a.pcaps = a.pcaps_dir or os.path.join(BIG, "pcaps"); a.rules_dir = a.rules_dir or os.path.join(BIG, "rules")
     a.runs = os.path.join(a.runs or os.path.join(BIG, "runs"), a.tag)
     os.makedirs(a.runs, exist_ok=True); os.makedirs(a.results_dir, exist_ok=True)
@@ -284,7 +284,7 @@ def main():
     with open(csv_path, "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=COLS, extrasaction="ignore"); w.writeheader()
         for rnd in range(a.warmup + a.reps):
-            order = jobs[:]; random.Random(a.seed + rnd).shuffle(order)      # 每 round 洗牌（固定 seed）
+            order = jobs[:]; random.Random(a.seed + rnd).shuffle(order)      # reshuffle each round (fixed seed)
             for i, job in enumerate(order):
                 r = one_run(a, man, job, rnd, i, w, fh)
                 print("r%d %3d/%d %-8s %-6s %-26s self=%s wall=%s pk=%s/%s void=%s" % (

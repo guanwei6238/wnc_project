@@ -1,13 +1,13 @@
 #!/bin/sh
-# make_configs.sh — 產生三組 rule set 的 Suricata 設定與 wnc-gw 設定（放在 $M）
-#   Suricata 設定 = 系統的 /etc/suricata/suricata.yaml 只改這幾行（和 offline 量測對齊）：
-#     runmode workers（1 個 queue = 1 個 worker，對應 offline 的 --runmode single）
-#     mpm-algo ac-ks、spm-algo bm（offline 的 --set）
-#     capture.checksum-validation none（等同 offline 的 -k none）
-#     exception-policy ignore（IPS 模式的 auto 等於 drop-flow，會丟掉 midstream 的 flow；offline 是 IDS 模式，auto 等於 ignore）
-#     rule-files：full、gw_corp 用 offline 的同一份檔案；empty 用一條不會命中的 rule（doctor 不讓 0 條 rule 啟動）
-#   wnc-gw 設定：bridge 模式、protection = "ips"（NFQ；預設的 ids 是 NFLOG）、when_unavailable = "drop"（跟不上時丟掉，不放行，丟失才算得出來）
-# 用法: sh make_configs.sh   之後用 suricata --dump-config 和系統設定 diff，確認只差上面幾項
+# make_configs.sh — generate Suricata and wnc-gw configs for three rule sets (in $M)
+#   Suricata config = system /etc/suricata/suricata.yaml with only these lines changed (aligned with the offline measurement):
+#     runmode workers (1 queue = 1 worker, matching offline's --runmode single)
+#     mpm-algo ac-ks, spm-algo bm (offline's --set)
+#     capture.checksum-validation none (same as offline's -k none)
+#     exception-policy ignore (auto in IPS mode means drop-flow, which drops midstream flows; offline is IDS mode, where auto means ignore)
+#     rule-files: full, gw_corp use the same files as offline; empty uses one rule that never matches (doctor refuses to start with 0 rules)
+#   wnc-gw config: bridge mode, protection = "ips" (NFQ; the default ids is NFLOG), when_unavailable = "drop" (drop instead of pass when it cannot keep up, so loss is measurable)
+# Usage: sh make_configs.sh   then diff suricata --dump-config against the system config to confirm only the items above differ
 M=${M:-/tmp/wncgw/m}
 RULES=${RULES:-/home/wnc/ids_throughput/data/rules}
 set -e
@@ -23,12 +23,12 @@ for rs in empty full gw_corp; do
       /etc/suricata/suricata.yaml > $M/suricata-$rs.yaml
   printf 'mode = "bridge"\nxdp = "off"\nprotection = "ips"\n\n[ports]\nlan = "g-lan"\nwan = "g-wan"\n\n[suricata]\nconfig = "%s"\nwhen_unavailable = "drop"\n' \
     "$M/suricata-$rs.yaml" > $M/setting-$rs.toml
-  for n in 2 3 4; do  # 多個 queue：setting-<rules>-qN.toml
+  for n in 2 3 4; do  # multiple queues: setting-<rules>-qN.toml
     { cat $M/setting-$rs.toml; printf 'queue = "0-%d"\n' $((n - 1)); } > $M/setting-$rs-q$n.toml
   done
 done
-# af-packet IPS 模式（對照組）：Suricata 自己在 g-lan、g-wan 之間搬封包，不經過 bridge 與 nft
-#   include 之後重新定義 af-packet 會整個取代系統的清單；IPS 模式不能用 tpacket-v3
+# af-packet IPS mode (baseline): Suricata moves packets between g-lan and g-wan itself, bypassing the bridge and nft
+#   redefining af-packet after include replaces the whole system list; IPS mode cannot use tpacket-v3
 for rs in empty full gw_corp; do
   printf '%%YAML 1.1\n---\ninclude: %s\n\naf-packet:\n' "$M/suricata-$rs.yaml" > $M/suricata-$rs-afp.yaml
   for pair in "g-lan g-wan 98" "g-wan g-lan 97"; do

@@ -1,7 +1,7 @@
 #!/bin/bash
-# run_policies.sh — 實驗 4：時間切片 → 各策略的子集（policy_filter.py）→ Suricata full ET（設定同 tests/detection）→ alert 對 label（match_iot23.py）
-# 用法: bash run_policies.sh <slice 名稱> <day> <t0> <t1>     結果在 $OUT/<slice>/
-#   OUT 預設 ~/datasets/partial_inspect/policies；同時跑 JOBS 個 Suricata（預設 3）；FILTER_ONLY=1 只做過濾
+# run_policies.sh — exp 4: time slice → per-policy subsets (policy_filter.py) → Suricata full ET (same config as tests/detection) → alerts vs labels (match_iot23.py)
+# Usage: bash run_policies.sh <slice name> <day> <t0> <t1>     results in $OUT/<slice>/
+#   OUT defaults to ~/datasets/partial_inspect/policies; runs JOBS Suricata instances at once (default 3); FILTER_ONLY=1 only filters
 set -e
 HERE=$(cd "$(dirname "$0")" && pwd); DET=$HERE/../detection
 name=$1; day=$2; t0=$3; t1=$4

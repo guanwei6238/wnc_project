@@ -1,11 +1,11 @@
 #!/bin/bash
-# run_pi.sh — 14 個 scenario × empty／full／gw_corp 的 inline 量測（Pi 上執行）
-#   A：以 $RATE pps 送（不會丟包的速率），主要數字 us_per_pkt／cpu_kpps；3 輪，每輪 scenario 與 rule set 順序打亂
-#   B：全速送一次，參考數字 proc_kpps 與 loss_pct
-#   前後各一次錨點（S_m39 × full × A），開頭一次暖機（不計）
-# 前置：sudo sh env.sh up；sh make_configs.sh；pi_lab_mode.sh up 1000；系統的 suricata 服務已停；wnc-gw 放在 $GW
-# 用法: sudo nohup bash run_pi.sh > /home/wnc/ids_inline/driver.log 2>&1 < /dev/null &
-# 結果：$OUT/$TAG.kvl（每次量測一行，前面加 tag、round、mode、seq）、$OUT/$TAG.meta；每次量測的 log 在 $RUNS/$TAG/
+# run_pi.sh — inline measurement of 14 scenarios × empty/full/gw_corp (run on the Pi)
+#   A: send at $RATE pps (a rate with no packet loss), main numbers us_per_pkt/cpu_kpps; 3 rounds, scenario and rule set order shuffled each round
+#   B: one full-speed run, reference numbers proc_kpps and loss_pct
+#   one anchor run (S_m39 × full × A) at the start and end, one warm-up at the start (not counted)
+# Prerequisites: sudo sh env.sh up; sh make_configs.sh; pi_lab_mode.sh up 1000; system suricata service stopped; wnc-gw at $GW
+# Usage: sudo nohup bash run_pi.sh > /home/wnc/ids_inline/driver.log 2>&1 < /dev/null &
+# Results: $OUT/$TAG.kvl (one line per measurement, prefixed with tag, round, mode, seq), $OUT/$TAG.meta; per-measurement logs in $RUNS/$TAG/
 cd "$(dirname "$0")" || exit 1
 TAG=${TAG:-inline1}; RATE=${RATE:-10000}
 OUT=${OUT:-/home/wnc/ids_inline/results}; RUNS=${RUNS:-/home/wnc/ids_inline/runs}

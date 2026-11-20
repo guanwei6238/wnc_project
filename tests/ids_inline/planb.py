@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""planb.py — planb_run.sh 的結果：外部產生流量時，Pi 不因處理不過來而掉包的最高速率。
+"""planb.py — planb_run.sh results: the highest rate at which the Pi, under externally generated traffic, loses no packets from overload.
 
-用法: python3 planb.py <planb.kvl|nflog.kvl>
-  轉送上限 = cap_loss_pct ≤ 0.1% 的最高實際送出速率（kpps，tcpreplay 的 Rated）；cap_loss = kernel queue 滿而丟 + 網卡丟 + 沒收到
-  檢查上限 = 轉送上限的條件再加上 copy_loss_pct ≤ 0.1%（只有 NFLOG 有：Suricata 漏掉的複本）；wncgw（NFQ）兩者相同
-  每格是各輪的值，用「/」分開；括號是那個速率下 conntrack 寫入失敗（insert_failed）佔送出封包的比例
-  round 0 是功能測試，不算；沒有 impl 欄位的舊結果當成 wncgw
+Usage: python3 planb.py <planb.kvl|nflog.kvl>
+  forwarding limit = highest actual send rate (kpps, tcpreplay's Rated) with cap_loss_pct ≤ 0.1%; cap_loss = kernel queue-full drops + NIC drops + not received
+  inspection limit = the forwarding limit's condition plus copy_loss_pct ≤ 0.1% (NFLOG only: copies Suricata missed); the two are the same for wncgw (NFQ)
+  each cell lists per-round values separated by "/"; parentheses give conntrack insert failures (insert_failed) as a fraction of packets sent at that rate
+  round 0 is a functional test and not counted; old results without an impl field are treated as wncgw
 """
 import sys
 from collections import defaultdict

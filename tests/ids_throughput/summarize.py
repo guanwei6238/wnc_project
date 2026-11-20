@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""summarize.py -- 把 run_matrix.py 的逐次 CSV 彙總成「每組態一行」的表，並做量測方法的自我檢查。只用標準函式庫。
+"""summarize.py -- aggregate run_matrix.py's per-run CSV into a one-row-per-config table and run self-checks on the method. Standard library only.
 
-用法: python3 -I summarize.py results/<tag>.csv [更多 csv ...] --out results/<tag>.summary.csv
+Usage: python3 -I summarize.py results/<tag>.csv [more csv ...] --out results/<tag>.summary.csv
 
-規則:
-  * 只用 warmup=0 且 void=0 的列；作廢/暖機的列只在最後列出數量。
-  * 每組 (pcap, 引擎, 規則集) 報告 中位數 / 最小-最大 / CV(=樣本標準差/平均)。CV>5% 標 '!'。
-  * 兩種「處理時間」:
-      self_s   引擎自己報的 (Suricata 'time elapsed'、Snort timing seconds)  -> 主要指標 (a)
-      diff_s   外部差分法: 同一輪(round)內 牆鐘(大 pcap) - 牆鐘(同切片的 small 500 封包 pcap)  (b)
-               差分會扣掉啟動+載規則+關閉的固定開銷。
-    兩者都是中位數；diff 對 self 做同樣的相減 (self_big - self_small) 才公平，因為 small 也有一點點處理時間。
-  * 檢查: (a)決定性(alert 數、封包數每次相同) (c)單調(empty<=common<=full) (b)線性(.x2 / 原檔) (e)self 與 diff 差距>10%
+Rules:
+  * Only rows with warmup=0 and void=0 are used; void/warm-up rows are only counted at the end.
+  * Each (pcap, engine, rule set) reports median / min-max / CV (= sample stddev / mean). CV>5% is marked '!'.
+  * Two kinds of "processing time":
+      self_s   reported by the engine (Suricata 'time elapsed', Snort timing seconds)  -> main metric (a)
+      diff_s   external difference method: within the same round, wall clock (large pcap) - wall clock (small 500-packet pcap of the same slice)  (b)
+               the difference removes the fixed cost of startup + rule loading + shutdown.
+    Both are medians; for fairness diff applies the same subtraction to self (self_big - self_small), since small also has a little processing time.
+  * Checks: (a) determinism (same alert count, packet count every run) (c) monotonicity (empty<=common<=full) (b) linearity (.x2 / original) (e) self vs diff gap >10%
 """
 import csv, sys, statistics as st, argparse, collections, re
 
@@ -44,7 +44,7 @@ def main():
                  alerts_set=",".join(sorted({r["alerts"] for r in rs})), suppressed_set=",".join(sorted({r["suppressed"] for r in rs})),
                  top_sids=rs[0]["top_sids"], pkts_match_all=int(all(r["pkts_match"] == "1" for r in rs)),
                  bytes_match_all=int(all(r["bytes_match"] == "1" for r in rs)))
-        # --- 差分法: 同 round 配對 ---
+        # --- difference method: pair runs within the same round ---
         if not is_small and (small, eng, rules) in G:
             sm = {r["round"]: r for r in G[(small, eng, rules)]}
             dw, ds, dc = [], [], []
@@ -56,7 +56,7 @@ def main():
             if dw:
                 o["diff_med"] = med(dw); o["diff_cv_pct"] = 100 * cv(dw); o["self_minus_small_med"] = med(ds)
                 o["diff_vs_self_pct"] = 100 * (o["diff_med"] - o["self_minus_small_med"]) / o["self_minus_small_med"] if o["self_minus_small_med"] else None
-                o["cpu_proc_med"] = med(dc)       # 差分 CPU 時間 = 大 pcap 的 user+sys - small 的 user+sys（扣掉載規則的 CPU）
+                o["cpu_proc_med"] = med(dc)       # difference CPU time = large pcap user+sys - small user+sys (removes rule loading CPU)
                 o["mbps_diff"] = o["bytes"] and int(o["bytes"]) * 8 / o["diff_med"] / 1e6 if o["diff_med"] else None
                 o["pps_diff"] = int(o["pkts"]) / o["diff_med"] if o["diff_med"] else None
         out.append(o)
@@ -68,7 +68,7 @@ def main():
         w = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore"); w.writeheader()
         for o in out: w.writerow({k: f(o.get(k)) for k in cols})
 
-    # ------- 人看的表與檢查 -------
+    # ------- human-readable table and checks -------
     if a.md:
         with open(a.md, "w") as m:
             m.write("| 切片 | 引擎 | 規則 | n | self 中位數 s (min–max) | CV% | kpps | Mbps | kpps(差分) | CPU s(差分) | RSS MB | alerts |\n|---|---|---|---|---|---|---|---|---|---|---|---|\n")
@@ -89,17 +89,17 @@ def main():
     print("\n[檢查]")
     bad = [o for o in out if not o["pkts_match_all"] or len(o["alerts_set"].split(",")) > 1]
     print("(a) 決定性/封包數: %s" % ("通過" if not bad else "有問題: " + str([(o["pcap"], o["engine"], o["rules"], o["alerts_set"], o["pkts_match_all"]) for o in bad])))
-    # (c) 單調
+    # (c) monotonicity
     byk = {(o["pcap"], o["engine"], o["rules"]): o for o in out}
     for (pcap, eng) in sorted({(o["pcap"], o["engine"]) for o in out}):
         t = [byk.get((pcap, eng, r)) for r in ("empty", "common", "full")]
         if all(t):
             v = [x["self_med"] for x in t]
             ok = v[0] <= v[1] <= v[2]
-            # 若不成立，同時印出 common 與 full 的差距%和各自的 CV，方便判斷是不是在雜訊範圍內（仍然照實標 NOT MONOTONE）
+            # If it fails, also print the common-full gap % and each CV, to judge whether it is within noise (still reported as NOT MONOTONE)
             extra = "" if ok else "  (common-full 差 %.1f%%, cv common=%.1f%% full=%.1f%%)" % (100 * (v[1] - v[2]) / v[2], t[1]["self_cv_pct"], t[2]["self_cv_pct"])
             print("(c) %-24s %-8s empty=%.3f common=%.3f full=%.3f -> %s%s" % (pcap, eng, *v, "OK" if ok else "NOT MONOTONE", extra))
-    # (b) 線性
+    # (b) linearity
     for (pcap, eng, rules), o in sorted(byk.items()):
         if ".x2." in pcap:
             b = byk.get((pcap.replace(".x2", ""), eng, rules))

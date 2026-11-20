@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""13_make_cic_slices.py — CIC 三個 dataset 的速度測試切片：從指定時間開始取 N 個 packet（預設 200,000）。
+"""13_make_cic_slices.py - speed test slices for the three CIC datasets: take N packets (default 200,000) starting at a given time.
 
-CIC-IDS2017、CIC-DDoS2019 的攻擊是一天裡的一段時間，所以切片從「攻擊開始的時間」（label 裡 start ts 的 0.5% 分位）
-開始取，代表那段時間 gateway 會收到的流量（含同時段的背景流量）；CICIoT2023 每種攻擊一個檔，start 給 0 就是從檔案開頭取。
-pcap 只讀一次：同一個來源的多個切片一起切（時間可以重疊）。每個切片另寫 .small（前 500 個 packet，Suricata empty 的差分法用）。
-用法: python3 -I 13_make_cic_slices.py <來源 pcap，- 代表 stdin> <輸出目錄> <名稱=start_epoch> ...  [--n 200000]
-資料是不受信任的下載檔：只用 struct 解析 pcap 記錄標頭，不解讀內容。
+In CIC-IDS2017 and CIC-DDoS2019 an attack is a period within a day, so slices start at the attack start time (0.5th percentile of start ts in the labels),
+representing the traffic the gateway would receive then (including concurrent background traffic); CICIoT2023 has one file per attack, so start 0 takes the file from the beginning.
+Each pcap is read once: multiple slices from the same source are cut together (times may overlap). Each slice also gets a .small (first 500 packets, for the Suricata empty difference method).
+Usage: python3 -I 13_make_cic_slices.py <source pcap, - for stdin> <output dir> <name=start_epoch> ...  [--n 200000]
+The data is untrusted downloads: only pcap record headers are parsed with struct; contents are not interpreted.
 """
 import struct
 import sys

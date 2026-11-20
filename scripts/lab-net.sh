@@ -1,37 +1,37 @@
 #!/bin/bash
-# lab-net.sh — 實驗室有線網卡的「開機設定」（只管這台電腦這一側）
+# lab-net.sh — boot-time setup for the lab wired NICs (this machine's side only)
 #
-# 為什麼需要它：
-#   開機後這兩張網卡會被 NetworkManager 接管：它會一直 DHCP 要位址，還會把 IPv6 link-local
-#   設成「不自動產生」(addr_gen_mode=1)，手動下的 ip 指令重開機就消失。
-#   這支腳本把「我們手動做過的事」變成開機自動做，而且可以完整移除，不影響未來的架構。
+# Why:
+#   After boot NetworkManager takes over these two NICs: it keeps asking for DHCP and sets IPv6 link-local
+#   to not auto-generate (addr_gen_mode=1), and manual ip commands are lost on reboot.
+#   This script turns what we did by hand into boot-time setup, and can be fully removed without affecting the future architecture.
 #
-# 它只做三件事（只動下面 NICS 列的兩張網卡，不碰預設路由、Wi-Fi、Docker）：
-#   1. 讓 NetworkManager 不要管這兩張卡
-#   2. 讓核心自動產生 IPv6 link-local（fe80::）— SSH 用 fe80:: 連 Pi 就靠它
-#   3. 設定 IPv4 位址（與 scripts/net.sh 相同的網段）
+# It does only three things (only on the two NICs listed in NICS below; no default route, Wi-Fi or Docker):
+#   1. Keep NetworkManager off these two NICs
+#   2. Let the kernel auto-generate the IPv6 link-local (fe80::) - SSH to the Pi over fe80:: depends on it
+#   3. Set the IPv4 addresses (same subnets as scripts/net.sh)
 #
-# 用法：
-#   lab-net.sh status           看目前狀態（不需要 root）
-#   sudo lab-net.sh up          立刻套用（可重複執行，不會重複加）
-#   sudo lab-net.sh down        只移除我們加的 IPv4 位址
-#   sudo lab-net.sh install     安裝成開機自動執行（NetworkManager 設定 + systemd + udev）
-#   sudo lab-net.sh uninstall   完整移除 install 做的所有事，網卡還給 NetworkManager
-#   DRY=1 lab-net.sh <指令>     只印出會做什麼，不真的做（不需要 root，用來先檢查）
+# Usage:
+#   lab-net.sh status           show current state (no root needed)
+#   sudo lab-net.sh up          apply now (idempotent, never adds twice)
+#   sudo lab-net.sh down        remove only the IPv4 addresses we added
+#   sudo lab-net.sh install     install to run at boot (NetworkManager config + systemd + udev)
+#   sudo lab-net.sh uninstall   undo everything install did and hand the NICs back to NetworkManager
+#   DRY=1 lab-net.sh <cmd>      only print what would be done (no root needed; for checking first)
 #
-# 注意：install 會把這支腳本「複製」到 /usr/local/sbin/wnc-lab-net。
-#       之後改了這個檔案，要再跑一次 sudo ./lab-net.sh install 才會生效。
-#       （為什麼複製：讓 root 直接執行放在家目錄、使用者可改的檔案，等於讓你的任何程式都能取得 root。）
+# Note: install copies this script to /usr/local/sbin/wnc-lab-net.
+#       After editing this file, rerun sudo ./lab-net.sh install for the change to take effect.
+#       (Why copy: having root run a user-writable file in the home directory would let any of your programs get root.)
 
 set -u
 
-# ---- 設定區：只改這裡 --------------------------------------------------------
-# 格式："標籤 MAC IPv4位址/長度"。用 MAC 認網卡，因為介面名稱（eno2、enx…）會變，MAC 不會。
+# ---- Settings: edit only here --------------------------------------------------------
+# Format: "label MAC IPv4/prefix". NICs are matched by MAC because interface names (eno2, enx…) change and MACs do not.
 NICS=(
-  "WAN 04:42:1a:85:7f:e7 10.254.254.1/24"   # 內建網卡 eno2   ↔ Pi 的 USB 網卡（WAN 側）
-  "LAN 9c:69:d3:2a:11:54 10.254.127.1/24"   # USB 網卡 enx…   ↔ Pi 的內建網口（LAN 側）。2026-10-16 換了另一張 USB 網卡；舊的是 9c:69:d3:24:1b:d9
+  "WAN 04:42:1a:85:7f:e7 10.254.254.1/24"   # built-in NIC eno2   ↔ Pi's USB NIC (WAN side)
+  "LAN 9c:69:d3:2a:11:54 10.254.127.1/24"   # USB NIC enx…   ↔ Pi's built-in port (LAN side). Switched to another USB NIC on 2026-10-16; the old one was 9c:69:d3:24:1b:d9
 )
-# 對端（Pi）位址，只給 status 用來提示，不會設定到 Pi 上：
+# Peer (Pi) addresses, only used as hints by status; nothing is configured on the Pi:
 PEERS="10.254.254.2 10.254.127.2"
 
 INSTALLED_BIN=/usr/local/sbin/wnc-lab-net
@@ -40,12 +40,12 @@ UDEV_RULE=/etc/udev/rules.d/90-wnc-lab-net.rules
 UNIT=/etc/systemd/system/wnc-lab-net.service
 # ------------------------------------------------------------------------------
 
-# run：DRY=1 時只印出指令，否則真的執行
+# run: with DRY=1 only print the command, otherwise run it
 run() {
   if [ -n "${DRY:-}" ]; then echo "[DRY] $*"; else "$@"; fi
 }
 
-# put <檔案>：把 stdin 寫進檔案（DRY=1 時只印出內容）
+# put <file>: write stdin to the file (with DRY=1 only print the content)
 put() {
   local f=$1 content
   content=$(cat)
@@ -61,7 +61,7 @@ need_root() {
   [ "$(id -u)" = 0 ] || [ -n "${DRY:-}" ] || { echo "需要 root：請用 sudo 執行"; exit 1; }
 }
 
-# 用 MAC 找出目前的介面名稱；找不到（沒插、或已被搬進 netns）就回傳失敗
+# Find the current interface name by MAC; fail if not found (unplugged, or moved into a netns)
 find_if() {
   local m=${1,,} d
   for d in /sys/class/net/*; do
@@ -80,20 +80,20 @@ cmd_up() {
       continue
     fi
     echo "[$tag] $ifn  MAC=$mac  → $ip"
-    # 1. 若 NetworkManager 還在管，就取消（正式的做法是 install 寫的 conf.d，這裡是保險）
+    # 1. If NetworkManager still manages it, unmanage it (the real fix is the conf.d written by install; this is a fallback)
     if command -v nmcli >/dev/null 2>&1 &&
        nmcli -t -f DEVICE,STATE dev status 2>/dev/null | grep "^$ifn:" | grep -qv ":unmanaged"; then
       run nmcli device set "$ifn" managed no
     fi
-    # 2. 讓核心自動產生 link-local（0 = 依 MAC 產生）。NetworkManager 之前可能把它設成 1（不產生）
+    # 2. Let the kernel auto-generate link-local (0 = derive from MAC). NetworkManager may have set it to 1 (none)
     run sysctl -qw "net.ipv6.conf.$ifn.addr_gen_mode=0"
-    # 3. 起網卡；如果還沒有 fe80:: 位址，開關一次讓核心重新產生
+    # 3. Bring the NIC up; if there is no fe80:: address yet, toggle it once so the kernel regenerates it
     run ip link set "$ifn" up
     if ! ip -6 addr show dev "$ifn" scope link 2>/dev/null | grep -q inet6; then
       run ip link set "$ifn" down
       run ip link set "$ifn" up
     fi
-    # 4. IPv4 位址。replace：已經有就不會報錯，也不會重複加
+    # 4. IPv4 address. replace: no error if it already exists, and never added twice
     run ip addr replace "$ip" dev "$ifn"
   done
 }
@@ -146,24 +146,24 @@ cmd_install() {
 ACTION==\"add\", SUBSYSTEM==\"net\", ATTR{address}==\"$mac\", TAG+=\"systemd\", ENV{SYSTEMD_WANTS}+=\"wnc-lab-net.service\""
   done
 
-  # 1. 複製腳本到系統目錄（擁有者 root，其他人不能改）
+  # 1. Copy the script into a system directory (owned by root, not writable by others)
   run install -m 0755 -o root -g root "$(readlink -f "$0")" "$INSTALLED_BIN"
 
-  # 2. 讓 NetworkManager 永遠不要管這兩張卡（用 MAC 指定，換介面名稱也有效）
+  # 2. Keep NetworkManager off these two NICs for good (matched by MAC, so renaming does not matter)
   put "$NM_CONF" <<EOF
-# 由 lab-net.sh install 產生。移除請用 lab-net.sh uninstall。
+# Generated by lab-net.sh install. Remove with lab-net.sh uninstall.
 [keyfile]
 unmanaged-devices=$macs
 EOF
 
-  # 3. udev：這兩張卡「出現」時（開機稍晚、或 USB 重新插上）就再套用一次
+  # 3. udev: reapply when either NIC appears (late in boot, or USB replugged)
   put "$UDEV_RULE" <<EOF
-# 由 lab-net.sh install 產生。USB 網卡可能比開機服務晚出現，出現時再跑一次 wnc-lab-net up。$rules
+# Generated by lab-net.sh install. The USB NIC may appear after the boot service; run wnc-lab-net up again when it does.$rules
 EOF
 
-  # 4. systemd 服務：開機時套用一次。沒有 RemainAfterExit，所以 udev 可以重複觸發
+  # 4. systemd service: apply once at boot. No RemainAfterExit, so udev can trigger it repeatedly
   put "$UNIT" <<EOF
-# 由 lab-net.sh install 產生。
+# Generated by lab-net.sh install.
 [Unit]
 Description=WNC lab: 設定實驗室有線網卡（位址、IPv6 link-local、不讓 NetworkManager 接管）
 After=NetworkManager.service

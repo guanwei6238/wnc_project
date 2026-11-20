@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""extract_attacks.py — 從 CIC-IDS2017 Thursday 的 web 攻擊流量抽出真實的攻擊 request（給實驗 5 插進合成連線）
+"""extract_attacks.py — extract real attack requests from CIC-IDS2017 Thursday web attack traffic (to insert into synthetic connections in exp 5)
 
-用法: python3 -I extract_attacks.py <thu_web full.pcap> <輸出 json>
-  只看 172.16.0.1 → 192.168.10.50:80 的 client→server payload，以 GET／POST 開頭、URL decode 後含
-  XSS（"<script"）或 SQLi（"information_schema"、"select user"）的 request；各類去重後存成 base64。
+Usage: python3 -I extract_attacks.py <thu_web full.pcap> <output json>
+  only client→server payloads of 172.16.0.1 → 192.168.10.50:80 that start with GET/POST and, after URL decoding, contain
+  XSS ("<script") or SQLi ("information_schema", "select user"); deduplicated per kind and stored as base64.
 """
 import base64
 import json

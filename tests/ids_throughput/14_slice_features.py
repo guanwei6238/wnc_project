@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""14_slice_features.py — 算切片的流量特徵（和 10_scenario_features.py 的 features() 相同的定義），用來挑代表的切片。
+"""14_slice_features.py - compute traffic features of slices (same definitions as features() in 10_scenario_features.py), to pick representative slices.
 
-特徵：avg_size、payload_pct、tcp/udp/icmp/other_pct、syn_pct、dst_ports、top_port、top_port_pct、dst_ips（定義見 10_scenario_features.py）。
-用法: python3 -I 14_slice_features.py <輸出 tsv> <pcap>...
-資料是不受信任的下載檔：只用 struct 解析標頭，不執行任何內容。
+Features: avg_size, payload_pct, tcp/udp/icmp/other_pct, syn_pct, dst_ports, top_port, top_port_pct, dst_ips (defined in 10_scenario_features.py).
+Usage: python3 -I 14_slice_features.py <output tsv> <pcap>...
+The data is untrusted downloads: only headers are parsed with struct; no content is executed.
 """
 import collections
 import os
@@ -11,7 +11,7 @@ import struct
 import sys
 
 out = sys.argv[1]
-N = 10 ** 9   # 切片本身就是 200,000 個 packet，整個檔都讀
+N = 10 ** 9   # a slice is already 200,000 packets, read the whole file
 
 def features(path):
     f = open(path, "rb")

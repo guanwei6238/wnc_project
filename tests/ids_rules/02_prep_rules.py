@@ -1,13 +1,13 @@
 #!/usr/bin/env python3 -I
-"""把快照裡「啟用」的規則合併成一個檔案，並產生 行號->(sid, category) 對照表。
+"""Merge the enabled rules in the snapshot into one file and produce a line number->(sid, category) map.
 
-用法: python3 -I 02_prep_rules.py <快照 rules 目錄> <輸出目錄>
-輸出: <輸出目錄>/et_all.rules   (每行一條啟用規則)
-      <輸出目錄>/et_all.map.tsv (line_no, sid, category)
+Usage: python3 -I 02_prep_rules.py <snapshot rules dir> <output dir>
+Output: <output dir>/et_all.rules   (one enabled rule per line)
+        <output dir>/et_all.map.tsv (line_no, sid, category)
 
-為什麼要合併：兩個引擎的錯誤訊息都會帶「檔案:行號」。合併成一個檔後，
-行號就能唯一對回 sid，這是「逐條規則歸因」的基礎。
-(被 # 註解掉的規則兩個引擎都會直接忽略，所以不放進去。)
+Why merge: both engines report errors as "file:line". After merging into one file,
+the line number maps back to a unique sid, which is the basis for per-rule attribution.
+(Rules commented out with # are ignored by both engines, so they are left out.)
 """
 import re, sys, glob, os
 

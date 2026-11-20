@@ -1,6 +1,6 @@
 #!/bin/bash
-# run_late.sh — 實驗 5：mix.pcap → 各策略的子集（policy_filter.py）→ Suricata full ET（HOME_NET = 伺服器網段 10.0.2.0/24）→ eval_late.py
-# 用法: bash run_late.sh <late 目錄>   （先跑 late_mix.py 產生 mix.pcap、truth.json）
+# run_late.sh — exp 5: mix.pcap → per-policy subsets (policy_filter.py) → Suricata full ET (HOME_NET = server subnet 10.0.2.0/24) → eval_late.py
+# Usage: bash run_late.sh <late dir>   (run late_mix.py first to produce mix.pcap, truth.json)
 set -e
 HERE=$(cd "$(dirname "$0")" && pwd)
 L=$(cd "$1" && pwd); R=/home/sixsquare/datasets/detection/rules; JOBS=${JOBS:-2}

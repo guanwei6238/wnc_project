@@ -1,26 +1,26 @@
 #!/bin/bash
-# demo.sh — 11/09 demo：wnc-gw 的 ids、讀 alert、自動信任（3d）
-#   TARGET=phys（在筆電上跑）：實機。筆電 USB 網卡 ── Pi eth0 [wgw: br0，bridge] Pi eth1.20 ── 筆電 eno2.20（VLAN 20）；
-#     client（10.9.0.1）、server（10.9.0.130）是筆電上的容器（macvlan 掛在兩張網卡上），Pi 那一半用 ssh 交給 Pi 上的這支腳本（TARGET=pigw）
-#   TARGET=pi（預設，在 Pi 上用 sudo 跑）：fcli(10.9.0.1) --veth-- [wgw: br0，bridge] --veth-- fsrv(10.9.0.2)，全部在 Pi 裡
-#   TARGET=docker（在筆電上跑）：Docker testbed 的 cli(10.0.1.2) -- [wnc-gw，routed] -- srv(10.0.2.2)
-#   up             建立拓樸、寫設定（ids、[trust] auto：10 個封包、5 秒、ttl 60 秒、每 2 秒檢查）
+# demo.sh — 11/09 demo: wnc-gw ids, reading alerts, auto trust (3d)
+#   TARGET=phys (run on the laptop): real hardware. laptop USB NIC ── Pi eth0 [wgw: br0, bridge] Pi eth1.20 ── laptop eno2.20 (VLAN 20);
+#     client (10.9.0.1) and server (10.9.0.130) are containers on the laptop (macvlan on the two NICs); the Pi half is handed over ssh to this script on the Pi (TARGET=pigw)
+#   TARGET=pi (default, run with sudo on the Pi): fcli(10.9.0.1) --veth-- [wgw: br0, bridge] --veth-- fsrv(10.9.0.2), all inside the Pi
+#   TARGET=docker (run on the laptop): Docker testbed cli(10.0.1.2) -- [wnc-gw, routed] -- srv(10.0.2.2)
+#   up             build the topology, write the config (ids, [trust] auto: 10 packets, 5 s, ttl 60 s, check every 2 s)
 #   doctor         wnc-gw doctor
-#   run            前景跑 wnc-gw run（LEVEL=debug 會印每筆 alert 和信任到期；預設 debug），Ctrl-C 停止
-#   run-bg | stop  背景跑／停止（log 在 run.log）
-#   normal [秒]    一條沒有問題的長連線（client 每 0.1 秒送一行到 server:5001，預設 120 秒）
-#   attack [秒]    client 連 server:8080，server 回「uid=0(root)」觸發 GPL ATTACK_RESPONSE（sid 2100498），之後持續送資料（預設 60 秒）
-#   ping           client ping server 3 次（觸發 ICMP 規則）
-#   status         ids chain 的計數、被信任的連線、Suricata 的 CPU、最近的 alert
-#   kill-suricata  SIGKILL Suricata：wnc-gw 記沒檢查的時段並重啟它
-#   wiring         只有 phys：找出筆電哪張有線網卡接到 Pi 的 eth1（管理線＋WAN，只有它回 IPv6）、哪張接到 eth0（LAN），印出要用的設定
-#   replay [pcap] [pps]  只有 phys：從筆電的兩張網卡重播 dataset 的 pcap（預設 S_m3.small：IoT-23 3-1 Muhstik 的 SSH 掃描和 IRC，500 個封包，
-#                  每秒 50 個）；要 RULES=full 才有 alert
-#   down           拆掉拓樸（Pi／phys）／清掉設定（Docker）
-# RULES=full（up）：除了 demo 的兩條規則，再載入 ET Open 的完整規則（FULL_RULES，Pi 上的快照）；Suricata 啟動要比較久
-# Pi 的前置：wnc-gw 執行檔放在這個腳本旁邊；sudo；TARGET=pi 時 tests/ids_inline/env.sh 放在 ../ids_inline/ 或用 ENV_SH 指定
-# phys 的前置：Pi 上有 ~/demo/wnc-gw；接到 Pi eth1 的筆電網卡有 10.254.254.1、ssh 免密碼登入 Pi（PI=wnc@10.254.254.2）；
-#   另一張接 Pi eth0。LAN_NIC、WAN_NIC 沒給時用 wiring 的方法自動判斷（WAN_NIC＝接到 Pi eth1 的那張）
+#   run            run wnc-gw run in the foreground (LEVEL=debug prints every alert and trust expiry; default debug), Ctrl-C to stop
+#   run-bg | stop  run in the background / stop (log in run.log)
+#   normal [sec]   one clean long connection (client sends a line to server:5001 every 0.1 s, default 120 s)
+#   attack [sec]   client connects to server:8080, server replies "uid=0(root)" to trigger GPL ATTACK_RESPONSE (sid 2100498), then keeps sending data (default 60 s)
+#   ping           client pings server 3 times (triggers the ICMP rule)
+#   status         ids chain counters, trusted connections, Suricata CPU, recent alerts
+#   kill-suricata  SIGKILL Suricata: wnc-gw logs the unchecked period and restarts it
+#   wiring         phys only: find which wired laptop NIC goes to Pi eth1 (management + WAN, the only one answering IPv6) and which to eth0 (LAN), print the settings to use
+#   replay [pcap] [pps]  phys only: replay a dataset pcap from the laptop's two NICs (default S_m3.small: IoT-23 3-1 Muhstik SSH scan and IRC, 500 packets,
+#                  50 per second); alerts need RULES=full
+#   down           tear down the topology (Pi/phys) / clear the config (Docker)
+# RULES=full (up): besides the two demo rules, load the full ET Open rules (FULL_RULES, a snapshot on the Pi); Suricata takes longer to start
+# Pi prerequisites: wnc-gw binary next to this script; sudo; for TARGET=pi, tests/ids_inline/env.sh in ../ids_inline/ or set via ENV_SH
+# phys prerequisites: ~/demo/wnc-gw on the Pi; the laptop NIC wired to Pi eth1 has 10.254.254.1 and passwordless ssh to the Pi (PI=wnc@10.254.254.2);
+#   the other NIC goes to Pi eth0. Without LAN_NIC, WAN_NIC they are detected as in wiring (WAN_NIC = the one wired to Pi eth1)
 HERE=$(cd "$(dirname "$0")" && pwd)
 TARGET=${TARGET:-pi}; LEVEL=${LEVEL:-debug}; RULES=${RULES:-demo}
 FULL_RULES=${FULL_RULES:-/home/wnc/ids_throughput/data/rules/suricata_full.rules}
@@ -40,7 +40,7 @@ else
     LAN=eth0; WAN=eth1.20
   else
     C="ip netns exec fcli"; S="ip netns exec fsrv"; CLI=10.9.0.1; SRV=10.9.0.2
-    # port 是 fcli、fsrv 接上的 x-lan、x-wan：信任的封包在這兩個 port 的 TC 轉送（g-lan、g-wan 是 env.sh 給 tcpreplay 用的）
+    # ports are x-lan, x-wan, where fcli, fsrv attach: trusted packets are forwarded by TC on these two ports (g-lan, g-wan are env.sh's, for tcpreplay)
     LAN=x-lan; WAN=x-wan
     ENV_SH=${ENV_SH:-$HERE/../ids_inline/env.sh}
   fi
@@ -52,7 +52,7 @@ write() { $WI sh -c "mkdir -p $D && cat > $1"; }
 config() {
   {
     if [ "$RULES" = full ] && grep -q 'sid:2100498;' "$FULL_RULES" 2> /dev/null; then
-      :  # ET Open 已經有這條，重複的 sid 會載入失敗
+      :  # ET Open already has this rule; a duplicate sid fails to load
     else
       echo 'alert ip any any -> any any (msg:"GPL ATTACK_RESPONSE id check returned root"; content:"uid=0|28|root|29|"; classtype:bad-unknown; sid:2100498; rev:7;)'
     fi
@@ -119,9 +119,9 @@ servers() {
   sleep 0.5
 }
 
-# 筆電的實體有線網卡：有接線、能看到 Pi eth1 的 IPv6 link-local 的是 WAN（Pi eth0 的 IPv6 是關的）
+# Laptop's physical wired NICs: the one with link that sees Pi eth1's IPv6 link-local is WAN (IPv6 is off on Pi eth0)
 wired() {
-  own=$(ip -6 -br addr | awk '{for (i = 3; i <= NF; i++) print $i}' | cut -d/ -f1)  # 筆電自己的位址都不算（量測時 Pi 的 bridge 會把兩張網卡接在一起）
+  own=$(ip -6 -br addr | awk '{for (i = 3; i <= NF; i++) print $i}' | cut -d/ -f1)  # the laptop's own addresses don't count (while measuring, the Pi bridge joins the two NICs)
   for n in $(ls /sys/class/net); do
     case $n in lo | wl* | docker* | br-* | veth* | *.*) continue ;; esac
     [ -e /sys/class/net/$n/device ] || continue
@@ -131,7 +131,7 @@ wired() {
 }
 nics() {
   [ -n "$LAN_NIC" ] && [ -n "$WAN_NIC" ] && return 0
-  # 剛拆掉拓樸時 Pi 的網卡要幾秒才重新 link up，最多等 10 秒
+  # Right after teardown the Pi NICs take a few seconds to link up again; wait up to 10 s
   for i in 1 2 3 4 5; do
     w=$(wired)
     wan=${WAN_NIC:-$(echo "$w" | awk '$2 == 1 && $3 != "none" {print $1; exit}')}
@@ -173,7 +173,7 @@ if [ "$TARGET" = phys ]; then
     docker run -d --name dsrv --network demo-wan --ip $SRV --cap-add NET_ADMIN --entrypoint sleep wnc-lab:latest infinity > /dev/null
     $C ip route add 10.9.0.128/25 dev eth0; $S ip route add 10.9.0.0/25 dev eth0
     servers
-    # Pi 的 eth0 移進 netns 後要 2–3 秒才 link up
+    # Pi eth0 takes 2-3 s to link up after moving into the netns
     ok="NOT reachable"; for i in 1 2 3 4 5; do $C ping -c 1 -W 2 $SRV > /dev/null && { ok=reachable; break; }; done
     echo "client $CLI ($LAN_NIC) -> Pi eth0 [br0] eth1.20 -> server $SRV ($WAN_NIC.20): $ok"
     exit
@@ -185,7 +185,7 @@ if [ "$TARGET" = phys ]; then
     [ -n "$LAN_NIC" ] && [ -n "$WAN_NIC" ] || { echo "error: run up first"; exit 1; }
     pc=${2:-S_m3.small}; rate=${3:-50}
     case $pc in S_m3*) mac=a6:d1:8c:1f:ce:64 ;; S_h5*) mac=82:e6:50:12:14:64 ;; *) mac=${ROUTER_MAC:-78:8a:20:43:93:d5} ;; esac
-    # IoT-23 從路由器那側來的封包 IP checksum 是 0，Pi 的 br_netfilter 會丟掉（IP_INHDR），先修正
+    # IoT-23 packets from the router side have IP checksum 0, which the Pi's br_netfilter drops (IP_INHDR); fix them first
     echo "replaying $pc at $rate pps: packets from the router ($mac) enter Pi eth1.20, the rest enter Pi eth0"
     docker run --rm --network host --cap-add NET_ADMIN --cap-add NET_RAW -v ${PCAPS:-$HOME/datasets/throughput/pcaps}:/pcaps:ro \
       --entrypoint sh wnc-lab-gen:latest -c "tcprewrite --fixcsum --infile=/pcaps/$pc.pcap --outfile=/tmp/p.pcap && \

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3 -I
-"""Snort 版 ET 規則的逐條歸因：每個 sid 是否被 snort2lua 轉換、是否被 Snort 3 載入、原因、哪一輪被移除。
-用法: python3 -I 18_snort_attribute.py <work/snort_pack> <runs 目錄> <輸出完整 tsv(放 repo 外)> <輸出摘要 txt>
-資料來源：
-  et_all.map.tsv                 行號->sid/category (02_prep_rules.py)
-  snort3_converted.rules         snort2lua 輸出。轉不了的整行被 '#' 註解；原因有兩種來源：
-                                   (a) snort2lua_err.txt 的 "Failed to convert rule" 區塊(末行 '^^^^ 原因')
-                                   (b) 規則前一行的 "# The 'asn1' rule option keyword is no longer supported" 這類註解(此時 err 檔沒有區塊)
-  snort_iter/removed.tsv         16_snort_iter_load.sh 每輪移除的 sid 與 Snort ERROR 原因
+"""Per-rule attribution for the Snort ET rules: for each sid, whether snort2lua converted it, whether Snort 3 loaded it, the reason, and which round removed it.
+Usage: python3 -I 18_snort_attribute.py <work/snort_pack> <runs dir> <full output tsv (outside the repo)> <summary output txt>
+Inputs:
+  et_all.map.tsv                 line number->sid/category (02_prep_rules.py)
+  snort3_converted.rules         snort2lua output. Unconvertible lines are commented out with '#'; the reason comes from one of two places:
+                                   (a) the "Failed to convert rule" block in snort2lua_err.txt (last line '^^^^ reason')
+                                   (b) a comment like "# The 'asn1' rule option keyword is no longer supported" on the line before the rule (no block in the err file then)
+  snort_iter/removed.tsv         sids removed in each round by 16_snort_iter_load.sh and the Snort ERROR reason
 """
 import re, sys, os, collections
 work, runs, out_full, out_sum = sys.argv[1:5]
@@ -15,14 +15,14 @@ RE_RULE = re.compile(r"^(alert|drop|reject|pass|rejectsrc|rejectdst|rejectboth)\
 cat = {}; order = []
 for l in open(os.path.join(work, "et_all.map.tsv")):
     _, sid, c = l.rstrip("\n").split("\t"); cat[sid] = c; order.append(sid)
-# snort2lua err 區塊
+# snort2lua err blocks
 err_reason = {}
 txt = open(os.path.join(runs, "snort_s2l", "snort2lua_err.txt"), errors="replace").read()
 for blk in txt.split("Failed to convert rule:")[1:]:
     sm = RE_SID.search(blk); rm = re.search(r"\^\^\^\^ (.*)", blk)
     if sm: err_reason[sm.group(1)] = rm.group(1).strip() if rm else "unknown"
-# 轉換後檔案
-active = set(); commented = {}   # sid -> 前一行註解(原因)
+# converted file
+active = set(); commented = {}   # sid -> comment on the previous line (reason)
 prev = ""
 for l in open(os.path.join(work, "snort3_converted.rules"), errors="replace"):
     l = l.rstrip("\n")
@@ -31,7 +31,7 @@ for l in open(os.path.join(work, "snort3_converted.rules"), errors="replace"):
         if RE_RULE.match(body): commented[RE_SID.search(body).group(1)] = prev
     elif RE_RULE.match(l): active.add(RE_SID.search(l).group(1))
     prev = l
-# 載入被移除
+# removed at load
 removed = {}
 for l in list(open(os.path.join(runs, "snort_iter", "removed.tsv")))[1:]:
     r, sid, why = l.rstrip("\n").split("\t"); removed[sid] = (r, why)

@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""summarize.py — 把 run_pi.sh 的結果彙總，並和 10/19 的 offline 結果（tests/ids_throughput）逐 scenario 對照。
+"""summarize.py — summarize run_pi.sh results and compare each scenario with the 10/19 offline results (tests/ids_throughput).
 
-用法: python3 -I summarize.py results/inline1.kvl [--rounds 1,2,3] [--offline ../ids_throughput/results/pi] [--csv out.csv]
+Usage: python3 -I summarize.py results/inline1.kvl [--rounds 1,2,3] [--offline ../ids_throughput/results/pi] [--csv out.csv]
 
-inline（每組 scenario × rule set）：
-  cpu_kpps   A 模式 3 輪 us_per_pkt 的中位數換算（1000 ÷ µs）；Suricata worker 的 CPU 時間 ÷ 處理的 packets
-  top_kpps   B 模式（全速）的 proc_kpps；top_loss 是全速時 queue 滿被丟掉的比例
-  hwm_mb     A 模式 Suricata VmHWM 的中位數
-  startup_s  A 模式從啟動 Suricata 到 READY=1 的中位數（含載入 rule）
-offline（pi_scen2_S／E 的原始 CSV，warmup=0 且 void=0）：
-  kpps       pps_self 的中位數；empty 用 summary 的 pps_diff（README：Suricata 的自報時間不含讀完 pcap 後的 flow 清理）
-  rss_mb     maxrss_mb 的中位數（簡報用的定義）
-  load_s     wall_s − self_s 的中位數
+inline (per scenario × rule set):
+  cpu_kpps   median us_per_pkt over 3 mode-A rounds, converted (1000 ÷ µs); Suricata worker CPU time ÷ packets processed
+  top_kpps   proc_kpps in mode B (full speed); top_loss is the fraction dropped on a full queue at full speed
+  hwm_mb     median Suricata VmHWM in mode A
+  startup_s  median time in mode A from starting Suricata to READY=1 (incl. loading rules)
+offline (raw CSVs of pi_scen2_S/E, warmup=0 and void=0):
+  kpps       median pps_self; empty uses pps_diff from summary (README: Suricata's self-reported time excludes flow cleanup after the pcap is read)
+  rss_mb     median maxrss_mb (the definition used in the slides)
+  load_s     median wall_s − self_s
 """
 import argparse
 import csv

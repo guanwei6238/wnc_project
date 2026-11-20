@@ -1,11 +1,11 @@
 #!/bin/bash
-# drop_check.sh — 不信任（U、ips）時 Suricata 自己丟掉封包的原因（實驗 13 的補充，筆電端，bridge）
-#   A = 每次重新啟動 wnc-gw，<切片>.gw 送一次
-#   B = 同一個 wnc-gw 連送三次 <切片>.gw，每次之後讀一次統計（看重送同樣的 TCP 連線會不會多出 stream error）
-#   C = 每次重新啟動，送 <切片>.whole（gw_pcap.py：去掉切片裡第一個封包不是純 SYN 的 TCP 連線，看從中途接上是不是原因）
-#   都是 5 kpps；送完等 10 秒（stats.log 每 8 秒寫一次）再讀 ips.*、exception_policy.*、app_layer.error.* 等計數器（累計值）
-# 前置同 trust_run.sh（拓樸是 bridge）；/out/trust/<切片>.whole.{pcap,cache}
-# 用法: bash drop_check.sh <切片>...   結果一行一次寫進 $OUT/drop_check.kvl
+# drop_check.sh — why Suricata itself drops packets without trust (U, ips) (supplement to exp 13, laptop side, bridge)
+#   A = restart wnc-gw each time, send <slice>.gw once
+#   B = same wnc-gw, send <slice>.gw three times in a row, read stats after each (does replaying the same TCP connections add stream errors)
+#   C = restart each time, send <slice>.whole (gw_pcap.py: drops TCP connections in the slice whose first packet isn't a bare SYN, to see whether midstream pickup is the cause)
+#   all at 5 kpps; after sending wait 10 s (stats.log is written every 8 s), then read ips.*, exception_policy.*, app_layer.error.* and other counters (cumulative)
+# Prerequisites same as trust_run.sh (bridge topology); /out/trust/<slice>.whole.{pcap,cache}
+# Usage: bash drop_check.sh <slice>...   one result line per run written to $OUT/drop_check.kvl
 LAN=${LAN:-enx9c69d3241bd9}; WAN=${WAN:-eno2}; PI=${PI:-wnc@10.254.254.2}
 OUT=${OUT:-/home/sixsquare/datasets/throughput/cpu_alloc}; KVL=${KVL:-drop_check.kvl}
 G="docker exec wnc-gen"
@@ -18,7 +18,7 @@ counters() {
   $SSH "sudo awk '/^Date/{b = \"\"} {b = b \"\\n\" \$0} END{print b}' /var/log/wnc-gw/suricata/stats.log" \
     | awk -F'|' '/^(ips\.|exception_policy\.|app_layer\.error\.|tcp\.(sessions|midstream_pickups|pkt_on_wrong_thread|ack_unseen_data|reassembly_gap)|stream\.|flow\.(total|tcp))/ && $3 + 0 > 0 {gsub(/ /, "", $1); printf "%s=%d ", $1, $3}'
 }
-send() {  # send <檔名> k=v...
+send() {  # send <file name> k=v...
   local f=$1; shift
   $G tcpreplay -i $LAN -I $WAN.20 -c /out/trust/$f.cache --pps=$RATE /out/trust/$f.pcap > $OUT/tcpreplay.txt 2>&1
   sleep 10

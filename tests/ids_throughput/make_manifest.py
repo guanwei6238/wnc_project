@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""make_manifest.py -- 為凍結的 pcap 產生 manifest (封包數、位元組、持續時間、payload 占比、sha256、來源與切法)。
+"""make_manifest.py -- build the manifest for frozen pcaps (packet count, bytes, duration, payload share, sha256, source and slicing method).
 
-用法: python3 -I make_manifest.py <pcap 目錄> <spec.tsv> <manifest.json>
-spec.tsv 每行 (Tab 分隔): 檔名 <TAB> 種類(slice|small|x2|synth) <TAB> 來源 <TAB> 切法說明
-統計值由 pcap_stats.py 計算 (定義見該檔開頭)；這裡只負責把它們和 sha256、來源資訊放在一起。
+Usage: python3 -I make_manifest.py <pcap dir> <spec.tsv> <manifest.json>
+spec.tsv, one line per file (tab-separated): file name <TAB> kind(slice|small|x2|synth) <TAB> source <TAB> slicing description
+Stats are computed by pcap_stats.py (definitions at the top of that file); this only puts them together with sha256 and source info.
 """
 import sys, os, json, hashlib, subprocess
 

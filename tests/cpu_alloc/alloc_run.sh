@@ -1,43 +1,43 @@
 #!/bin/bash
-# alloc_run.sh — CPU 分配實驗的筆電端（流量產生器沿用 tests/ids_inline/planb_run.sh 的 wnc-gen 容器與 tcpprep cache）
-# 前置：Pi 上 planb_pi.sh up、alloc_pi.sh pause off；筆電 bash tests/ids_inline/planb_run.sh setup S_m17 S_m1 S_m60
-# 用法:
-#   bash alloc_run.sh sweep <B0|B1|B2|B3> <placement> <pcap> <round> <pps...>   實驗 1：一個放置、一種工作負載的速率掃描
-#   bash alloc_run.sh exp1 <round>        實驗 1 全部：B0／B1／B2 × A0 R1 R123 I1 T1（順序每輪隨機）
-#   bash alloc_run.sh ai <strategy> <cpu|mem|mlp|none> <pps> <round> [threads]   實驗 2 的一個點（含同場的「只有 AI」基準）
-#   bash alloc_run.sh exp2 <round>        實驗 2 全部：α β γ × none cpu mem，γ 另加 mem 1 執行緒
-# 工作負載：B0 只有 bridge；B1 wnc-gw ips full 2 queue；B2 wnc-gw ips full 1 queue 全部信任；B3 wnc-gw ids（NFLOG）full 2 group；B4、B5 ips full 3、4 queue；
-#           B6、B7、B8 ids full 1、3、4 group；B9 ips full 1 queue；
-#           K0 = B6（ids 1 group）、K1／K2 再多 1／2 份完整的 NFLOG 複本給只讀的讀取端、K2h 多 2 份只有前 128 bytes 的複本；
-#           U2 = K0 加 1 份 kernel 複本、由 user space 的 fanout 分給 2 個讀取端；K0g3、K2g3、U2g3 是 3 個 group 的版本
-#           F2 = B2 加上 TC fast path（ebpf-bench v4，信任 S_m60 的全部五元組）：信任的封包在 TC 就 redirect，不進 bridge、netfilter
-#           F5n、F5h、F5f = U1 再掛 ebpf-bench v5（信任 S_m60）：bpf_redirect_neigh 不帶參數、帶下一跳、bpf_fib_lookup＋bpf_redirect
-#           U1 = wnc-gw ips full 1 queue，沒有信任（全部檢查）；T1 = U1 啟動後先送一次整個 pcap（20 kpps）再用 wnc-gw trust add 信任它的
-#           全部 flow（S_m60）；T1k = 同 T1，用 1,000 條合成 UDP flow 的 X_udp1000（tests/ebpf/make_flows_pcap.py）
-# 策略：alpha = 中斷在 CPU0、Suricata 綁 1,2、AI 1 執行緒綁 3；beta = RPS→CPU1、Suricata 綁 2,3、AI 2 執行緒在 2,3 用 SCHED_IDLE；
-#       gamma = 都不綁、AI 3 執行緒；delta = IRQ 29 搬到 CPU1、Suricata 綁 2,3、AI 1 執行緒綁 CPU0
-#   bash alloc_run.sh exp1b <round>       延伸：B4（3 queue）、B5（4 queue）× A0 I1 T1
-#   bash alloc_run.sh exp2b <round>       延伸：delta × none cpu mem mlp、alpha × mlp、alpha × mem 工作比例 25／50%（環境變數 DUTY）
-#   bash alloc_run.sh exp1c <round>       延伸：ids（B6 B3 B7 B8 = 1–4 group）× A0 I1 R123，另算檢查容量（漏掉的複本 ≤ 0.1%）
-#   bash alloc_run.sh exp3 <round>        conntrack 計數（nf_conntrack_acct 0／1）每個封包多花多少：B2@40k、B1@40k、B3@30k，A0
-#   bash alloc_run.sh exp1d <round>       延伸：S_m1 的 ips 1–4 queue、ids 1–4 group × A0 I1 R123；S_m17 補 ips 1 queue × 三種、3、4 queue × R123
-#   bash alloc_run.sh mode <bridge|routed>  Pi 的拓樸換成這個模式（planb_pi.sh down、MODE=… up、PAUSE 關）
-#   bash alloc_run.sh exp4 <round>        routed 對 bridge：B0 B2 B1 B7 × A0 R123，兩種模式（順序每輪對調）；routed 送 planb_run.sh routed_pcap 改過 MAC 的 pcap
-#   bash alloc_run.sh exp5 <round>        ids 複製多份（bridge）：K0 K1 K2 K2h × A0 R123 × S_m17、bulk_fixed
-#   bash alloc_run.sh night1104           exp5 1 → exp4 1 → exp4 2 → exp5 2，最後拓樸回到 bridge、PAUSE 開
-#   bash alloc_run.sh exp6 <round>        多份複本的 (c) user space 分發：U2 × A0 R123；R123＋3 group：K0g3 K2g3 U2g3；S_m17、bulk_fixed
-#   bash alloc_run.sh night1104b          先用一個點驗證 U2，再 exp6 1、exp6 2
-#   bash alloc_run.sh exp7 <round>        exp5 的 K2h 重跑（讀取端 tcpdump 改 -s 0，截短交給規則的 snaplen）
-#   bash alloc_run.sh night1104c          exp7 1、exp7 2
-#   bash alloc_run.sh exp8 <round>        exp6 的 K0g3、K2g3 重跑（exp6 時 fanout 沒結束、佔著 group 20）
-#   bash alloc_run.sh night1104d          exp7 1、exp8 1、exp7 2、exp8 2
-#   bash alloc_run.sh exp9 <round>        TC fast path 對 ct mark 信任（步驟 C 的 E1）：B0 B2 F2 × A0 I1，都用 S_m60（前置：Pi 的 ~/cpu_alloc 有 ebpf-bench、S_m60.flows）
-#   bash alloc_run.sh exp10 <round>       wnc-gw 本身的 TC fast path，bridge 對 routed（C3）：B0 U1 T1 T1k × I1，兩種模式（順序每輪對調）
-#   bash alloc_run.sh exp12 <round>       exp10 的 T1、T1k 重量（routed 改成帶下一跳）：兩種模式（順序每輪對調）
-#   bash alloc_run.sh exp11 <round>       routed 的三種送法（ebpf-bench v5）：F5n F5h F5f T1 × I1（拓樸要先是 routed：alloc_run.sh mode routed）
-#                                         前置：Pi 的 ~/cpu_alloc 有 S_m60.flows、X_udp1000.flows；筆電 planb_run.sh setup／routed_pcap S_m60 X_udp1000
-# MODE=routed：sweep 用 routed 的 pcap、結果多 mode=；EXP：結果的 exp=（預設 1）
-# 結果一行一點寫進 $OUT/$KVL（預設 alloc.kvl）；連續兩個速率 cap_loss > 1% 就停
+# alloc_run.sh — laptop side of the CPU allocation experiments (traffic generator reuses the wnc-gen container and tcpprep cache from tests/ids_inline/planb_run.sh)
+# Prerequisites: on the Pi, planb_pi.sh up and alloc_pi.sh pause off; on the laptop, bash tests/ids_inline/planb_run.sh setup S_m17 S_m1 S_m60
+# Usage:
+#   bash alloc_run.sh sweep <B0|B1|B2|B3> <placement> <pcap> <round> <pps...>   exp 1: rate sweep for one placement and one workload
+#   bash alloc_run.sh exp1 <round>        all of exp 1: B0/B1/B2 × A0 R1 R123 I1 T1 (order randomized each round)
+#   bash alloc_run.sh ai <strategy> <cpu|mem|mlp|none> <pps> <round> [threads]   one point of exp 2 (including its "AI only" baseline)
+#   bash alloc_run.sh exp2 <round>        all of exp 2: α β γ × none cpu mem, plus mem with 1 thread for γ
+# Workloads: B0 bridge only; B1 wnc-gw ips full 2 queues; B2 wnc-gw ips full 1 queue, all trusted; B3 wnc-gw ids (NFLOG) full 2 groups; B4, B5 ips full 3, 4 queues;
+#           B6, B7, B8 ids full 1, 3, 4 groups; B9 ips full 1 queue;
+#           K0 = B6 (ids 1 group); K1/K2 add 1/2 full NFLOG copies for read-only readers; K2h adds 2 copies of only the first 128 bytes;
+#           U2 = K0 plus 1 kernel copy, split to 2 readers by a user-space fanout; K0g3, K2g3, U2g3 are the 3-group versions
+#           F2 = B2 plus TC fast path (ebpf-bench v4, trusting all 5-tuples of S_m60): trusted packets are redirected at TC, skipping bridge and netfilter
+#           F5n, F5h, F5f = U1 plus ebpf-bench v5 (trusting S_m60): bpf_redirect_neigh without params, with next hop, bpf_fib_lookup+bpf_redirect
+#           U1 = wnc-gw ips full 1 queue, no trust (everything inspected); T1 = after U1 starts, send the whole pcap once (20 kpps), then wnc-gw trust add all its
+#           flows (S_m60); T1k = same as T1, with X_udp1000, 1,000 synthetic UDP flows (tests/ebpf/make_flows_pcap.py)
+# Strategies: alpha = IRQs on CPU0, Suricata pinned to 1,2, AI 1 thread pinned to 3; beta = RPS→CPU1, Suricata pinned to 2,3, AI 2 threads on 2,3 with SCHED_IDLE;
+#       gamma = nothing pinned, AI 3 threads; delta = IRQ 29 moved to CPU1, Suricata pinned to 2,3, AI 1 thread pinned to CPU0
+#   bash alloc_run.sh exp1b <round>       extension: B4 (3 queues), B5 (4 queues) × A0 I1 T1
+#   bash alloc_run.sh exp2b <round>       extension: delta × none cpu mem mlp, alpha × mlp, alpha × mem at 25/50% duty (env var DUTY)
+#   bash alloc_run.sh exp1c <round>       extension: ids (B6 B3 B7 B8 = 1–4 groups) × A0 I1 R123, plus inspection capacity (missed copies ≤ 0.1%)
+#   bash alloc_run.sh exp3 <round>        per-packet cost of conntrack accounting (nf_conntrack_acct 0/1): B2@40k, B1@40k, B3@30k, A0
+#   bash alloc_run.sh exp1d <round>       extension: S_m1 with ips 1–4 queues, ids 1–4 groups × A0 I1 R123; S_m17 adds ips 1 queue × all three, 3, 4 queues × R123
+#   bash alloc_run.sh mode <bridge|routed>  switch the Pi topology to this mode (planb_pi.sh down, MODE=… up, PAUSE off)
+#   bash alloc_run.sh exp4 <round>        routed vs bridge: B0 B2 B1 B7 × A0 R123, both modes (order swapped each round); routed sends the MAC-rewritten pcap from planb_run.sh routed_pcap
+#   bash alloc_run.sh exp5 <round>        multiple ids copies (bridge): K0 K1 K2 K2h × A0 R123 × S_m17, bulk_fixed
+#   bash alloc_run.sh night1104           exp5 1 → exp4 1 → exp4 2 → exp5 2, then topology back to bridge, PAUSE on
+#   bash alloc_run.sh exp6 <round>        (c) user-space distribution of multiple copies: U2 × A0 R123; R123+3 groups: K0g3 K2g3 U2g3; S_m17, bulk_fixed
+#   bash alloc_run.sh night1104b          validate U2 on one point first, then exp6 1, exp6 2
+#   bash alloc_run.sh exp7 <round>        rerun of exp5's K2h (reader tcpdump now -s 0, truncation left to the rule's snaplen)
+#   bash alloc_run.sh night1104c          exp7 1, exp7 2
+#   bash alloc_run.sh exp8 <round>        rerun of exp6's K0g3, K2g3 (during exp6 the fanout never exited and held group 20)
+#   bash alloc_run.sh night1104d          exp7 1, exp8 1, exp7 2, exp8 2
+#   bash alloc_run.sh exp9 <round>        TC fast path vs ct mark trust (E1 of step C): B0 B2 F2 × A0 I1, all on S_m60 (prereq: ebpf-bench, S_m60.flows in ~/cpu_alloc on the Pi)
+#   bash alloc_run.sh exp10 <round>       wnc-gw's own TC fast path, bridge vs routed (C3): B0 U1 T1 T1k × I1, both modes (order swapped each round)
+#   bash alloc_run.sh exp12 <round>       rerun of exp10's T1, T1k (routed now with next hop): both modes (order swapped each round)
+#   bash alloc_run.sh exp11 <round>       three routed forwarding methods (ebpf-bench v5): F5n F5h F5f T1 × I1 (topology must be routed first: alloc_run.sh mode routed)
+#                                         prereq: S_m60.flows, X_udp1000.flows in ~/cpu_alloc on the Pi; on the laptop planb_run.sh setup/routed_pcap S_m60 X_udp1000
+# MODE=routed: sweep uses the routed pcap and results get mode=; EXP: exp= in results (default 1)
+# Results go one line per point into $OUT/$KVL (default alloc.kvl); stop after two consecutive rates with cap_loss > 1%
 LAN=${LAN:-enx9c69d3241bd9}; WAN=${WAN:-eno2}; PI=${PI:-wnc@10.254.254.2}
 OUT=${OUT:-/home/sixsquare/datasets/throughput/cpu_alloc}; KVL=${KVL:-alloc.kvl}
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -94,7 +94,7 @@ pi_stop() {
   case $1 in F2|F5n|F5h|F5f) echo "  fast path: $($SSH "$P fastpath_stop")" ;; esac
   [ "$1" = B0 ] || $SSH "sudo bash ~/ids_inline/planb_pi.sh stop" | grep reader | sed 's/^/  /'
 }
-# point <pcap> <pps> <loop> k=v...：送一次流量，前後各 snap 一次，寫一行
+# point <pcap> <pps> <loop> k=v...: send traffic once, snap before and after, write one line
 point() {
   pc=$1; rate=$2; loop=$3; shift 3
   cool
@@ -108,7 +108,7 @@ point() {
   echo "$line" >> $OUT/$KVL
   echo "  $(echo "$line" | grep -o -E ' (actual_pps|cap_loss_pct|copy_loss_pct|xcopy_loss_pct|loss_pct|us_per_pkt|cpu0_us_per_pkt|reader_us_per_pkt|util0|util1|util2|util3|ai_ops_per_s|temp)=[^ ]*' | tr '\n' ' ')"
 }
-# ai_only k=v...：沒有流量，只量 AI 和背景（6 秒）
+# ai_only k=v...: no traffic, measure only AI and background (6 seconds)
 ai_only() {
   s0=$(snap) || return 1; sleep 6; s1=$(snap) || return 1
   line=$(python3 -I $HERE/alloc.py diff "$s0" "$s1" - "$@")
@@ -216,7 +216,7 @@ exp2)
   echo "EXP2 ROUND $round DONE $(date -u +%FT%TZ)"
   ;;
 exp1b)
-  # 延伸：中斷移出 CPU 0 之後，3、4 個 queue 能不能把檢查容量推過 2 個 queue 的 55–60 kpps
+  # extension: with IRQs moved off CPU 0, can 3 or 4 queues push inspection capacity past the 55–60 kpps of 2 queues
   round=$2; rates="40000 50000 55000 60000 65000 70000 80000 90000 100000"
   for wl in B4 B5; do
     for pl in $(printf '%s\n' A0 I1 T1 | shuf); do bash "$0" sweep $wl $pl S_m17 $round $rates; done
@@ -224,7 +224,7 @@ exp1b)
   echo "EXP1B ROUND $round DONE $(date -u +%FT%TZ)"
   ;;
 exp1c)
-  # 延伸：ids（NFLOG）時轉送不等 Suricata，加 group、把收封包移出 CPU0 能不能提高轉送容量和檢查容量
+  # extension: with ids (NFLOG), forwarding doesn't wait for Suricata; do more groups and moving packet receive off CPU0 raise forwarding and inspection capacity
   round=$2; rates="20000 30000 40000 50000 60000 70000 80000 100000 120000 150000 200000 250000 300000"
   for wl in B6 B3 B7 B8; do
     for pl in $(printf '%s\n' A0 I1 R123 | shuf); do bash "$0" sweep $wl $pl S_m17 $round $rates; done
@@ -242,7 +242,7 @@ acctpt)
   pi_stop $wl
   ;;
 exp3)
-  # 3d 要讀每條連線的封包數、bytes：開 nf_conntrack_acct 的轉送成本（dump 的成本在 tests/ctnetlink/bench）
+  # 3d needs per-connection packet and byte counts: forwarding cost of enabling nf_conntrack_acct (dump cost is in tests/ctnetlink/bench)
   round=$2
   for pt in $(printf '%s\n' 0:B2:S_m60:40000 1:B2:S_m60:40000 0:B1:S_m17:40000 1:B1:S_m17:40000 0:B3:S_m17:30000 1:B3:S_m17:30000 | shuf); do
     IFS=: read -r v wl pc rate <<< "$pt"; bash "$0" acctpt $v $wl $pc $rate $round
@@ -251,7 +251,7 @@ exp3)
   echo "EXP3 ROUND $round DONE $(date -u +%FT%TZ)"
   ;;
 exp1d)
-  # 延伸：連線多但不全是掃描的 S_m1（49% 純 SYN），ips 和 ids 都量 1–4 個 queue／group
+  # extension: S_m1, many connections but not all scans (49% bare SYN); measure 1–4 queues/groups for both ips and ids
   round=$2; rates="20000 30000 40000 50000 60000 70000 80000 100000 120000 150000 200000 250000 300000"
   for pt in $(printf '%s\n' B9:A0 B9:I1 B9:R123 B4:R123 B5:R123 | shuf); do bash "$0" sweep ${pt%%:*} ${pt##*:} S_m17 $round $rates; done
   for wl in B9 B1 B4 B5 B6 B3 B7 B8; do
@@ -260,7 +260,7 @@ exp1d)
   echo "EXP1D ROUND $round DONE $(date -u +%FT%TZ)"
   ;;
 exp2b)
-  # 延伸：delta（IRQ 29 搬到 CPU1、Suricata 綁 2,3、AI 綁 CPU0）；alpha 的 mlp；alpha 的 mem 降低工作比例
+  # extension: delta (IRQ 29 moved to CPU1, Suricata pinned to 2,3, AI pinned to CPU0); alpha with mlp; alpha with mem at lower duty
   round=$2; rate=${3:-40000}
   for pt in $(printf '%s\n' delta:none delta:cpu delta:mem delta:mlp alpha:mlp | shuf); do
     bash "$0" ai ${pt%%:*} ${pt##*:} $rate $round
@@ -275,7 +275,7 @@ mode)
   $SSH "$P pause off" | sed 's/^/  /'
   ;;
 exp4)
-  # routed 對 bridge（todo：開發者 2026-11-04「routed 比較快，預設是不是應該用 routed」）
+  # routed vs bridge (todo: developer 2026-11-04 "routed is faster, should routed be the default?")
   round=$2; modes="bridge routed"; [ $((round % 2)) = 0 ] && modes="routed bridge"
   for m in $modes; do
     bash "$0" mode $m
@@ -293,7 +293,7 @@ exp4)
   echo "EXP4 ROUND $round DONE $(date -u +%FT%TZ)"
   ;;
 exp5)
-  # ids 複製 2–3 份（老師 2026-11-04 擔心：Suricata、edge AI、雲端特徵各一份）的上限：全部封包、整個封包，另加只複製標頭
+  # limit of 2–3 ids copies (advisor's 2026-11-04 concern: one each for Suricata, edge AI, cloud features): all packets, full packets, plus header-only copies
   round=$2
   for pc in S_m17 bulk_fixed; do
     case $pc in
@@ -320,7 +320,7 @@ exp6)
   echo "EXP6 ROUND $round DONE $(date -u +%FT%TZ)"
   ;;
 exp7)
-  # exp5 的 K2h 重跑：exp5 的讀取端 tcpdump 用 -s 128，libpcap 接收緩衝太小，複本被截掉（S_m17 只收到約 1 成、bulk 讀取端直接結束），數據不算
+  # rerun of exp5's K2h: exp5's reader tcpdump used -s 128 and the libpcap receive buffer was too small, so copies were lost (S_m17 got only ~10%, the bulk reader exited); data discarded
   round=$2
   for pc in S_m17 bulk_fixed; do
     case $pc in
@@ -334,7 +334,7 @@ exp7)
   echo "EXP7 ROUND $round DONE $(date -u +%FT%TZ)"
   ;;
 exp8)
-  # exp6 的 K0g3、K2g3 重跑：exp6 時第一次的 fanout 沒結束、一直佔著 group 20，K2g3 的第一份複本進了 fanout、K0g3 多了 fanout 空轉的 CPU
+  # rerun of exp6's K0g3, K2g3: in exp6 the first fanout never exited and kept holding group 20, so K2g3's first copy went into the fanout and K0g3 got extra CPU from the idle fanout spinning
   round=$2
   for pc in S_m17 bulk_fixed; do
     case $pc in

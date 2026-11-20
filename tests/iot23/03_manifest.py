@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""產生 manifest.json：tar.gz 的 md5 / sha256，以及解壓後每個檔案的相對路徑、大小、sha256。
-全部用串流方式算雜湊（一次讀 8 MB），不會把大檔載入記憶體。
+"""Generate manifest.json: md5 / sha256 of the tar.gz, plus the relative path, size and sha256 of every extracted file.
+All hashes are computed by streaming (8 MB at a time), so large files are never loaded into memory.
 
-用法：python3 -I 03_manifest.py <tar.gz> <解壓目錄> <輸出 manifest.json> <Zenodo 提供的 md5>
+Usage: python3 -I 03_manifest.py <tar.gz> <extract dir> <output manifest.json> <md5 from Zenodo>
 """
 import hashlib
 import json

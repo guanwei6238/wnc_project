@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""reader.py — EVE unix_stream 的讀取端（Suricata 是 client，這裡先 listen）
+"""reader.py — reader side of EVE unix_stream (Suricata is the client, so this listens first)
 
-用法: python3 reader.py <socket 路徑> <fast|stall:秒|slow:行每秒> <結果檔>
-  fast      收到就讀
-  stall:N   接受連線後 N 秒都不讀，之後全速讀到 EOF
-  slow:R    每秒最多讀 R 行
-結果檔一行 key=value：lines、bytes、first_s、last_s（相對於接受連線）
+Usage: python3 reader.py <socket path> <fast|stall:seconds|slow:lines per second> <result file>
+  fast      read as soon as data arrives
+  stall:N   do not read for N seconds after accepting, then read at full speed until EOF
+  slow:R    read at most R lines per second
+Result file is one line of key=value: lines, bytes, first_s, last_s (relative to accept)
 """
 import os, socket, sys, time
 

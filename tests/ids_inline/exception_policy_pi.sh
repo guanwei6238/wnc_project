@@ -1,11 +1,11 @@
 #!/bin/bash
-# Suricata 檢查不了的時候，wnc-gw 強制的設定（Pi，bridge）
-#   accept|drop：Suricata 的 flow 記憶體上限調到 512 KiB，fcli 對 fsrv 的 5000 個 port 各送 1 個 UDP（每個都是新 flow）
-#     when_unavailable = accept → exception policy 是 ignore，預期全部送達；drop → flow 用 drop-packet，預期記憶體用完後的被丟
-#   badrule：規則檔一條正常、一條壞的，yaml 加 engine.init-failure-fatal: yes
-#     直接跑 Suricata 預期起不來；經過 wnc-gw（強制 init-failure-fatal=no）預期照常就緒，並記 WARN「could not load some rules」
-# 前置：sudo sh env.sh up；sh make_configs.sh；系統的 suricata 服務已停；wnc-gw 放在 $GW
-# 用法: sudo bash exception_policy_pi.sh <accept|drop|badrule>
+# settings wnc-gw forces for when Suricata cannot inspect (Pi, bridge)
+#   accept|drop: Suricata's flow memcap set to 512 KiB, fcli sends 1 UDP packet to each of 5000 ports on fsrv (each a new flow)
+#     when_unavailable = accept → exception policy is ignore, expect all delivered; drop → flow uses drop-packet, expect drops once memory runs out
+#   badrule: one good and one broken rule in the rule file, the yaml adds engine.init-failure-fatal: yes
+#     running Suricata directly should fail to start; via wnc-gw (forces init-failure-fatal=no) it should become ready and log WARN "could not load some rules"
+# Prerequisites: sudo sh env.sh up; sh make_configs.sh; system suricata service stopped; wnc-gw at $GW
+# Usage: sudo bash exception_policy_pi.sh <accept|drop|badrule>
 v=${1:?usage: exception_policy_pi.sh <accept|drop|badrule>}
 GW=${GW:-/tmp/wncgw/wnc-gw}; M=${M:-/tmp/wncgw/m}; L=/tmp/wncgw/ep
 W="ip netns exec wgw"

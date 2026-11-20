@@ -1,8 +1,8 @@
 #!/bin/bash
-# fastpath_docker.sh — 步驟 C：信任的連線在 TC 直接轉送（routed testbed：cli 10.0.1.2 — gw — srv 10.0.2.2）
-# 用法: bash fastpath_docker.sh <tcp|udp|reuse|errors|options|ttl1|control|kill9|l007|idle|nexthop|stale|all>
-#   BACKEND=ctmark：用 docker/wnc-gw/ctmark.toml（[trust] backend = "ctmark"）；信任的封包仍經過 forward chain，
-#   所以改看 ids chain 的 counter 有沒有停（tc 時兩個都會停）；nexthop 只有 tc 有；stale 只有 ctmark 有
+# fastpath_docker.sh — step C: trusted connections forwarded directly at TC (routed testbed: cli 10.0.1.2 — gw — srv 10.0.2.2)
+# Usage: bash fastpath_docker.sh <tcp|udp|reuse|errors|options|ttl1|control|kill9|l007|idle|nexthop|stale|all>
+#   BACKEND=ctmark: use docker/wnc-gw/ctmark.toml ([trust] backend = "ctmark"); trusted packets still go through the forward chain,
+#   so check whether the ids chain counter stops instead (with tc both stop); nexthop is tc only; stale is ctmark only
 GW="docker exec wnc-gw"; CLI="docker exec wnc-cli"; SRV="docker exec wnc-srv"; B=/opt/sg/wnc-gw
 BACKEND=${BACKEND:-tc}; CONF=; CHAIN=forward
 [ "$BACKEND" = ctmark ] && { CONF="-c /etc/wnc-gw/ctmark.toml"; CHAIN=ids; }
@@ -12,7 +12,7 @@ start() {
   for i in $(seq 1 50); do $GW grep -q "traffic is inspected" /tmp/fp.log 2>/dev/null && return 0; sleep 0.2; done
   echo "run did not start"; $GW tail -5 /tmp/fp.log; return 1
 }
-# 容器的 PID 1 不回收子程序，結束的 wnc-gw 會留成 zombie，所以只等不是 Z 的
+# PID 1 in the container doesn't reap children, so an exited wnc-gw stays a zombie; only wait for ones not in state Z
 stop() { $GW sh -c 'pkill -INT -x wnc-gw; while ps -eo stat=,comm= | grep -q "^[^Z].* wnc-gw$"; do sleep 0.2; done'; }
 fwd() { $GW nft list chain inet wnc_gw $CHAIN | grep -m1 -o "packets [0-9]*" | cut -d" " -f2; }
 events() { $GW grep -E "$1" /tmp/fp.log | cut -c28-220 | sed 's/^/   /'; }
@@ -47,15 +47,15 @@ s.close(); print("sent", n)'
 echo "$SRVPY" | docker exec -i wnc-srv sh -c 'cat > /tmp/fpsrv.py'
 echo "$CLIPY" | docker exec -i wnc-cli sh -c 'cat > /tmp/fpcli.py'
 
-server() {  # $1 = tcp|udp：srv 上收資料，印收到幾行（UDP 另外印 TTL）
+server() {  # $1 = tcp|udp: receive on srv, print how many lines arrived (UDP also prints TTL)
   $SRV pkill -f /tmp/fpsrv.py; $SRV sh -c "python3 /tmp/fpsrv.py $1 > /tmp/fpsrv.out 2>&1 &"; sleep 0.5
 }
 
-client() {  # $1 = tcp|udp，$2 = 來源 port，$3 = 秒數：每 0.1 秒送一行
+client() {  # $1 = tcp|udp, $2 = source port, $3 = seconds: send one line every 0.1 s
   $CLI python3 /tmp/fpcli.py "$@" &
 }
 
-udp_send() {  # $1 = 來源 port，$2 = 個數，$3 = 多的一行 Python（例如設 IP option）
+udp_send() {  # $1 = source port, $2 = count, $3 = one extra line of Python (e.g. setting an IP option)
   $CLI python3 -c "
 import socket, time
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

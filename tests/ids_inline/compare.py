@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""compare.py — run_compare.sh 的結果：同一組 (scenario, rule set) 下 wnc-gw、Suricata 直接跑 NFQ、af-packet IPS 與 offline 並排。
+"""compare.py — run_compare.sh results: wnc-gw, Suricata running NFQ directly, af-packet IPS and offline side by side for each (scenario, rule set).
 
-用法: python3 compare.py results/compare1.kvl [--offline ../ids_throughput/results/pi]
-單位都是「每個 packet 的 worker CPU µs」；offline 是 1000 ÷ kpps（kpps 的定義同 summarize.py）。
+Usage: python3 compare.py results/compare1.kvl [--offline ../ids_throughput/results/pi]
+All units are "worker CPU µs per packet"; offline is 1000 ÷ kpps (kpps defined as in summarize.py).
 """
 import argparse
 from pathlib import Path

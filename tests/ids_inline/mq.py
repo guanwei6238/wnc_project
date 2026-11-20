@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""mq.py — run_mq.sh 的結果：每個 scenario 在 1／2／3 個 queue 下的處理量。
+"""mq.py — run_mq.sh results: throughput of each scenario with 1/2/3 queues.
 
-用法: python3 mq.py results/mq1.kvl [results/sym1.kvl ...]
-  hash        addr = queue num 0-(N-1)（kernel 只用位址）；symhash = queue to symhash mod N（含 port 的對稱 hash）
-  送入 kpps   進到 queue 規則的 packets ÷ tcpreplay 送的時間（tcpreplay 一顆 CPU 能推多快）
-  處理 kpps   Suricata 判決的 packets ÷（開始送 → queue 清空）
-  queue 分配  每個 queue 分到的比例（%）
-  worker CPU  每個 worker 的 CPU 時間 ÷ 同一段牆鐘時間（%）
+Usage: python3 mq.py results/mq1.kvl [results/sym1.kvl ...]
+  hash           addr = queue num 0-(N-1) (kernel uses addresses only); symhash = queue to symhash mod N (symmetric hash including ports)
+  offered kpps   packets reaching the queue rule ÷ tcpreplay send time (how fast tcpreplay can push on one CPU)
+  processed kpps packets Suricata gave a verdict ÷ (start of sending → queue empty)
+  queue share    share of packets per queue (%)
+  worker CPU     each worker's CPU time ÷ the same wall-clock span (%)
 """
 import sys
 

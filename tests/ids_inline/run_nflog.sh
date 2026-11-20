@@ -1,7 +1,7 @@
 #!/bin/bash
-# ids 候選 A（NFQ，判決一律放行）對 B（NFLOG 複本）：10,000 pps、1 個 queue／group，2 輪，結果在 results/$TAG.kvl
-#   RUNMODES：要比的 Suricata runmode，用空白分開（預設 workers）
-# 用法: sudo TAG=nflog1 [RUNMODES="workers autofp"] bash run_nflog.sh
+# ids candidate A (NFQ, verdict always accept) vs B (NFLOG copies): 10,000 pps, 1 queue/group, 2 rounds, results in results/$TAG.kvl
+#   RUNMODES: Suricata runmodes to compare, space-separated (default workers)
+# Usage: sudo TAG=nflog1 [RUNMODES="workers autofp"] bash run_nflog.sh
 TAG=${TAG:-nflog1}; RUNMODES=${RUNMODES:-workers}; R=/home/wnc/ids_inline/results/$TAG.kvl; RUNS=/tmp/wncgw/runs/$TAG
 cd /home/wnc/ids_inline; mkdir -p $RUNS
 for round in 1 2; do

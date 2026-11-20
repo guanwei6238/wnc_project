@@ -1,10 +1,10 @@
 #!/bin/bash
-# 對四個 dataset 的每個 pcap 跑 trust_sim，每個檔案的結果寫成 $OUT/<dataset>/<name>.tsv（已經有結果的跳過）。
-# 本機的檔案和 NAS 上的檔案分兩組同時跑；pcap 對到的 eve.json 和偵測評估相同（../detection/）。
-# 用法: run_all.sh [dataset ...]，dataset 是 iot23 cicids2017 cicddos2019 ciciot2023（預設全部）
-# 建議用 systemd-run --user --unit trust-sim -p MemoryMax=8G -p MemorySwapMax=0 bash -c 'run_all.sh > log 2>&1' 跑
-# （輸出才不會進 journal；不給 swap，記憶體不夠時直接失敗，不會卡住）
-# IOT23_SKIP="43-1 ..." 跳過這些 IoT-23 scenario（43-1 的掃描同時有約 300 萬條連線，要另外給較多記憶體單獨跑）
+# Run trust_sim on every pcap of the four datasets; each file's result goes to $OUT/<dataset>/<name>.tsv (files that already have results are skipped).
+# Local files and NAS files run as two parallel groups; the eve.json matched to each pcap is the same as in the detection evaluation (../detection/).
+# Usage: run_all.sh [dataset ...], dataset is iot23 cicids2017 cicddos2019 ciciot2023 (default all)
+# Recommended: systemd-run --user --unit trust-sim -p MemoryMax=8G -p MemorySwapMax=0 bash -c 'run_all.sh > log 2>&1'
+# (keeps output out of the journal; no swap, so it fails outright instead of hanging when memory runs out)
+# IOT23_SKIP="43-1 ..." skips these IoT-23 scenarios (43-1's scan has ~3 million concurrent connections; run it alone with more memory)
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 BIN=$HERE/target/release/trust_sim

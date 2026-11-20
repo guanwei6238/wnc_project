@@ -1,9 +1,9 @@
 #!/bin/bash
-# test_docker.sh — wnc-gw features test（BPF_PROG_TEST_RUN 試跑）在 testbed 的 wnc-gw 容器
-#   產生 pcap：20 個 UDP 10.0.1.2:43000 → 10.0.2.2:5001（幀 342 bytes）、5 個 TCP 10.0.1.9:1234 → 10.0.2.2:80（幀 74 bytes）
-#   對 egress（FLOWS）、ingress（PFLOWS per-CPU）、events（ringbuf）、xdp（FLOWS）各跑一次
-#   預期：兩條 flow，packets 20 和 5；events 25 筆；TC 回傳 TCX_NEXT ×25，XDP 回傳 XDP_PASS ×25
-# 用法: bash test_docker.sh   （先 bash doctor_docker.sh、bash run_docker.sh，它們準備 /tmp/feat/prog.o 和 run.toml）
+# test_docker.sh — wnc-gw features test (BPF_PROG_TEST_RUN dry run) in the testbed's wnc-gw container
+#   generated pcap: 20 UDP 10.0.1.2:43000 → 10.0.2.2:5001 (342-byte frames), 5 TCP 10.0.1.9:1234 → 10.0.2.2:80 (74-byte frames)
+#   runs once each for egress (FLOWS), ingress (PFLOWS per-CPU), events (ringbuf), xdp (FLOWS)
+#   expected: two flows with packets 20 and 5; 25 events; TC returns TCX_NEXT ×25, XDP returns XDP_PASS ×25
+# Usage: bash test_docker.sh   (run bash doctor_docker.sh and bash run_docker.sh first; they prepare /tmp/feat/prog.o and run.toml)
 GW="docker exec wnc-gw"
 $GW python3 -c "
 import struct

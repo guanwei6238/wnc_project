@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""CICIoT2023：每個 pcap 一列（label = 檔案所屬的攻擊），整理 Suricata 的結果。
+"""CICIoT2023: one row per pcap (label = the attack the file belongs to), summarizing the Suricata results.
 
-label 只到檔案層級，沒辦法逐條 flow 對 label。而且每個檔都有實驗網路的背景流量（ICMP ping、UPnP 等），
-Benign 檔也會觸發這些 rule，所以「有沒有 alert」不能直接當成偵測到攻擊。
-這裡以 Benign 檔為基準：Benign 檔出現過的 SID 視為背景，攻擊檔裡「Benign 沒出現過的 SID」才算攻擊特有的 alert。
-每列輸出：packets、flows（Suricata 的 flow.total）、全部 alert 與有 alert 的 flow（distinct flow_id）、
-攻擊特有 SID 的 alert 數與 flow 數（full／gw_corp／gw_corp+iplist）、最常出現的攻擊特有 SID。
-用法: python3 -I summarize_ciciot2023.py <結果根目錄> <gw_corp_sids> <iplist_sids> <輸出.tsv> [Benign 檔名，逗號分隔，預設 BenignTraffic]
-多個 Benign 檔時，基準是這些檔出現過的 SID 的聯集。
+Labels are per file only, so flows can't be matched to labels one by one. Every file also has background traffic from the lab network (ICMP ping, UPnP, etc.),
+and Benign files trigger those rules too, so "has alerts" can't be taken as detecting the attack.
+Benign files are the baseline here: SIDs seen in a Benign file are background; only SIDs in attack files that never appear in Benign count as attack-specific alerts.
+Each row: packets, flows (Suricata flow.total), all alerts and flows with alerts (distinct flow_id),
+alert and flow counts for attack-specific SIDs (full / gw_corp / gw_corp+iplist), and the most frequent attack-specific SIDs.
+Usage: python3 -I summarize_ciciot2023.py <results root> <gw_corp_sids> <iplist_sids> <out.tsv> [Benign file names, comma separated, default BenignTraffic]
+With several Benign files, the baseline is the union of the SIDs seen in them.
 """
 import collections
 import json
@@ -26,7 +26,7 @@ def counter(stats, name):
     for line in open(stats):
         m = re.match(rf'{re.escape(name)}\s*\|\s*Total\s*\|\s*(\d+)', line)
         if m:
-            v = int(m.group(1))          # 取最後一次（結束時）的值
+            v = int(m.group(1))          # take the last value (at exit)
     return v
 
 

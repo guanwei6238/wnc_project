@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""report.py — 彙整實驗 3：每個 case × 模式的 alert（sid:次數）、app_proto、關鍵 stats
+"""report.py — exp 3 summary: per case × mode, alerts (sid:count), app_proto, key stats
 
-用法: python3 -I report.py <cases 目錄> [res 子目錄名，預設 res]
+Usage: python3 -I report.py <cases dir> [res subdir name, default res]
 """
 import json
 import os
@@ -23,7 +23,7 @@ def stats(path):
         lines = open(path).read().splitlines()
     except OSError:
         return out
-    # stats.log 可能有多段，取最後一段
+    # stats.log may have several sections; take the last one
     block = []
     for ln in lines:
         if ln.startswith("Date:"):

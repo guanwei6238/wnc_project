@@ -1,15 +1,15 @@
 #!/bin/bash
-# 檢查 Suricata 的 flow emergency mode 有沒有影響偵測結果：
-# Debian 預設 flow.memcap 128 MiB，flood 時 flow table 會滿（run.log 出現 "Flow emergency mode entered"），
-# 這裡把 flow.memcap 調到 4 GiB 重跑同一份 pcap，之後和原本的 eve.json 逐筆比對 alert。
-# 03-11 已另外跑過（alert 657 筆相同、每個 label 有 alert 的 flow 數相同）。
-# 輸出: ~/datasets/detection/memcap_test/<名稱>/{eve.json,run.log,stats.log}
+# Check whether Suricata's flow emergency mode affects detection results:
+# Debian's default flow.memcap is 128 MiB, and floods fill the flow table ("Flow emergency mode entered" in run.log),
+# so rerun the same pcap with flow.memcap raised to 4 GiB, then compare alerts one by one with the original eve.json.
+# 03-11 was already run separately (same 657 alerts, same number of flows with alerts per label).
+# Output: ~/datasets/detection/memcap_test/<name>/{eve.json,run.log,stats.log}
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 R=/home/sixsquare/datasets/detection
 T=$R/memcap_test
 NAS=/mnt/nas
-run() {     # run <名稱> <HOME_NET 設定...>，pcap 從 stdin 讀
+run() {     # run <name> <HOME_NET settings...>, pcap read from stdin
     local n=$1; shift
     local o=$T/$n
     [ -f "$o/done.txt" ] && return 0

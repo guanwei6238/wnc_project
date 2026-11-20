@@ -1,13 +1,13 @@
-# 各腳本共用：定義路徑與 dk() 函式（用 docker 在容器內跑命令）。用法: source lib.sh
-# 為什麼 --network none：執行階段不需要網路，也避免新建/佔用 Docker 網段(曾與 NAS 網段衝突)。
-# 為什麼 --user：避免容器以 root 寫出檔案，之後宿主機無法刪除。
+# Shared by all scripts: defines paths and dk() (runs a command in a container via docker). Usage: source lib.sh
+# Why --network none: no network is needed at run time, and it avoids creating/occupying a Docker subnet (once clashed with the NAS subnet).
+# Why --user: so the container does not write files as root that the host then cannot delete.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-RULESETS=/home/sixsquare/datasets/rulesets     # 大檔放 repo 外
-WORK=$RULESETS/work                            # et_all.rules / 轉換後規則(容器內唯讀 /rules)
-RUNS=$RULESETS/runs                            # 每次執行的 log(容器內 /out)
+RULESETS=/home/sixsquare/datasets/rulesets     # large files live outside the repo
+WORK=$RULESETS/work                            # et_all.rules / converted rules (read-only /rules in the container)
+RUNS=$RULESETS/runs                            # logs of each run (/out in the container)
 IMAGE=wnc-ids-lab
 mkdir -p "$WORK" "$RUNS"
-# dk [額外 docker 參數...] -- 命令...   例: dk --memory=1g --memory-swap=1g -- /scripts/ids.sh ...
+# dk [extra docker args...] -- command...   e.g. dk --memory=1g --memory-swap=1g -- /scripts/ids.sh ...
 dk() {
   local extra=()
   while [ "$1" != "--" ]; do extra+=("$1"); shift; done; shift

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""把 match_iot23.py 的結果整理成每個 (scenario/day, label) 一列的 TSV，以及跨 scenario 依 label 合計的 TSV。
+"""Turn match_iot23.py results into a TSV with one row per (scenario/day, label), plus a TSV of per-label totals across scenarios.
 
-用法: python3 -I summarize.py <名稱> <輸出目錄> <match.json>...
-  <名稱> 例如 iot23；每個 match.json 的檔名（去掉 .json）當成 scenario 名稱。
-輸出: <輸出目錄>/<名稱>_by_scenario.tsv、<名稱>_by_label.tsv、<名稱>_sids.tsv
-欄位: flows、各 rule set 有 alert 的 flow 數與比例；sids 檔列出每個 SID 打中哪些 label 的幾條 flow。
+Usage: python3 -I summarize.py <name> <out dir> <match.json>...
+  <name> e.g. iot23; each match.json file name (without .json) is used as the scenario name.
+Output: <out dir>/<name>_by_scenario.tsv, <name>_by_label.tsv, <name>_sids.tsv
+Columns: flows, number and share of flows with alerts per rule set; the sids file lists how many flows of which labels each SID hit.
 """
 import collections
 import json
@@ -21,7 +21,7 @@ def pct(a, b):
 
 
 tot = collections.defaultdict(lambda: collections.Counter())
-scen_with = collections.defaultdict(lambda: [0, 0])     # label -> [有這個 label 的 scenario 數, 其中有 alert 的]
+scen_with = collections.defaultdict(lambda: [0, 0])     # label -> [scenarios with this label, of which with alerts]
 sid_rows = collections.Counter()
 sid_msg, sid_set = {}, {}
 with open(f'{outdir}/{name}_by_scenario.tsv', 'w') as f:

@@ -1,8 +1,8 @@
 #!/bin/bash
-# hook_docker.sh — 使用者的特徵程式掛在哪裡才看得到信任的封包（routed testbed：cli 10.0.1.2 — gw — srv 10.0.2.2）
-#   gw 的 LAN 口 ingress（排在核心程式後面）和 WAN 口 egress 各掛一支 tcx_count.py，只數長度 342 的幀
-#   （UDP 300 bytes payload），先送 20 個不信任的、trust add 之後再送 20 個
-# 用法: bash hook_docker.sh   （BACKEND=ctmark 時用 ctmark.toml）
+# hook_docker.sh — where a user's feature program must attach to see trusted packets (routed testbed: cli 10.0.1.2 — gw — srv 10.0.2.2)
+#   attach one tcx_count.py each on gw's LAN port ingress (after the core program) and WAN port egress, counting only 342-byte frames
+#   (UDP 300-byte payload); send 20 untrusted, then 20 more after trust add
+# Usage: bash hook_docker.sh   (uses ctmark.toml when BACKEND=ctmark)
 GW="docker exec wnc-gw"; CLI="docker exec wnc-cli"; SRV="docker exec wnc-srv"; B=/opt/sg/wnc-gw
 CONF=; [ "${BACKEND:-tc}" = ctmark ] && CONF="-c /etc/wnc-gw/ctmark.toml"
 LAN=$($GW sh -c '. /run/wnc-ifaces; echo $LAN_IF'); WAN=$($GW sh -c '. /run/wnc-ifaces; echo $WAN_IF')

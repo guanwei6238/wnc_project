@@ -1,19 +1,19 @@
 #!/bin/bash
-# trust_run.sh — 不信任／ct mark 信任／TC 信任的每封包 CPU 與容量（實驗 13，筆電端）
-#   U = 現在的 wnc-gw，沒有信任，送 <切片>.gw（經過 gateway 的全部封包）
-#   C = 16137e0 的 wnc-gw（/tmp/wncgw/ctmark/wnc-gw，檔名要叫 wnc-gw，planb_pi.sh stop 才找得到），暖身後用 conntrack 把全部連線設成信任（ct mark 0x80000000），送 <切片>.fp
-#   T = 現在的 wnc-gw，暖身後用 wnc-gw trust add 信任 <切片>.fp.flows 的全部連線，送 <切片>.fp
-#   K = 現在的 wnc-gw 設 [trust] backend = "ctmark"（實驗 14），信任方式同 T（wnc-gw trust add 寫 ct mark），送 <切片>.fp
-#   O = 加 backend 選項之前的 wnc-gw（/tmp/wncgw/old/wnc-gw，46a96d2），信任方式同 T；和 T 比，看加選項有沒有變慢
-#   Fe／Fi／Fx = T 再加一個特徵程式（實驗 15，planb_pi.sh 的 FEATURE）：tc-egress、tc-ingress、xdp generic；和 T 比，看每個信任封包多多少
-#   .fp 只有信任後會走 fast path 的封包（gw_pcap.py：TCP 沒有 SYN／FIN／RST、UDP、單播、沒有分片），兩版的控制封包都一律檢查，
-#   所以 C 和 T 的差就是每個信任封包的差
-# 前置：Pi 上 /tmp/wncgw/wnc-gw、/tmp/wncgw/ctmark/wnc-gw、make_configs.sh；~/cpu_alloc/trust/<切片>.fp.flows
-#       筆電 planb_run.sh setup；/out/trust/<切片>.{gw,fp}[.rt].{pcap,cache}（gw_pcap.py 切、tcpprep --cidr 用內網網段分兩側）
-# 用法: bash trust_run.sh sweep <U|C|T|K|O> <ips|ids> <切片> <round>   一個點的速率掃描（拓樸用目前的，MODE 要和 Pi 一致）
-#       bash trust_run.sh round <round>                           兩種模式 × 切片 × $WORKLOADS（預設 U C T）× ips ids
-#                                                                 （順序隨機，模式每輪對調）；EXP 寫進每一行（預設 13）；PROTS 預設 ips ids
-# 放置固定 I1（eth0 的 IRQ 29 → CPU1）；每個速率至少送 5 秒；連續兩個速率 cap_loss > 1% 就停
+# trust_run.sh — per-packet CPU and capacity for no trust / ct mark trust / TC trust (exp 13, laptop side)
+#   U = current wnc-gw, no trust, sends <slice>.gw (all packets through the gateway)
+#   C = wnc-gw at 16137e0 (/tmp/wncgw/ctmark/wnc-gw; the file must be named wnc-gw for planb_pi.sh stop to find it); after warm-up, conntrack marks all connections trusted (ct mark 0x80000000), sends <slice>.fp
+#   T = current wnc-gw; after warm-up, wnc-gw trust add trusts every connection in <slice>.fp.flows, sends <slice>.fp
+#   K = current wnc-gw with [trust] backend = "ctmark" (exp 14), trusted the same way as T (wnc-gw trust add writes ct mark), sends <slice>.fp
+#   O = wnc-gw before the backend option was added (/tmp/wncgw/old/wnc-gw, 46a96d2), trusted the same way as T; compared with T to see whether the option slowed it down
+#   Fe/Fi/Fx = T plus one feature program (exp 15, FEATURE in planb_pi.sh): tc-egress, tc-ingress, xdp generic; compared with T to see the added cost per trusted packet
+#   .fp has only packets that take the fast path after trust (gw_pcap.py: TCP without SYN/FIN/RST, UDP, unicast, not fragmented); both versions always inspect control packets,
+#   so the C vs T difference is the per-trusted-packet difference
+# Prerequisites: on the Pi /tmp/wncgw/wnc-gw, /tmp/wncgw/ctmark/wnc-gw, make_configs.sh; ~/cpu_alloc/trust/<slice>.fp.flows
+#       on the laptop planb_run.sh setup; /out/trust/<slice>.{gw,fp}[.rt].{pcap,cache} (cut by gw_pcap.py, split into two sides by LAN subnet with tcpprep --cidr)
+# Usage: bash trust_run.sh sweep <U|C|T|K|O> <ips|ids> <slice> <round>   rate sweep for one point (uses the current topology; MODE must match the Pi)
+#       bash trust_run.sh round <round>                           both modes × slices × $WORKLOADS (default U C T) × ips ids
+#                                                                 (random order, modes swapped each round); EXP written into each line (default 13); PROTS defaults to ips ids
+# Placement fixed at I1 (eth0 IRQ 29 → CPU1); each rate sends for at least 5 s; stop after two consecutive rates with cap_loss > 1%
 LAN=${LAN:-enx9c69d3241bd9}; WAN=${WAN:-eno2}; PI=${PI:-wnc@10.254.254.2}
 OUT=${OUT:-/home/sixsquare/datasets/throughput/cpu_alloc}; KVL=${KVL:-trust.kvl}
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -33,17 +33,17 @@ cool() {
     echo "  cooling (temp $t)"; sleep 20
   done
 }
-files() {  # files <切片> <gw|fp>：設定 f、c（容器裡的路徑）和 n（封包數）
+files() {  # files <slice> <gw|fp>: sets f, c (path inside the container) and n (packet count)
   local b=/out/trust/$1.$2; [ "${MODE:-bridge}" = routed ] && b=$b.rt
   f=$b.pcap; c=$b.cache
   n=$($G tcpprep --print-stats=$c 2>/dev/null | awk '/Total packets/{print $3}')
 }
-warm() {  # 背景以 10 kpps 一直重播，先送完整個 pcap 一次（每條連線都進 conntrack）
+warm() {  # keep replaying at 10 kpps in the background; first let the whole pcap go through once (every connection enters conntrack)
   $G sh -c "tcpreplay -i $LAN -I $WAN.20 -c $c --pps=10000 --loop=0 $f > /dev/null 2>&1" &
   sleep $(( n / 10000 + 3 ))
 }
 unwarm() { $G pkill -x tcpreplay; wait 2> /dev/null; sleep 2; }
-pi_start() {  # pi_start <U|C|T> <ips|ids> <切片>
+pi_start() {  # pi_start <U|C|T> <ips|ids> <slice>
   local e="MODE=${MODE:-bridge} PROTECTION=$2" r
   case $1 in
   U|T) r=$($SSH "sudo $e bash ~/ids_inline/planb_pi.sh start full 1 0" | tail -1) ;;
@@ -70,7 +70,7 @@ pi_start() {  # pi_start <U|C|T> <ips|ids> <切片>
   esac
 }
 pi_stop() { $SSH "sudo bash ~/ids_inline/planb_pi.sh stop" | sed 's/^/  /'; }
-point() {  # point <pps> k=v...：送一次流量（f、c、n 已設好），前後各 snap 一次，寫一行
+point() {  # point <pps> k=v...: send traffic once (f, c, n already set), snap before and after, write one line
   local rate=$1; shift
   cool
   s0=$(snap) || { echo "$* pps=$rate invalid=snap0" >> $OUT/$KVL; return 1; }
@@ -99,7 +99,7 @@ sweep)
     l=$(tail -1 $OUT/$KVL | grep -o 'cap_loss_pct=[^ ]*' | cut -d= -f2)
     if awk -v l="$l" 'BEGIN{exit !(l > 1)}'; then fails=$((fails + 1)); [ $fails -ge 2 ] && break; else fails=0; fi
   done
-  # 信任的封包有沒有真的略過檢查：forward chain 每條規則的 counter（K 的 ct mark accept 那條要最大）和 ids chain
+  # whether trusted packets really skip inspection: per-rule counters of the forward chain (K's ct mark accept rule should be the largest) and the ids chain
   [ $wl = U ] || echo "  nft: $($SSH "sudo ip netns exec wgw nft list table inet wnc_gw" | awk '/chain (forward|ids) /{c = $2} /packets/{for (i = 1; i < NF; i++) if ($i == "packets") printf "%s:%s ", c, $(i + 1)}')"
   pi_stop
   $SSH "$P place A0" > /dev/null

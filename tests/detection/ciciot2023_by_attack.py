@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""CICIoT2023：依攻擊（資料夾）彙總全部 pcap 的結果，給逐一判斷 ✓／△／✗ 用。
+"""CICIoT2023: aggregate the results of all pcaps per attack (folder), for judging ✓/△/✗ one by one.
 
-label 只到檔案層級。和 summarize_ciciot2023.py 一樣以 Benign 檔為基準：全部 Benign 檔出現過的 SID 視為背景，
-其他檔裡 Benign 沒出現過的 SID 才算「攻擊特有」。每種攻擊一列：檔數、packets、flows（Suricata flow.total 加總）、
-攻擊特有 SID 的清單（每個 SID：在幾個檔出現、幾條 flow、是否在 gw_corp、msg）。
-用法: python3 -I ciciot2023_by_attack.py <結果根目錄> <ciciot2023_files.tsv> <gw_corp_sids> <輸出.tsv>
+Labels are per file only. As in summarize_ciciot2023.py, Benign files are the baseline: SIDs seen in any Benign file are background,
+and only SIDs in other files never seen in Benign count as attack-specific. One row per attack: file count, packets, flows (sum of Suricata flow.total),
+list of attack-specific SIDs (per SID: how many files, how many flows, whether in gw_corp, msg).
+Usage: python3 -I ciciot2023_by_attack.py <results root> <ciciot2023_files.tsv> <gw_corp_sids> <out.tsv>
 """
 import collections
 import json

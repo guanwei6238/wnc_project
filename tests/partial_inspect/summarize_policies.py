@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""summarize_policies.py — 實驗 4 的彙整：每個切片 × 策略，攻擊 flow 的 alert 保留率、送出比例、Benign 上的 alert
+"""summarize_policies.py — exp 4 summary: per slice × policy, alert retention for attack flows, fraction sent, alerts on Benign
 
-用法: python3 -I summarize_policies.py <policies 目錄> <切片名稱...>
-  保留率 = 這個策略下有 alert 的攻擊 flow 數 ÷ full（同一個切片全部封包）下有 alert 的攻擊 flow 數；括號是 Wilson 95% 區間
-  隨機策略（_s1/_s2/_s3）另外印三個種子的平均
+Usage: python3 -I summarize_policies.py <policies dir> <slice name...>
+  retention = attack flows with an alert under this policy ÷ attack flows with an alert under full (all packets of the same slice); brackets are the Wilson 95% interval
+  random policies (_s1/_s2/_s3) also print the mean over the three seeds
 """
 import json
 import math

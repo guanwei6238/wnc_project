@@ -1,9 +1,9 @@
 #!/bin/bash
-# run_compare.sh — 對照實驗：同樣的 pcap、rule set、速率，比較 wnc-gw／Suricata 直接跑 NFQ／Suricata af-packet IPS
-#   每組 (scenario, rule set) 內三種跑法的順序打亂，交錯執行
-# 前置同 run_pi.sh
-# 用法: sudo nohup bash run_compare.sh > /home/wnc/ids_inline/compare.log 2>&1 < /dev/null &
-# 結果：$OUT/$TAG.kvl
+# run_compare.sh — comparison: same pcap, rule set and rate; compares wnc-gw / Suricata running NFQ directly / Suricata af-packet IPS
+#   within each (scenario, rule set) the three variants run in shuffled, interleaved order
+# Prerequisites same as run_pi.sh
+# Usage: sudo nohup bash run_compare.sh > /home/wnc/ids_inline/compare.log 2>&1 < /dev/null &
+# Results: $OUT/$TAG.kvl
 cd "$(dirname "$0")" || exit 1
 TAG=${TAG:-compare1}; RATE=${RATE:-10000}
 OUT=${OUT:-/home/wnc/ids_inline/results}; RUNS=${RUNS:-/home/wnc/ids_inline/runs}

@@ -1,32 +1,32 @@
 #!/bin/bash
-# trial.sh — 一次 inline 量測
-#   IMPL=wncgw（預設）  wnc-gw 啟動 Suricata（NFQ），就緒後 wnc-gw 自己裝 queue 規則
-#   IMPL=nfq            對照組：直接執行 Suricata -q 0，看到 "Engine started" 後裝一條最簡單的 queue 規則
-#   IMPL=afpacket       對照組：Suricata af-packet IPS 模式，g-lan、g-wan 暫時離開 br0，由 Suricata 在兩者之間搬封包
-#   IMPL=nflog          ids 候選：Suricata --nflog，看到 "Engine started" 後裝 log group 規則，kernel 照常轉送、只送複本
-#                       QUEUES=N 時用 symhash 分到 group 10..10+N-1；NFLOG_BUF（預設 1048576，max-size 是它的 4 倍）、NFLOG_QT（qthreshold，預設 1）
-#   QUEUES=N（預設 1）：用 queue 0..N-1，Suricata 開 N 個 worker（wncgw 用 setting-<rules>-qN.toml；nfq 用 -q 0:N-1）
-#   SURI_CPUS（預設 2,3）：Suricata 綁的 CPU
-#   QHASH=symhash（只有 nfq）：用 queue to symhash mod N（含 port 的對稱 hash），預設是 queue num 0-(N-1)（kernel 只用位址做 hash）
-#   RUNMODE=workers|autofp（afpacket 不支援）：改 yaml 的 runmode，預設照 yaml（make_configs.sh 設的是 workers）
-#   三者都綁 $SURI_CPUS；就緒後等 2 秒，tcpreplay（wtest 裡、綁 CPU 1、-T nano）送整個 pcap，等處理完，讀計數器與 RSS，再停止
-# 用法: sudo [IMPL=...] bash trial.sh <empty|full|gw_corp> <pcap 名稱，例如 S_m39> <pps 數字|top|cache> <輸出目錄>
-#   cache：只建 tcpprep 的 cache 就結束
-# 輸出: <輸出目錄>/result.kv（一行 key=value），run.log，tcpreplay.txt
+# trial.sh — one inline measurement
+#   IMPL=wncgw (default)  wnc-gw starts Suricata (NFQ) and installs the queue rules itself once ready
+#   IMPL=nfq            baseline: run Suricata -q 0 directly, install a minimal queue rule after "Engine started"
+#   IMPL=afpacket       baseline: Suricata af-packet IPS mode; g-lan, g-wan temporarily leave br0 and Suricata moves packets between them
+#   IMPL=nflog          ids candidate: Suricata --nflog, install log group rules after "Engine started"; the kernel forwards as usual and sends only copies
+#                       with QUEUES=N, symhash splits across groups 10..10+N-1; NFLOG_BUF (default 1048576, max-size is 4x it), NFLOG_QT (qthreshold, default 1)
+#   QUEUES=N (default 1): use queues 0..N-1, Suricata runs N workers (wncgw uses setting-<rules>-qN.toml; nfq uses -q 0:N-1)
+#   SURI_CPUS (default 2,3): CPUs Suricata is pinned to
+#   QHASH=symhash (nfq only): use queue to symhash mod N (symmetric hash including ports); default is queue num 0-(N-1) (kernel hashes addresses only)
+#   RUNMODE=workers|autofp (not for afpacket): set runmode in the yaml; default keeps the yaml's (make_configs.sh sets workers)
+#   All three are pinned to $SURI_CPUS; 2 s after ready, tcpreplay (in wtest, pinned to CPU 1, -T nano) sends the whole pcap, waits until processed, reads counters and RSS, then stops
+# Usage: sudo [IMPL=...] bash trial.sh <empty|full|gw_corp> <pcap name, e.g. S_m39> <pps number|top|cache> <output dir>
+#   cache: only build the tcpprep cache and exit
+# Output: <output dir>/result.kv (one line of key=value), run.log, tcpreplay.txt
 #
-# 分流：IoT-23 的路由器在 WAN 端，來源 MAC 是路由器的封包從 t-wan 送，其餘從 t-lan
-# 計數：
-#   NFQ（wncgw、nfq）：/proc/net/netfilter/nfnetlink_queue 各 queue 加總；per_queue 是每個 queue 交給 Suricata 的封包數。to_queue = 進到 queue 規則；queue_drop = queue 滿被 kernel 丟掉；processed = 交給 Suricata 判決
-#   afpacket：processed = 測試端 t-lan、t-wan 收到的封包（Suricata 送出去的）；to_queue = gateway 端 g-lan、g-wan 收到的封包
-#   nflog：to_queue = log 規則前的 counter；queue_drop = 收複本的 netlink socket 的 Drops（/proc/net/netlink）；processed = 兩者相減
-#   cpu_us_per_pkt：所有 CPU 的 rq_cpu_time（/proc/schedstat）增加量 ÷ 送出的封包，含 tcpreplay 和 kernel 轉送；NFQ 判決後的轉送算在 worker 裡，NFLOG 不會，所以兩者比這個
-#     /proc/stat 是 tick 取樣，10,000 pps 的固定間隔和 tick 對齊時會多算一倍或算成 0；tcpreplay 預設的 gtod 會忙等吃滿 CPU 1，蓋掉 CPU 1 上的轉送
-#     nonidle_cpu_s：交叉檢查用，CPU 數 × 經過時間 − /proc/stat 的 idle（NO_HZ 下 idle 是精確的）
-# CPU：Suricata worker 執行緒（NFQ 是 W-NFQ#0；af-packet 是每張網卡一個 W#…）的 schedstat 執行時間（ns）加總，送之前和處理完之後相減
-#   us_per_pkt = worker CPU ÷ processed；cpu_kpps = 1000 ÷ us_per_pkt（對應 offline 的「packets ÷ engine 處理時間」）
-#   autofp 的 worker 是 W#01…，收封包另有 RX 執行緒（NFQ 是 RX-NFQ#…、NFLOG 是 RX#…），NFQ 送判決另有 TX#…：io_cpu_s 是 RX、TX 加總
-#   path_us_per_pkt =（worker + RX + TX）CPU ÷ processed，比較 runmode 用這個
-#   proc_kpps = processed ÷（開始送 → 處理完）的牆鐘時間
+# Split: the IoT-23 router is on the WAN side; packets whose source MAC is the router's are sent from t-wan, the rest from t-lan
+# Counters:
+#   NFQ (wncgw, nfq): summed over queues in /proc/net/netfilter/nfnetlink_queue; per_queue is packets handed to Suricata per queue. to_queue = reached the queue rule; queue_drop = dropped by the kernel on a full queue; processed = handed to Suricata for a verdict
+#   afpacket: processed = packets received on the tester's t-lan, t-wan (sent out by Suricata); to_queue = packets received on the gateway's g-lan, g-wan
+#   nflog: to_queue = counter before the log rule; queue_drop = Drops on the netlink socket receiving copies (/proc/net/netlink); processed = the difference
+#   cpu_us_per_pkt: increase of rq_cpu_time over all CPUs (/proc/schedstat) ÷ packets sent, incl. tcpreplay and kernel forwarding; NFQ's post-verdict forwarding counts in the worker, NFLOG's does not, so compare the two with this
+#     /proc/stat is tick-sampled; a fixed 10,000 pps interval aligned with ticks counts double or zero; tcpreplay's default gtod busy-waits and saturates CPU 1, hiding the forwarding on CPU 1
+#     nonidle_cpu_s: cross-check, CPU count × elapsed time − idle from /proc/stat (idle is exact under NO_HZ)
+# CPU: schedstat run time (ns) of Suricata worker threads (W-NFQ#0 for NFQ; one W#… per NIC for af-packet), summed, after processing minus before sending
+#   us_per_pkt = worker CPU ÷ processed; cpu_kpps = 1000 ÷ us_per_pkt (matches offline's "packets ÷ engine processing time")
+#   autofp workers are W#01…, with separate RX threads receiving packets (RX-NFQ#… for NFQ, RX#… for NFLOG) and TX#… sending NFQ verdicts: io_cpu_s is RX + TX
+#   path_us_per_pkt = (worker + RX + TX) CPU ÷ processed; use this to compare runmodes
+#   proc_kpps = processed ÷ wall-clock time (start of sending → done processing)
 set -u
 rs=$1; pc=$2; rate=$3; out=$4
 IMPL=${IMPL:-wncgw}; QUEUES=${QUEUES:-1}; SURI_CPUS=${SURI_CPUS:-2,3}; RUNMODE=${RUNMODE:-}
@@ -46,7 +46,7 @@ if [ -n "$RUNMODE" ]; then
 fi
 runmode=$(awk '/^runmode:/{print $2}' $Y)
 nfq() { ip netns exec wgw cat /proc/net/netfilter/nfnetlink_queue; }
-nflsock() {  # 收複本的 netlink socket：<Rmem 總和> <Drops 總和>
+nflsock() {  # netlink sockets receiving copies: <sum of Rmem> <sum of Drops>
   local ids; ids=$(ip netns exec wgw cat /proc/net/netfilter/nfnetlink_log | awk '{print $2}' | tr '\n' ' ')
   ip netns exec wgw awk -v ids=" $ids" '$2 == 12 && index(ids, " " $3 " ") {r += $5; d += $9} END{print r + 0, d + 0}' /proc/net/netlink
 }
@@ -103,7 +103,7 @@ pq() {
   nfq | awk '{printf "%d ", $8 - $7}'
 }
 acpu() { cat /proc/$sp/task/*/schedstat | awk '{s+=$1} END{print s}'; }
-counters() {  # 印出 to_queue queue_drop processed（累計值）
+counters() {  # print to_queue queue_drop processed (cumulative)
   if [ $IMPL = afpacket ]; then echo "$(rx wgw:g-lan wgw:g-wan) 0 $(rx wtest:t-lan wtest:t-wan)"
   elif [ $IMPL = nflog ]; then
     local q d; q=$(ip netns exec wgw nft list table inet sq | awk '/log group/{for (i = 1; i <= NF; i++) if ($i == "packets") s += $(i + 1)} END{print s + 0}')

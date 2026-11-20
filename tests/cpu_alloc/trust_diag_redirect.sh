@@ -1,6 +1,6 @@
 #!/bin/bash
-# T（TC 信任）在量測期間有多少封包真的走 fast path：核心程式的 COUNTERS（封包數、redirect 數）在 20 kpps 10 秒的前後相減
-# 前置同 trust_run.sh；Pi 上要有 /tmp/wncgw/core_counters.sh（這個目錄的 core_counters.sh）。結果寫進 $O/probe4.kvl
+# How many packets really take the fast path with T (TC trust) during measurement: core program COUNTERS (packets, redirects) diffed before/after 10 s at 20 kpps
+# Prerequisites same as trust_run.sh; the Pi needs /tmp/wncgw/core_counters.sh (core_counters.sh from this directory). Results go to $O/probe4.kvl
 D=$(cd "$(dirname "$0")" && pwd); O=/home/sixsquare/datasets/throughput/cpu_alloc
 LAN=enx9c69d3241bd9; WAN=eno2; PI=wnc@10.254.254.2; G="docker exec wnc-gen"; P="sudo bash ~/cpu_alloc/alloc_pi.sh"
 counters() { ssh $PI "sudo bash /tmp/wncgw/core_counters.sh"; }

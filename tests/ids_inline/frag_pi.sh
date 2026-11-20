@@ -1,10 +1,10 @@
 #!/bin/bash
-# 3b 分片驗證（Pi，bridge）：wnc-gw 開 4 個 queue（symhash），同一條連線的分片會不會被分到不同 queue
-#   每條連線 = 1 個小 UDP + 一個 3000 bytes UDP 的 3 個分片（192.168.1.10:40000+i → 203.0.113.5:5000），共 24 條
-#   FAMILY=6：同樣的流量改成 IPv6（2001:db8:1::10 → 2001:db8:2::5，Fragment 擴充標頭，UDP checksum 照算）
-#   wnc-gw 的 table 有 ct mark 規則 → conntrack 啟用 → kernel 進 queue 前先組回分片，預期 0 條被拆開、每條進 queue 2 個封包
-# 前置：sudo sh env.sh up；sh make_configs.sh；系統的 suricata 服務已停；wnc-gw 放在 $GW
-# 用法: sudo [FAMILY=6] bash frag_pi.sh
+# 3b fragment check (Pi, bridge): wnc-gw with 4 queues (symhash); do fragments of the same connection get spread across queues
+#   each connection = 1 small UDP + the 3 fragments of a 3000-byte UDP (192.168.1.10:40000+i → 203.0.113.5:5000), 24 in total
+#   FAMILY=6: the same traffic over IPv6 (2001:db8:1::10 → 2001:db8:2::5, Fragment extension header, UDP checksum computed)
+#   wnc-gw's table has ct mark rules → conntrack enabled → the kernel reassembles fragments before queueing; expect 0 split connections and 2 packets queued per connection
+# Prerequisites: sudo sh env.sh up; sh make_configs.sh; system suricata service stopped; wnc-gw at $GW
+# Usage: sudo [FAMILY=6] bash frag_pi.sh
 FAMILY=${FAMILY:-4}; GW=${GW:-/tmp/wncgw/wnc-gw}; M=${M:-/tmp/wncgw/m}; F=/tmp/wncgw/frag${FAMILY/4/}; L=/tmp/wncgw/ftgw
 [ -f $F/flow23.pcap ] || { mkdir -p $F && python3 - $F $FAMILY <<'PY'
 import struct, sys, pathlib

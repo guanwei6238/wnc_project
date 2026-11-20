@@ -1,6 +1,6 @@
 #!/bin/bash
-# S_h5 的前 15,000 個封包，5,000 pps 對 500 pps：兩張網卡送出的順序錯亂是不是 stream error／TLS gap 的原因（bridge、U、ips）
-# 結果寫進 $O/probe3.kvl（拓樸是 bridge）
+# First 15,000 packets of S_h5, 5,000 pps vs 500 pps: is out-of-order sending across the two NICs the cause of stream errors/TLS gaps (bridge, U, ips)
+# Results go to $O/probe3.kvl (bridge topology)
 LAN=enx9c69d3241bd9; WAN=eno2; PI=wnc@10.254.254.2; G="docker exec wnc-gen"; O=/home/sixsquare/datasets/throughput/cpu_alloc
 for rate in 5000 500 5000 500; do
   ssh $PI "sudo PROTECTION=ips bash ~/ids_inline/planb_pi.sh start full 1 0" | tail -1

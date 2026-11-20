@@ -1,7 +1,7 @@
 #!/bin/bash
-# conn.log.labeled 去掉重複列：5-tuple、ts、duration、orig_pkts、resp_pkts 都相同的列只留第一次出現的（保留原本的順序）。
-# CIC-DDoS2019 03-11 的官方 CSV 有 482,799 組這種列（每組 2 列，除了 uid 以外每個欄位都相同）。
-# 用法: dedup_conn.sh <輸入> <輸出> [暫存目錄]；記憶體用量小（sort 用磁碟），刪掉的列號寫到 <輸出>.dropped
+# Remove duplicate rows from conn.log.labeled: of rows with the same 5-tuple, ts, duration, orig_pkts and resp_pkts, keep only the first (original order kept).
+# The official CIC-DDoS2019 03-11 CSV has 482,799 such groups (2 rows each, identical in every field except uid).
+# Usage: dedup_conn.sh <input> <output> [temp dir]; low memory use (sort uses disk); dropped line numbers go to <output>.dropped
 set -euo pipefail
 in=$1; out=$2; tmp=${3:-$(dirname "$out")}
 LC_ALL=C awk -F'\t' -v OFS='\t' '$1!~/^#/{print $3,$4,$5,$6,$7,$1,$9,$17,$19,NR}' "$in" \

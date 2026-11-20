@@ -1,17 +1,17 @@
 #!/bin/bash
-# CIC-DDoS2019 一天的流程：Suricata 8.0.7（full）→ alert 對 label → 抽樣對齊。
-# 用法: run_cicddos2019.sh <day，例如 0311> [抽樣間隔，預設 20]
-# 前提：~/datasets/cicddos2019/pcap/<day>.pcap（zip_pcap_concat.py 串好）、conn/<day>.conn.log.labeled（cic_to_conn.py --tz 3）。
-# 對齊只抽每 N 條 flow 取 1 條：這天的 flow 有上千萬條，全部對齊要分很多批、每批重讀一次 29 GB 的 pcap。
-# 抽樣只估得出 flow alignment；packet coverage 要全部 flow 才算得出來，這裡不算。
-# HOME_NET 設成受害端網段 192.168.50.0/24（攻擊者是 172.16.0.5，預設的 HOME_NET 會把它當成內部主機）。
+# Pipeline for one CIC-DDoS2019 day: Suricata 8.0.7 (full) -> match alerts to labels -> sampled alignment.
+# Usage: run_cicddos2019.sh <day, e.g. 0311> [sampling interval, default 20]
+# Requires: ~/datasets/cicddos2019/pcap/<day>.pcap (joined by zip_pcap_concat.py), conn/<day>.conn.log.labeled (cic_to_conn.py --tz 3).
+# Alignment samples 1 of every N flows: this day has tens of millions of flows, and aligning all of them takes many shards, each rereading the 29 GB pcap.
+# Sampling only estimates flow alignment; packet coverage needs all flows, so it isn't computed here.
+# HOME_NET is the victim subnet 192.168.50.0/24 (the attacker is 172.16.0.5, which the default HOME_NET treats as an internal host).
 set -euo pipefail
 day=$1; every=${2:-20}
 HERE=$(cd "$(dirname "$0")" && pwd)
 D=/home/sixsquare/datasets/cicddos2019
 R=/home/sixsquare/datasets/detection
 conn=$D/conn/$day.conn.log.labeled
-# 官方 CSV 有重複列（03-11 有 482,799 組完全相同的列），先去重再用
+# The official CSV has duplicate rows (03-11 has 482,799 groups of identical rows); dedup before use
 [ -f "$D/conn/$day.dedup.conn.log.labeled" ] || "$HERE/dedup_conn.sh" "$conn" "$D/conn/$day.dedup.conn.log.labeled"
 conn=$D/conn/$day.dedup.conn.log.labeled
 

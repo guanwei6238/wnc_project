@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""把 align_stream.py --part i/K 的 K 個 JSON 合成一個（等同不分份跑一次的結果）。
+"""Merge the K JSONs from align_stream.py --part i/K into one (same as a single unsplit run).
 
-同一個五元組的 flow 和 packet 一定在同一份，所以 flow、aligned、pcap_covered_packets、各 label 的統計直接相加；
-pcap 的 packet 數、other proto 的 flow 數每份都一樣，取第一份（並檢查各份相同）。
-用法: python3 -I merge_align.py <輸出.json> <part0.json> ... <partK-1.json>
+Flows and packets of a given 5-tuple are always in the same part, so flows, aligned, pcap_covered_packets and per-label stats are summed directly;
+the pcap packet count and other-proto flow counts are the same in every part, so take the first (and check they all match).
+Usage: python3 -I merge_align.py <out.json> <part0.json> ... <partK-1.json>
 """
 import collections
 import json

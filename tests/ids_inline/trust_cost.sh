@@ -1,15 +1,15 @@
 #!/bin/bash
-# trust_cost.sh — 3a：信任（ct mark）之後每個封包省多少，以及 L2（SYN/FIN/RST 一律送 Suricata）的成本
-#   C0 只有計數（沒有 conntrack）；C1 ct mark accept + queue（沒有信任 → 全部進 Suricata）
-#   C2 prerouting 幫每條連線設 mark（全部信任）；C3 = C2 + L2
-#   C4 = C3 + 純 SYN 清信任 bit 的規則（放在 L2 前面，同 wnc-gw）；C5 = C3 + K 條同樣的規則（放大，算每條規則的成本）
-#   每次重建 netns（conntrack 表從空的開始）；Suricata 直接跑 NFQ（full、和 wnc-gw 一樣的強制設定），綁 CPU 2,3；tcpreplay 綁 CPU 1
-#   tcpreplay 用 -T nano：預設的 gtod 會忙等，吃滿 CPU 1，kernel 在 CPU 1 上的轉送成本就看不出來
-#   CPU 用 /proc/schedstat 各 CPU 的 rq_cpu_time（ns，切換時精確累計）；/proc/stat 是 tick 取樣，量不到「醒來忙十幾 µs 又睡」的工作
-#   kernel 沒開 IRQ_TIME_ACCOUNTING，轉送和 NFQ 的 softirq 都算在 tcpreplay 或 Suricata 的執行時間裡
-#   cpu_us_per_pkt = 所有 CPU 的 rq_cpu_time 增加量 ÷ 經過 forward 的封包；suricata_us_per_pkt 只算 Suricata 程序
-# 前置：pi_lab_mode.sh up 1000、系統的 suricata 服務已停、sh make_configs.sh
-# 用法: sudo nohup bash -c 'for r in 1 2; do ROUND=$r bash trust_cost.sh; done' > /home/wnc/ids_inline/trust.log 2>&1 < /dev/null &
+# trust_cost.sh — 3a: per-packet savings after trust (ct mark), and the cost of L2 (SYN/FIN/RST always to Suricata)
+#   C0 counters only (no conntrack); C1 ct mark accept + queue (no trust → everything to Suricata)
+#   C2 prerouting sets a mark on every connection (everything trusted); C3 = C2 + L2
+#   C4 = C3 + a rule clearing the trust bit on pure SYN (before L2, as in wnc-gw); C5 = C3 + K identical rules (amplified, to get the per-rule cost)
+#   netns rebuilt each time (conntrack table starts empty); Suricata runs NFQ directly (full, same forced settings as wnc-gw), pinned to CPU 2,3; tcpreplay pinned to CPU 1
+#   tcpreplay uses -T nano: the default gtod busy-waits and saturates CPU 1, hiding the kernel's forwarding cost on CPU 1
+#   CPU from per-CPU rq_cpu_time in /proc/schedstat (ns, exact at context switch); /proc/stat is tick-sampled and misses work that wakes for a dozen µs and sleeps again
+#   kernel lacks IRQ_TIME_ACCOUNTING, so forwarding and NFQ softirq time is counted in tcpreplay's or Suricata's run time
+#   cpu_us_per_pkt = increase of rq_cpu_time over all CPUs ÷ packets through forward; suricata_us_per_pkt counts only the Suricata process
+# Prerequisites: pi_lab_mode.sh up 1000, system suricata service stopped, sh make_configs.sh
+# Usage: sudo nohup bash -c 'for r in 1 2; do ROUND=$r bash trust_cost.sh; done' > /home/wnc/ids_inline/trust.log 2>&1 < /dev/null &
 cd "$(dirname "$0")" || exit 1
 TAG=${TAG:-trust1}; ROUND=${ROUND:-1}; RATE=${RATE:-10000}; RULESET=${RULESET:-full}
 OUT=${OUT:-/home/wnc/ids_inline/results}; M=${M:-/tmp/wncgw/m}; PCAPS=/home/wnc/ids_throughput/data/pcaps

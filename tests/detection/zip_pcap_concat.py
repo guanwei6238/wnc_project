@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""把 zip 裡切成很多段的 classic pcap（CIC-DDoS2019 每段 200 MB）依編號串成一個 pcap，不先解壓到磁碟。
+"""Concatenate a classic pcap split into many pieces inside zips (200 MB each for CIC-DDoS2019) into one pcap in order, without extracting to disk first.
 
-CIC-DDoS2019 的檔名是 SAT-03-11-2018_0、_01、_02 … _0145：依底線後的數字排序（可以跨多個 zip）。
-只搬動 packet 記錄，不解析內容；第二段之後的 24 bytes 檔頭跳過（檢查 linktype 與時間精度相同）。
-每段的第一個 packet 時間若早於上一段的最後一個，印出警告（代表段落順序或錄製有問題）。
---every N：每 N 段只取 1 段（第 0、N、2N… 段），用來對很大的一天做時間抽樣；
---windows：輸出每個取用段落的 [第一個, 最後一個 packet 時間]，之後用來只留完整落在這些時段內的 flow。
-用法: python3 -I zip_pcap_concat.py [--every N] [--windows 時段.tsv] <輸出.pcap> <zip>...
+CIC-DDoS2019 file names are SAT-03-11-2018_0, _01, _02 ... _0145: sorted by the number after the underscore (may span several zips).
+Only packet records are copied, not parsed; the 24-byte header of every piece after the first is skipped (after checking linktype and time precision match).
+Prints a warning if a piece's first packet is earlier than the previous piece's last (meaning the piece order or the capture is off).
+--every N: take only 1 of every N pieces (pieces 0, N, 2N...), for time-sampling a very large day;
+--windows: write [first, last packet time] of each piece used, later used to keep only flows fully inside those windows.
+Usage: python3 -I zip_pcap_concat.py [--every N] [--windows windows.tsv] <out.pcap> <zip>...
 """
 import argparse
 import re

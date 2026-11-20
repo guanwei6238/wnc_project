@@ -1,10 +1,10 @@
 #!/usr/bin/env python3 -I
-"""統計規則快照：每個 category(檔名) 有幾條「啟用」與「被註解停用」的規則。
+"""Count rules in the snapshot: for each category (file name), how many are enabled and how many are commented out.
 
-用法: python3 -I 01_snapshot_stats.py <rules 目錄> <輸出 tsv>
+Usage: python3 -I 01_snapshot_stats.py <rules dir> <output tsv>
 
-為什麼這樣判斷：ET 的規則一條一行。啟用的規則以動作(alert/drop/...)開頭；
-停用的規則是整行前面加 '#'，後面接同樣的動作。其餘 '#' 開頭的是純註解，不算規則。
+Why this test: ET rules are one per line. Enabled rules start with an action (alert/drop/...);
+disabled rules are the same line prefixed with '#'. Other lines starting with '#' are plain comments, not rules.
 """
 import re, sys, glob, os
 

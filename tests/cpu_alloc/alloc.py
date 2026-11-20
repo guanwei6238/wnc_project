@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
-"""alloc.py — CPU 分配實驗的計算與彙整
+"""alloc.py — computation and summaries for the CPU allocation experiments
 
-用法:
-  python3 alloc.py diff "<snap0>" "<snap1>" <tcpreplay 輸出檔|-> [k=v ...]   兩次 snap 相減，印一行結果（k=v 原樣放在前面）
-  python3 alloc.py cap <kvl> [篩選 k=v ...]                                  實驗 1：每個（workload, placement, round）的容量與同速率的 CPU
-  python3 alloc.py ai <kvl>                                                  實驗 2：每個（strategy, ai, round）的丟包、µs／封包、AI 吞吐
-  python3 alloc.py modes <kvl>                                               exp4：routed 對 bridge
-  python3 alloc.py copies <kvl>                                              exp5–8：ids 複製多份（exp5 的 K2h、exp6 的 K0g3／K2g3 不算，用 exp7、exp8 重跑的）
-  python3 alloc.py trust <kvl> [速率 kpps ...]                               exp13：U／C／T 的容量與同速率的 µs／封包（預設 20 50 80 kpps，兩輪平均）
-  python3 alloc.py trust14 <kvl> [速率 kpps ...]                             exp14：K（ctmark）／T（tc）／O（加選項前的 tc）的容量與同速率的 µs／封包、T−K、T−O（預設 50 120）
-  python3 alloc.py trust15 <kvl> [速率 kpps ...]                             exp15：T（不掛特徵程式）對 Fe（tc-egress）／Fi（tc-ingress）／Fx（xdp generic）的容量與 µs／封包差（預設 50 120）
+Usage:
+  python3 alloc.py diff "<snap0>" "<snap1>" <tcpreplay output file|-> [k=v ...]   subtract two snaps, print one result line (k=v placed in front as is)
+  python3 alloc.py cap <kvl> [filter k=v ...]                                  exp 1: capacity and same-rate CPU per (workload, placement, round)
+  python3 alloc.py ai <kvl>                                                  exp 2: packet loss, µs/packet, AI throughput per (strategy, ai, round)
+  python3 alloc.py modes <kvl>                                               exp4: routed vs bridge
+  python3 alloc.py copies <kvl>                                              exp5–8: multiple ids copies (exp5's K2h and exp6's K0g3/K2g3 excluded; uses the exp7, exp8 reruns)
+  python3 alloc.py trust <kvl> [rate kpps ...]                               exp13: U/C/T capacity and same-rate µs/packet (default 20 50 80 kpps, mean of two rounds)
+  python3 alloc.py trust14 <kvl> [rate kpps ...]                             exp14: K (ctmark)/T (tc)/O (tc before the option was added) capacity and same-rate µs/packet, T−K, T−O (default 50 120)
+  python3 alloc.py trust15 <kvl> [rate kpps ...]                             exp15: T (no feature program) vs Fe (tc-egress)/Fi (tc-ingress)/Fx (xdp generic) capacity and µs/packet difference (default 50 120)
 
-忙碌時間＝經過時間 − idle − iowait（USER_HZ = 100）。
-cap_loss＝處理不過來而丟：nfq queue 滿 + qdisc 丟（含 eth1 tx 丟）+ max(沒收到 + softnet backlog 丟, 網卡 miss + rx_dropped)。
-網卡的 rx_dropped 已含 backlog 丟的，miss 的封包也不在 rx_packets 裡，所以兩邊取大的。loss_pct 是端到端（送出 − 轉送出去）。
-容量＝cap_loss ≤ 0.1% 的最高實際速率（tcpreplay 的 Rated pps）。
-ids（NFLOG）另外算 copy_loss＝Suricata 的 NFLOG socket 丟掉的複本 ÷ log 規則送出的複本；檢查容量＝copy_loss ≤ 0.1% 的最高實際速率。
-額外複本（COPIES）另外算 xcopy_loss＝讀取端丟掉的複本 ÷ 送出的額外複本；讀取端容量＝xcopy_loss ≤ 0.1% 的最高實際速率。
+Busy time = elapsed − idle − iowait (USER_HZ = 100).
+cap_loss = drops from not keeping up: nfq queue full + qdisc drops (incl. eth1 tx drops) + max(not received + softnet backlog drops, NIC miss + rx_dropped).
+The NIC's rx_dropped already includes backlog drops, and missed packets are not in rx_packets either, so take the larger of the two. loss_pct is end to end (sent − forwarded).
+Capacity = highest actual rate (tcpreplay's Rated pps) with cap_loss ≤ 0.1%.
+ids (NFLOG) also gets copy_loss = copies dropped by Suricata's NFLOG socket ÷ copies sent by the log rule; inspection capacity = highest actual rate with copy_loss ≤ 0.1%.
+Extra copies (COPIES) also get xcopy_loss = copies dropped by readers ÷ extra copies sent; reader capacity = highest actual rate with xcopy_loss ≤ 0.1%.
 """
 import re
 import sys
@@ -60,7 +60,7 @@ def diff(s0, s1, tr, meta):
     out.update(sent=int(sent), actual_pps=f"{actual:.0f}", pi_in=int(pi_in), pi_out=int(pi_out),
                nfq_drop=int(nfq), nic_drop=int(nic), softnet_drop=int(snd), qdisc_drop=int(qd), short=int(short))
     if sent:
-        # 網卡的 rx_dropped 含 kernel backlog 丟的（= softnet dropped），沒收到的（miss）又會反映在 short，所以取大的那邊，不重複算
+        # the NIC's rx_dropped includes kernel backlog drops (= softnet dropped), and misses also show up in short, so take the larger side instead of counting twice
         out["cap_loss_pct"] = f"{100 * (nfq + qd + max(short + snd, nic)) / sent:.3f}"
         out["loss_pct"] = f"{100 * (sent - (pi_out - d('qd_eth1') - d('txdrop_eth1'))) / sent:.3f}"
     copies = d("nfl_log")
@@ -69,12 +69,12 @@ def diff(s0, s1, tr, meta):
     xcopies = d("nfl_xlog")
     readers = int(num(b, "fo_readers"))
     if xcopies and readers:
-        # user space 分發（planb_pi.sh FANOUT）：kernel 一份，再分給 N 個讀取端；kernel 丟的算 N 份，加上環狀緩衝滿丟的
+        # user-space distribution (planb_pi.sh FANOUT): one kernel copy split to N readers; kernel drops count N times, plus drops from a full ring buffer
         eff, drop = xcopies * readers, d("nfl_xdrop") * readers + d("fo_drop")
         out.update(xcopies=int(eff), xcopy_drop=int(drop), xcopy_loss_pct=f"{100 * drop / eff:.3f}",
                    fo_in=int(d("fo_in")), fo_drop=int(d("fo_drop")), fo_kernel_drop=int(d("nfl_xdrop")))
     elif xcopies:
-        # 額外複本（planb_pi.sh COPIES）：每個封包 N 份，丟失率用全部讀取端合計
+        # extra copies (planb_pi.sh COPIES): N copies per packet, loss rate summed over all readers
         out.update(xcopies=int(xcopies), xcopy_drop=int(d("nfl_xdrop")), xcopy_loss_pct=f"{100 * d('nfl_xdrop') / xcopies:.3f}")
     busy = []
     for c in CPUS:
@@ -141,7 +141,7 @@ def cap(path, filt):
 
 
 def capacity(rs, key):
-    """第一次 key（cap_loss_pct、copy_loss_pct、xcopy_loss_pct）> 0.1% 之前的最後一個實際速率（kpps 字串；↑ 表示掃到最後都沒超過）"""
+    """last actual rate before key (cap_loss_pct, copy_loss_pct, xcopy_loss_pct) first exceeds 0.1% (kpps string; ↑ means never exceeded through the end of the sweep)"""
     if not any(key in r for r in rs):
         return "-"
     last = None
@@ -158,7 +158,7 @@ def at(rs, pps, k):
 
 
 def summary(path, exps, keys, ref, skip=lambda r: False):
-    """exp4（routed 對 bridge）、exp5／exp6（多份複本）：每組的轉送、Suricata、讀取端容量，和參考速率下的 µs/封包"""
+    """exp4 (routed vs bridge), exp5/exp6 (multiple copies): forwarding, Suricata and reader capacity per group, and µs/packet at the reference rate"""
     groups = defaultdict(list)
     for r in read(path, {}):
         if r.get("exp") in exps and not skip(r):
@@ -174,7 +174,7 @@ def summary(path, exps, keys, ref, skip=lambda r: False):
               f"{at(rs, pps, 'reader_us_per_pkt')} |")
 
 
-# routed 的 <切片>.gw.rt.pcap 裡目的 MAC 是多播的幀數（tcprewrite 保留多播位元，routed 的網卡不收，算在 short；.fp 沒有）
+# frames in routed <slice>.gw.rt.pcap with a multicast destination MAC (tcprewrite keeps the multicast bit; routed NICs don't accept them, counted in short; .fp has none)
 ROUTED_MULTICAST = {"S_m60": 0, "S_h5": 40, "C17_Benign": 377, "C17_FTP-Patator": 52, "D12_Benign": 2965,
                     "I23_Benign_Final": 3120, "I23_DNS_Spoofing": 2304}
 

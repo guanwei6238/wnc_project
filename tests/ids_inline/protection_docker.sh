@@ -1,23 +1,23 @@
 #!/bin/bash
-# wnc-gw 的 ids／ips 模式（Docker testbed，routed，wnc-gw run）
-#   ids1     預設（ids、group 10）：ids chain 是 log group 10 accept、Suricata 帶 --nflog；ICMP 和 TCP payload（1300 bytes 之後的標記）都 alert
-#   trust    ids：TCP 連線傳輸中 wnc-gw trust add，ids chain 的計數停住；trust del 後恢復
-#   kill     ids：持續 ping 時 SIGKILL Suricata；WHEN=accept 不掉，WHEN=drop 重啟期間掉；log 記沒檢查的時段
-#   groups   group = "10-11"：ids chain 是 symhash vmap、ids_g10／ids_g11 各一條 log；8 條連線 8 個 alert
-#   ips      protection = "ips"：ids chain 是 queue、Suricata 帶 -q（和原本一樣）
-#   startup  ids：ping -f 持續送時啟動、停止 wnc-gw 10 次，Suricata 不能當（log 規則要等 READY=1 才裝）
-#   missed   ids：UDP 送的同時 SIGSTOP Suricata 3 秒，轉送照常、複本被丟；wnc-gw 的 WARN 數字要等於 kernel 的 Drops
-#   runmode  ids、ips 各一個和多個 queue／group：Suricata 只有 W 執行緒（workers）、ICMP 有 alert；AUTOFP=1 時 yaml 明寫 runmode: autofp
-#   alerts   wnc-gw 讀 Suricata 的 eve.json：每筆 alert 有 debug log、停止時有摘要；
-#            eve.json 被換掉（mv 之後對 Suricata 送 SIGHUP 重開）、被截斷後都接著讀
-#   autotrust 自動信任（[trust] auto，5 個封包、2 秒、ttl 10 秒）：乾淨的長連線被信任、ids chain 計數停住、到期後再信任；
-#            帶 payload 標記（有 alert）的連線不被信任；已信任的連線結束時 FIN 觸發 alert，信任被撤銷。PROTECTION=ips 換模式
-# 用法: bash protection_docker.sh <ids1|trust|kill|groups|ips|startup|missed|runmode|alerts|autotrust>；最後 bash protection_docker.sh clean
+# wnc-gw ids/ips modes (Docker testbed, routed, wnc-gw run)
+#   ids1     default (ids, group 10): ids chain is log group 10 accept, Suricata runs with --nflog; ICMP and TCP payload (marker after 1300 bytes) both alert
+#   trust    ids: wnc-gw trust add during a TCP transfer stops the ids chain counter; it resumes after trust del
+#   kill     ids: SIGKILL Suricata during continuous ping; WHEN=accept loses nothing, WHEN=drop drops during restart; the unchecked period is logged
+#   groups   group = "10-11": ids chain is a symhash vmap, one log rule each in ids_g10/ids_g11; 8 connections, 8 alerts
+#   ips      protection = "ips": ids chain is queue, Suricata runs with -q (as before)
+#   startup  ids: start and stop wnc-gw 10 times under ping -f; Suricata must not crash (log rules are installed only after READY=1)
+#   missed   ids: SIGSTOP Suricata for 3 s while sending UDP; forwarding continues, copies are dropped; wnc-gw's WARN count must equal the kernel's Drops
+#   runmode  ids and ips with one and multiple queues/groups: Suricata has only W threads (workers), ICMP alerts; with AUTOFP=1 the yaml sets runmode: autofp explicitly
+#   alerts   wnc-gw reads Suricata's eve.json: a debug log per alert, a summary on stop;
+#            keeps reading after eve.json is replaced (mv, then SIGHUP to Suricata to reopen) or truncated
+#   autotrust auto trust ([trust] auto, 5 packets, 2 s, ttl 10 s): a clean long connection gets trusted, ids chain counter stops, re-trusted after expiry;
+#            a connection with the payload marker (alerting) is not trusted; when a trusted connection ends, FIN triggers an alert and trust is revoked. PROTECTION=ips switches mode
+# Usage: bash protection_docker.sh <ids1|trust|kill|groups|ips|startup|missed|runmode|alerts|autotrust>; finally bash protection_docker.sh clean
 G="docker exec wnc-gw"; GI="docker exec -i wnc-gw"; C="docker exec wnc-cli"; S="docker exec wnc-srv"
 D=/tmp/wt; SLOG=/var/log/wnc-gw/suricata
-P=$((20000 + RANDOM % 20000))   # 來源 port 每次不同，避免撞到上一次的 TIME_WAIT
+P=$((20000 + RANDOM % 20000))   # different source port each run to avoid the previous run's TIME_WAIT
 
-setup() {  # $1 = 最上層多的設定行，$2 = [suricata] 多的設定行，$3 = 多的規則
+setup() {  # $1 = extra top-level config lines, $2 = extra [suricata] lines, $3 = extra rules
   $G mkdir -p $D
   $GI sh -c "cat > $D/test.rules" <<EOF
 alert icmp any any -> any any (msg:"wt icmp"; sid:1000201; rev:1;)
@@ -73,7 +73,7 @@ while True:
     threading.Thread(target=drain, args=(s.accept()[0],), daemon=True).start()
 "; sleep 0.5; }
 
-client() {  # $1 = 來源 port，$2 = 秒數；第一段是 1300 bytes 再接標記，之後每 0.1 秒一行
+client() {  # $1 = source port, $2 = seconds; first chunk is 1300 bytes then the marker, then a line every 0.1 s
   $C python3 -c "
 import socket, time
 c = socket.create_connection(('10.0.2.2', 5001), source_address=('10.0.1.2', $1))
@@ -84,7 +84,7 @@ while time.time() < end:
 c.close()"
 }
 
-clean_client() {  # $1 = 來源 port，$2 = 秒數：每 0.1 秒一行，沒有 payload 標記
+clean_client() {  # $1 = source port, $2 = seconds: a line every 0.1 s, no payload marker
   $C python3 -c "
 import socket, time
 c = socket.create_connection(('10.0.2.2', 5001), source_address=('10.0.1.2', $1))

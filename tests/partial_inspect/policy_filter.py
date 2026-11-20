@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
-"""policy_filter.py — 實驗 4：讀一次 pcap，同時寫出各種「送給 Suricata 的子集」（ids 語意：Suricata 只拿到複本）
+"""policy_filter.py — exp 4: read a pcap once and write every "subset sent to Suricata" at the same time (ids semantics: Suricata only gets copies)
 
-用法: python3 -I policy_filter.py <in.pcap> <輸出目錄> <t0> <t1>
-  只處理時間在 [t0, t1] 的封包（epoch 秒）。輸出 <policy>.pcap 和 kept.tsv（每個策略留下的封包數、bytes）。
-共同規則：非 TCP/UDP 的封包（ICMP、ARP…）一律留；TCP 的 SYN／FIN／RST 一律留（對應 L2：控制封包一定檢查）。
-flow：雙向五元組；TCP 閒置 > 300 秒或在 FIN/RST 之後看到純 SYN 就算新 flow，UDP 閒置 > 120 秒算新 flow。
-策略（k = 觀察期封包數 20、N = 2000 bytes、W = 10 秒、a = 10%）：
-  full            全部（時間切片本身，當基準）
-  first20         每條 flow 前 20 個封包，之後只留控制封包（＝信任後完全不看）
-  cut4k           每條 flow 每個方向前 4096 bytes payload（Time Machine／Kučera 式 cutoff）；純 ACK 在它確認的那個方向還沒截斷前留
-  dpa_ack10       DPA：每次傳輸方向改變後的前 N bytes；純 ACK 每 10 個留 1 個（讓 Suricata 的 ACK／視窗跟上）
-  dpa_noack       DPA，純 ACK 都不留
-  obs20_dpa_ack10 前 20 個封包全留，之後 DPA + 每 10 個純 ACK 留 1 個（候選設計）
-  obs20_win_s{1,2,3}   前 20 個封包全留，之後以 W 秒為一格，每格以機率 a 整格全留（稽核窗），其餘只留控制封包 + 每 10 個純 ACK 留 1 個
-  pkt_s{1,2,3}    每個封包以機率 a 留（控制封包一律留）
-  obs20_flow_s{1,2,3}  前 20 個封包全留，之後以機率 a 挑整條 flow 全留，其餘只留控制封包
-  flow_s{1,2,3}   以機率 a 挑整條 flow 全留，其餘只留控制封包（不含觀察期，對照 XNET 的 random flow）
-環境變數 EXTRA=1 時另外寫（實驗 5 加的，抵抗「先塞資料再攻擊」的規避）：
-  hpa_ack10       HPA：client→server 照 HTTP 的 Content-Length 切訊息，每個訊息前 N bytes；server→client 用 DPA；純 ACK 每 10 個留 1 個
-  dpa_win_s{1,2,3}  DPA + 每 10 個純 ACK 留 1 個 + 以機率 a 整格（W 秒）全留
-  dpa_rn_s{1,2,3}   DPA，但每條 flow 的 N 隨機取 1,000–16,000 bytes
-隨機用 crc32（種子、flow、格子或封包序號）決定，結果可重現。
+Usage: python3 -I policy_filter.py <in.pcap> <output dir> <t0> <t1>
+  Only packets with time in [t0, t1] (epoch seconds). Writes <policy>.pcap and kept.tsv (packets and bytes kept per policy).
+Common rules: non-TCP/UDP packets (ICMP, ARP...) are always kept; TCP SYN/FIN/RST always kept (maps to L2: control packets are always inspected).
+flow: bidirectional 5-tuple; TCP idle > 300 s or a bare SYN after FIN/RST starts a new flow, UDP idle > 120 s starts a new flow.
+Policies (k = observation packets 20, N = 2000 bytes, W = 10 s, a = 10%):
+  full            everything (the time slice itself, baseline)
+  first20         first 20 packets of each flow, then only control packets (= no inspection at all after trust)
+  cut4k           first 4096 bytes of payload per flow per direction (Time Machine/Kučera style cutoff); pure ACKs kept until the direction they ack is cut off
+  dpa_ack10       DPA: first N bytes after each change of direction; keep 1 in 10 pure ACKs (keeps Suricata's ACK/window in sync)
+  dpa_noack       DPA, no pure ACKs kept
+  obs20_dpa_ack10 keep all of the first 20 packets, then DPA + 1 in 10 pure ACKs (candidate design)
+  obs20_win_s{1,2,3}   keep all of the first 20 packets, then in W-second cells keep each whole cell with probability a (audit window); otherwise only control packets + 1 in 10 pure ACKs
+  pkt_s{1,2,3}    keep each packet with probability a (control packets always kept)
+  obs20_flow_s{1,2,3}  keep all of the first 20 packets, then keep whole flows picked with probability a; otherwise only control packets
+  flow_s{1,2,3}   keep whole flows picked with probability a; otherwise only control packets (no observation period; compare XNET's random flow)
+With env var EXTRA=1, also write (added in exp 5, against "pad with data, then attack" evasion):
+  hpa_ack10       HPA: split client→server into messages by HTTP Content-Length, first N bytes of each; DPA for server→client; keep 1 in 10 pure ACKs
+  dpa_win_s{1,2,3}  DPA + 1 in 10 pure ACKs + whole cells (W seconds) kept with probability a
+  dpa_rn_s{1,2,3}   DPA, but each flow's N is random in 1,000–16,000 bytes
+Randomness comes from crc32 (seed, flow, cell or packet index), so results are reproducible.
 """
 import os
 import struct
@@ -60,7 +60,7 @@ class Flow:
 
 
 def hpa(fl, pay):
-    """client→server 的 HTTP/1.x：照 Content-Length 切出訊息，封包裡有任何 byte 落在某個訊息的前 N bytes 就留"""
+    """client→server HTTP/1.x: split messages by Content-Length; keep a packet if any byte falls in the first N bytes of some message"""
     keep = False
     i = 0
     while i < len(pay):
@@ -101,7 +101,7 @@ def hpa(fl, pay):
 
 
 def parse(b, linktype):
-    """回傳 (proto, src, sport, dst, dport, flags, plen)；不是 TCP/UDP 時回傳 None"""
+    """returns (proto, src, sport, dst, dport, flags, plen); None if not TCP/UDP"""
     off = 0
     if linktype == 1:
         if len(b) < 14:
@@ -202,7 +202,7 @@ def main():
             ctrl = proto == 6 and flags & 0x07
             pure_ack = proto == 6 and plen == 0 and not ctrl
             obs = fl.n <= K
-            # DPA 狀態（每條 flow 一份，所有 DPA 策略共用）
+            # DPA state (one per flow, shared by all DPA policies)
             dpa_keep = False
             ack_keep = False
             seg0 = 0

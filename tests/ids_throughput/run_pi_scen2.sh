@@ -1,23 +1,23 @@
 #!/bin/bash
-# run_pi_scen2.sh — 在 Pi 上跑 14 個 IoT-23 scenario 切片 × empty／full／gw_corp × 兩個 engine，全部在同一次開機內完成，每格 1 暖機 + 3 次。
-# 在解壓後的 ids_throughput/ 目錄執行。
+# run_pi_scen2.sh - on the Pi, run 14 IoT-23 scenario slices x empty/full/gw_corp x two engines, all within one boot, 1 warm-up + 3 runs per cell.
+# Run from the unpacked ids_throughput/ dir.
 #
-# 設計：
-#   - empty、full、gw_corp 全部在同一次開機內量，條件一致
-#   - 同一個 engine 的 full 與 gw_corp 放在同一批交錯執行（run_matrix.py 每一輪打亂順序）
-#   - 前後各跑一次錨點，確認這次開機的 Pi 狀態、看整段期間有沒有漂移
+# Design:
+#   - empty, full and gw_corp are all measured in the same boot, same conditions
+#   - full and gw_corp for the same engine are interleaved in one batch (run_matrix.py shuffles the order each round)
+#   - an anchor run at the start and end checks the Pi's state for this boot and any drift over the whole run
 #
-# 批次（tag 前綴 pi_scen2_）：
-#   anchor0  錨點：C_somfy02 × full × 兩引擎
-#   E        empty：14 切片（含 .small，Suricata 差分法用）× 兩引擎
-#   S        Suricata：full／gw_corp × 14 切片
-#   N        Snort 3：full／gw_corp × 14 切片（full 的 9 個 scan／flood 切片每次 4–9 分鐘，這批約 5 小時）
-#   anchor1  錨點：同 anchor0，放在最後
+# Batches (tag prefix pi_scen2_):
+#   anchor0  anchor: C_somfy02 x full x both engines
+#   E        empty: 14 slices (including .small, for the Suricata difference method) x both engines
+#   S        Suricata: full/gw_corp x 14 slices
+#   N        Snort 3: full/gw_corp x 14 slices (full on the 9 scan/flood slices takes 4-9 min per run; this batch is about 5 hours)
+#   anchor1  anchor: same as anchor0, run last
 #
-# 用法： nohup bash run_pi_scen2.sh > ~/pi_scen2_driver.log 2>&1 < /dev/null &
-# 前置：量測模式（pi_lab_mode.sh up 1000）、時鐘已校正、系統 suricata 服務已停、
-#       data/pcaps 內有 S_*.pcap（含 .small）與 C_somfy02.pcap、data/rules 內有 *_full.rules 與 *_gw_corp.rules。
-# 結果：results/pi_scen2_*.csv（每次量測一行）、*.env.json、*.summary.csv。最後一行 log 是 "ALL DONE"。
+# Usage: nohup bash run_pi_scen2.sh > ~/pi_scen2_driver.log 2>&1 < /dev/null &
+# Prerequisites: lab mode (pi_lab_mode.sh up 1000), clock synced, system suricata service stopped,
+#       data/pcaps has S_*.pcap (with .small) and C_somfy02.pcap, data/rules has *_full.rules and *_gw_corp.rules.
+# Results: results/pi_scen2_*.csv (one row per run), *.env.json, *.summary.csv. The last log line is "ALL DONE".
 
 cd "$(dirname "$0")" || exit 1
 export BIG=$PWD/data SNORT_ETC=${SNORT_ETC:-/etc/snort} MODE=native

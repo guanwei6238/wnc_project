@@ -1,11 +1,11 @@
 #!/bin/bash
-# IoT-23 其餘的 scenario（11 個 usable 以外）：12 個有 label 的 + Somfy-02～06（沒有 label，只跑 Suricata、只能數 alert）。
-# 1. 從 NAS 的原始壓縮檔一次取出需要的 pcap 與 conn.log.labeled（tar 只讀一遍）
-# 2. Suricata 8.0.7（full），設定同 run_iot23.sh
-# 3. alert 對 label（match_iot23.py；flow 多或 alert 多的分批）
-# 這些 scenario 的對齊有已知問題（../iot23/report.md 第 2 節）：alert 對 flow 只看 5-tuple 與時間、不看 packet 數，
-# 所以 34-1、60-1（packet 數對不上）仍對得到；52-1、49-1 的 label 只涵蓋 pcap 前段，之後的 alert 會算成 unmatched。
-# 用法: run_iot23_rest.sh [Suricata 平行數，預設 3]
+# The remaining IoT-23 scenarios (beyond the 11 usable): 12 with labels + Somfy-02~06 (no labels; Suricata only, can only count alerts).
+# 1. Extract the needed pcaps and conn.log.labeled from the original archive on the NAS in one go (tar reads it once)
+# 2. Suricata 8.0.7 (full), same settings as run_iot23.sh
+# 3. Match alerts to labels (match_iot23.py; sharded when there are many flows or alerts)
+# These scenarios have known alignment issues (../iot23/report.md section 2): alert-to-flow matching uses only 5-tuple and time, not packet counts,
+# so 34-1 and 60-1 (packet counts don't match) still match; labels for 52-1 and 49-1 only cover the start of the pcap, so later alerts count as unmatched.
+# Usage: run_iot23_rest.sh [Suricata parallelism, default 3]
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 TGZ=/mnt/nas/wnc_data/iot_23_datasets_full.tar.gz
@@ -13,7 +13,7 @@ X=/home/sixsquare/datasets/iot23/extracted/run1
 BIG=$X/opt/Malware-Project/BigDataset/IoTScenarios
 R=/home/sixsquare/datasets/detection
 export HERE BIG R
-# id | 資料夾（相對 IoTScenarios） | pcap | 有沒有 label
+# id | folder (relative to IoTScenarios) | pcap | has label
 LIST=$(python3 -I - "$HERE/../iot23/results" <<'P'
 import glob, json, os, sys
 usable = {'1-1', '7-1', '9-1', '17-1', '33-1', '35-1', '36-1', '39-1', '42-1', '43-1', '48-1'}
@@ -30,7 +30,7 @@ P
 )
 echo "$LIST" > "$R/iot23_rest.list"
 
-# 1. 取出（已經取過的跳過）
+# 1. Extract (skip those already extracted)
 if [ ! -f "$X/.rest_extracted" ]; then
     mkdir -p "$X"
     pats=()
@@ -61,7 +61,7 @@ export -f sur
 echo "$LIST" | xargs -d '\n' -P "${1:-3}" -I{} bash -c 'sur "{}"'
 echo "suricata done $(date +%T)"
 
-# 3. alert 對 label（一次一個，避免記憶體疊加）
+# 3. Match alerts to labels (one at a time, so memory use doesn't stack)
 mkdir -p "$R/match"
 while IFS='|' read -r sid folder pcap lab; do
     [ "$lab" = yes ] || continue

@@ -1,15 +1,15 @@
 #!/usr/bin/env python3 -I
-"""從 Snort 3 的載入 log 找出「被拒絕的規則行」，把它們從規則檔移除，寫出新規則檔。
-用法: python3 -I 16b_drop_bad_rules.py <輸入規則檔> <snort out.log> <輸出規則檔> <removed.tsv(附加寫入)> <round>
-為什麼要這樣做：Snort 3 只要有一條規則出錯，載入結束時就 FATAL，沒辦法直接知道「剩下的規則能不能載入」。
-所以要「移除壞規則 -> 重載」迭代到沒有 ERROR 為止，並把每一輪移除了哪些 sid、為什麼記下來。
-log 格式(已實測)： "ERROR: <檔>:<行號> <原因>"；同一條規則可能有多個 ERROR。
-結束碼： 0 = 這輪沒有任何 ERROR(不必再迭代)；1 = 有移除規則(要再跑下一輪)；2 = 有 ERROR 但無法對回行號(人工檢查)。
+"""Find the rejected rule lines in the Snort 3 load log, remove them from the rules file, and write a new rules file.
+Usage: python3 -I 16b_drop_bad_rules.py <input rules file> <snort out.log> <output rules file> <removed.tsv (appended)> <round>
+Why: Snort 3 goes FATAL at the end of loading if any single rule has an error, so there is no direct way to tell whether the remaining rules would load.
+So iterate "remove bad rules -> reload" until there is no ERROR, recording which sids each round removed and why.
+Log format (verified): "ERROR: <file>:<line> <reason>"; one rule may have several ERRORs.
+Exit code: 0 = no ERROR this round (stop iterating); 1 = rules removed (run another round); 2 = ERRORs that cannot be mapped to a line (check by hand).
 """
 import re, sys, collections
 rules_in, log, rules_out, removed_tsv, rnd = sys.argv[1:6]
 RE_SID = re.compile(r"\bsid\s*:\s*(\d+)\s*;")
-errs = collections.defaultdict(list)   # 行號 -> [原因...]
+errs = collections.defaultdict(list)   # line number -> [reasons...]
 unattributed = []
 for l in open(log, errors="replace"):
     if not l.startswith("ERROR:"):

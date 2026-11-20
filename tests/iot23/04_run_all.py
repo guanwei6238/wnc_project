@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""對解壓目錄下的每個場景，各跑一次 align_stream.py，結果存成 results/<場景>.json。
+"""Run align_stream.py once for each scenario under the extract directory, saving results/<scenario>.json.
 
-「場景」= 解壓目錄裡「直接放有 *.pcap 或 bro/ 子資料夾」的資料夾。
-  - 一般場景：CTU-IoT-Malware-Capture-1-1 之類，bro/conn.log.labeled 對應其中一個 pcap
-  - CTU-Honeypot-Capture-7-1 底下還有 Somfy-01 ~ Somfy-06 六個子資料夾，各算一個場景
-一個場景資料夾可能有多個 pcap（例如主 capture 之外還有裁切出來的小檔）。
-本腳本固定拿「最大的那個 pcap」當主 capture 與 conn.log.labeled 對齊
-（再用 conn.log 的時間範圍是否落在該 pcap 時間範圍內，當作合理性檢查，見 report）；
-其餘 pcap 只記錄檔名與大小，不做對齊（報告會標示「沒做」）。
-缺 pcap 或缺 conn.log.labeled 的場景：缺 log 的只數 pcap 封包；缺 pcap 的記錄原因。
+A "scenario" = a folder in the extract directory that directly contains *.pcap or a bro/ subfolder.
+  - regular scenarios: e.g. CTU-IoT-Malware-Capture-1-1, where bro/conn.log.labeled matches one of the pcaps
+  - CTU-Honeypot-Capture-7-1 also has six subfolders Somfy-01 ~ Somfy-06, each counted as a scenario
+A scenario folder may hold several pcaps (e.g. small slices cut out besides the main capture).
+This script always takes the largest pcap as the main capture to align with conn.log.labeled
+(and checks that the conn.log time range falls inside that pcap's time range as a sanity check, see report);
+other pcaps only get their name and size recorded, without alignment (the report marks them "not done").
+Scenarios missing a pcap or conn.log.labeled: without a log, only pcap packets are counted; without a pcap, the reason is recorded.
 
-一次只處理一個場景、一個 pcap（序列執行）。每個子行程都用 nice/ionice，
-並限制位址空間 6 GB（超過會直接 MemoryError，而不是把電腦拖垮）。
-已經有結果檔的場景會跳過，要重跑請先刪掉該 json。
+One scenario, one pcap at a time (sequential). Every subprocess runs under nice/ionice
+with a 6 GB address space limit (exceeding it raises MemoryError instead of dragging the machine down).
+Scenarios that already have a result file are skipped; delete the json to rerun.
 
-用法：python3 -I 04_run_all.py <解壓目錄> <results 目錄> [--max-flows N] [場景名稱子字串 ...]
+Usage: python3 -I 04_run_all.py <extract dir> <results dir> [--max-flows N] [scenario name substring ...]
 """
 import json
 import os
@@ -33,7 +33,7 @@ def limit_memory():
 
 
 def find_scenarios(root):
-    """回傳 [(顯示名稱, 資料夾)]：直接含有 *.pcap 或 bro/ 的資料夾。"""
+    """Return [(display name, folder)]: folders that directly contain *.pcap or bro/."""
     found = []
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames.sort()
@@ -44,7 +44,7 @@ def find_scenarios(root):
 
 
 def first_pcap_ts(path):
-    """讀 pcap 第一個封包的時間（只讀開頭，不掃整檔）。"""
+    """Read the time of the pcap's first packet (reads only the start, not the whole file)."""
     import struct
     with open(path, 'rb') as f:
         h = f.read(40)
@@ -67,7 +67,7 @@ def main():
         if only and not any(o in name for o in only):
             continue
         out = outdir / (name + '.json')
-        if out.exists():          # 只有成功才會寫 json，所以被中斷的場景下次會自動重跑
+        if out.exists():          # json is written only on success, so interrupted scenarios rerun next time
             print('skip', name, flush=True)
             continue
         pcaps = sorted(sc.glob('*.pcap'), key=lambda p: -p.stat().st_size)

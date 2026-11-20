@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""把 run_all.sh 每個檔案的結果合併，依 dataset（CICIoT2023 另外依攻擊類別）加總。
+"""Merge the per-file results of run_all.sh and sum them by dataset (CICIoT2023 also by attack category).
 
-輸出 <結果目錄>/files.tsv（每個檔案兩列：ctmark、tc）和 summary.tsv（每組兩列），並把 summary 印出來。
-IoT-23 的封包數和 ../iot23/results/*.json 的 pcap_packets 比對，不一致就印 warning。
-用法: python3 -I summarize.py <run_all.sh 的輸出目錄> <結果目錄>
+Writes <results dir>/files.tsv (two rows per file: ctmark, tc) and summary.tsv (two rows per group), and prints the summary.
+IoT-23 packet counts are checked against pcap_packets in ../iot23/results/*.json; prints a warning on mismatch.
+Usage: python3 -I summarize.py <run_all.sh output dir> <results dir>
 """
 import collections
 import glob

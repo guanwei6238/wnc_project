@@ -1,18 +1,18 @@
 #!/bin/bash
-# tls_idle.sh — 信任過的 TLS 長連線（HTTPS keep-alive）回到 Suricata 檢查時，連線會不會斷（自動信任，預設 10 個封包、5 秒、ttl 900）
-#   idle <tc|ctmark> <ids|ips>：忙 20 秒（每 0.2 秒一行，回音）→ 閒置 640 秒 → 忙 330 秒（每秒一行）
-#        tc：閒置 600 秒後被閒置清除，恢復時就送檢查；ctmark：沒有閒置清除，到 ttl（信任後 900 秒）才送檢查。
-#        兩種都是 Suricata 已經忘掉這條 flow（flow-timeouts.tcp.established 600 秒）之後，從中途接手
-#   gap  <tc|ctmark> <ids|ips>：忙 20 秒 → wnc-gw trust del → 再忙 30 秒。Suricata 還記得這條 flow，中間少了信任期間的資料
-#   每 10 秒記一次信任的條數和 ids chain 的 counter；最後讀 Suricata 的 stats.log（ips.*、app_layer.error.tls.*、tcp.midstream_pickups 等）
-#   和 eve.json 裡這條連線的 tls、anomaly、flow 事件；stats 打開 stream-events，stream.* 是每種 stream 事件的次數
-# TARGET=docker（預設，routed testbed：cli 10.0.1.2 — gw — srv 10.0.2.2）或 TARGET=pi（在 Pi 上用 root 跑，
-#   env.sh 的 wgw 加 protection_pi.sh net up 的 fcli 10.9.0.1、fsrv 10.9.0.2，bridge；wnc-gw 的 port 是 x-lan、x-wan，
-#   這兩個 veth 才在連線的路徑上）
-#   WHEN=accept|drop（預設 accept）：[suricata] when_unavailable。ips 時 drop 會讓 wnc-gw 把 Suricata 的 app-layer.error-policy
-#   設成 drop-flow（TLS 解析器報錯就丟掉整條 flow），accept 是 ignore；ids 時一律 ignore
-#   CAPTURE=1：用戶端和伺服器的網卡各抓這條連線的封包（tcpdump -S），結束後列出一邊送出、另一邊沒收到的封包（被 gateway 丟掉的）
-# 用法: bash tls_idle.sh <idle|gap> <tc|ctmark> <ids|ips>   結果一行寫進 $OUT（預設 ./tls_idle.kvl），過程印在 stdout
+# tls_idle.sh — does a trusted long-lived TLS connection (HTTPS keep-alive) break when it goes back to Suricata inspection (auto trust, default 10 packets, 5 s, ttl 900)
+#   idle <tc|ctmark> <ids|ips>: busy 20 s (a line every 0.2 s, echoed) → idle 640 s → busy 330 s (a line per second)
+#        tc: idle-evicted after 600 s, so it goes back to inspection when traffic resumes; ctmark: no idle eviction, inspected again only at ttl (900 s after trust).
+#        Both cases are a midstream pickup after Suricata has already forgotten the flow (flow-timeouts.tcp.established 600 s)
+#   gap  <tc|ctmark> <ids|ips>: busy 20 s → wnc-gw trust del → busy another 30 s. Suricata still remembers the flow but misses the data from the trust period
+#   Every 10 s log the trusted entry count and the ids chain counter; at the end read Suricata's stats.log (ips.*, app_layer.error.tls.*, tcp.midstream_pickups, etc.)
+#   and the tls, anomaly, flow events of this connection in eve.json; stats has stream-events enabled, stream.* are per-stream-event counts
+# TARGET=docker (default, routed testbed: cli 10.0.1.2 — gw — srv 10.0.2.2) or TARGET=pi (run as root on the Pi,
+#   env.sh's wgw plus fcli 10.9.0.1, fsrv 10.9.0.2 from protection_pi.sh net up, bridge; wnc-gw's ports are x-lan, x-wan,
+#   since those two veths are on the connection's path)
+#   WHEN=accept|drop (default accept): [suricata] when_unavailable. With ips, drop makes wnc-gw set Suricata's app-layer.error-policy
+#   to drop-flow (drop the whole flow on a TLS parser error), accept sets ignore; with ids it is always ignore
+#   CAPTURE=1: capture this connection's packets on both the client and server NICs (tcpdump -S), then list packets sent by one side but not received by the other (dropped by the gateway)
+# Usage: bash tls_idle.sh <idle|gap> <tc|ctmark> <ids|ips>   result written as one line to $OUT (default ./tls_idle.kvl), progress printed to stdout
 HERE=$(cd "$(dirname "$0")" && pwd)
 TARGET=${TARGET:-docker}; OUT=${OUT:-$PWD/tls_idle.kvl}
 D=/tmp/tlsidle; SLOG=/var/log/wnc-gw/suricata; PORT=4443; SPORT=$((20000 + RANDOM % 20000))
@@ -22,7 +22,7 @@ case "$case_:$backend:$prot" in idle:tc:i[dp]s|idle:ctmark:i[dp]s|gap:tc:i[dp]s|
 if [ $TARGET = docker ]; then
   G="docker exec wnc-gw"; C="docker exec wnc-cli"; S="docker exec wnc-srv"; B=/opt/sg/wnc-gw; CIF=eth0; SIF=eth0
   SIP=10.0.2.2; CIP=10.0.1.2; MODE=routed; LAN=02:00:00:00:01:01; WAN=02:00:00:00:02:01
-  put() { docker exec -i $1 sh -c "mkdir -p $(dirname $3); cat > $3" < $2; }   # put <容器> <檔案> <路徑>
+  put() { docker exec -i $1 sh -c "mkdir -p $(dirname $3); cat > $3" < $2; }   # put <container> <file> <path>
   gw_bg() { docker exec -d wnc-gw sh -c "$1"; }
   srv_bg() { docker exec -d wnc-srv sh -c "$1"; }
   WGW=wnc-gw; WCLI=wnc-cli; WSRV=wnc-srv
@@ -86,7 +86,7 @@ for line in sys.stdin:
     elif kind in ("drop", "alert"):
         print("   eve", kind, e["timestamp"][11:19], json.dumps(e.get(kind, {}))[:160])'
 }
-timeline() {  # 背景：每 10 秒一行「秒數 信任條數 ids chain counter」，直到 client 結束
+timeline() {  # background: one line every 10 s "seconds trusted-count ids-chain-counter" until the client exits
   local t0=$(date +%s)
   while ! $C test -e $D/client.done; do
     echo "$(( $(date +%s) - t0 )) $(trusted) $(ids_count)" >> $D/timeline.local; sleep 10
@@ -101,7 +101,7 @@ idle) phases="20:0.2 640:0 330:1" ;;
 gap) phases="20:0.2 mark:$D/mark 30:0.2" ;;
 esac
 if [ "${CAPTURE:-0}" = 1 ]; then
-  # 兩端都不合併、不切段，兩邊抓到的封包才能一筆對一筆比
+  # neither side coalesces or splits segments, so packets captured on both sides can be matched one to one
   $C ethtool -K $CIF tso off gso off gro off 2> /dev/null; $S ethtool -K $SIF tso off gso off gro off 2> /dev/null
   $C sh -c "rm -f $D/cap-c.pcap; tcpdump -S -U -i $CIF -w $D/cap-c.pcap tcp port $PORT and port $SPORT > /dev/null 2>&1 &"
   $S sh -c "rm -f $D/cap-s.pcap; tcpdump -S -U -i $SIF -w $D/cap-s.pcap tcp port $PORT and port $SPORT > /dev/null 2>&1 &"

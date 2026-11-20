@@ -1,13 +1,13 @@
 #!/bin/bash
-# 3c：synreuse_docker.sh 的 Pi 版（bridge）：被信任的舊連線無聲消失後，同一組五元組的新連線會不會沿用信任
-#   fcli(10.9.0.1) --veth-- x-lan [wgw: br0] x-wan --veth-- fsrv(10.9.0.2)；wnc-gw run，Suricata 的 tcp established 逾時改成 5 秒
-#   fcli 從 port 40100 連 fsrv:5001、送 15 行，第 1.5 秒 wnc-gw trust add；接著 wgw 裡另一張 table 在 prerouting（-350，conntrack 之前）
-#   丟掉 FIN/RST，兩端用 SO_LINGER 0 中斷，再從同一個 port 重連、送 10 行
-#   clear：等 15 秒（Suricata 的 flow 逾時）再重連，預期 SYN 清掉信任 bit，新連線全部進 Suricata
-#   noclear：同上但把「純 SYN 清 bit」的規則刪掉，預期新連線沿用信任
-#   early：不等就重連，預期 Suricata 把新的 SYN 當成 stream error 丟掉，連不上
-# 前置：sudo sh env.sh up；sh make_configs.sh；系統的 suricata 服務已停；wnc-gw 放在 $GW
-# 用法: sudo bash synreuse_pi.sh <clear|noclear|early>
+# 3c: Pi version of synreuse_docker.sh (bridge): after a trusted old connection silently disappears, does a new connection with the same 5-tuple inherit the trust
+#   fcli(10.9.0.1) --veth-- x-lan [wgw: br0] x-wan --veth-- fsrv(10.9.0.2); wnc-gw run, Suricata's tcp established timeout set to 5 s
+#   fcli connects from port 40100 to fsrv:5001 and sends 15 lines, wnc-gw trust add at 1.5 s; then another table in wgw at prerouting (-350, before conntrack)
+#   drops FIN/RST, both ends abort with SO_LINGER 0, then reconnect from the same port and send 10 lines
+#   clear: wait 15 s (Suricata's flow timeout) before reconnecting; expect the SYN to clear the trust bit and the new connection to go entirely to Suricata
+#   noclear: same, but delete the "clear bit on pure SYN" rule; expect the new connection to inherit the trust
+#   early: reconnect without waiting; expect Suricata to drop the new SYN as a stream error and the connection to fail
+# Prerequisites: sudo sh env.sh up; sh make_configs.sh; system suricata service stopped; wnc-gw at $GW
+# Usage: sudo bash synreuse_pi.sh <clear|noclear|early>
 v=${1:?usage: synreuse_pi.sh <clear|noclear|early>}
 CT=${CT:-/home/wnc/ctbench/root/usr/sbin/conntrack}; GW=${GW:-/tmp/wncgw/wnc-gw}; M=${M:-/tmp/wncgw/m}; L=/tmp/wncgw/synreuse
 W="ip netns exec wgw"

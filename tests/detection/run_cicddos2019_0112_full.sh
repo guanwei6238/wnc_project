@@ -1,7 +1,7 @@
 #!/bin/bash
-# CIC-DDoS2019 01-12 全天（不抽樣）：NAS 上的 zip 邊解壓邊用 pipe 送進 Suricata，整天連續跑、不先存成 pcap
-# （03-11 驗證過：pipe 和讀檔案的 alert 完全相同）；同時記下每一段的時間範圍，之後依攻擊時段對齊用。
-# CSV 每種攻擊轉成一個 conn 檔（當地時間 UTC-4），alert 對全部 flow。
+# CIC-DDoS2019 01-12 full day (no sampling): extract the zips on the NAS on the fly and pipe them into Suricata, one continuous run, no pcap on disk
+# (verified on 03-11: pipe and file input give identical alerts); also record each piece's time range, for aligning by attack window later.
+# Each attack's CSV becomes one conn file (local time UTC-4); alerts are matched against all flows.
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 D=/home/sixsquare/datasets/cicddos2019
@@ -11,7 +11,7 @@ o=$R/cicddos2019/0112
 C=$D/conn/0112
 mkdir -p "$C" "$R/match_cicddos2019"
 
-# 1. CSV → conn，和 Suricata 同時跑（WebDDoS 在 UDPLag.csv 裡）
+# 1. CSV -> conn, running alongside Suricata (WebDDoS is in UDPLag.csv)
 (
     for c in DrDoS_NTP DrDoS_DNS DrDoS_LDAP DrDoS_MSSQL DrDoS_NetBIOS DrDoS_SNMP DrDoS_SSDP DrDoS_UDP UDPLag Syn TFTP; do
         [ -f "$C/$c.conn.log.labeled.ok" ] && continue
@@ -21,7 +21,7 @@ mkdir -p "$C" "$R/match_cicddos2019"
 ) > "$C/convert.log" 2>&1 &
 conv=$!
 
-# 2. Suricata 8.0.7（full），HOME_NET 同 run_cicddos2019.sh
+# 2. Suricata 8.0.7 (full), HOME_NET as in run_cicddos2019.sh
 if [ ! -f "$o/done.txt" ]; then
     rm -rf "$o"; mkdir -p "$o"
     set +e
@@ -39,7 +39,7 @@ if [ ! -f "$o/done.txt" ]; then
 fi
 wait $conv
 
-# 3. alert 對 label（全部 50,063,112 條 flow）
+# 3. Match alerts to labels (all 50,063,112 flows)
 python3 -I "$HERE/match_iot23.py" <(cat "$C"/*.conn.log.labeled) "$o/eve.json" \
     "$R/rules/gw_corp_sids.txt" "$R/rules/iplist_sids.txt" "$R/match_cicddos2019/0112.json" 1 --cic
 echo "0112 done"

@@ -1,13 +1,13 @@
-// ctnetlink 的成本（3c 選實作方式，2026-10-28）
-//   A   = netlink-packet-netfilter 編碼 + netlink-proto
-//   A'  = netlink-packet-netfilter 編碼 + netlink-sys Socket（同步 / TokioSocket）
-//   B   = 手寫位元組 + netlink-sys Socket
-//   W   = wnc-gw 的 kernel::conntrack（B 的做法）；最後量 list 和 firewall::untrust_all（3c-2 啟動時清舊信任）
-// 自己用 ctnetlink 建 entries 筆 TCP entry（前 1000 筆輪流設／清 bit 0x80000000），結束時刪掉；要 root。
-// 用法：ctnetlink-bench [ops] [rounds] [entries]，預設 20000 3 60000
-// Docker：cargo build --release --target x86_64-unknown-linux-musl，docker cp 進 wnc-gw 容器執行（容器有自己的 conntrack 表）
-// Pi：CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=rust-lld cargo build --release --target aarch64-unknown-linux-musl；
-//     pi_lab_mode.sh up 1000、停 suricata，在獨立 netns 裡執行：sudo ip netns exec ctb taskset -c 2 ./ctnetlink-bench
+// Cost of ctnetlink (choosing the implementation for 3c, 2026-10-28)
+//   A   = netlink-packet-netfilter encoding + netlink-proto
+//   A'  = netlink-packet-netfilter encoding + netlink-sys Socket (sync / TokioSocket)
+//   B   = hand-written bytes + netlink-sys Socket
+//   W   = wnc-gw's kernel::conntrack (approach B); finally measures list and firewall::untrust_all (3c-2 clears old trust at startup)
+// Creates `entries` TCP entries itself via ctnetlink (the first 1000 alternately set/clear bit 0x80000000) and deletes them at the end; needs root.
+// Usage: ctnetlink-bench [ops] [rounds] [entries], default 20000 3 60000
+// Docker: cargo build --release --target x86_64-unknown-linux-musl, docker cp into the wnc-gw container and run (the container has its own conntrack table)
+// Pi: CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=rust-lld cargo build --release --target aarch64-unknown-linux-musl;
+//     pi_lab_mode.sh up 1000, stop suricata, run in a separate netns: sudo ip netns exec ctb taskset -c 2 ./ctnetlink-bench
 use std::io;
 use std::net::{Ipv4Addr, SocketAddr as InetAddr};
 use std::time::Instant;
@@ -57,7 +57,7 @@ fn flow(i: usize) -> Flow {
     }
 }
 
-// 第 k 次操作：輪流走過 N 筆，偶數輪設 bit、奇數輪清 bit，每次都真的改到值
+// Op k: walk the N entries in turn, setting the bit on even rounds and clearing it on odd rounds, so every op really changes the value
 fn target(k: usize) -> (Flow, bool) {
     (flow(k % N), (k / N) % 2 == 0)
 }
@@ -68,7 +68,7 @@ enum Dir {
     Reply,
 }
 
-// ---------- crate 編碼 ----------
+// ---------- crate encoding ----------
 
 fn tuple(f: Flow) -> Vec<Tuple> {
     vec![
@@ -135,7 +135,7 @@ fn put(buf: &mut Vec<u8>, m: &Msg) {
     m.serialize(&mut buf[start..]);
 }
 
-// ---------- 手寫編碼（B） ----------
+// ---------- hand-written encoding (B) ----------
 
 fn raw_nla(buf: &mut Vec<u8>, kind: u16, value: &[u8]) {
     buf.extend_from_slice(&((4 + value.len()) as u16).to_ne_bytes());
@@ -244,7 +244,7 @@ fn raw_entry(m: &[u8]) -> Entry {
     e
 }
 
-// ---------- 收訊息 ----------
+// ---------- receiving ----------
 
 fn split(d: &[u8]) -> impl Iterator<Item = &[u8]> {
     let mut rest = d;
@@ -318,7 +318,7 @@ impl Sync {
         Ok(&self.rx[..n])
     }
 
-    // 收到 n 個 ACK 為止；有 NACK 就回錯
+    // Until n ACKs arrive; return an error on any NACK
     fn acks(&mut self, mut n: usize, raw: bool) -> io::Result<()> {
         while n > 0 {
             let d = self.recv()?.to_vec();
@@ -333,7 +333,7 @@ impl Sync {
         Ok(())
     }
 
-    // 不帶 ACK 的訊息只有失敗才回；等到最後那筆（barrier）的 ACK
+    // Messages without ACK only get a reply on failure; wait for the ACK of the last one (barrier)
     fn barrier(&mut self, seq: u32, raw: bool) -> io::Result<()> {
         loop {
             let d = self.recv()?.to_vec();
@@ -422,7 +422,7 @@ fn entry(msg: &Msg) -> Entry {
     e
 }
 
-// ---------- 統計 ----------
+// ---------- statistics ----------
 
 struct Stat {
     name: &'static str,
@@ -478,7 +478,7 @@ where
     Ok(Stat { name, ops, total_ns: start.elapsed().as_nanos(), per_call, per_call_ops })
 }
 
-// ---------- 各做法 ----------
+// ---------- approaches ----------
 
 async fn proto_one(handle: &netlink_proto::ConnectionHandle<NetfilterMessage>, msgs: Vec<Msg>) -> io::Result<()> {
     let n = msgs.len();
@@ -487,7 +487,7 @@ async fn proto_one(handle: &netlink_proto::ConnectionHandle<NetfilterMessage>, m
     } else {
         handle.request_batch(msgs, SocketAddr::new(0, 0)).map_err(|e| io::Error::other(e.to_string()))?.boxed()
     };
-    // ACK 預設不轉給 handle；stream 結束且沒有錯誤 = 每筆都 ACK 了
+    // ACKs are not passed to handle by default; the stream ending without error means every message was ACKed
     while let Some(m) = resp.next().await {
         if let NetlinkPayload::Error(e) = m.payload
             && let Some(c) = e.code
@@ -542,7 +542,7 @@ async fn main() -> io::Result<()> {
         s.acks(chunk.len(), false)?;
     }
 
-    // ---------- 正確性 ----------
+    // ---------- correctness ----------
     let f = flow(0);
     let e0 = s.get(f)?;
     println!("entry0 {e0:?}");
@@ -598,7 +598,7 @@ async fn main() -> io::Result<()> {
     check("hand-decoded get matches crate", s.raw_get(f)? == s.get(f)?);
     check("hand get unknown tuple -> error", s.raw_get(flow(entries + 5)).is_err());
 
-    // ---------- 量測 ----------
+    // ---------- measurement ----------
     let (conn, handle, _) = netlink_proto::new_connection::<NetfilterMessage>(NETLINK_NETFILTER)?;
     tokio::spawn(conn);
     let mut ts = TokioSocket::new(NETLINK_NETFILTER)?;
@@ -729,7 +729,7 @@ async fn main() -> io::Result<()> {
         check("all marks cleared after round", s.get(flow(N - 1))?.mark == Some(MARK_INIT));
     }
 
-    // ---------- 整表 dump（3d 讀每條連線的計數；nf_conntrack_acct=1 時每筆多 CTA_COUNTERS_ORIG／REPLY）----------
+    // ---------- full table dump (3d reads per-connection counters; with nf_conntrack_acct=1 each entry adds CTA_COUNTERS_ORIG/REPLY) ----------
     let acct = std::fs::read_to_string("/proc/sys/net/netfilter/nf_conntrack_acct").unwrap_or_default();
     let mut total = std::time::Duration::ZERO;
     for _ in 0..5 {
@@ -741,7 +741,7 @@ async fn main() -> io::Result<()> {
     let ms = total.as_secs_f64() * 1000.0 / 5.0;
     println!("  dump entries={entries:<6} acct={} mean={ms:>8.2} ms  per_entry={:>6.3} us", acct.trim(), ms * 1000.0 / entries as f64);
 
-    // ---------- list：表裡有 entries 筆，其中 k 筆有信任 bit ----------
+    // ---------- list: `entries` entries in the table, k of them with the trust bit ----------
     for k in [0, 100, 10_000, entries] {
         set_bits(&mut s, 0..k, true)?;
         let mut total = std::time::Duration::ZERO;
@@ -786,7 +786,7 @@ fn set_bits(s: &mut Sync, range: std::ops::Range<usize>, set: bool) -> io::Resul
     Ok(())
 }
 
-// 不存在的（ENOENT）不算錯
+// Missing entries (ENOENT) are not errors
 fn delete_all(s: &mut Sync, entries: usize) -> io::Result<usize> {
     let mut deleted = 0;
     for chunk in (0..entries).collect::<Vec<_>>().chunks(BATCH) {

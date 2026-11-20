@@ -1,8 +1,8 @@
 #!/bin/bash
-# Snort 3 -T 載入 snort2lua 轉換後的規則；有 ERROR 就移除壞規則再載，迭代到通過。
-# 每輪的 log 在 $RUNS/snort_iter/round_N/；每輪移除的 sid 與原因累積在 $RUNS/snort_iter/removed.tsv (round, sid, 原因)。
-# 最終通過的規則檔 = $WORK/snort_pack/snort_accepted.rules (就是 tests/ids_throughput 用的 snort_full.rules)。
-# 前置: 15_snort_convert.sh
+# Load the snort2lua-converted rules with Snort 3 -T; on ERROR remove the bad rules and reload, iterating until it passes.
+# Each round's log is in $RUNS/snort_iter/round_N/; sids removed per round and why accumulate in $RUNS/snort_iter/removed.tsv (round, sid, reason).
+# Final passing rules file = $WORK/snort_pack/snort_accepted.rules (the snort_full.rules used by tests/ids_throughput).
+# Prerequisite: 15_snort_convert.sh
 source "$(dirname "$0")/lib.sh"
 I=$RUNS/snort_iter; rm -rf "$I"; mkdir -p "$I"
 P=$WORK/snort_pack; rm -rf "$P/iter"; mkdir -p "$P/iter"

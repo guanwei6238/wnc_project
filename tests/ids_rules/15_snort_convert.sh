@@ -1,10 +1,10 @@
 #!/bin/bash
-# 用 snort2lua 把「Snort 版」ET 規則(work/snort_pack/et_all.rules)轉成 Snort 3 語法 -> work/snort_pack/snort3_converted.rules（給 16 載入）。
-# snort2lua 會把輸出檔(如 et_all.rules.lua)寫在「來源規則檔旁邊」，而 $WORK 在容器內是唯讀(/rules)，
-#   所以先把規則複製到可寫的 $RUNS/snort_s2l/ 再轉。
-# 轉不了的規則：整條被 '#' 註解並寫進 snort2lua_err.txt(原因在 '^^^^' 行；18 用它歸因)；
-# 注意 snort2lua 也會把部分選項(如 threshold)改寫進 .lua 設定檔(snort3_conv.lua)而不是留在規則裡。
-# 前置：02_prep_rules.py 已對 Snort 版包產生 $WORK/snort_pack/et_all.rules。
+# Convert the "Snort" ET rules (work/snort_pack/et_all.rules) to Snort 3 syntax with snort2lua -> work/snort_pack/snort3_converted.rules (loaded by 16).
+# snort2lua writes its output files (e.g. et_all.rules.lua) next to the source rules file, and $WORK is read-only (/rules) in the container,
+#   so copy the rules to the writable $RUNS/snort_s2l/ first, then convert.
+# Unconvertible rules: the whole rule is commented out with '#' and written to snort2lua_err.txt (reason on the '^^^^' line; 18 uses it for attribution);
+# note that snort2lua also rewrites some options (e.g. threshold) into the .lua config (snort3_conv.lua) instead of keeping them in the rule.
+# Prerequisite: 02_prep_rules.py has produced $WORK/snort_pack/et_all.rules for the Snort package.
 source "$(dirname "$0")/lib.sh"
 D=$RUNS/snort_s2l
 rm -rf "$D"; mkdir -p "$D"

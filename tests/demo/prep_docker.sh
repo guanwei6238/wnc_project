@@ -1,9 +1,9 @@
 #!/bin/bash
-# prep_docker.sh — Docker demo 的準備（先 cd docker && ./up.sh；gw 容器重建後要再跑一次）
-#   1. ET Open 完整規則複製到 docker/suricata-rules/（掛到 gw 的 /var/lib/suricata/rules）
-#   2. gw 加 dataset 網段的路由：192.168.0.0/16 往 LAN、其他往 WAN，下一跳是不存在的 MAC，封包經過 forward 後送出去就沒人收
-#   3. dataset 的 pcap 修正 checksum、依路由器的 MAC 分兩邊、目的 MAC 改成 gw 的，放到 tests/demo/pcaps/（wnc-rep 的 /pcaps）
-# 用法: bash tests/demo/prep_docker.sh    PCAPS=、RULES= 可以換來源
+# prep_docker.sh — prepare the Docker demo (cd docker && ./up.sh first; rerun after the gw container is rebuilt)
+#   1. copy the full ET Open rules to docker/suricata-rules/ (mounted at gw's /var/lib/suricata/rules)
+#   2. add routes for the dataset subnets on gw: 192.168.0.0/16 toward LAN, the rest toward WAN; the next hop is a nonexistent MAC, so packets go out after forward and nobody receives them
+#   3. fix dataset pcap checksums, split by the router's MAC, rewrite the destination MAC to gw's, put them in tests/demo/pcaps/ (/pcaps in wnc-rep)
+# Usage: bash tests/demo/prep_docker.sh    PCAPS=, RULES= change the sources
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 PCAPS=${PCAPS:-$HOME/datasets/throughput/pcaps}

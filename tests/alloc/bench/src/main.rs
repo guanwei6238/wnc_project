@@ -1,7 +1,7 @@
-// EVE 解析在不同 allocator 下的成本（3d 要大量解析 Suricata 的 EVE）
-//   musl：Rust 的 musl target 內建的 malloc（wnc-gw 目前的組合）；glibc：gnu target；mimalloc：--features mimalloc
-//   typed = 解析成只含 3d 可能用到欄位的 struct（其他欄位略過）；value = 解析成通用的 serde_json::Value（每個欄位都配置）
-// 用法：alloc-bench <eve.json> [rounds]，Pi 上用 taskset 綁單核
+// Cost of EVE parsing under different allocators (3d parses a lot of Suricata EVE)
+//   musl: the malloc built into Rust's musl target (wnc-gw's current setup); glibc: gnu target; mimalloc: --features mimalloc
+//   typed = parse into a struct with only the fields 3d may use (others skipped); value = parse into the generic serde_json::Value (allocates every field)
+// Usage: alloc-bench <eve.json> [rounds]; pin to one core with taskset on the Pi
 #[cfg(feature = "mimalloc")]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;

@@ -1,7 +1,7 @@
 #!/bin/bash
-# CIC-DDoS2019 01-12（約 163 GB、818 段）做時間抽樣：每 8 段取 1 段串成一個 pcap，
-# label 只留完整落在這些段落時段內的 flow，再跑 run_cicddos2019.sh。
-# CSV 的時間是當地時間，12 月是 UTC-4（03-11 是 UTC-3）：用 pcap 第一個 packet 與 CSV 第一筆比對確認過。
+# Time-sample CIC-DDoS2019 01-12 (about 163 GB, 818 pieces): take 1 of every 8 pieces and join them into one pcap,
+# keep labels only for flows fully inside those pieces' time windows, then run run_cicddos2019.sh.
+# CSV times are local time, UTC-4 in December (03-11 is UTC-3): confirmed by comparing the pcap's first packet with the CSV's first row.
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 D=/home/sixsquare/datasets/cicddos2019

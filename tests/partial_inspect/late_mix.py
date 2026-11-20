@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""late_mix.py — 實驗 5：很多條 HTTP keep-alive 長連線，真實的攻擊 request（CIC-IDS2017 抽出）插在連線後段
+"""late_mix.py — exp 5: many long-lived HTTP keep-alive connections, with real attack requests (extracted from CIC-IDS2017) inserted late in the connection
 
-用法: python3 -I late_mix.py <attacks.json> <輸出目錄> [seed]
-  輸出 mix.pcap 和 truth.json（每條連線的 client port、類型、攻擊種類、攻擊在第幾個交易）
-連線類型（都帶 window scale 7，交易數 12–40，response 大小 lognormal（中位數 30 KB，上限 4 MB），交易間閒置平均 2 秒）：
-  late     攻擊 request 在後半段的某個交易（取代一個正常 GET）
-  early    攻擊 request 在第 1 個交易（對照：截斷類策略應該抓得到）
-  pipe     後半段先送一個 4 KB body 的 POST，緊接著（不等 response）送攻擊 request（DPA 的規避手法：攻擊落在方向改變後 N bytes 之外）
-  benign   全部正常
+Usage: python3 -I late_mix.py <attacks.json> <output dir> [seed]
+  writes mix.pcap and truth.json (per connection: client port, type, attack kind, which transaction has the attack)
+Connection types (all with window scale 7, 12–40 transactions, lognormal response size (median 30 KB, max 4 MB), mean 2 s idle between transactions):
+  late     attack request in some transaction in the second half (replacing a normal GET)
+  early    attack request in the 1st transaction (control: truncation policies should catch it)
+  pipe     in the second half, first a POST with a 4 KB body, then right away (without waiting for the response) the attack request (DPA evasion: the attack falls outside the N bytes after the direction change)
+  benign   all normal
 """
 import base64
 import json

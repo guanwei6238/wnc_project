@@ -1,26 +1,26 @@
 #!/bin/bash
-# 01_make_slices.sh -- 從 IoT-23 切出主矩陣用的 4 個流量切片，並產生 small(差分法用)、x2(串接兩次，summarize.py 的線性檢查用)。全部在容器內做、--network none。
+# 01_make_slices.sh -- cut the 4 main-matrix traffic slices from IoT-23, plus small (for the difference method) and x2 (concatenated twice, for summarize.py's linearity check). All done in a container with --network none.
 #
-# 為什麼這樣切:
-#  * 只用容器內的 tcpdump 讀不受信任的 pcap；唯讀掛載來源資料；之後所有統計都是 python3 -I。
-#  * 「取前 N 個封包」是最簡單、可重現的切法，但有偏差: 只代表檔案開頭，不代表整個場景
-#    (例: 39-1 開頭 payload 封包占 3.4%，整檔只有約 0.07%)。所以選切片時先看過各場景開頭的型態，
-#    並在報告裡寫明「這個切片代表什麼、不代表什麼」。
-#  * 為什麼不直接用整檔: 引擎處理速度差很大 (Pi 上 Snort 3 掛 full 在掃描流量不到 1 kpps)，整檔 GB 級要跑好幾小時，
-#    而且 Pi 的 tmpfs/記憶體放不下。切片上限 ~150 MB。
-#  * 切片檔名固定、凍結後不再改；sha256 在 manifest.json。
+# Why slice this way:
+#  * Untrusted pcaps are read only by tcpdump inside the container; source data is mounted read-only; all later stats use python3 -I.
+#  * "First N packets" is the simplest reproducible cut, but biased: it represents only the start of the file, not the whole scenario
+#    (e.g. at the start of 39-1 payload packets are 3.4%, over the whole file only about 0.07%). So the start of each scenario was inspected before picking slices,
+#    and the report states what each slice does and does not represent.
+#  * Why not whole files: engine speeds differ a lot (Snort 3 with full on the Pi does under 1 kpps on scan traffic), GB-sized files would take hours,
+#    and they do not fit in the Pi's tmpfs/memory. Slices are capped at ~150 MB.
+#  * Slice file names are fixed and frozen once made; sha256 is in manifest.json.
 #
-# 切片 (種類 A=掃描/flood, B=帶 payload, C=小而完整):
-#   A_scan17   17-1 前 600,000 個封包  : 幾乎全是 60B 的 TCP SYN (掃描)，payload 封包占比 ~0.08%
-#   B1_pay5    5-1  前 140,000 個封包  : 大封包、payload 封包占比 ~66%（整檔 64%，開頭與整體接近）
-#   B2_mix3    3-1  整檔               : 混合 (SYN 掃描 + SSH/IRC 等)，payload 封包 ~18%，整檔所以沒有「開頭偏差」
-#   C_somfy02  Honeypot-7-1 (door lock) 整檔 : 良性 IoT 設備的日常流量（小而完整）
+# Slices (kind A=scan/flood, B=with payload, C=small and complete):
+#   A_scan17   17-1 first 600,000 packets : almost all 60B TCP SYN (scan), payload packets ~0.08%
+#   B1_pay5    5-1  first 140,000 packets : large packets, payload packets ~66% (64% over the whole file, start is close to overall)
+#   B2_mix3    3-1  whole file           : mixed (SYN scan + SSH/IRC etc.), payload packets ~18%, whole file so no start-of-file bias
+#   C_somfy02  Honeypot-7-1 (door lock) whole file : everyday traffic of a benign IoT device (small and complete)
 source "$(dirname "$0")/lib.sh"
 cd "$HERE"
 SP=$PCAPS
 spec=$BIG/slice_spec.tsv; : > "$spec"; log=$BIG/slices.log; : > "$log"
 S=CTU-IoT-Malware-Capture
-# 名稱 | 來源(相對 IoTScenarios) | -c 封包數(0=整檔) | 說明
+# name | source (relative to IoTScenarios) | -c packet count (0=whole file) | description
 slices=(
  "A_scan17|$S-17-1/2018-09-06-11-43-12-192.168.100.111.pcap|600000|IoT-23 Malware-17-1 檔案開頭"
  "B1_pay5|CTU-Honeypot-Capture-5-1/2018-09-21-capture.pcap|140000|IoT-23 Honeypot-5-1 檔案開頭"
@@ -33,9 +33,9 @@ for s in "${slices[@]}"; do
   if [ "$n" != 0 ]; then opt=(-c "$n"); method="tcpdump -r <src> -c $n -w $name.pcap"; fi
   echo "== $name ($src)" | tee -a "$log"
   dk -v "$IOT23":/iot:ro -v "$PCAPS":/p -- tcpdump -r "/iot/$src" "${opt[@]}" -w "/p/$name.pcap" >> "$log" 2>&1
-  echo "tcpdump exit=$?" | tee -a "$log"     # 碰到被截斷的尾端時 tcpdump 會報錯並回傳非 0；要看 log
+  echo "tcpdump exit=$?" | tee -a "$log"     # tcpdump errors and returns nonzero on a truncated tail; check the log
   printf '%s\t%s\t%s\t%s\n' "$name.pcap" slice "$desc: $src" "$method" >> "$spec"
-  # small: 同一切片的前 500 個封包（差分法用）；x2: 串接兩次（線性驗證用，只做 B2/A）
+  # small: first 500 packets of the same slice (difference method); x2: concatenated twice (linearity check, B2/A only)
   dk -v "$PCAPS":/p -- tcpdump -r "/p/$name.pcap" -c 500 -w "/p/$name.small.pcap" >> "$log" 2>&1
   printf '%s\t%s\t%s\t%s\n' "$name.small.pcap" small "$name.pcap 的前 500 個封包" "tcpdump -r $name.pcap -c 500 -w $name.small.pcap" >> "$spec"
 done
@@ -43,7 +43,7 @@ for name in B2_mix3 A_scan17; do
   dk -v "$HERE":/s:ro -v "$PCAPS":/p -- python3 -I /s/pcap_concat.py /p/$name.pcap /p/$name.x2.pcap 2 | tee -a "$log"
   printf '%s\t%s\t%s\t%s\n' "$name.x2.pcap" x2 "$name.pcap 串接兩次" "pcap_concat.py $name.pcap $name.x2.pcap 2 (第二份時間戳平移)" >> "$spec"
 done
-# 選用：$PCAPS 裡若有合成的 synth_*.pcap，同樣各給一個 small 版本並寫進 spec；沒有就略過（目前的實驗都用不到）
+# Optional: any synthetic synth_*.pcap in $PCAPS also gets a small version and goes into spec; skipped if none (no current experiment uses them)
 for f in "$PCAPS"/synth_*.pcap; do
   [ -e "$f" ] || continue
   b=$(basename "$f" .pcap); case $b in *.small) continue ;; esac

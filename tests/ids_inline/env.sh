@@ -1,9 +1,9 @@
 #!/bin/sh
-# env.sh — 在 Pi 上建立／拆除 inline 量測的環境（不碰 eth0、eth1）
+# env.sh — set up/tear down the inline measurement environment on the Pi (eth0, eth1 untouched)
 #   wtest(t-wan) --veth-- g-wan [wgw: br0] g-lan --veth-- (t-lan)wtest
-#   wnc-gw 在 wgw 裡跑（bridge 模式），tcpreplay 在 wtest 裡同時拿兩端
-#   Suricata 的 log 目錄掛 tmpfs，和 offline 量測一樣讓輸出寫在記憶體
-# 用法: sudo sh env.sh up|down
+#   wnc-gw runs in wgw (bridge mode); tcpreplay in wtest holds both ends
+#   Suricata's log directory is on tmpfs, so output stays in memory as in the offline measurement
+# Usage: sudo sh env.sh up|down
 LOG=/var/log/wnc-gw/suricata
 case "$1" in
 up)

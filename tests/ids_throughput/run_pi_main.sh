@@ -1,27 +1,27 @@
 #!/bin/bash
-# run_pi_main.sh — 在 Pi 上依序跑主矩陣的五個批次（native 模式）：4 個切片 × empty／common／full／sel × 兩個 engine。
-# 在解壓後的 ids_throughput/ 目錄裡執行。
+# run_pi_main.sh - run the five batches of the main matrix on the Pi in order (native mode): 4 slices x empty/common/full/sel x two engines.
+# Run from the unpacked ids_throughput/ dir.
 #
-# 為什麼分批、次數不同：每次量測都要重新載入約 5 萬條規則（約 30–40 秒），而 Snort 3 掛 common／full 在 A、B2 切片
-# 單次就要 12–27 分鐘。全部格子都做 5 次重複會要十幾個小時，所以：
-#   - 一般格子：1 次 warm-up + 3 次正式
-#   - 慢的格子（Snort 3 掛 common／full 的 A、B2 切片）：0 次 warm-up + 2 次正式
-#   - 只有 empty 跑 .small（差分法：Suricata empty 的自報時間不含 EOF 後的 flow 清理，要用差分欄），
-#     其他規則集用自報時間，所以只跑大 pcap，省下一半的規則載入時間。
+# Why batches with different repeat counts: each run reloads about 50k rules (about 30-40 s), and Snort 3 with common/full on slices A and B2
+# takes 12-27 min per run. 5 repeats for every cell would take over ten hours, so:
+#   - normal cells: 1 warm-up + 3 counted runs
+#   - slow cells (Snort 3 with common/full on slices A, B2): 0 warm-up + 2 counted runs
+#   - only empty runs .small (difference method: Suricata's self-reported time for empty excludes flow cleanup after EOF, so the difference column is used),
+#     other rule sets use self-reported time, so only the large pcap runs, saving half the rule load time.
 #
-# 批次（tag 前綴 pi_）：
-#   E     empty：兩引擎 × 4 切片（含 .small）
-#   R1    Suricata：common / full / sel × 4 切片
-#   R2a1  Snort 3：sel × 4 切片
-#   R2a2  Snort 3：common / full × B1、C（快的格子）
-#   R2b   Snort 3：common / full × A、B2（慢的格子）
-# 規則集：full = 完整 ET Open；sel = full 扣掉 header 逗號 >= 8（帶長 IP 清單）的規則（見 04_make_sel_rules.py），
-#   這是依成本挑的，不是依偵測價值挑的；common = 兩個 engine 規則包 sid 的交集。
+# Batches (tag prefix pi_):
+#   E     empty: both engines x 4 slices (including .small)
+#   R1    Suricata: common / full / sel x 4 slices
+#   R2a1  Snort 3: sel x 4 slices
+#   R2a2  Snort 3: common / full x B1, C (fast cells)
+#   R2b   Snort 3: common / full x A, B2 (slow cells)
+# Rule sets: full = all of ET Open; sel = full minus rules with >= 8 header commas (long IP lists) (see 04_make_sel_rules.py),
+#   chosen by cost, not by detection value; common = intersection of the two engines' rule pack sids.
 #
-# 用法： nohup bash run_pi_main.sh > ~/pi_main_driver.log 2>&1 < /dev/null &
-# 前置：Pi 已在量測模式（pi_lab_mode.sh up 1000）；系統的 suricata 服務已停；/etc/snort 有 Snort 3 設定；
-#       data/pcaps 內有 4 個切片與 .small；data/rules 內有 *_common.rules、*_full.rules、*_sel.rules。
-# 結果：results/pi_*.csv（每次量測一行）、results/pi_*.env.json、results/pi_*.summary.csv。最後一行 log 是 "ALL DONE"。
+# Usage: nohup bash run_pi_main.sh > ~/pi_main_driver.log 2>&1 < /dev/null &
+# Prerequisites: Pi in lab mode (pi_lab_mode.sh up 1000); system suricata service stopped; Snort 3 config in /etc/snort;
+#       data/pcaps has the 4 slices and .small; data/rules has *_common.rules, *_full.rules, *_sel.rules.
+# Results: results/pi_*.csv (one row per run), results/pi_*.env.json, results/pi_*.summary.csv. The last log line is "ALL DONE".
 
 cd "$(dirname "$0")" || exit 1
 export BIG=$PWD/data SNORT_ETC=${SNORT_ETC:-/etc/snort} MODE=native
@@ -30,7 +30,7 @@ CPUSET=${CPUSET:-2,3}
 A=A_scan17.pcap; B1=B1_pay5.pcap; B2=B2_mix3.pcap; C=C_somfy02.pcap
 ALL4="$A,$B1,$B2,$C"
 
-step() {   # step <標籤> <run_matrix 參數...>
+step() {   # step <label> <run_matrix args...>
   local tag=$1; shift
   echo; echo "=================== $(date -u +%FT%TZ)  開始 $tag ==================="
   ./run_matrix.py --tag "$tag" --cpuset "$CPUSET" --runs-dir "$RUNS" "$@"

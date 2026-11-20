@@ -1,6 +1,6 @@
 #!/bin/bash
-# 3a 功能驗證（Docker）：Suricata 直接跑 NFQ + 測試 table；持續的 TCP 連線中途設上、清掉 ct mark
-# 用法: bash ctmark_docker.sh <nol2|l2>
+# 3a functional check (Docker): Suricata runs NFQ directly + a test table; set and clear the ct mark midway through a continuous TCP connection
+# Usage: bash ctmark_docker.sh <nol2|l2>
 v=$1
 docker exec -i wnc-gw sh -c "mkdir -p /tmp/t3a/rules; cat > /tmp/t3a/rules/mid.rules" <<'R'
 alert tcp any any -> any 5001 (msg:"wnc midstream mark"; content:"WNC-MARK"; sid:1000002; rev:1;)

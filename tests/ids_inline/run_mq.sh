@@ -1,14 +1,14 @@
 #!/bin/bash
-# run_mq.sh — 多 queue：同一個 pcap、rule set 全速送，比較 1／2／3 個 queue（= Suricata worker 數）
-#   Suricata 一律綁 $SURI_CPUS（預設 0,2,3）；tcpreplay 在 CPU 1，所以 4 個 queue 不量
-#   每個 scenario 內 N 的順序打亂
-# 前置同 run_pi.sh
-# 用法: sudo nohup bash run_mq.sh > /home/wnc/ids_inline/mq.log 2>&1 < /dev/null &
-#   QS：要比較的 queue 數（預設 "1 2 3"）；IMPL、QHASH 會傳給 trial.sh
-#   mq1   = 預設（wnc-gw，位址 hash）
+# run_mq.sh — multi-queue: same pcap and rule set at full speed, comparing 1/2/3 queues (= number of Suricata workers)
+#   Suricata is always pinned to $SURI_CPUS (default 0,2,3); tcpreplay is on CPU 1, so 4 queues are not measured
+#   the order of N is shuffled within each scenario
+# Prerequisites same as run_pi.sh
+# Usage: sudo nohup bash run_mq.sh > /home/wnc/ids_inline/mq.log 2>&1 < /dev/null &
+#   QS: queue counts to compare (default "1 2 3"); IMPL, QHASH are passed to trial.sh
+#   mq1   = default (wnc-gw, address hash)
 #   sym1  = TAG=sym1 IMPL=nfq QHASH=symhash QS="2 3" PCS="S_m60 S_somfy02 S_m42 S_m39"
 #   addr1 = TAG=addr1 IMPL=nfq QS="2 3" PCS="S_m60 S_somfy02 S_m42 S_m39"
-# 結果：$OUT/$TAG.kvl
+# Results: $OUT/$TAG.kvl
 cd "$(dirname "$0")" || exit 1
 TAG=${TAG:-mq1}; RATE=${RATE:-top}; RULESET=${RULESET:-full}; export SURI_CPUS=${SURI_CPUS:-0,2,3}
 OUT=${OUT:-/home/wnc/ids_inline/results}; RUNS=${RUNS:-/home/wnc/ids_inline/runs}

@@ -1,11 +1,11 @@
 #!/bin/bash
-# 3c：TCP 舊連線沒有 FIN/RST 經過 gw 就消失（裝置重開機之類），同一組五元組的新連線會不會沿用舊 entry 的信任（Docker）
-#   wnc-gw run（Suricata 的 tcp established flow 逾時改成 5 秒，模擬「信任很久、Suricata 的 flow 已經閒置逾時」）
-#   cli 從固定的 port 40100 連 srv:5001、送 15 行，第 1.5 秒 wnc-gw trust add；接著另一張 table 在 prerouting（-350，conntrack 之前）
-#   丟掉 FIN/RST，兩端都用 SO_LINGER 0 中斷；等 15 秒（Suricata 的 flow 逾時）後，cli 從同一個 port 重新連線、送 10 行
-#   預期：conntrack 重新同步到舊 entry（id 不變）。noclear 時 mark 被沿用、新連線的資料不進 Suricata；clear 時 SYN 經過就清掉
-#   Suricata 自己的 flow 還沒逾時的話，它會把新的 SYN 當成 stream error 丟掉（ips.drop_reason.stream_error），新連線連不上
-# 用法: bash synreuse_docker.sh <clear|noclear>   noclear = run 起來後把「純 SYN 清 bit」那條規則刪掉
+# 3c: an old TCP connection disappears without FIN/RST passing the gw (device reboot etc.); does a new connection with the same 5-tuple inherit the old entry's trust (Docker)
+#   wnc-gw run (Suricata's tcp established flow timeout set to 5 s, simulating "trusted for a long time, Suricata's flow already idle-timed out")
+#   cli connects from fixed port 40100 to srv:5001 and sends 15 lines, wnc-gw trust add at 1.5 s; then another table at prerouting (-350, before conntrack)
+#   drops FIN/RST, both ends abort with SO_LINGER 0; after 15 s (Suricata's flow timeout), cli reconnects from the same port and sends 10 lines
+#   Expected: conntrack resyncs to the old entry (same id). With noclear the mark is inherited and the new connection's data skips Suricata; with clear the SYN clears it
+#   if Suricata's own flow has not timed out yet, it drops the new SYN as a stream error (ips.drop_reason.stream_error) and the new connection fails
+# Usage: bash synreuse_docker.sh <clear|noclear>   noclear = delete the "clear bit on pure SYN" rule after run starts
 v=$1
 G="docker exec wnc-gw"
 $G sh -c 'pkill -INT -x wnc-gw; sleep 1; nft delete table inet tdrop 2>/dev/null; rm -rf /tmp/tr; mkdir -p /tmp/tr'

@@ -1,9 +1,9 @@
 #!/bin/bash
-# 核心 eBPF 程式在 Pi 上的功能驗證；不碰 eth0、eth1
-#   bridge（預設）：ecli(c0 10.8.0.1, fd08::1) --veth-- lan0 [egw: br0] wan0 --veth-- s0(esrv 10.8.0.2, fd08::2)
-#   ROUTED=1：     ecli(c0 10.9.1.2, fd09:1::2) --veth-- lan0 10.9.1.1 [egw: 轉送] wan0 10.9.2.1 --veth-- s0(esrv 10.9.2.2, fd09:2::2)
-#   up、down 和其他子命令要用同一個 ROUTED
-# 用法: sudo bash core_pi.sh up|run|show|tcx|fastpath|auto|kill9|down（tcx 要 foreign_tcx.py 放在同一個目錄）
+# Functional check of the core eBPF program on the Pi; leaves eth0, eth1 alone
+#   bridge (default): ecli(c0 10.8.0.1, fd08::1) --veth-- lan0 [egw: br0] wan0 --veth-- s0(esrv 10.8.0.2, fd08::2)
+#   ROUTED=1:     ecli(c0 10.9.1.2, fd09:1::2) --veth-- lan0 10.9.1.1 [egw: forwarding] wan0 10.9.2.1 --veth-- s0(esrv 10.9.2.2, fd09:2::2)
+#   up, down and the other subcommands must use the same ROUTED
+# Usage: sudo bash core_pi.sh up|run|show|tcx|fastpath|auto|kill9|down (tcx needs foreign_tcx.py in the same directory)
 GW=${GW:-/tmp/wncgw/wnc-gw}; D=/tmp/wncgw/ebpf; ROUTED=${ROUTED:-0}
 if [ "$ROUTED" = 1 ]; then MODE=routed; CLI4=10.9.1.2; SRV4=10.9.2.2; CLI6=fd09:1::2; SRV6=fd09:2::2
 else MODE=bridge; CLI4=10.8.0.1; SRV4=10.8.0.2; CLI6=fd08::1; SRV6=fd08::2; fi
@@ -52,7 +52,7 @@ fwd() { $G nft list chain inet wnc_gw forward | grep -m1 -o "packets [0-9]*" | c
 ids() { $G nft list chain inet wnc_gw ids | grep -m1 -o "packets [0-9]*" | cut -d" " -f2; }
 stop_run() { kill -INT $(pgrep -n -x wnc-gw); until [ -e $D/exit ]; do sleep 0.2; done; }
 
-flow() {  # $1 = tcp|udp，$2 = 來源，$3 = 目的：3 秒時信任、9 秒時取消，共 16 秒
+flow() {  # $1 = tcp|udp, $2 = source, $3 = destination: trust at 3 s, untrust at 9 s, 16 s total
   pkill -f "$D/srv.py"; echo "$SRVPY" > $D/srv.py; echo "$CLIPY" > $D/cli.py
   $S python3 $D/srv.py $1 $3 > $D/srv.out 2>&1 & sleep 0.5
   $C python3 $D/cli.py $1 $2 $3 42000 16 > $D/cli.out & cp=$!; sleep 3

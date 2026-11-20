@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
-"""12_gateway_rule_corp.py — 依「公司內網與外網之間的 security gateway」判斷 ET Open 各 category 要不要放在本地 IDS，組出 rule set gw_corp。
+"""12_gateway_rule_corp.py - decide which ET Open categories belong in the local IDS of "a security gateway between a company LAN and the WAN", and build the gw_corp rule set.
 
-前提：gateway 放在公司內網與外網之間，內網除了網通與 IoT 設備，也有一般主機（Windows／macOS 桌機、瀏覽器、手機、伺服器）。
-最後的 IDS 也可能是自己實作（基於 Snort／Suricata），所以以**偵測面完整**為優先，不依平台排除 category。
+Assumption: the gateway sits between the company LAN and the WAN; besides network and IoT devices the LAN has ordinary hosts (Windows/macOS desktops, browsers, phones, servers).
+The final IDS may be custom (based on Snort/Suricata), so **complete detection coverage** comes first; no category is excluded by platform.
 
-判斷依據：
-  (1) 保護對象：公司內網（Windows／macOS 桌機、瀏覽器、手機、伺服器、網通與 IoT 設備），不依平台排除
-  (2) 位置：閘道器看得到內網↔外網的流量，所以「被感染主機對外掃描、連 C2」與「外部對內網的攻擊」都看得到
-  (3) 機制：長 IP 清單（TOR、CINS、DROP、COMPROMISED、Threatview、CNC）改用 nftables 的 IP 集合，不放在 IDS 規則裡
-      （Snort 3 掛上這類 rule 會大幅變慢，見 README 的 sel 實驗）
-  (4) 雜訊：資訊性、獵捕（HUNTING）、動態 DNS 的規則誤報多、與入侵無直接關係，不放本地；ET 已退役的規則不用；
-      INFO、CHAT 只留 IRC 相關的規則（IoT 殭屍網路常用 IRC 當 C2）
-  (5) 政策：P2P、遊戲、遠端桌面、檔案分享等是公司政策問題，不代表入侵，不放本地（要管的話另外設定）
+Criteria:
+  (1) Protected hosts: the company LAN (Windows/macOS desktops, browsers, phones, servers, network and IoT devices); no exclusion by platform
+  (2) Position: the gateway sees LAN<->WAN traffic, so both "infected host scanning out / contacting C2" and "external attacks on the LAN" are visible
+  (3) Mechanism: long IP lists (TOR, CINS, DROP, COMPROMISED, Threatview, CNC) go into nftables IP sets, not IDS rules
+      (Snort 3 slows down a lot with these rules loaded; see the sel experiment in README)
+  (4) Noise: informational, HUNTING and dynamic DNS rules have many false positives and little to do with intrusion, so not local; ET retired rules are dropped;
+      INFO and CHAT keep only IRC-related rules (IoT botnets often use IRC for C2)
+  (5) Policy: P2P, games, remote desktop, file sharing etc. are company policy, not intrusion, so not local (configure separately if needed)
 
-篩選方式：
-  - 「本地需要」的 category：保留 header 逗號數 < 8 的 rule（逗號 >= 8 視為長清單，與 04_make_sel_rules.py 同判準）
-  - 「本地部分保留」的 category（INFO、CHAT）：只留 msg 含 IRC 的 rule
-  - 最後補上 flowbits 依賴（isset 的 rule 需要的 set 者，只補非長清單的）
-  - 已知限制：逗號 >= 8 的判準也會篩掉有比對內容、只是 port 清單很長的 rule。以 2026-10-11 快照為例，「本地需要」裡有
-    21 條（20 條是 port 清單、1 條是 IP 清單加 content），照上面的原則應該保留，目前還沒有加回。
+Filtering:
+  - "Local" categories: keep rules whose header has < 8 commas (>= 8 counts as a long list, same test as 04_make_sel_rules.py)
+  - "Partly local" categories (INFO, CHAT): keep only rules whose msg contains IRC
+  - Finally add flowbits dependencies (setters needed by isset rules, non-long-list ones only)
+  - Known limitation: the >= 8 comma test also drops rules that do match content but have a long port list. In the 2026-10-11 snapshot "local" has
+    21 such rules (20 port lists, 1 IP list plus content) that should be kept by the criteria above; not added back yet.
 
-用法： python3 -I 12_gateway_rule_corp.py <規則目錄> <rule_features.tsv>
-輸出：<規則目錄>/{suricata,snort}_gw_corp.rules、gw_corp_sids.txt（並附加到 SHA256SUMS）；
-      results/rule_category_decisions_corp.tsv；RULE_CATEGORIES_corp.md
+Usage: python3 -I 12_gateway_rule_corp.py <rules dir> <rule_features.tsv>
+Output: <rules dir>/{suricata,snort}_gw_corp.rules, gw_corp_sids.txt (also appended to SHA256SUMS);
+      results/rule_category_decisions_corp.tsv; RULE_CATEGORIES_corp.md
 """
 import collections
 import csv
@@ -40,7 +40,7 @@ NAME = "gw_corp"
 
 
 def eff_category(r):
-    """GPL 舊規則依子類別歸類；Threatview 單獨一類。"""
+    """Old GPL rules are grouped by subcategory; Threatview is its own category."""
     m = re.match(r"GPL (\S+)", r["msg"])
     if m:
         return "GPL_" + m.group(1)
@@ -54,7 +54,7 @@ def irc_related(r):
 
 
 KEEP, PART, IPSET, CLOUD = "本地需要", "本地部分保留", "改用 IP 黑名單（nftables）", "不放本地（交給雲端或不需要）"
-# 類別 -> (判斷, 部分保留時的篩選函式或 None, 這類規則偵測什麼, 理由)
+# category -> (decision, filter function for partial keep or None, what the rules detect, reason)
 DECISIONS = {
     "SCAN":              (KEEP, None, "掃描與偵察工具（nmap、web scanner、服務探測）", "被感染主機對外掃描、外部對內網的偵察，閘道器都看得到"),
     "TELNET":            (KEEP, None, "Telnet 暴力破解、Mirai 類 busybox 登入", "網通與 IoT 設備最常見的入侵途徑"),
@@ -105,7 +105,7 @@ DECISIONS = {
     "GAMES":             (CLOUD, None, "線上遊戲", "政策類"),
     "INAPPROPRIATE":     (CLOUD, None, "不當內容", "政策類"),
 }
-# 舊版 GPL 規則：子類別比照 ET 同名類別；ET 沒有同名類別的，IMAP／POP3（郵件）與 MISC（舊服務攻擊）保留，ICMP（ping 指紋，全部是 Informational）不放本地
+# Old GPL rules: subcategories follow the ET category of the same name; those without one keep IMAP/POP3 (mail) and MISC (old service attacks), ICMP (ping fingerprints, all Informational) is not local
 GPL_KEEP = {k for k, v in DECISIONS.items() if v[0] == KEEP} | {"IMAP", "POP3", "MISC"}
 
 
@@ -138,7 +138,7 @@ for cat, rs in by_cat.items():
     protos = ", ".join("%s %d" % kv for kv in collections.Counter(r["proto"] for r in rs).most_common(3))
     rows.append((cat, len(rs), protos, sum(1 for r in rs if int(r["header_commas"]) >= LONG_IP), dec, len(k), what, why))
 
-# flowbits 依賴補齊（只補非長 IP 清單的設定者）
+# Fill in flowbits dependencies (only setters that are not long IP lists)
 by = {r["sid"]: r for r in R}
 setters = collections.defaultdict(list)
 for r in R:
@@ -155,7 +155,7 @@ while todo:
                 keep.add(t); todo.append(t)
 added = len(keep) - len(base)
 
-# 輸出規則檔（兩引擎同一批 sid）
+# Write rule files (same sids for both engines)
 ACT = re.compile(r"^(alert|drop|reject)\s")
 SIDRE = re.compile(r"\bsid:\s*(\d+)\s*;")
 counts, sums = {}, []
@@ -176,14 +176,14 @@ old = (d / "SHA256SUMS").read_text().rstrip("\n").split("\n")
 names = [s.split("  ")[1] for s in sums]
 (d / "SHA256SUMS").write_text("\n".join([l for l in old if l.split("  ")[-1] not in names] + sums) + "\n")
 
-# IP 清單的規模（建議改用 nftables 的 IP 集合）
+# Size of the IP lists (suggested to move to nftables IP sets)
 ip_items = 0
 for r in R:
     if decision(eff_category(r))[0] == IPSET:
         ip_items += int(r["header_commas"]) + 1
 n_ipset_rules = sum(len(rs) for c, rs in by_cat.items() if decision(c)[0] == IPSET)
 
-# 決策表 TSV
+# Decision table TSV
 order = [KEEP, PART, IPSET, CLOUD]
 rows.sort(key=lambda x: (order.index(x[4]), -x[1]))
 os.makedirs(HERE / "results", exist_ok=True)
@@ -192,7 +192,7 @@ with open(HERE / "results" / "rule_category_decisions_corp.tsv", "w") as f:
     for r in rows:
         f.write("\t".join(str(x) for x in r) + "\n")
 
-# 說明文件
+# Documentation
 tot = len(R)
 md = []
 md.append("# ET Open 規則分類：公司內網與外網之間的 security gateway 需要哪些類別（gw_corp）\n")

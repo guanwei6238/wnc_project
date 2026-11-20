@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""只留完整落在抽樣時段內的 flow（ts >= 時段開始、ts + duration <= 時段結束）。
-時段來自 zip_pcap_concat.py --windows；時段外的 flow 在抽樣的 pcap 裡沒有（或只有一部分）packet。
-用法: python3 -I conn_in_windows.py <時段.tsv> <輸入 conn.log.labeled> <輸出 conn.log.labeled>
+"""Keep only flows fully inside the sampled windows (ts >= window start, ts + duration <= window end).
+Windows come from zip_pcap_concat.py --windows; flows outside them have no (or only some) packets in the sampled pcap.
+Usage: python3 -I conn_in_windows.py <windows.tsv> <input conn.log.labeled> <output conn.log.labeled>
 """
 import bisect
 import sys

@@ -1,13 +1,13 @@
 #!/bin/bash
-# features_pi.sh — [[features]] 在 Pi 上的功能確認（bridge，veth）：Pi 的 kernel 沒有 vmlinux BTF、bridge 的
-#   bpf_redirect 經過 egress，這兩件 Docker 驗不到
-#   拓樸：env.sh 的 wgw 加 protection_pi.sh net up：fcli(10.9.0.1) c-lan — x-lan [wgw: br0] x-wan — s-wan fsrv(10.9.0.2)
-#   四個 feature：egress（tc-egress FLOWS）、ingress（tc-ingress PFLOWS）、events（tc-egress EVENTS）、
-#   xdp（xdp，XDP_MODE=native（預設，veth 有）或 generic；一張網卡只能掛一個 XDP 程式，所以一次只測一種）；
-#   送 20 個不信任、20 個信任的 UDP，再跑 features test
-# 前置：sudo sh ~/ids_inline/env.sh up; sudo bash ~/ids_inline/protection_pi.sh net up；系統的 suricata 已停
-#   /tmp/wncgw/feat/ 放 prog.o、flows.json、pflows.json、events.json；wnc-gw 在 $GW
-# 用法: sudo [BACKEND=ctmark] [XDP_MODE=generic] bash features_pi.sh
+# features_pi.sh — functional check of [[features]] on the Pi (bridge, veth): the Pi kernel has no vmlinux BTF, and bridge
+#   bpf_redirect goes through egress; Docker can't verify either
+#   topology: env.sh's wgw plus protection_pi.sh net up: fcli(10.9.0.1) c-lan — x-lan [wgw: br0] x-wan — s-wan fsrv(10.9.0.2)
+#   four features: egress (tc-egress FLOWS), ingress (tc-ingress PFLOWS), events (tc-egress EVENTS),
+#   xdp (xdp, XDP_MODE=native (default, veth supports it) or generic; a NIC can hold only one XDP program, so one mode per run);
+#   send 20 untrusted and 20 trusted UDP packets, then run features test
+# Prerequisites: sudo sh ~/ids_inline/env.sh up; sudo bash ~/ids_inline/protection_pi.sh net up; system suricata stopped
+#   /tmp/wncgw/feat/ holds prog.o, flows.json, pflows.json, events.json; wnc-gw at $GW
+# Usage: sudo [BACKEND=ctmark] [XDP_MODE=generic] bash features_pi.sh
 GW=${GW:-/tmp/wncgw/wnc-gw}; D=/tmp/wncgw/feat; OUT=/var/log/wnc-gw/features
 W="ip netns exec wgw"; C="ip netns exec fcli"
 P=$((43000 + RANDOM % 1000)); BACKEND=${BACKEND:-tc}

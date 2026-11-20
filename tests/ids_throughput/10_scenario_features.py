@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""10_scenario_features.py — 讀每個 IoT-23 場景主 pcap 的前 N 個封包，算流量特徵，用來挑「數據可能不一樣」的場景。
+"""10_scenario_features.py - read the first N packets of each IoT-23 scenario's main pcap and compute traffic features, to pick scenarios likely to give different numbers.
 
-目的：挑會讓測試數據不同的場景，特徵類似的不重複測。IDS 引擎的成本取決於流量型態
-（封包大小、有沒有 payload、TCP/UDP、新連線多不多、目的埠是否集中），所以先量化這些特徵再挑，而不是憑印象。
-只讀前 N 個封包（與切片的取法一致；切片也是取檔案開頭），所以特徵代表的是「切片」而不是整個場景。
+Goal: pick scenarios that change the test numbers and skip ones with similar features. IDS engine cost depends on traffic pattern
+(packet size, payload or not, TCP/UDP, how many new connections, whether destination ports are concentrated), so quantify these first instead of picking by impression.
+Only the first N packets are read (same as slicing, which also takes the start of the file), so the features describe the slice, not the whole scenario.
 
-特徵（每個場景一列）：
-  avg_size      平均封包大小（pcap 記錄長度）
-  payload_pct   TCP/UDP 且 L4 payload > 0 的封包比例
-  tcp/udp/icmp/other_pct   協定比例（other 含非 IP，如 ARP）
-  syn_pct       只有 SYN、沒有 ACK 的 TCP 封包比例（新連線嘗試；掃描的特徵）
-  dst_ports     不同的目的埠數（TCP/UDP）
-  top_port_pct  最常見目的埠占 TCP/UDP 封包的比例
-  dst_ips       不同的目的 IP 數
-用法： python3 -I 10_scenario_features.py <IoTScenarios 目錄> <tests/iot23/results 目錄> <輸出 tsv> [N=200000]
-資料是不受信任的下載檔：本腳本只用 struct 解析標頭，不執行任何內容。
+Features (one row per scenario):
+  avg_size      average packet size (pcap record length)
+  payload_pct   share of TCP/UDP packets with L4 payload > 0
+  tcp/udp/icmp/other_pct   protocol shares (other includes non-IP, e.g. ARP)
+  syn_pct       share of TCP packets with SYN only, no ACK (new connection attempts; a scan signature)
+  dst_ports     number of distinct destination ports (TCP/UDP)
+  top_port_pct  share of TCP/UDP packets to the most common destination port
+  dst_ips       number of distinct destination IPs
+Usage: python3 -I 10_scenario_features.py <IoTScenarios dir> <tests/iot23/results dir> <output tsv> [N=200000]
+The data is untrusted downloads: this script only parses headers with struct and never executes content.
 """
 import collections
 import glob

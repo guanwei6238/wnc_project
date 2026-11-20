@@ -1,4 +1,4 @@
-# Suricata 8.0.7：和 Pi 上同一個 Debian 套件（trixie-backports），只是 amd64 版
+# Suricata 8.0.7: same Debian package as on the Pi (trixie-backports), just the amd64 build
 FROM debian:trixie
 RUN echo 'deb http://deb.debian.org/debian trixie-backports main' > /etc/apt/sources.list.d/backports.list \
  && apt-get update \

@@ -1,19 +1,19 @@
 #!/bin/bash
-# wnc-gw 的 ids／ips 模式（Pi，bridge，wnc-gw run）：protection_docker.sh 的 Pi 版
-#   fcli(10.9.0.1) --veth-- x-lan [wgw: br0] x-wan --veth-- fsrv(10.9.0.2)；Suricata 用 include 系統 suricata.yaml 的 yaml 加測試規則
-#   net up|down  建立／刪除 fcli、fsrv
-#   doctor       ids、ips 各跑一次 doctor（root，以及 wgw 裡的 wnc 帳號）
-#   ids1 trust kill groups ips startup missed：和 protection_docker.sh 相同；startup 跑 N 次（預設 20），missed 用 python 送 UDP
-#   bind         wgw 裡另外跑一個綁 group 10 的 Suricata：doctor 給提示、run 記 ERROR 並重試，對方停掉後就緒
-#   runmode      ids、ips 各一個和多個 queue／group：Suricata 只有 W 執行緒（workers）、ICMP 有 alert；AUTOFP=1 時 yaml 明寫 runmode: autofp
-#   alerts autotrust：和 protection_docker.sh 相同（PROTECTION=ips）；autotrust 先用 nf_conntrack_acct=0 跑一次 doctor
-# 前置：sudo sh env.sh up；系統的 suricata 服務已停；wnc-gw 放在 $GW
-# 用法: sudo bash protection_pi.sh <net up|net down|doctor|ids1|trust|kill|groups|ips|startup|missed|bind|runmode|alerts|autotrust|clean>
+# wnc-gw ids/ips modes (Pi, bridge, wnc-gw run): Pi version of protection_docker.sh
+#   fcli(10.9.0.1) --veth-- x-lan [wgw: br0] x-wan --veth-- fsrv(10.9.0.2); Suricata uses a yaml that includes the system suricata.yaml plus test rules
+#   net up|down  create/delete fcli, fsrv
+#   doctor       run doctor once each for ids and ips (as root, and as the wnc account inside wgw)
+#   ids1 trust kill groups ips startup missed: same as protection_docker.sh; startup runs N times (default 20), missed sends UDP with python
+#   bind         run another Suricata bound to group 10 inside wgw: doctor gives a hint, run logs ERROR and retries, ready once the other one stops
+#   runmode      ids and ips with one and multiple queues/groups: Suricata has only W threads (workers), ICMP alerts; with AUTOFP=1 the yaml sets runmode: autofp explicitly
+#   alerts autotrust: same as protection_docker.sh (PROTECTION=ips); autotrust first runs doctor once with nf_conntrack_acct=0
+# Prerequisites: sudo sh env.sh up; system suricata service stopped; wnc-gw at $GW
+# Usage: sudo bash protection_pi.sh <net up|net down|doctor|ids1|trust|kill|groups|ips|startup|missed|bind|runmode|alerts|autotrust|clean>
 GW=${GW:-/tmp/wncgw/wnc-gw}; D=/tmp/wncgw/pt; SLOG=/var/log/wnc-gw/suricata
 W="ip netns exec wgw"; C="ip netns exec fcli"; S="ip netns exec fsrv"
 P=$((20000 + RANDOM % 20000))
 
-setup() {  # $1 = 最上層多的設定行，$2 = [suricata] 多的設定行，$3 = 多的規則
+setup() {  # $1 = extra top-level config lines, $2 = extra [suricata] lines, $3 = extra rules
   mkdir -p $D
   cat > $D/test.rules <<EOF
 alert icmp any any -> any any (msg:"wt icmp"; sid:1000201; rev:1;)
@@ -53,7 +53,7 @@ while True:
     threading.Thread(target=drain, args=(s.accept()[0],), daemon=True).start()
 " > /dev/null 2>&1 & sleep 0.5; }
 
-client() {  # $1 = 來源 port，$2 = 秒數；第一段是 1300 bytes 再接標記，之後每 0.1 秒一行
+client() {  # $1 = source port, $2 = seconds; first chunk is 1300 bytes then the marker, then a line every 0.1 s
   $C python3 -c "
 import socket, time
 c = socket.create_connection(('10.9.0.2', 5001), source_address=('10.9.0.1', $1))
@@ -64,7 +64,7 @@ while time.time() < end:
 c.close()"
 }
 
-clean_client() {  # $1 = 來源 port，$2 = 秒數：每 0.1 秒一行，沒有 payload 標記
+clean_client() {  # $1 = source port, $2 = seconds: a line every 0.1 s, no payload marker
   $C python3 -c "
 import socket, time
 c = socket.create_connection(('10.9.0.2', 5001), source_address=('10.9.0.1', $1))

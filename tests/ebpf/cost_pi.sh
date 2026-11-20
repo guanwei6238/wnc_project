@@ -1,12 +1,12 @@
 #!/bin/bash
-# cost_pi.sh — 步驟 A3：每個 port 的 TCX ingress 掛一支程式要多少 CPU
-#   V0 沒有程式；V1 空程式（回傳 NEXT）；V2 per-CPU 計數（= wnc-gw 現在的程式）；V3 V2＋解析 header＋五元組查一次 hash map（查不到）
-#   拓樸：tests/ids_inline/env.sh（wtest 的 tcpreplay 從 t-wan、t-lan 送進 wgw 的 br0，port 是 g-lan、g-wan）；沒有 nft、沒有 Suricata
-#   cpu：/proc/schedstat 各 CPU 的 rq_cpu_time 增加量 ÷ 送出的封包（和 trust_cost.sh 同一套）；bpf_stats 關
-#   stats：kernel.bpf_stats_enabled=1，讀每支程式的 run_cnt、run_time_ns（程式本身每次執行幾 ns；bpf_stats 自己有成本，所以和 cpu 分開跑）
-#   tcpreplay 用 -T nano 綁 CPU 1：預設的 gtod 會忙等，kernel 在 CPU 1 上的成本就看不出來
-# 前置：pi_lab_mode.sh up 1000、系統的 suricata 服務已停；ebpf-bench 和這個腳本放在同一個目錄
-# 用法: sudo bash cost_pi.sh cpu|stats
+# cost_pi.sh — step A3: CPU cost of attaching one program to TCX ingress on each port
+#   V0 no program; V1 empty program (returns NEXT); V2 per-CPU counter (= current wnc-gw program); V3 V2 + header parsing + one 5-tuple hash map lookup (miss)
+#   topology: tests/ids_inline/env.sh (wtest's tcpreplay sends from t-wan, t-lan into wgw's br0, ports g-lan, g-wan); no nft, no Suricata
+#   cpu: increase in per-CPU rq_cpu_time from /proc/schedstat ÷ packets sent (same method as trust_cost.sh); bpf_stats off
+#   stats: kernel.bpf_stats_enabled=1, read each program's run_cnt, run_time_ns (ns per run of the program itself; bpf_stats has its own cost, so it runs separately from cpu)
+#   tcpreplay uses -T nano pinned to CPU 1: the default gtod busy-waits and would hide the kernel cost on CPU 1
+# Prerequisites: pi_lab_mode.sh up 1000, system suricata service stopped; ebpf-bench in the same directory as this script
+# Usage: sudo bash cost_pi.sh cpu|stats
 cd "$(dirname "$0")" || exit 1
 MODE=$1; RATE=${RATE:-10000}; PC=${PC:-C17_Benign}; TAG=${TAG:-a3}
 ENV=${ENV:-/home/wnc/ids_inline/env.sh}; PCAPS=${PCAPS:-/home/wnc/ids_throughput/data/pcaps}

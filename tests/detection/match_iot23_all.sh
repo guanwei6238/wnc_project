@@ -1,5 +1,5 @@
 #!/bin/bash
-# 11 個 usable scenario 都跑 match_iot23.py；39-1 的 alert 最多（約 1,470 萬筆），最先開始，並分 4 批（一次全載入記憶體不夠）。
+# Run match_iot23.py on all 11 usable scenarios; 39-1 has the most alerts (about 14.7 million), so it starts first and is split into 4 shards (not enough memory to load it all at once).
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 BIG=/home/sixsquare/datasets/iot23/extracted/run1/opt/Malware-Project/BigDataset/IoTScenarios

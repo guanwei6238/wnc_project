@@ -1,12 +1,12 @@
-// burner.c — edge AI 的替身：在 Pi 上吃 CPU 或記憶體頻寬，回報自己的吞吐
-// 用法: burner <cpu|mem|mlp> <threads> <cpus|any> <duty%> <seconds>
-//   cpu：L1 內的整數與浮點運算；mem：STREAM triad（每個執行緒 3 個 8 MiB 陣列）；
-//   mlp：float32 MLP 256-1024-1024-256，batch 1，權重約 6 MiB（每個執行緒共用同一份權重）
-//   cpus：逗號分隔的 CPU 編號，執行緒依序綁上去；any 不綁
-//   duty：每 100 ms 做幾 ms（100 = 不休息）
-//   每秒印一行：t=<秒> ops=<這一秒的總運算單位>；結束印 total 和每秒平均
-//   運算單位：cpu 是迴圈次數（百萬），mem 是搬動的 MiB，mlp 是推論次數
-//   環境變數 BURNER_OPS_FILE：每 200 ms 把「累計 ops 和 CLOCK_MONOTONIC 秒數」寫進這個檔，給量測腳本在任意時間點讀
+// burner.c — edge AI stand-in: burns CPU or memory bandwidth on the Pi and reports its own throughput
+// Usage: burner <cpu|mem|mlp> <threads> <cpus|any> <duty%> <seconds>
+//   cpu: integer and float ops within L1; mem: STREAM triad (three 8 MiB arrays per thread);
+//   mlp: float32 MLP 256-1024-1024-256, batch 1, ~6 MiB of weights (all threads share one copy)
+//   cpus: comma-separated CPU numbers, threads pinned in order; any = no pinning
+//   duty: ms of work per 100 ms (100 = no rest)
+//   prints one line per second: t=<sec> ops=<total ops this second>; at the end prints total and per-second mean
+//   ops unit: loop iterations (millions) for cpu, MiB moved for mem, inferences for mlp
+//   env var BURNER_OPS_FILE: every 200 ms write "cumulative ops and CLOCK_MONOTONIC seconds" to this file, so measurement scripts can read it at any time
 #define _GNU_SOURCE
 #include <pthread.h>
 #include <sched.h>

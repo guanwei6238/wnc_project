@@ -1,11 +1,11 @@
 #!/bin/bash
-# run_docker.sh — [[features]] 在 run 裡的端到端測試（routed testbed：cli 10.0.1.2 — gw — srv 10.0.2.2）
-#   四個 feature 用同一支 prog/：egress（flows_tc、tc-egress、FLOWS）、ingress（flows_tc、tc-ingress、PFLOWS per-CPU）、
-#   events（flows_tc、tc-egress、EVENTS ringbuf）、xdp（flows_xdp、xdp native、FLOWS）
-#   cli 從同一個來源 port 送 20 個 UDP（payload 300 bytes，幀 342 bytes），trust add，再送 20 個
-#   預期（backend tc）：egress、xdp 40 個；ingress 20 個（信任的在核心程式就被 redirect）；events 40 筆 len=342
-#   BACKEND=ctmark 時 ingress 也是 40
-# 用法: bash run_docker.sh   （先 bash doctor_docker.sh 編好 prog/ 並複製到容器）
+# run_docker.sh — end-to-end test of [[features]] in run (routed testbed: cli 10.0.1.2 — gw — srv 10.0.2.2)
+#   four features share one prog/: egress (flows_tc, tc-egress, FLOWS), ingress (flows_tc, tc-ingress, PFLOWS per-CPU),
+#   events (flows_tc, tc-egress, EVENTS ringbuf), xdp (flows_xdp, xdp native, FLOWS)
+#   cli sends 20 UDP packets from one source port (300-byte payload, 342-byte frames), trust add, then 20 more
+#   expected (backend tc): egress, xdp 40; ingress 20 (trusted ones are redirected by the core program); events 40 records with len=342
+#   with BACKEND=ctmark ingress is also 40
+# Usage: bash run_docker.sh   (run bash doctor_docker.sh first to build prog/ and copy it into the container)
 D=$(cd "$(dirname "$0")" && pwd); GW="docker exec wnc-gw"; CLI="docker exec wnc-cli"; B=/opt/sg/wnc-gw
 P=$((43000 + RANDOM % 1000)); OUT=/var/log/wnc-gw/features
 $GW sh -c "pkill -INT -x wnc-gw; while ps -eo stat=,comm= | grep -q '^[^Z].* wnc-gw$'; do sleep 0.2; done; rm -rf $OUT /tmp/feat/run.log"

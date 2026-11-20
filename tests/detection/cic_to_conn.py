@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""把 CIC 的 CICFlowMeter CSV 轉成 Zeek conn.log.labeled 的欄位排列，
-讓 tests/iot23/align_stream.py（對齊）和 match_iot23.py（alert 對 label）可以直接沿用。
+"""Convert CIC's CICFlowMeter CSV into the Zeek conn.log.labeled column layout,
+so tests/iot23/align_stream.py (alignment) and match_iot23.py (alert-to-label matching) can be reused as is.
 
-支援：CIC-IDS2017 修正版（CNS 2022，CICIDS2017_improved）、CIC-DDoS2019 官方 CSV。
-只填這兩支程式會讀的欄位：ts、uid、五元組、proto、duration、orig_pkts、resp_pkts、label；其他填 '-' 或 0。
-  - 欄名前後的空白去掉（DDoS2019 的欄名有前導空白）
-  - Timestamp 加上 --tz 小時後當成 UTC（CIC-IDS2017 修正版本來就是 UTC；DDoS2019 要用對齊率確認時差）
-  - Flow Duration 是微秒
-  - label 欄位不能有空白（下游用空白切欄位），所以空白換成底線：
-      BENIGN -> "Benign -"；攻擊 X -> "Malicious X"；Attempted Category != -1 -> "Attempted X"
-用法: python3 -I cic_to_conn.py [--tz 小時] <輸出 conn.log.labeled> <CSV>...
+Supports: corrected CIC-IDS2017 (CNS 2022, CICIDS2017_improved) and the official CIC-DDoS2019 CSV.
+Fills only the fields those two programs read: ts, uid, 5-tuple, proto, duration, orig_pkts, resp_pkts, label; others get '-' or 0.
+  - strip whitespace around column names (DDoS2019 column names have leading spaces)
+  - Timestamp plus --tz hours is treated as UTC (corrected CIC-IDS2017 is already UTC; for DDoS2019 confirm the offset by alignment rate)
+  - Flow Duration is in microseconds
+  - label fields cannot contain spaces (downstream splits on whitespace), so spaces become underscores:
+      BENIGN -> "Benign -"; attack X -> "Malicious X"; Attempted Category != -1 -> "Attempted X"
+Usage: python3 -I cic_to_conn.py [--tz hours] <output conn.log.labeled> <CSV>...
 """
 import argparse
 import csv

@@ -1,6 +1,6 @@
 #!/bin/bash
-# 印出 wnc-gw 核心程式（wnc_gw_ingress）的 COUNTERS：封包數、redirect 數（所有 CPU 加總）
-# 沒有 BTF 時 bpftool 的 key、value 是 byte 陣列（little-endian）
+# Print the COUNTERS of the wnc-gw core program (wnc_gw_ingress): packets, redirects (summed over all CPUs)
+# without BTF, bpftool prints key and value as byte arrays (little-endian)
 for m in $(bpftool -j prog show name wnc_gw_ingress | python3 -c 'import json, sys; print(*json.load(sys.stdin)["map_ids"])'); do
   bpftool -j map show id $m | grep -q '"percpu_array"' || continue
   bpftool -j map dump id $m | python3 -c '

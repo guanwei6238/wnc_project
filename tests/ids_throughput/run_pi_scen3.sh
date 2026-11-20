@@ -1,18 +1,18 @@
 #!/bin/bash
-# run_pi_scen3.sh — Pi 上的 Suricata 8.0.7 速度：IoT-23 的 14 個 scenario 切片（重量）＋ CIC 三個 dataset 依流量特徵挑的切片，
-# × empty／full／gw_corp（2026-10-30 的 ET Open，和偵測測試同一份 rule），全部在同一次開機內，每格 1 warm-up + 3。
-# 量法和 run_pi_scen2.sh 相同（measure.sh、run_matrix.py），只換 engine 版本與 rule：Suricata 8.0.7、data/rules_1030/。
+# run_pi_scen3.sh - Suricata 8.0.7 speed on the Pi: the 14 IoT-23 scenario slices (re-measured) + slices picked by traffic features from the three CIC datasets,
+# x empty/full/gw_corp (ET Open of 2026-10-30, the same rules as the detection test), all within one boot, 1 warm-up + 3 per cell.
+# Same method as run_pi_scen2.sh (measure.sh, run_matrix.py); only the engine version and rules change: Suricata 8.0.7, data/rules_1030/.
 #
-# 批次（tag 前綴 pi_scen3_）：
-#   anchor0  錨點：C_somfy02 × full
-#   E        empty：全部切片（含 .small，差分法用）
-#   S        full／gw_corp × 全部切片
-#   anchor1  錨點：同 anchor0，放在最後
+# Batches (tag prefix pi_scen3_):
+#   anchor0  anchor: C_somfy02 x full
+#   E        empty: all slices (including .small, for the difference method)
+#   S        full/gw_corp x all slices
+#   anchor1  anchor: same as anchor0, run last
 #
-# 用法： nohup bash run_pi_scen3.sh > ~/pi_scen3_driver.log 2>&1 < /dev/null &
-# 前置：量測模式（pi_lab_mode.sh up 1000）、時鐘已校正、系統 suricata 服務已停、data/pcaps 內有切片（含 .small）、
-#       data/rules_1030 內有 suricata_full.rules、suricata_gw_corp.rules、SHA256SUMS；切片清單在 scen3_slices.txt。
-# 結果：results/pi_scen3_*.csv、*.env.json、*.summary.csv。最後一行 log 是 "ALL DONE"。
+# Usage: nohup bash run_pi_scen3.sh > ~/pi_scen3_driver.log 2>&1 < /dev/null &
+# Prerequisites: lab mode (pi_lab_mode.sh up 1000), clock synced, system suricata service stopped, slices (with .small) in data/pcaps,
+#       data/rules_1030 has suricata_full.rules, suricata_gw_corp.rules, SHA256SUMS; the slice list is in scen3_slices.txt.
+# Results: results/pi_scen3_*.csv, *.env.json, *.summary.csv. The last log line is "ALL DONE".
 
 cd "$(dirname "$0")" || exit 1
 export BIG=$PWD/data MODE=native

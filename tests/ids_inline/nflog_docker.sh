@@ -1,17 +1,17 @@
 #!/bin/bash
-# NFLOG 當 ids 模式的資料路徑（Docker testbed，routed）：kernel 照常轉送，只把複本交給 Suricata
-#   不經過 wnc-gw：gw 容器裡直接裝 nft 的 log group（table inet nflt），用 suricata --nflog 收
-#   basic    ICMP 和 TCP payload（1300 bytes 之後的標記）的 alert 都要出現：複本是完整的封包
-#   trust    TCP 連線傳輸中用 wnc-gw trust add 設信任 bit，log 規則的計數要停住；trust del 後恢復
-#   kill     持續 ping 時 SIGKILL Suricata：轉送不受影響
-#   startup  ping -f 持續送的情況下啟動、停止 Suricata 20 次：不能當掉（NFQ 會）
-#   groups   symhash 分到兩個 log group、Suricata 兩個 worker：8 條連線兩個方向要在同一個 group，8 個 alert 都要有
-#   overflow 預設的 netlink buffer（18 KB）加 UDP 洪水：看漏掉的複本記在哪裡
-#   K=all 不關 checksum 檢查：NFLOG 不像 NFQ 會標出「checksum 還沒算」的封包，veth、GRO 的封包會被當成 checksum 錯誤
-# 用法: bash nflog_docker.sh <basic|trust|kill|startup|groups|overflow> ...   最後 bash nflog_docker.sh clean
+# NFLOG as the ids-mode data path (Docker testbed, routed): the kernel forwards as usual and hands only copies to Suricata
+#   bypasses wnc-gw: installs an nft log group (table inet nflt) directly in the gw container and receives with suricata --nflog
+#   basic    alerts for both ICMP and TCP payload (marker after 1300 bytes) must appear: copies are full packets
+#   trust    set the trust bit with wnc-gw trust add during a TCP transfer; the log rule counter must stop; it resumes after trust del
+#   kill     SIGKILL Suricata during continuous ping: forwarding is unaffected
+#   startup  start and stop Suricata 20 times under ping -f: must not crash (NFQ does)
+#   groups   symhash over two log groups, two Suricata workers: both directions of each of 8 connections land in the same group, all 8 alerts present
+#   overflow default netlink buffer (18 KB) plus a UDP flood: see where missed copies are recorded
+#   K=all keeps checksum validation: unlike NFQ, NFLOG does not flag packets whose checksum is not computed yet, so veth/GRO packets look like checksum errors
+# Usage: bash nflog_docker.sh <basic|trust|kill|startup|groups|overflow> ...   finally bash nflog_docker.sh clean
 G="docker exec wnc-gw"; GI="docker exec -i wnc-gw"; C="docker exec wnc-cli"; S="docker exec wnc-srv"
 D=/tmp/nfl
-P=$((20000 + RANDOM % 20000))   # 來源 port 每次不同，避免撞到上一次的 TIME_WAIT 和 conntrack entry
+P=$((20000 + RANDOM % 20000))   # different source port each run to avoid the previous run's TIME_WAIT and conntrack entry
 
 setup() {
   $G mkdir -p $D
@@ -37,7 +37,7 @@ EOF
   done
 }
 
-table() {  # $1 = 1 或 2 個 group
+table() {  # $1 = 1 or 2 groups
   if [ "$1" = 1 ]; then body="counter log group 2"; else body="symhash mod 2 vmap { 0 : jump g0, 1 : jump g1 }"; fi
   $GI nft -f - <<EOF
 table inet nflt
@@ -60,14 +60,14 @@ EOF
 
 counters() { $G nft list table inet nflt | grep -o "packets [0-9]*" | awk '{print $2}' | tr '\n' ' '; }
 
-start() {  # $1 = yaml 的名稱（2 或 10_11）
+start() {  # $1 = yaml name (2 or 10_11)
   $G sh -c "rm -rf $D/log; mkdir -p $D/log; suricata -c $D/s-$1.yaml --nflog -k ${K:-none} -l $D/log --runmode workers --set unix-command.enabled=no > $D/log/stdout 2>&1 & echo \$! > $D/pid"
   local i
   for i in $(seq 1 100); do $G grep -q "Engine started" $D/log/stdout 2>/dev/null && return 0; alive || break; sleep 0.2; done
   echo "suricata did not start"; $G tail -5 $D/log/stdout; return 1
 }
 
-# 容器的 PID 1 不回收子程序，結束的 Suricata 會留成 zombie，kill -0 判斷不出來
+# PID 1 in the container does not reap children, so an exited Suricata stays a zombie and kill -0 cannot tell
 alive() { $G sh -c 'p=$(cat '$D'/pid); [ -e /proc/$p ] && ! grep -q "Z (zombie)" /proc/$p/status'; }
 stop() { $G sh -c "kill -TERM \$(cat $D/pid)"; while alive; do sleep 0.2; done; }
 
@@ -80,7 +80,7 @@ while True:
     threading.Thread(target=drain, args=(s.accept()[0],), daemon=True).start()
 "; sleep 0.5; }
 
-client() {  # $1 = 來源 port，$2 = 秒數；每 0.1 秒送一行，第一行前面是 1300 bytes 再接標記
+client() {  # $1 = source port, $2 = seconds; a line every 0.1 s, the first preceded by 1300 bytes then the marker
   $C python3 -c "
 import socket, time
 c = socket.create_connection(('10.0.2.2', 5001), source_address=('10.0.1.2', $1))
@@ -124,7 +124,7 @@ startup)
   ok=0; crashed=0; warned=0
   for run in $(seq 1 20); do
     start 2 > /dev/null; sleep 1; stop
-    # zombie 的結束狀態在 /proc/<pid>/stat 第 52 欄（waitpid 的格式）
+    # a zombie's exit status is field 52 of /proc/<pid>/stat (waitpid format)
     st=$($G sh -c "awk '{print \$52}' /proc/\$(cat $D/pid)/stat")
     if [ $((st & 127)) -ne 0 ]; then
       crashed=$((crashed + 1)); echo "run $run: signal $((st & 127)); $($G grep -o "stacktrace:sig [0-9]*:.*Init[^;]*" $D/log/stdout | cut -c1-160)"

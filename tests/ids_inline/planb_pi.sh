@@ -1,32 +1,32 @@
 #!/bin/bash
-# 方案 B：外部產生流量的多 queue 量測，Pi 端（bridge）
-#   筆電 USB 網卡 ── Pi eth0（LAN）[wgw: br0] Pi eth1.20（WAN，VLAN 20）── 筆電 eno2.20
-#   eth0 和 eth1.20 移進 wgw netns；eth1 本身（沒有 VLAN 標籤）照常是 SSH 管理線，不動
-# 前置：pi_lab_mode.sh up 1000、系統的 suricata 服務已停、sh make_configs.sh；wnc-gw 放在 $GW
-# 用法: sudo bash planb_pi.sh up|down
-#       sudo bash planb_pi.sh start <empty|full> <queues> <0|1 全部信任>
+# Plan B: multi-queue measurement with externally generated traffic, Pi side (bridge)
+#   laptop USB NIC ── Pi eth0 (LAN) [wgw: br0] Pi eth1.20 (WAN, VLAN 20) ── laptop eno2.20
+#   eth0 and eth1.20 move into the wgw netns; eth1 itself (untagged) stays the SSH management link, untouched
+# Prerequisites: pi_lab_mode.sh up 1000, system suricata service stopped, sh make_configs.sh; wnc-gw at $GW
+# Usage: sudo bash planb_pi.sh up|down
+#       sudo bash planb_pi.sh start <empty|full> <queues> <0|1 trust all>
 #       sudo bash planb_pi.sh stop
-#       sudo bash planb_pi.sh counters   印 rx/tx 封包數和各種丟包計數（一行 key=value）
-#   IMPL=nflog（start、stop）：不經過 wnc-gw，直接跑 suricata --nflog（ids 候選 B），看到 "Engine started" 才裝 table inet sq：
-#     信任的 ct mark 先 accept（和 wnc-gw 一樣用到 conntrack），其餘 log group 10..（多個 group 用 symhash 分）
-#     BUF（預設 1048576）是每個 group 的 netlink buffer；K（預設 none）是 Suricata 的 -k，K=all 會檢查 checksum
-#     stop 時印 Suricata 每個 group 收到的封包數、tcp.invalid_checksum、detect.alert
-#   PROTECTION=ips|ids（start，預設 ips）：wnc-gw 的 protection；ids 時 <queues> 是 group 數（10 起）
-#   counters 另外印 eth0 送出、收到的 PAUSE（pause_tx0、pause_rx0）
-#   MODE=routed（up、start）：eth0（10.99.1.1/24）、eth1.20（10.99.2.1/24）不接 bridge，Pi 做 IP 轉送；下一跳是假的 MAC
-#     （02:00:00:99:0x:02，筆電的網卡不收，轉送出去的封包不會被筆電再轉到別的網路），pcap 的 LAN 網段（IoT-23 的 192.168.100.0/24、
-#     192.168.1.0/24、10.0.1.0/24、192.168.2.0/24，CIC-IDS2017 192.168.10.0/24、CIC-DDoS2019 192.168.50.0/24、CICIoT2023
-#     192.168.137.0/24）經 eth0，其餘走 eth1.20；送進來的封包目的 MAC 要先改成 Pi 的（planb_run.sh routed_pcap）。
-#     start 寫 mode = "routed"
-#   TRUST_BACKEND=tc|ctmark（start）：寫進 setting.toml 的 [trust] backend；沒設就不寫（wnc-gw 預設 tc）
-#   FEATURE=tc-egress|tc-ingress|xdp-generic（start）：加一個 [[features]]（/tmp/wncgw/feat/prog.o 的 flows_tc 或 flows_xdp、
-#     flows.json，tests/features/），輸出在 /var/log/wnc-gw/features/f.jsonl（量測時掛 tmpfs，不寫 SD 卡；實驗 15）
-#   COPIES=N（start，ids）：另外一個 table inet wnc_copy（forward priority 10，在 wnc-gw 之後）對每個封包多送 N 份 NFLOG 複本
-#     （group 20..），每份由一個 tcpdump -i nflog:<group> -w /dev/null（只讀不做事，buffer 1 MiB，和 Suricata 的 group 一樣）接收；
-#     SNAPLEN=n 時每份只複製前 n bytes。stop 時印每個讀取端的收到／丟掉數
-#   FANOUT=N（start，ids）：wnc_copy 只送一份（group 20），由 ~/cpu_alloc/fanout 在 user space 分給 N 個讀取端（執行緒＋環狀緩衝）；
-#     統計在 /dev/shm/fanout.stats；SNAPLEN 一樣適用
-#   counters 的 nfl_log／nfl_drop 只算 Suricata 的 group（< 20），nfl_xlog／nfl_xdrop 是 wnc_copy 的複本和讀取端丟掉的
+#       sudo bash planb_pi.sh counters   print rx/tx packet counts and all drop counters (one line of key=value)
+#   IMPL=nflog (start, stop): bypass wnc-gw and run suricata --nflog directly (ids candidate B); install table inet sq once "Engine started" appears:
+#     trusted ct marks are accepted first (uses conntrack, same as wnc-gw), the rest go to log group 10.. (multiple groups split by symhash)
+#     BUF (default 1048576) is each group's netlink buffer; K (default none) is Suricata's -k, K=all validates checksums
+#     stop prints the packets Suricata received per group, tcp.invalid_checksum, detect.alert
+#   PROTECTION=ips|ids (start, default ips): wnc-gw's protection; with ids, <queues> is the number of groups (starting at 10)
+#   counters also prints PAUSE frames sent and received on eth0 (pause_tx0, pause_rx0)
+#   MODE=routed (up, start): eth0 (10.99.1.1/24) and eth1.20 (10.99.2.1/24) are not bridged, the Pi does IP forwarding; the next hop is a fake MAC
+#     (02:00:00:99:0x:02, which the laptop NIC does not accept, so forwarded packets are not routed on by the laptop); pcap LAN subnets (IoT-23 192.168.100.0/24,
+#     192.168.1.0/24, 10.0.1.0/24, 192.168.2.0/24, CIC-IDS2017 192.168.10.0/24, CIC-DDoS2019 192.168.50.0/24, CICIoT2023
+#     192.168.137.0/24) go via eth0, the rest via eth1.20; incoming packets need their destination MAC rewritten to the Pi's first (planb_run.sh routed_pcap).
+#     start writes mode = "routed"
+#   TRUST_BACKEND=tc|ctmark (start): written to [trust] backend in setting.toml; omitted if unset (wnc-gw defaults to tc)
+#   FEATURE=tc-egress|tc-ingress|xdp-generic (start): adds one [[features]] (flows_tc or flows_xdp in /tmp/wncgw/feat/prog.o,
+#     flows.json, tests/features/); output in /var/log/wnc-gw/features/f.jsonl (on tmpfs while measuring, not the SD card; experiment 15)
+#   COPIES=N (start, ids): a separate table inet wnc_copy (forward priority 10, after wnc-gw) sends N extra NFLOG copies of every packet
+#     (group 20..), each received by a tcpdump -i nflog:<group> -w /dev/null (read only, buffer 1 MiB, same as Suricata's groups);
+#     with SNAPLEN=n each copy holds only the first n bytes. stop prints received/dropped per reader
+#   FANOUT=N (start, ids): wnc_copy sends one copy (group 20), which ~/cpu_alloc/fanout splits to N readers in user space (threads + ring buffers);
+#     stats in /dev/shm/fanout.stats; SNAPLEN applies too
+#   counters' nfl_log/nfl_drop count only Suricata's groups (< 20); nfl_xlog/nfl_xdrop are wnc_copy's copies and the readers' drops
 GW=${GW:-/tmp/wncgw/wnc-gw}; M=${M:-/tmp/wncgw/m}; L=/tmp/wncgw/planb; CT=${CT:-/home/wnc/ctbench/root/usr/sbin/conntrack}
 LOG=/var/log/wnc-gw/suricata
 W="ip netns exec wgw"
@@ -88,7 +88,7 @@ start)
     exit 0
   fi
   P=${PROTECTION:-ips}
-  # 上一次的 Suricata 統計（含 ips.drop_reason.*）先留下來，log 目錄下面會清掉
+  # Keep the previous Suricata stats (incl. ips.drop_reason.*); the log directory below gets cleared
   [ -s $LOG/stats.log ] && cp $LOG/stats.log $L/stats-$(date -u +%Y%m%dT%H%M%S).log
   { printf 'mode = "%s"\nxdp = "off"\nprotection = "%s"\n\n[ports]\nlan = "eth0"\nwan = "eth1.20"\n\n[suricata]\nconfig = "%s"\nwhen_unavailable = "drop"\n' ${MODE:-bridge} $P "$M/suricata-$rs.yaml"
     if [ "$q" -gt 1 ]; then
@@ -109,7 +109,7 @@ start)
     $W nft add chain inet tmark pre '{ type filter hook prerouting priority 0; policy accept; }'
     $W nft add rule inet tmark pre ct mark set ct mark or 0x80000000
   fi
-  # 上一次的讀取端沒結束的話 group 20.. 還被佔著，新的 tcpdump／fanout 綁不上
+  # If the previous readers have not exited, group 20.. is still taken and the new tcpdump/fanout cannot bind
   if [ "${COPIES:-0}" -gt 0 ] || [ "${FANOUT:-0}" -gt 0 ]; then
     pgrep -a -x 'tcpdump|fanout' && { echo "error: leftover reader"; exit 1; }
   fi
@@ -118,7 +118,7 @@ start)
     rules=
     for i in $(seq 0 $((COPIES - 1))); do
       g=$((20 + i))
-      # 截短交給規則的 snaplen；tcpdump 用 -s 128 時 libpcap 的接收緩衝只有約 256 bytes，kernel 一批送來的會被截掉（丟或結束）
+      # Truncation is left to the rule's snaplen; with tcpdump -s 128 libpcap's receive buffer is only about 256 bytes and a batch from the kernel gets truncated (dropped or exits)
       $W tcpdump -n -q -i nflog:$g -B 1024 -s 0 -w /dev/null > $L/reader$g.out 2>&1 < /dev/null &
       rules="$rules counter log group $g $sl;"
     done
@@ -139,7 +139,7 @@ start)
 stop)
   if [ -e $L/suricata.pid ]; then
     $W nft delete table inet sq 2>/dev/null
-    sleep 9   # stats.log 每 8 秒寫一次，等最後一段
+    sleep 9   # stats.log is written every 8 s; wait for the last interval
     sp=$(cat $L/suricata.pid); rm -f $L/suricata.pid
     kill -TERM $sp; for i in $(seq 1 60); do kill -0 $sp 2>/dev/null || break; sleep 1; done
     $W $CT -F 2>/dev/null || true
@@ -155,7 +155,7 @@ stop)
   fi
   if pgrep -x fanout > /dev/null; then
     echo "reader fanout: $(cat /dev/shm/fanout.stats 2> /dev/null)"
-    # 背景啟動的程式會忽略 SIGINT（bash 沒有 job control 時），fanout 沒有自己處理，所以用 SIGTERM
+    # Background processes ignore SIGINT (bash without job control) and fanout does not handle it itself, so use SIGTERM
     pkill -x fanout; for i in $(seq 1 20); do pgrep -x fanout > /dev/null || break; sleep 0.5; done
     rm -f /dev/shm/fanout.stats
   fi
@@ -169,7 +169,7 @@ counters)
   s() { $W cat /sys/class/net/$1/statistics/$2; }
   qd=$($W cat /proc/net/netfilter/nfnetlink_queue 2>/dev/null | awk '{d += $6 + $7} END{print d + 0}')
   ct=$($W $CT -S 2>/dev/null | awk '{for (i = 2; i <= NF; i++) { split($i, a, "="); s[a[1]] += a[2] }} END{printf "ct_insert_failed=%d ct_drop=%d", s["insert_failed"], s["drop"]}')
-  # NFLOG：log 規則送出的複本（table inet sq，或 wnc-gw ids 模式的 table inet wnc_gw）、收複本的 netlink socket 的 Drops（都不在時是 0）
+  # NFLOG: copies sent by log rules (table inet sq, or table inet wnc_gw in wnc-gw ids mode) and Drops on the netlink sockets receiving them (0 when absent)
   logged() { awk '/log group/{for (i = 1; i <= NF; i++) if ($i == "packets") s += $(i + 1)} END{print s + 0}'; }
   nl=$({ $W nft list table inet sq; $W nft list table inet wnc_gw; } 2>/dev/null | logged)
   xl=$($W nft list table inet wnc_copy 2>/dev/null | logged)

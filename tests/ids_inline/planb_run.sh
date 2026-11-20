@@ -1,18 +1,18 @@
 #!/bin/bash
-# 方案 B：外部產生流量的多 queue 量測，筆電端
-#   流量產生器是 Docker 容器 wnc-gen（image wnc-lab-gen：wnc-lab 加 tcpreplay；--network host、NET_ADMIN、NET_RAW）
-#   路由器（WAN 端）送的封包從 eno2.20 送進 Pi eth1.20，其他從 USB 網卡送進 Pi eth0；Pi 端用 planb_pi.sh
-#   每個速率送一整個 pcap（不重複播放），比較 tcpreplay 送出的封包數和 Pi 轉送出去的封包數
-#   cap_loss = kernel queue 滿而丟（nfq_drop）+ 網卡丟 + 沒收到（sent − pi_in）＝ 處理不過來；loss 另外包含 Suricata 自己的判決丟包（重播造成的 stream_error 等）
-#   連續兩個速率 cap_loss > 1% 就停
-# 用法: bash planb_run.sh setup|teardown
-#       bash planb_run.sh sweep <empty|full> <queues> <0|1 全部信任> <pcap 名稱> <round> <pps...>
-#       bash planb_run.sh matrix    2026-10-28 的量測：full、S_m17／S_m1／S_m60、1–4 個 queue、2 輪，加上全部信任
-#       bash planb_run.sh nflog     2026-10-29 ids 候選 B：IMPL=nflog、full、S_m1／S_m17／S_m60、1–2 個 group，結果寫 nflog.kvl
-#   IMPL=nflog（K、BUF 一起傳給 planb_pi.sh）：結果多 copy_loss_pct = netlink 丟掉的複本 ÷ log 規則送出的複本；停止條件仍只看 cap_loss
-#   KVL：結果檔名（預設 planb.kvl）
-#       bash planb_run.sh routed_pcap <pcap 名稱...>   planb_pi.sh 的 MODE=routed 用：把目的 MAC 改成 Pi 的介面（路由器那側 → eth1.20、
-#           其他 → eth0），寫 /out/<名稱>.rt.pcap 和 .rt.cache；PI_LAN_MAC、PI_WAN_MAC 預設是 Pi 的 eth0、eth1
+# Plan B: multi-queue measurement with externally generated traffic, laptop side
+#   the traffic generator is the Docker container wnc-gen (image wnc-lab-gen: wnc-lab plus tcpreplay; --network host, NET_ADMIN, NET_RAW)
+#   packets from the router (WAN side) go from eno2.20 into Pi eth1.20, the rest from the USB NIC into Pi eth0; the Pi side uses planb_pi.sh
+#   each rate sends one whole pcap (no looping), comparing packets sent by tcpreplay with packets the Pi forwarded
+#   cap_loss = kernel queue-full drops (nfq_drop) + NIC drops + not received (sent − pi_in) = cannot keep up; loss also includes Suricata's own verdict drops (stream_error etc. caused by replay)
+#   stop after two consecutive rates with cap_loss > 1%
+# Usage: bash planb_run.sh setup|teardown
+#       bash planb_run.sh sweep <empty|full> <queues> <0|1 trust all> <pcap name> <round> <pps...>
+#       bash planb_run.sh matrix    2026-10-28 measurement: full, S_m17/S_m1/S_m60, 1-4 queues, 2 rounds, plus trust-all
+#       bash planb_run.sh nflog     2026-10-29 ids candidate B: IMPL=nflog, full, S_m1/S_m17/S_m60, 1-2 groups, results in nflog.kvl
+#   IMPL=nflog (K, BUF are passed to planb_pi.sh): results add copy_loss_pct = copies dropped by netlink ÷ copies sent by log rules; the stop condition still uses only cap_loss
+#   KVL: result file name (default planb.kvl)
+#       bash planb_run.sh routed_pcap <pcap name...>   for planb_pi.sh MODE=routed: rewrite the destination MAC to the Pi interface (router side → eth1.20,
+#           others → eth0), writes /out/<name>.rt.pcap and .rt.cache; PI_LAN_MAC, PI_WAN_MAC default to the Pi's eth0, eth1
 LAN=${LAN:-enx9c69d3241bd9}; WAN=${WAN:-eno2}; PI=${PI:-wnc@10.254.254.2}
 PCAPS=${PCAPS:-/home/sixsquare/datasets/throughput/pcaps}; OUT=${OUT:-/home/sixsquare/datasets/throughput/planb}
 G="docker exec wnc-gen"

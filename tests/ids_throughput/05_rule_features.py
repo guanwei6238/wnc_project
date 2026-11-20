@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""05_rule_features.py — 把 ET Open（Suricata 版）每條規則的分類特徵抽成一張 TSV（results/rule_features.tsv），
-供 12_gateway_rule_corp.py 依 category 挑規則，也用來統計 ET Open 各 category 的規則數。
+"""05_rule_features.py - extract classification features of every ET Open (Suricata version) rule into a TSV (results/rule_features.tsv),
+used by 12_gateway_rule_corp.py to pick rules by category, and to count ET Open rules per category.
 
-抽出的欄位：
-  - category：msg 開頭的 "ET <類別>"（例如 ET SCAN、ET MALWARE）；沒有這個前綴的（例如舊版 GPL 規則）記為 "(其他)"，
-    由 12_gateway_rule_corp.py 再依 msg 細分（GPL 依子類別、Threatview 單獨一類）
+Extracted fields:
+  - category: the "ET <category>" at the start of msg (e.g. ET SCAN, ET MALWARE); rules without this prefix (e.g. old GPL rules) are recorded as "(其他)",
+    then split further by msg in 12_gateway_rule_corp.py (GPL by subcategory, Threatview as its own category)
   - classtype
-  - metadata 的 affected_product / attack_target / deployment / signature_severity
-  - 協定（http／dns／tls／tcp…）、header 逗號數（與 04_make_sel_rules.py 同判準，用來找長清單）
-  - flowbits 的 set／isset 名稱（子集合要保留被依賴的規則，否則 isset 的規則永遠不會觸發）
+  - metadata affected_product / attack_target / deployment / signature_severity
+  - protocol (http/dns/tls/tcp...), header comma count (same test as 04_make_sel_rules.py, to find long lists)
+  - flowbits set/isset names (a subset must keep the rules it depends on, or isset rules never fire)
   - msg
-這支腳本只「抽特徵」，不決定要挑哪些規則；挑法在 12_gateway_rule_corp.py。
+This script only extracts features and does not decide which rules to pick; that is in 12_gateway_rule_corp.py.
 
-用法： python3 -I 05_rule_features.py <suricata_full.rules> <輸出 tsv>
+Usage: python3 -I 05_rule_features.py <suricata_full.rules> <output tsv>
 """
 import re
 import sys

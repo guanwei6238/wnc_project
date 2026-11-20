@@ -1,14 +1,14 @@
 #!/bin/bash
-# eve_cost_pi.sh — EVE 寫檔案和 unix_stream 各花 Suricata 多少 CPU（Pi，Suricata 8.0.7，offline -r，沒有規則、只輸出 flow 事件）
-#   none（不開 eve-log）／regular（寫在 SD 卡上的檔案）／unix（unix_stream，讀取端 reader.py fast 綁 CPU 3）
-#   Suricata 綁 CPU 2；每種 5 次、順序每輪打亂
-#   suricata_cpu_s = Suricata 的 user+sys（bash 的 time）；machine_busy_s = 4 顆 CPU 的經過時間 − idle − iowait（/proc/stat，NO_HZ 下 idle 是精確的）
-#   offline 模式下 unix socket 是 blocking（live 模式才是 non-blocking、會丟事件，見 eve_sock_docker.sh），所以這裡量的是全部寫出去的成本
-# 前置：pi_lab_mode.sh up 1000、系統的 suricata 服務已停；reader.py 和本檔放在同一個目錄
-# 用法: sudo bash eve_cost_pi.sh <pcap> [輪數，預設 5]，結果一行一次寫到 stdout
+# eve_cost_pi.sh — how much CPU Suricata spends writing EVE to a file vs unix_stream (Pi, Suricata 8.0.7, offline -r, no rules, flow events only)
+#   none (no eve-log) / regular (a file on the SD card) / unix (unix_stream, reader is reader.py fast pinned to CPU 3)
+#   Suricata pinned to CPU 2; 5 runs each, order shuffled every round
+#   suricata_cpu_s = Suricata's user+sys (bash time); machine_busy_s = elapsed time of the 4 CPUs − idle − iowait (/proc/stat; idle is exact under NO_HZ)
+#   In offline mode the unix socket is blocking (only live mode is non-blocking and drops events, see eve_sock_docker.sh), so this measures the cost of writing everything out
+# Prerequisite: pi_lab_mode.sh up 1000, system suricata service stopped; reader.py in the same directory as this file
+# Usage: sudo bash eve_cost_pi.sh <pcap> [rounds, default 5]; results go to stdout, one line per run
 HERE=$(cd "$(dirname "$0")" && pwd); W=/home/wnc/eo; PC=$1; N=${2:-5}
 mkdir -p $W/log; : > $W/empty.rules
-yaml() {  # yaml <檔名> <none|regular|unix>
+yaml() {  # yaml <file name> <none|regular|unix>
   { printf '%%YAML 1.1\n---\ninclude: /etc/suricata/suricata.yaml\noutputs:\n'
     case $2 in
     regular) printf '  - eve-log:\n      enabled: yes\n      filetype: regular\n      filename: eve.json\n      types:\n        - flow\n' ;;

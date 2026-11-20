@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""四個 dataset 用同一個標準整理每個 label：flows、有 alert 的 flow、rule 對得上的 flow、判斷。
+"""Summarize each label of the four datasets by one standard: flows, flows with alerts, flows matched by related rules, verdict.
 
-rule 對得上的 flow：flow 上至少有一筆 alert 的 SID 在 results/related_rules.tsv 該 label 的清單裡（ET SCAN* = msg 以 ET SCAN 開頭，「ET SCAN* -SID,SID」再扣掉列出的 SID）。
-判斷：✓ 對得上的 flow > 0；△ 有 alert 但沒有對得上的；✗ 沒有 alert。
-IoT-23、CIC-IDS2017、CIC-DDoS2019 的比對結果只記每個 label 各 SID 落在幾條 flow，沒有每條 flow 的 SID 組合，
-所以逐個 scenario／天算：清單外的 SID 都沒出現 → 等於有 alert 的 flow；清單內的都沒出現 → 0；
-清單內只有一個 SID → 那個 SID 的 flow 數；清單內的 SID 剛好是出現的 gw_corp SID → 等於 gw_corp 的 flow 數。
-都不符合就輸出上下限並標 exact=no。CICIoT2023 直接用 eve.json 的 flow_id，整個檔的 flow 都算該檔的攻擊（官方 label）。
-用法: python3 -I related_flows.py <輸出.tsv>
+Rule-matched flow: a flow with at least one alert whose SID is in that label's list in results/related_rules.tsv (ET SCAN* = msg starts with ET SCAN; "ET SCAN* -SID,SID" also removes the listed SIDs).
+Verdict: ✓ rule-matched flows > 0; △ has alerts but none rule-matched; ✗ no alerts.
+The IoT-23, CIC-IDS2017 and CIC-DDoS2019 match results only record how many flows each SID hit per label, not the SID combination of each flow,
+so compute per scenario/day: no SID outside the list seen -> equals flows with alerts; no SID in the list seen -> 0;
+only one SID in the list -> that SID's flow count; the listed SIDs are exactly the gw_corp SIDs seen -> equals the gw_corp flow count.
+Otherwise output lower and upper bounds and mark exact=no. CICIoT2023 uses eve.json flow_id directly, and every flow in a file counts as that file's attack (official label).
+Usage: python3 -I related_flows.py <out.tsv>
 """
 import collections
 import csv

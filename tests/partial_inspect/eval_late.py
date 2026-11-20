@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""eval_late.py — 實驗 5 的評估：每個策略下，各類型連線有幾條被 web 攻擊規則抓到
+"""eval_late.py — exp 5 evaluation: under each policy, how many connections of each type are caught by web attack rules
 
-用法: python3 -I eval_late.py <late 目錄>
-  web 攻擊規則＝在 full 策略下、攻擊連線上出現過的 SID（排除 benign 連線上也出現的）；一條連線只要有一筆就算抓到
-  以 client port 對連線（每條連線的 port 都不同）
+Usage: python3 -I eval_late.py <late dir>
+  web attack rules = SIDs seen on attack connections under the full policy (excluding those also seen on benign connections); one hit is enough to count a connection as caught
+  connections are matched by client port (each connection has a different port)
 """
 import json
 import math

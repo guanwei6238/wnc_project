@@ -1,9 +1,9 @@
 #!/bin/bash
-# Suricata --nflog 在有流量時啟動會不會當（Pi，env.sh 的 wgw/wtest）
-#   先裝 log group 10 的規則，wtest 用 tcpreplay 一直送 60-1（10,000 pps），再啟動、停止 Suricata N 次，用 wait 拿結束狀態
-#   對照：Docker 8.0.7 是 5/20 次 segfault（ReceiveNFLOGThreadInit）
-# 前置：sudo sh env.sh up；sh make_configs.sh；跑過一次 IMPL=nflog 的 trial.sh（用它產生的 suricata.yaml）
-# 用法: sudo bash nflog_startup_pi.sh <suricata.yaml> [次數，預設 20]
+# does Suricata --nflog crash when started under traffic (Pi, env.sh's wgw/wtest)
+#   install the log group 10 rule first, wtest keeps sending 60-1 (10,000 pps) with tcpreplay, then start and stop Suricata N times, getting the exit status with wait
+#   baseline: Docker 8.0.7 segfaulted 5/20 times (ReceiveNFLOGThreadInit)
+# Prerequisites: sudo sh env.sh up; sh make_configs.sh; one trial.sh run with IMPL=nflog (uses the suricata.yaml it generates)
+# Usage: sudo bash nflog_startup_pi.sh <suricata.yaml> [count, default 20]
 Y=${1:?usage: nflog_startup_pi.sh <suricata.yaml> [runs]}; N=${2:-20}
 M=${M:-/tmp/wncgw/m}; PCAP=/home/wnc/ids_throughput/data/pcaps/S_m60.pcap; L=/tmp/wncgw/nflstart
 rm -rf $L; mkdir -p $L

@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""IoT-23：把 Suricata 的 alert 對回 conn.log.labeled 的 flow，算每個 label 的偵測結果。
+"""IoT-23: match Suricata alerts back to conn.log.labeled flows and compute detection results per label.
 
-對法（五元組與時間的定義和 tests/iot23/align_stream.py 相同）：
-  - 五元組雙向都算（兩端點排序後當 key）；ICMP 不看 port
-  - alert 的封包時間落在 conn 的 [ts, ts+duration]（兩端各放寬 1 µs）-> 對上
-  - 落不進任何 conn 時，再看 alert 所屬 Suricata flow 的起始時間（flow.start）和 conn 的 ts 是否相差 ≤ 1 ms
-    （例如 flow timeout 時才送出的 alert，時間會在 Zeek 記的最後一個封包之後）
-  - 一筆 alert 可能落在多條 conn（同五元組、時間重疊），每條都算
-一條 conn 只要有一筆 alert 對上，就算「有 alert」；gw_corp 只看 SID 在 gw_corp 清單裡的 alert；
-gw_corp+iplist 再加上長 IP 清單的 rule（gateway 設計上改用 nftables 的 IP 集合比對，偵測面一樣）。
+Matching (5-tuple and time defined as in tests/iot23/align_stream.py):
+  - 5-tuple in both directions (endpoints sorted to form the key); ports ignored for ICMP
+  - the alert's packet time falls in the conn's [ts, ts+duration] (widened by 1 µs on each end) -> match
+  - if it falls in no conn, check whether the start time of the alert's Suricata flow (flow.start) is within 1 ms of the conn's ts
+    (e.g. alerts emitted only at flow timeout, timed after the last packet Zeek recorded)
+  - one alert may fall in several conns (same 5-tuple, overlapping times); each one counts
+A conn "has an alert" if any alert matches it; gw_corp only counts alerts whose SID is in the gw_corp list;
+gw_corp+iplist also adds the rules with long IP lists (the gateway design matches those with nftables IP sets instead; same detection coverage).
 
-用法: python3 -I match_iot23.py <conn.log.labeled> <eve.json> <gw_corp_sids.txt> <iplist_sids.txt> <輸出.json> [批數，預設 1] [--cic]
---cic：label 來自原版 CICFlowMeter 的 CSV（CIC-DDoS2019）。它把解不出 TCP/UDP header 的 packet（ICMP、後續 fragment 等）記成
-       Protocol 0、port 0/0 的 flow（conn 裡是 other），CSV 沒有 ICMP flow，所以非 TCP/UDP 的 alert 對到同一對 IP 的 other flow。
-       CIC-IDS2017 修正版不要用：它有 ICMP flow，Protocol 0 是非 IP 的 frame。
-alert 太多、記憶體不夠時（39-1 約 1,470 萬筆），依五元組分成幾批，每批各讀一次 eve.json 和 conn.log；結果和不分批相同。
+Usage: python3 -I match_iot23.py <conn.log.labeled> <eve.json> <gw_corp_sids.txt> <iplist_sids.txt> <out.json> [shards, default 1] [--cic]
+--cic: labels come from the original CICFlowMeter CSV (CIC-DDoS2019). It records packets whose TCP/UDP header it can't parse (ICMP, later fragments, etc.) as
+       Protocol 0, port 0/0 flows (other in conn), and the CSV has no ICMP flows, so non-TCP/UDP alerts match the other flow of the same IP pair.
+       Do not use it for the corrected CIC-IDS2017: that has ICMP flows and Protocol 0 is non-IP frames.
+When there are too many alerts for memory (about 14.7 million for 39-1), split into shards by 5-tuple, reading eve.json and conn.log once per shard; results are the same as without sharding.
 """
 import array
 import bisect
@@ -89,7 +89,7 @@ def main():
     labels, flows = {}, collections.Counter()
     match_n = collections.Counter()
     unmatched = collections.Counter()
-    lab_sids = collections.defaultdict(collections.Counter)    # label -> SID -> 有該 SID alert 的 flow 數
+    lab_sids = collections.defaultdict(collections.Counter)    # label -> SID -> number of flows with an alert of that SID
     det_full, det_gw, det_gwip = collections.Counter(), collections.Counter(), collections.Counter()
     lab_alerts = collections.Counter()
     for shard in range(shards):
@@ -103,7 +103,7 @@ def main():
             h1, h2 = a.split('|')[0], b.split('|')[0]
             pairs.add(h1 + ' ' + h2 if h1 < h2 else h2 + ' ' + h1)
 
-        # 讀 conn.log：數每個 label 的 flow 數（只在第一批）；alert 有出現的五元組，記下它的 conn（ts, end, label 編號）
+        # Read conn.log: count flows per label (first shard only); for 5-tuples that have alerts, record their conns (ts, end, label id)
         conns = collections.defaultdict(list)
         with open(conn_path, errors='replace') as f:
             for line in f:
@@ -126,15 +126,15 @@ def main():
                     conns[key].append((ts, ts + dur, lid))
         del pairs
 
-        # 每個五元組各自配對 alert 與 conn
-        how = bytearray(n)          # 0 = 沒對上，1 = 時間落在 conn 內，2 = 靠 flow.start 對上
+        # Match alerts to conns per 5-tuple
+        how = bytearray(n)          # 0 = no match, 1 = time inside conn, 2 = matched via flow.start
         for key, idxs in by_key.items():
             cl = conns.get(key)
             if not cl:
                 continue
             cl.sort()
             starts = [c[0] for c in cl]
-            hit = collections.defaultdict(set)      # conn 序號 -> 對上的 SID
+            hit = collections.defaultdict(set)      # conn index -> matched SIDs
             for i in idxs:
                 t = a_ts[i]
                 j = bisect.bisect_right(starts, t + EPS)

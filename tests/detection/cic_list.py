@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""列出 cicresearch.ca 某個 dataset 底下的所有檔案（遞迴走 browse.php），輸出 TSV：路徑、大小欄位原文、download 網址。
-token 是填完下載表單後瀏覽器拿到的 cookie（名稱 Token），從環境變數 CIC_TOKEN 讀，不寫進檔案。
-用法: CIC_TOKEN=... python3 -I cic_list.py <base，例如 https://cicresearch.ca/CICDataset/CIC-IDS-2017> > list.tsv
+"""List all files under a cicresearch.ca dataset (walking browse.php recursively) as TSV: path, raw size field, download URL.
+The token is the cookie (named Token) the browser gets after filling in the download form, read from the CIC_TOKEN env var and never written to a file.
+Usage: CIC_TOKEN=... python3 -I cic_list.py <base, e.g. https://cicresearch.ca/CICDataset/CIC-IDS-2017> > list.tsv
 """
 import html
 import os

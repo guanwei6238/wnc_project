@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
-"""pcap_stats.py -- 用標準函式庫讀 classic pcap，印出一行 JSON 統計 (不依賴 Scapy/capinfos，Pi 上也能跑)。
+"""pcap_stats.py -- read a classic pcap with the standard library and print one JSON line of stats (no Scapy/capinfos, runs on the Pi too).
 
-用法:  python3 -I pcap_stats.py <file.pcap>
+Usage:  python3 -I pcap_stats.py <file.pcap>
 
-為什麼自己寫: 我們要的是「封包數、位元組、持續時間、payload 占比」這幾個數字，
-而且要和引擎自報的 decoded 封包數對帳；自己算才知道定義是什麼。
+Why custom: we need just packet count, bytes, duration and payload share,
+and they must reconcile with the engine's self-reported decoded packet count; computing them ourselves makes the definitions explicit.
 
-定義 (報告裡會引用):
-  packets        pcap 內的封包記錄數 (最後一筆若被截斷不算，另以 truncated_tail=true 標示)
-  bytes_wire     sum(orig_len)  封包在線上的長度
-  bytes_cap      sum(incl_len)  pcap 實際存下來的長度 (= 引擎看到的長度；沒有被 snaplen 截斷時兩者相同)
-  duration       最後一個封包時間 - 第一個封包時間 (秒)
+Definitions (cited in the report):
+  packets        number of packet records in the pcap (a truncated last record is not counted; flagged with truncated_tail=true)
+  bytes_wire     sum(orig_len)  on-the-wire packet length
+  bytes_cap      sum(incl_len)  length actually stored in the pcap (= what the engine sees; equal to bytes_wire when not cut by snaplen)
+  duration       last packet time - first packet time (seconds)
   avg_pkt_size   bytes_cap / packets
-  payload 封包   TCP 或 UDP 且 L4 payload 長度 > 0 的封包 (ICMP、ARP、純 ACK/SYN 都不算)
-  payload_pkt_share   payload 封包數 / packets
-  payload_byte_share  sum(L4 payload 長度) / bytes_cap   (分母含 Ethernet/IP/TCP 標頭，所以永遠 < 1)
-  L4 payload 長度 = IP total length - IP header - TCP/UDP header (用 IP 標頭的長度，所以不含 Ethernet 補零)
+  payload packet TCP or UDP with L4 payload length > 0 (ICMP, ARP, bare ACK/SYN do not count)
+  payload_pkt_share   payload packets / packets
+  payload_byte_share  sum(L4 payload length) / bytes_cap   (denominator includes Ethernet/IP/TCP headers, so always < 1)
+  L4 payload length = IP total length - IP header - TCP/UDP header (uses the IP header length, so Ethernet padding is excluded)
 """
 import struct, sys, json
 
@@ -54,7 +54,7 @@ def main(path):
         if t_first is None: t_first = t
         t_last = t
         n += 1; bytes_wire += orig; bytes_cap += incl
-        # --- 找到 IP 標頭的起點 ---
+        # --- find the start of the IP header ---
         if linktype == 1:           # Ethernet
             off = 14
             et = (data[12] << 8 | data[13]) if incl >= 14 else 0
@@ -75,7 +75,7 @@ def main(path):
             proto = data[off + 9]
             ip_end = min(off + tot, incl)
             l4 = off + ihl
-            if fragoff: proto = -1          # 非第一個分片，沒有 L4 標頭
+            if fragoff: proto = -1          # not the first fragment, no L4 header
         elif et == 0x86dd and incl >= off + 40:
             plen = data[off + 4] << 8 | data[off + 5]
             proto = data[off + 6]

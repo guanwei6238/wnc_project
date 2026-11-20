@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""診斷用：針對 conn.log.labeled 的幾條 flow（指定行號），列出 pcap 裡「同一個五元組」的所有封包，
-標出每個封包相對於 flow 時間窗 [ts, ts+duration] 的位置，看對不上的原因。
-只適合小 pcap / 少量 flow（會串流掃整個 pcap 一次）。
+"""Diagnostics: for a few flows in conn.log.labeled (by line number), list every packet in the pcap with the same 5-tuple,
+marking each packet's position relative to the flow's time window [ts, ts+duration], to see why they don't align.
+Only for small pcaps / few flows (streams through the whole pcap once).
 
-用法：python3 -I diag_flow.py <conn.log.labeled> <pcap> <行號> [<行號> ...]
+Usage: python3 -I diag_flow.py <conn.log.labeled> <pcap> <line no> [<line no> ...]
 """
 import importlib.util
 import sys

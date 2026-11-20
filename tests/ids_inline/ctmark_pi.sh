@@ -1,6 +1,6 @@
 #!/bin/bash
-# 3a 功能驗證（Pi，bridge）：sudo bash ctmark_pi.sh <nol2|l2>
-# fcli(10.9.0.1) --veth-- [fgw: br0] --veth-- fsrv(10.9.0.2)；Suricata 直接跑 NFQ 在 fgw；conntrack -U 在 fgw 改 mark
+# 3a functional check (Pi, bridge): sudo bash ctmark_pi.sh <nol2|l2>
+# fcli(10.9.0.1) --veth-- [fgw: br0] --veth-- fsrv(10.9.0.2); Suricata runs NFQ directly in fgw; conntrack -U changes the mark in fgw
 v=$1; CT=/home/wnc/ctbench/root/usr/sbin/conntrack; T=/tmp/wncgw/t3a
 for ns in fgw fcli fsrv; do ip netns add $ns; ip netns exec $ns sysctl -q -w net.ipv6.conf.all.disable_ipv6=1 net.ipv6.conf.default.disable_ipv6=1; ip -n $ns link set lo up; done
 ip link add c-lan netns fcli type veth peer name f-lan netns fgw

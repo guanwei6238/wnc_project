@@ -1,10 +1,10 @@
 #!/bin/bash
-# 下載並凍結「Snort 版」ET Open 規則快照（給 Snort 3 用；Suricata 用 00_fetch_rules.sh 的 Suricata 版）。
-# 為什麼要另一份：Suricata 版規則有 dns.query/tls.sni… 等 Suricata 專有關鍵字，Snort 3 不能用。ET 另有 Snort 語法的包：
-#   open/snort-3.0.0/  與  open/snort-2.9.0/   ("2.9" 是『規則語法世代』；我們跑的引擎仍是 Snort 3.12.2.0，
-#   snort2lua 只是 Snort 3 附的規則轉換工具)。兩個包都會下載（2026-10-11 的快照兩包內容完全相同），後續流程用 snort-3.0.0。
-# 安全：下載的是不受信任資料 -> 解壓前檢查沒有絕對路徑或 '..'，各自解壓到「新的空目錄」並設唯讀。
-# 快照一旦建立就不要重抓覆蓋。用法: 13_fetch_snort_rules.sh [日期標籤，預設今天]
+# Download and freeze a snapshot of the "Snort" ET Open rules (for Snort 3; Suricata uses the Suricata version from 00_fetch_rules.sh).
+# Why a separate one: the Suricata rules use Suricata-only keywords such as dns.query/tls.sni…, which Snort 3 cannot use. ET also ships packages in Snort syntax:
+#   open/snort-3.0.0/  and  open/snort-2.9.0/   ("2.9" is the rule syntax generation; the engine we run is still Snort 3.12.2.0,
+#   snort2lua is just the rule converter bundled with Snort 3). Both are downloaded (the two are identical in the 2026-10-11 snapshot); the rest of the pipeline uses snort-3.0.0.
+# Safety: downloads are untrusted data -> check for absolute paths or '..' before extracting, extract each into a new empty directory and make it read-only.
+# Once a snapshot exists, never re-download over it. Usage: 13_fetch_snort_rules.sh [date tag, default today]
 set -e
 RULESETS=/home/sixsquare/datasets/rulesets
 TAG=${1:-$(date +%F)}

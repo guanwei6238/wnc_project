@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""trust.py — trust_cost.sh 的結果：信任（ct mark）之後每個封包省多少、L2 多花多少。
+"""trust.py — trust_cost.sh results: per-packet savings after trust (ct mark) and the extra cost of L2.
 
-用法: python3 trust.py results/trust1.kvl
-  每格是各輪 cpu_us_per_pkt 的平均（整台機器，µs／封包），括號是各輪的最大差距
-  C0 只轉送（沒有 conntrack）；C1 全部進 Suricata；C2 全部信任；C3 全部信任 + L2（SYN/FIN/RST 進 Suricata）
-  信任省下 = C1 − C2；L2 成本 = C3 − C2；conntrack + ct mark = C2 − C0
-  控制封包 = C3 時走 L2 規則的封包比例
-  有 C4、C5 時另外印「純 SYN 清信任 bit」的成本：C4 是 1 條（同 wnc-gw），C5 是 K 條（放大），每條 = (C5 − C3) ÷ K
+Usage: python3 trust.py results/trust1.kvl
+  each cell is the mean cpu_us_per_pkt over rounds (whole machine, µs/packet); parentheses give the max spread between rounds
+  C0 forwarding only (no conntrack); C1 everything to Suricata; C2 everything trusted; C3 everything trusted + L2 (SYN/FIN/RST to Suricata)
+  trust savings = C1 − C2; L2 cost = C3 − C2; conntrack + ct mark = C2 − C0
+  control packets = fraction of packets taking the L2 rule in C3
+  with C4, C5, also prints the cost of "clear trust bit on pure SYN": C4 has 1 rule (as in wnc-gw), C5 has K (amplified), per rule = (C5 − C3) ÷ K
 """
 import statistics as st
 import sys

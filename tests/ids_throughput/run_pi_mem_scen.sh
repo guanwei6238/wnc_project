@@ -1,24 +1,24 @@
 #!/bin/bash
-# run_pi_mem_scen.sh — 在 Pi 目前的 memory 等級下，用指定的 scenario 量 full／gw_corp 的 RSS 與處理速度。
-# 在解壓後的 ids_throughput/ 目錄執行。每個 memory 等級（用 pi_set_total_mem.sh 設定並重開機後）跑一次。
+# run_pi_mem_scen.sh - at the Pi's current memory level, measure RSS and processing speed of full/gw_corp on a given scenario.
+# Run from the unpacked ids_throughput/ dir. Run once per memory level (after setting it with pi_set_total_mem.sh and rebooting).
 #
-# 用法： PCAP=S_m39.pcap nohup bash run_pi_mem_scen.sh <等級標籤，例如 1gb> > ~/pi_mem39_<標籤>.log 2>&1 < /dev/null &
-#   環境變數：PCAP（預設 S_m39.pcap）、RULES（預設 full,gw_corp）、TAGP（tag 前綴，預設 pi_mem39）
+# Usage: PCAP=S_m39.pcap nohup bash run_pi_mem_scen.sh <level label, e.g. 1gb> > ~/pi_mem39_<label>.log 2>&1 < /dev/null &
+#   Environment: PCAP (default S_m39.pcap), RULES (default full,gw_corp), TAGP (tag prefix, default pi_mem39)
 #
-# 做法：
-#   - 預設用 39-1 (IRCBot) 的切片 S_m39：Suricata 掛 full／gw_corp 時，它都是 14 個 scenario 裡最慢、RSS 最大；
-#     Snort 3 也排在最慢的前幾個；而且它在 11 個 usable scenario 裡
-#   - 4 GB 不另外量，直接用 run_pi_scen2.sh（pi_scen2_S／N）的 S_m39；這支只量 2 GB、1 GB
-#   - swap 維持系統預設（zram 開）
-#   - 每格 1 暖機 + 3 次；Snort 3 full 在 39-1 每次約 8.5 分鐘，逾時設 3600 秒
-#   - 開跑前先等 vcgencmd 回報的 ARM 時脈降到 1000 MHz：剛開機的一兩分鐘內，kernel 的 scaling_max_freq
-#     已是 1000 MHz，但韌體實際仍跑 1800 MHz（Snort 3 會快約 1.76 倍）
-#   - 矩陣前清掉 dmesg，矩陣後把 OOM 相關訊息存到 results/<tag>.dmesg.txt
-#   - 最後對 Suricata 的每個 rule set 各跑一次取樣，記錄 VmSwap（被換進 zram 的量）峰值，結果只印在 log：
-#     RSS 不含被換出去的 page
-#   - SKIP_MATRIX=1：只做 OOM 紀錄與 VmSwap 取樣（補跑用）
+# Method:
+#   - Defaults to the 39-1 (IRCBot) slice S_m39: with Suricata on full/gw_corp it is the slowest and largest-RSS of the 14 scenarios;
+#     it is also among the slowest for Snort 3, and it is one of the 11 usable scenarios
+#   - 4 GB is not measured separately; reuse S_m39 from run_pi_scen2.sh (pi_scen2_S/N). This script only does 2 GB and 1 GB
+#   - swap stays at the system default (zram on)
+#   - 1 warm-up + 3 runs per cell; Snort 3 full on 39-1 takes about 8.5 min per run, timeout 3600 s
+#   - Before starting, wait until vcgencmd reports the ARM clock at 1000 MHz: for a minute or two after boot the kernel's scaling_max_freq
+#     is already 1000 MHz but the firmware still runs at 1800 MHz (Snort 3 is about 1.76x faster)
+#   - Clear dmesg before the matrix; afterwards save OOM-related messages to results/<tag>.dmesg.txt
+#   - Finally run each Suricata rule set once with sampling to record peak VmSwap (amount swapped into zram), printed to the log only:
+#     RSS does not include swapped-out pages
+#   - SKIP_MATRIX=1: only the OOM record and VmSwap sampling (for re-runs)
 #
-# 前置：Pi 在量測模式（pi_lab_mode.sh up 1000）、時鐘已校正、系統 suricata 服務已停、data/pcaps 內有 $PCAP、data/rules 內有對應規則。
+# Prerequisites: Pi in lab mode (pi_lab_mode.sh up 1000), clock synced, system suricata service stopped, $PCAP in data/pcaps, matching rules in data/rules.
 cd "$(dirname "$0")" || exit 1
 LABEL=${1:?用法: $0 <等級標籤，例如 1gb>}
 export BIG=$PWD/data SNORT_ETC=${SNORT_ETC:-/etc/snort} MODE=native
@@ -37,7 +37,7 @@ echo "===== $TAG  開始 $(date -u +%FT%TZ) ====="
 snap
 echo "total_mem 設定: $(grep -h '^total_mem=' /boot/firmware/config.txt || echo '(無，使用實際記憶體)')"
 pgrep -x Suricata-Main >/dev/null && echo "⚠ 系統的 suricata 服務還在跑"
-# 等時脈真的鎖住（最多 5 分鐘）
+# Wait until the clock is actually locked (up to 5 minutes)
 for i in $(seq 1 60); do
   mhz=$(( $(vcgencmd measure_clock arm | cut -d= -f2) / 1000000 ))
   [ "$mhz" -le 1050 ] && break
@@ -56,7 +56,7 @@ snap
 fi
 { echo "=== $TAG  $(date -u +%FT%TZ) ==="; sudo dmesg -T 2>/dev/null | grep -iE "out of memory|oom-kill|killed process" | tail -20; } > "results/$TAG.dmesg.txt"
 
-# VmSwap 取樣（Suricata，每個 rule set 一次）
+# VmSwap sampling (Suricata, once per rule set)
 for RS in ${RULES//,/ }; do
 echo "--- VmSwap 取樣（Suricata $RS）---"
 pin0=$(awk '/^pswpin/{print $2}' /proc/vmstat); pout0=$(awk '/^pswpout/{print $2}' /proc/vmstat)

@@ -1,10 +1,10 @@
 #!/bin/bash
-# wnc-gw 自己的 CPU：I23_Benign_Final 的 8,360 條連線全部信任之後，沒有流量／20 kpps 兩段，bridge 和 routed
-# 前置同 trust_run.sh；結果印在 stdout
+# wnc-gw's own CPU: after trusting all 8,360 connections of I23_Benign_Final, two phases (no traffic / 20 kpps), bridge and routed
+# Prerequisites same as trust_run.sh; results printed to stdout
 D=$(cd "$(dirname "$0")" && pwd); O=/home/sixsquare/datasets/throughput/cpu_alloc
 LAN=enx9c69d3241bd9; WAN=eno2; PI=wnc@10.254.254.2; G="docker exec wnc-gen"; P="sudo bash ~/cpu_alloc/alloc_pi.sh"; s=I23_Benign_Final
 gwns() { ssh $PI 'p=$(pgrep -x wnc-gw); for t in /proc/$p/task/*; do printf "%s " "$(cat $t/comm)"; cut -d" " -f1 $t/schedstat; done' | awk '{a[$1] += $2; s += $2} END{printf "total=%d", s; for (k in a) printf " %s=%d", k, a[k]}'; }
-phase() {  # phase <名稱> <秒> [pps]：這段時間 wnc-gw 各執行緒用的 CPU（ms／秒）
+phase() {  # phase <name> <seconds> [pps]: CPU used by each wnc-gw thread during this phase (ms/s)
   local a=$(gwns) t0=$(date +%s.%N)
   if [ -n "$3" ]; then $G tcpreplay -i $LAN -I $WAN.20 -c $c --pps=$3 --loop=$(( $3 * $2 / n + 1 )) --duration=$2 $f > /dev/null 2>&1; else sleep $2; fi
   local b=$(gwns) t1=$(date +%s.%N)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 建立並啟動 testbed，最後做連通性驗證。
+# Build and start the testbed, then check connectivity.
 set -euo pipefail
 cd "$(dirname "$0")"
 

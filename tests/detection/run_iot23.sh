@@ -1,13 +1,13 @@
 #!/bin/bash
-# IoT-23 的 11 個 usable scenario 用完整 pcap 跑 Suricata 8.0.7（full rule），保留 eve.json（只有 alert）。
-# 用法: run_iot23.sh [平行數，預設 4]
-# 每個 scenario 用哪個 pcap，照 tests/iot23/results/*.json 的 "pcap"（和對齊用的是同一個檔）。
+# Run Suricata 8.0.7 (full rules) on the full pcaps of the 11 usable IoT-23 scenarios, keeping eve.json (alerts only).
+# Usage: run_iot23.sh [parallelism, default 4]
+# The pcap for each scenario follows "pcap" in tests/iot23/results/*.json (the same file used for alignment).
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 BIG=/home/sixsquare/datasets/iot23/extracted/run1/opt/Malware-Project/BigDataset/IoTScenarios
 RULES=/home/sixsquare/datasets/detection/rules
 OUT=/home/sixsquare/datasets/detection/iot23
-SCEN="17-1 43-1 39-1 33-1 35-1 48-1 36-1 7-1 9-1 1-1 42-1"   # 大檔先跑
+SCEN="17-1 43-1 39-1 33-1 35-1 48-1 36-1 7-1 9-1 1-1 42-1"   # large files first
 mkdir -p "$OUT"
 
 one() {

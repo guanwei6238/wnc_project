@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""06_ports_summary.py — 彙整 06_ports.awk 的輸出。
-用法: python3 -I 06_ports_summary.py <場景名，例如 1-1> <awk 輸出的 tsv> ...  （成對給）
-輸出每個標籤：flow 數、前 4 名（協定/目的埠）占比、前 2 名 conn_state、來源 IP（≥1000 條）個數。"""
+"""06_ports_summary.py - summarize the output of 06_ports.awk.
+Usage: python3 -I 06_ports_summary.py <scenario, e.g. 1-1> <awk output tsv> ...  (given in pairs)
+For each label: flow count, share of the top 4 (protocol/dest port), top 2 conn_state, number of source IPs (>= 1000 flows)."""
 import collections
 import sys
 

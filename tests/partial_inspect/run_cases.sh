@@ -1,8 +1,8 @@
 #!/bin/bash
-# run_cases.sh — 實驗 3：每個 case 的 pcap 用 Suricata 8.0.7 offline 跑兩次（ids；ips = --simulate-ips）
-#   設定照 wnc-gw 強制的（security_gateway/src/ids/spawned.rs）：midstream=true、midstream-policy=ignore、exception-policy=ignore 系列、checksum 不檢查；
-#   另外 flow-timeouts.tcp.established=30（E5 測「閒置超過逾時」）、runmode single（結果固定）
-# 用法: [RES=res] [EXTRA_SET="--set k=v ..."] bash run_cases.sh <cases 目錄>   結果在 <cases 目錄>/$RES/<case>.<mode>/eve.json
+# run_cases.sh — exp 3: run each case's pcap through Suricata 8.0.7 offline twice (ids; ips = --simulate-ips)
+#   settings match what wnc-gw enforces (security_gateway/src/ids/spawned.rs): midstream=true, midstream-policy=ignore, the exception-policy=ignore family, no checksum validation;
+#   plus flow-timeouts.tcp.established=30 (E5 tests "idle past the timeout"), runmode single (deterministic results)
+# Usage: [RES=res] [EXTRA_SET="--set k=v ..."] bash run_cases.sh <cases dir>   results in <cases dir>/$RES/<case>.<mode>/eve.json
 D=$(cd "$1" && pwd)
 RES=${RES:-res}; mkdir -p $D/$RES
 docker run --rm --user "$(id -u):$(id -g)" --memory 2g --network none -e EXTRA_SET="${EXTRA_SET:-}" -e RES=$RES -v $D:/w --entrypoint bash wnc-lab-gw:latest -c '

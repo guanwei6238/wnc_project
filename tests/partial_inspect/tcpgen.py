@@ -1,8 +1,8 @@
-"""tcpgen.py — 產生可控制的 TCP 封包序列（不需要 scapy），每個封包帶標記，方便切出「Suricata 看得到的子集」
+"""tcpgen.py — generate controllable TCP packet sequences (no scapy needed), each packet tagged so "the subset Suricata gets to see" is easy to slice out
 
-封包是 Ethernet + IPv4 + TCP，checksum 都算對。每個封包附一個 dict 標記：
-  dir（c2s／s2c）、kind（syn、synack、ack、data、fin）、tx（第幾個交易，從 1 起）、msg（req／resp）、seg（訊息內第幾段，從 0 起）、off（這段在訊息中的 byte 位移）
-Session 記錄雙方的 seq，send() 可以只推進序號不產生封包（emit=False），用來模擬「中間被跳過的大量資料」而不讓 pcap 變大。
+Packets are Ethernet + IPv4 + TCP with correct checksums. Each packet carries a dict tag:
+  dir (c2s/s2c), kind (syn, synack, ack, data, fin), tx (transaction number, from 1), msg (req/resp), seg (segment within the message, from 0), off (byte offset of this segment in the message)
+Session tracks both sides' seq; send() can advance seq without emitting packets (emit=False), to model "lots of skipped data in between" without growing the pcap.
 """
 import struct
 
@@ -68,7 +68,7 @@ class Session:
             self._pkt(d, 0x10, mark={"kind": "ack", **mark})
 
     def send(self, d, data, msg, emit=True, ack_every=2):
-        """把 data 切成 MSS 送出；對方每 ack_every 段回一個純 ACK。emit=False 只推進序號。"""
+        """Split data into MSS segments and send; the peer replies with a pure ACK every ack_every segments. emit=False only advances seq."""
         o = "s2c" if d == "c2s" else "c2s"
         off = 0
         seg = 0
@@ -84,7 +84,7 @@ class Session:
         return seg
 
     def skip(self, d, nbytes):
-        """對方送了 nbytes 但完全不產生封包（含 ACK），只推進序號。"""
+        """The peer sent nbytes, but no packets (ACKs included) are emitted; only seq advances."""
         self.seq[d] += nbytes
 
     def fin(self):

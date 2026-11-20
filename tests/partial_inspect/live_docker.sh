@@ -1,13 +1,13 @@
 #!/bin/bash
-# live_docker.sh — 實驗 3b：真的 TCP 連線（Docker testbed，routed，wnc-gw run），信任期間傳一個大檔，取消信任後再送 GET /evil
-#   順序：GET /small → wnc-gw trust add → GET /big（SIZE MB，信任中）→ wnc-gw trust del → GET /evil?q=EVIL → GET /small
-#   看：/evil 那次 request 有沒有完成、花多久；Suricata 有沒有 alert（R1 http.uri、R3 stream content）；stats 的丟包與 invalid ack
-#   NOTRUST=1：不做 trust add/del（對照組）
-#   TIMEOUT=<秒>：Suricata 的 flow-timeouts.tcp.established；HOLD=<秒>：大檔傳完之後、取消信任之前，連線維持信任再閒置幾秒
-#   ACKSYNC=1：另外裝一張 table（forward、priority -10），信任中的純 ACK（ip length ≤ 64）每 10 個送 1 個給 Suricata（ips 用 queue 0、ids 用 log group 10）
-# 用法: PROTECTION=ips|ids SIZE=<MB> ACKSYNC=0|1 bash live_docker.sh run    結果一行 key=value 印出來
+# live_docker.sh — exp 3b: a real TCP connection (Docker testbed, routed, wnc-gw run); send a large file while trusted, then GET /evil after trust is removed
+#   order: GET /small → wnc-gw trust add → GET /big (SIZE MB, trusted) → wnc-gw trust del → GET /evil?q=EVIL → GET /small
+#   check: whether the /evil request completes and how long it takes; whether Suricata alerts (R1 http.uri, R3 stream content); packet loss and invalid ack in stats
+#   NOTRUST=1: no trust add/del (control group)
+#   TIMEOUT=<sec>: Suricata's flow-timeouts.tcp.established; HOLD=<sec>: after the large file finishes and before trust is removed, how many seconds the connection stays trusted and idle
+#   ACKSYNC=1: also install a table (forward, priority -10) that sends 1 in 10 trusted pure ACKs (ip length ≤ 64) to Suricata (queue 0 for ips, log group 10 for ids)
+# Usage: PROTECTION=ips|ids SIZE=<MB> ACKSYNC=0|1 bash live_docker.sh run    prints one key=value result line
 #       bash live_docker.sh clean
-# 前置：cd docker && ./up.sh；x86_64 musl debug 版的 wnc-gw 已編好（compose 掛到 /opt/sg）
+# Prerequisites: cd docker && ./up.sh; x86_64 musl debug build of wnc-gw ready (mounted by compose at /opt/sg)
 G="docker exec wnc-gw"; GI="docker exec -i wnc-gw"; C="docker exec wnc-cli"; CI="docker exec -i wnc-cli"; S="docker exec wnc-srv"; SI="docker exec -i wnc-srv"
 D=/tmp/live; SLOG=/var/log/wnc-gw/suricata
 PROTECTION=${PROTECTION:-ips}; SIZE=${SIZE:-64}; ACKSYNC=${ACKSYNC:-0}

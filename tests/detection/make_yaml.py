@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""從 Debian 套件的預設 suricata.yaml 產生偵測評估用的設定：只輸出 eve 的 alert，其餘維持預設。
-用法: python3 -I make_yaml.py <default.yaml> <輸出.yaml> [--stats]
-  --stats：另外在結束時寫 stats.log（flow 總數等計數器），CICIoT2023 用來算「有 alert 的 flow 比例」的分母。
+"""Generate the detection-evaluation config from the Debian package's default suricata.yaml: only eve alerts are output, everything else stays default.
+Usage: python3 -I make_yaml.py <default.yaml> <out.yaml> [--stats]
+  --stats: also write stats.log at exit (counters such as total flows), the denominator CICIoT2023 uses for the share of flows with alerts.
 """
 import sys
 import yaml

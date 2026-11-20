@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""nflog.py — run_nflog.sh 的結果：ids 候選 A（NFQ）對 B（NFLOG）每個封包的 CPU，每個 runmode 一張表。
+"""nflog.py — run_nflog.sh results: per-packet CPU of ids candidate A (NFQ) vs B (NFLOG), one table per runmode.
 
-用法: python3 nflog.py <nflog1.kvl>
-  suricata = Suricata 收封包到判決的執行緒（worker，autofp 再加 RX、TX）的 CPU ÷ 它處理的封包（NFQ 的判決後轉送算在這裡，NFLOG 不會）
-  machine = 所有 CPU 的 rq_cpu_time ÷ 送出的封包（含 tcpreplay、kernel 轉送）；nflog1.kvl 的舊欄位是 tick 取樣、不能用，這裡不讀
-  每格是各輪的值，用「/」分開；loss 是沒交給 Suricata 的比例（NFQ：queue 滿；NFLOG：複本被丟）
+Usage: python3 nflog.py <nflog1.kvl>
+  suricata = CPU of the Suricata threads from packet receipt to verdict (worker, plus RX, TX for autofp) ÷ packets it processed (NFQ's post-verdict forwarding counts here, NFLOG's does not)
+  machine = rq_cpu_time over all CPUs ÷ packets sent (incl. tcpreplay, kernel forwarding); the old fields in nflog1.kvl are tick-sampled and unusable, so they are not read
+  each cell lists per-round values separated by "/"; loss is the fraction not handed to Suricata (NFQ: queue full; NFLOG: copies dropped)
 """
 import sys
 from collections import defaultdict

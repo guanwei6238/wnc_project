@@ -1,9 +1,9 @@
 #!/bin/bash
-# doctor_docker.sh — [[features]] 的載入前檢查（routed testbed 的 wnc-gw 容器）
-#   編 prog/（一支程式：BTF 的 hash FLOWS、BTF 的 per-CPU hash PFLOWS、BTF 的 ringbuf EVENTS、舊式 #[map] 的 LEGACY），
-#   五個 [[features]]：flows、pflows（tc-ingress）、legacy、events、swapped（packets／bytes 對調，xdp）
-#   預期：flows／pflows／swapped 各一個 G008（key 的 pad 沒列）、legacy G007、swapped G006、events 沒有問題
-# 用法: bash doctor_docker.sh   （先 docker/up.sh，並編好 security_gateway 的 x86_64-unknown-linux-musl debug 版）
+# doctor_docker.sh — pre-load checks for [[features]] (wnc-gw container in the routed testbed)
+#   builds prog/ (one program: BTF hash FLOWS, BTF per-CPU hash PFLOWS, BTF ringbuf EVENTS, legacy #[map] LEGACY),
+#   five [[features]]: flows, pflows (tc-ingress), legacy, events, swapped (packets/bytes swapped, xdp)
+#   expected: one G008 each for flows/pflows/swapped (key pad not listed), legacy G007, swapped G006, events clean
+# Usage: bash doctor_docker.sh   (run docker/up.sh first and build the x86_64-unknown-linux-musl debug build of security_gateway)
 set -e
 D=$(cd "$(dirname "$0")" && pwd); GW="docker exec wnc-gw"
 (cd "$D/prog" && env -u RUSTC -u RUSTC_WRAPPER CARGO_ENCODED_RUSTFLAGS=$'-Cdebuginfo=2\x1f-Clink-arg=--btf' \

@@ -1,20 +1,20 @@
 #!/bin/bash
-# alloc_pi.sh — CPU 分配實驗的 Pi 端工具（拓樸、wnc-gw 啟停沿用 ~/ids_inline/planb_pi.sh）
-# 用法（都要 sudo）:
-#   alloc_pi.sh snap                 印一行 key=value：各 CPU 的忙碌時間、softnet、中斷、qdisc 丟包、方案 B 的計數、Suricata worker 與 burner 的 CPU、
-#                                    額外 NFLOG 複本讀取端（tcpdump）的 CPU
-#   alloc_pi.sh place <名稱>         A0 預設 | R1 RPS→CPU1 | R123 RPS→CPU1–3 | I1 eth0 的 IRQ 29→CPU1 | T1 threaded NAPI 綁 CPU1
-#   alloc_pi.sh pin_suricata <cpu,...>  Suricata 的 worker（W#、W-NFQ#、W-NFLOG#）執行緒依序綁到這些 CPU（none = 不綁）
-#   alloc_pi.sh pause <on|off>       eth0 的 Ethernet PAUSE，改完等 link 回到 1000 Mb/s
-#   alloc_pi.sh burner_start <cpu|mem|mlp> <threads> <cpus|any> <normal|idle> [duty%，預設 100]   背景跑替身
+# alloc_pi.sh — Pi-side tools for the CPU allocation experiments (topology and wnc-gw start/stop reuse ~/ids_inline/planb_pi.sh)
+# Usage (all need sudo):
+#   alloc_pi.sh snap                 print one key=value line: per-CPU busy time, softnet, IRQs, qdisc drops, plan B counters, CPU of Suricata workers and burner,
+#                                    CPU of the extra NFLOG copy readers (tcpdump)
+#   alloc_pi.sh place <name>         A0 default | R1 RPS→CPU1 | R123 RPS→CPU1–3 | I1 eth0 IRQ 29→CPU1 | T1 threaded NAPI pinned to CPU1
+#   alloc_pi.sh pin_suricata <cpu,...>  pin Suricata worker threads (W#, W-NFQ#, W-NFLOG#) to these CPUs in order (none = no pinning)
+#   alloc_pi.sh pause <on|off>       Ethernet PAUSE on eth0; after the change, wait for the link to return to 1000 Mb/s
+#   alloc_pi.sh burner_start <cpu|mem|mlp> <threads> <cpus|any> <normal|idle> [duty%, default 100]   run the stand-in in the background
 #   alloc_pi.sh burner_stop
-#   alloc_pi.sh acct <0|1>           wgw 裡的 net.netfilter.nf_conntrack_acct（之後建立的 conntrack entry 才有計數）
-#   alloc_pi.sh fastpath_start <flows 檔> [版本 [參數...]]  在 eth0、eth1.20 的 TCX ingress 最前面掛 ebpf-bench（tests/ebpf/bench，預設 v4）：查到信任的五元組就直接 redirect 到另一個 port；v5 的參數例如 --via fib
-#   alloc_pi.sh fastpath_stop        拿掉 fast path，印出它 redirect 的封包數
-#   alloc_pi.sh trust_flows <flows 檔> [hops]  用 wnc-gw trust add 逐條信任（wnc-gw run 要在跑；連線要已經在 conntrack 裡），印出成功和失敗的條數；
-#                                    hops（routed）：再等到每條都有下一跳（最多 30 秒），印出有下一跳的條數
-# 忙碌時間＝經過時間 − idle − iowait（/proc/stat 的 idle 在 NO_HZ 下是精確的，而且 idle 時處理的中斷不算 idle）；
-# schedstat 的 rq_cpu_time 只當輔助（idle 時處理的中斷算不到）
+#   alloc_pi.sh acct <0|1>           net.netfilter.nf_conntrack_acct inside wgw (only conntrack entries created afterwards get counters)
+#   alloc_pi.sh fastpath_start <flows file> [version [args...]]  attach ebpf-bench (tests/ebpf/bench, default v4) first in TCX ingress on eth0, eth1.20: trusted 5-tuples are redirected straight to the other port; v5 args e.g. --via fib
+#   alloc_pi.sh fastpath_stop        remove the fast path, print how many packets it redirected
+#   alloc_pi.sh trust_flows <flows file> [hops]  trust each flow with wnc-gw trust add (wnc-gw run must be running; connections must already be in conntrack), print success and failure counts;
+#                                    hops (routed): then wait until every flow has a next hop (up to 30 s), print how many have one
+# Busy time = elapsed − idle − iowait (/proc/stat idle is exact under NO_HZ, and IRQs handled while idle don't count as idle);
+# schedstat's rq_cpu_time is only auxiliary (it misses IRQs handled while idle)
 W="ip netns exec wgw"
 B=/home/wnc/cpu_alloc
 OPS=/dev/shm/burner.ops

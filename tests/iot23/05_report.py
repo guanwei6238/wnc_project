@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""把 results/*.json 整理成 report.md（markdown 表格）。
-若同目錄有 summary_notes.md（人工寫的原因分析），會放在報告最前面。
+"""Collect results/*.json into report.md (markdown tables).
+If summary_notes.md (hand-written cause analysis) is in the same directory, it goes at the top of the report.
 
-用法：python3 -I 05_report.py <results 目錄> <輸出 report.md> [summary_notes.md]
+Usage: python3 -I 05_report.py <results dir> <output report.md> [summary_notes.md]
 """
 import json
 import sys
@@ -34,7 +34,7 @@ def main():
     if notes:
         L.append(notes + '\n')
 
-    # ---- 摘要數字
+    # ---- summary numbers
     tp = sum(r['pcap_packets'] for r in ok)
     tf = sum(r['flows'] for r in ok)
     ta = sum(r['aligned'] for r in ok)
@@ -56,7 +56,7 @@ def main():
     bad = [r for r in ok if r['aligned'] != r['flows']]
     L.append(f'- 對齊率 < 100% 的場景：{len(bad)} 個\n')
 
-    # ---- 一場景一列
+    # ---- one row per scenario
     L.append('## 每個場景一列\n')
     L.append('| 場景 | pcap 大小 | 封包數 | labeled flow | 對齊 | 對齊率 | 對不上 | 有 payload 的 flow | 封包被涵蓋 | 備註 |')
     L.append('|---|---:|---:|---:|---:|---:|---:|---:|---:|---|')
@@ -88,7 +88,7 @@ def main():
                  f'| {pct(r["pcap_covered_packets"], r["pcap_packets"])} | {"; ".join(note)} |')
     L.append('')
 
-    # ---- 每個場景的 label 明細
+    # ---- per-scenario label details
     L.append('## 各場景、各 label 的 flow 數與 payload\n')
     L.append('「有 payload 的 flow」= 對得到的封包中至少有一個 TCP 封包帶應用層資料（UDP 一律記 0，所以純 UDP label 這欄會是 0）。\n')
     for r in [r for r in ok if r['labels']]:
@@ -100,7 +100,7 @@ def main():
                      f'| {s.get("flows_with_payload", 0):,} | {pct(s.get("flows_with_payload", 0), s["flows"])} | {s["payload_pkts"]:,} |')
         L.append('')
 
-    # ---- 對不上的例子
+    # ---- unaligned examples
     L.append('## 對不上的 flow（每場景前 5 條）\n')
     any_bad = False
     for r in bad:
