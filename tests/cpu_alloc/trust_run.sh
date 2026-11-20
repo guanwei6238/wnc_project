@@ -5,13 +5,14 @@
 #   T = 現在的 wnc-gw，暖身後用 wnc-gw trust add 信任 <切片>.fp.flows 的全部連線，送 <切片>.fp
 #   K = 現在的 wnc-gw 設 [trust] backend = "ctmark"（實驗 14），信任方式同 T（wnc-gw trust add 寫 ct mark），送 <切片>.fp
 #   O = 加 backend 選項之前的 wnc-gw（/tmp/wncgw/old/wnc-gw，46a96d2），信任方式同 T；和 T 比，看加選項有沒有變慢
+#   Fe／Fi／Fx = T 再加一個特徵程式（實驗 15，planb_pi.sh 的 FEATURE）：tc-egress、tc-ingress、xdp generic；和 T 比，看每個信任封包多多少
 #   .fp 只有信任後會走 fast path 的封包（gw_pcap.py：TCP 沒有 SYN／FIN／RST、UDP、單播、沒有分片），兩版的控制封包都一律檢查，
 #   所以 C 和 T 的差就是每個信任封包的差
 # 前置：Pi 上 /tmp/wncgw/wnc-gw、/tmp/wncgw/ctmark/wnc-gw、make_configs.sh；~/cpu_alloc/trust/<切片>.fp.flows
 #       筆電 planb_run.sh setup；/out/trust/<切片>.{gw,fp}[.rt].{pcap,cache}（gw_pcap.py 切、tcpprep --cidr 用內網網段分兩側）
 # 用法: bash trust_run.sh sweep <U|C|T|K|O> <ips|ids> <切片> <round>   一個點的速率掃描（拓樸用目前的，MODE 要和 Pi 一致）
 #       bash trust_run.sh round <round>                           兩種模式 × 切片 × $WORKLOADS（預設 U C T）× ips ids
-#                                                                 （順序隨機，模式每輪對調）；EXP 寫進每一行（預設 13）
+#                                                                 （順序隨機，模式每輪對調）；EXP 寫進每一行（預設 13）；PROTS 預設 ips ids
 # 放置固定 I1（eth0 的 IRQ 29 → CPU1）；每個速率至少送 5 秒；連續兩個速率 cap_loss > 1% 就停
 LAN=${LAN:-enx9c69d3241bd9}; WAN=${WAN:-eno2}; PI=${PI:-wnc@10.254.254.2}
 OUT=${OUT:-/home/sixsquare/datasets/throughput/cpu_alloc}; KVL=${KVL:-trust.kvl}
@@ -46,6 +47,9 @@ pi_start() {  # pi_start <U|C|T> <ips|ids> <切片>
   local e="MODE=${MODE:-bridge} PROTECTION=$2" r
   case $1 in
   U|T) r=$($SSH "sudo $e bash ~/ids_inline/planb_pi.sh start full 1 0" | tail -1) ;;
+  Fe) r=$($SSH "sudo $e FEATURE=tc-egress bash ~/ids_inline/planb_pi.sh start full 1 0" | tail -1) ;;
+  Fi) r=$($SSH "sudo $e FEATURE=tc-ingress bash ~/ids_inline/planb_pi.sh start full 1 0" | tail -1) ;;
+  Fx) r=$($SSH "sudo $e FEATURE=xdp-generic bash ~/ids_inline/planb_pi.sh start full 1 0" | tail -1) ;;
   K) r=$($SSH "sudo $e TRUST_BACKEND=ctmark bash ~/ids_inline/planb_pi.sh start full 1 0" | tail -1) ;;
   O) r=$($SSH "sudo $e GW=/tmp/wncgw/old/wnc-gw bash ~/ids_inline/planb_pi.sh start full 1 0" | tail -1) ;;
   C) r=$($SSH "sudo $e GW=/tmp/wncgw/ctmark/wnc-gw bash ~/ids_inline/planb_pi.sh start full 1 0" | tail -1) ;;
@@ -55,7 +59,7 @@ pi_start() {  # pi_start <U|C|T> <ips|ids> <切片>
   C) files $3 fp; warm
      echo "  ct mark: $($SSH "sudo ip netns exec wgw $CT -U -m 0x80000000/0x80000000 2>&1 | tail -1; sudo ip netns exec wgw $CT -L -m 0x80000000/0x80000000 2> /dev/null | wc -l; sudo ip netns exec wgw $CT -C")"
      unwarm ;;
-  T|O) files $3 fp; warm
+  T|O|Fe|Fi|Fx) files $3 fp; warm
      hops=; [ "${MODE:-bridge}" = routed ] && hops=hops
      echo "  $($SSH "$P trust_flows /home/wnc/cpu_alloc/trust/$3.fp.flows $hops")"
      unwarm ;;
@@ -104,7 +108,7 @@ round)
   round=$2; modes="bridge routed"; [ $((round % 2)) = 0 ] && modes="routed bridge"
   for m in $modes; do
     bash $HERE/alloc_run.sh mode $m
-    for pt in $(for s in $SLICES; do for w in ${WORKLOADS:-U C T}; do for p in ips ids; do echo $w:$p:$s; done; done; done | shuf); do
+    for pt in $(for s in $SLICES; do for w in ${WORKLOADS:-U C T}; do for p in ${PROTS:-ips ids}; do echo $w:$p:$s; done; done; done | shuf); do
       IFS=: read -r w p s <<< "$pt"
       MODE=$m EXP=${EXP:-13} bash "$0" sweep $w $p $s $round
     done

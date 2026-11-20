@@ -495,3 +495,46 @@ ids 的 T−O 在 ±0.2 µs 以外的：bridge I23_Benign_Final −1.74（−2.4
 - **加選項沒有讓 TC 變慢**：T−O 28 格裡 21 格在 ±0.2 µs 內；其餘 7 格裡 5 格是一輪偏大、另一輪在 ±0.3 內，I23_Benign_Final bridge ids（−2.45／−1.03）和 routed ips（−0.17／−0.30）兩輪同向但都是 T 比較快；沒有兩輪都是 T 變慢的格子。
 - **ctmark 比 tc 貴**：bridge 每個信任封包多 3.7–8.5 µs，routed 多 0.8–4.4 µs；容量 bridge 少一半以上（例如 C17_FTP-Patator 80 對 195 ↑）。和實驗 13 的 C 對 T 一樣，只有 routed 的 I23_Benign_Final 反過來（+1.5，原因同實驗 13，沒找到）。所以 `tc` 維持預設，`ctmark` 只在 TCX 不能用時用。
 - **ctmark 時掛著的核心 eBPF 程式**：bridge 約多 1 µs，routed 約 0.3 µs，比 C 和 T 的差小一個數量級。bridge 比 routed 多的原因沒有查（兩種模式每個封包都查一次 map；K 的 forward chain 也比 16137e0 多幾條規則：FORWARDED mark、SYN／FIN／RST 送 ids，沒有拆開量）。
+
+## 實驗 15（2026-11-19）：特徵程式（`[[features]]`）每個封包多多少，以及 user space 讀 map 的成本
+
+問題：T（TC 信任）再掛一個使用者的特徵程式時，每個封包多多少 CPU；三種 hook（tc-egress、tc-ingress、xdp generic）各多少。特徵程式是 `tests/features/prog/` 的 `flows_tc`／`flows_xdp`（每個封包更新五元組的 hash map `FLOWS`），定義檔 `tests/features/flows.json`（7 個 `derived`），每秒讀一次，輸出寫到 tmpfs。
+
+做法：和實驗 13 相同的 Pi 設定、`.fp` pcap；切片 S_m60（59 條連線）和 C17_Benign（5,079 條連線，bridge 兩個方向各一筆，每次讀 9,741 筆）；只跑 ids；2 輪（`SLICES="S_m60 C17_Benign" WORKLOADS="T Fe Fi Fx" PROTS=ids EXP=15 KVL=… bash trust_run.sh round 1`、`round 2`）。
+
+| 工作負載 | 特徵程式（`planb_pi.sh` 的 `FEATURE`） |
+|---|---|
+| T | 沒有 |
+| Fe | `hook = "tc-egress"` |
+| Fi | `hook = "tc-ingress"`（排在核心程式後面，backend tc 時看不到信任的封包） |
+| Fx | `hook = "xdp"`、`xdp_mode = "generic"`（USB 網卡沒有 native XDP） |
+
+跑了兩次：改之前的 wnc-gw（`trust15.kvl`，讀 map 用 next_key＋lookup、每筆約 76 次記憶體配置），和改成「定義檔編譯成步驟＋`BPF_MAP_LOOKUP_BATCH`」之後（`trust15_plan.kvl`，同一天、同一台 Pi、其他都一樣）。彙整：`python3 -I alloc.py trust15 ~/datasets/throughput/cpu_alloc/<kvl> 20 50`。
+
+**每封包 CPU 的差（µs，整台 Pi，兩輪各自相減再平均；括號是改之前）**
+
+| 切片 | 模式 | T | Fe−T | Fi−T | Fx−T |
+|---|---|---|---|---|---|
+| C17_Benign @20k | bridge | 34.87 | +6.82（+42.79） | +3.32（+40.25） | +8.03（+44.64） |
+| C17_Benign @50k | bridge | 25.43 | +4.52（+20.35） | +1.38（+17.44） | +5.76（+21.68） |
+| C17_Benign @20k | routed | 35.42 | +7.59（+41.88） | +4.23（+39.66） | +8.77（+43.60） |
+| C17_Benign @50k | routed | 26.19 | +4.62（+19.58） | +2.00（+16.73） | +5.63（+20.16） |
+| S_m60 @20k | bridge | 11.04 | +1.49（+1.77） | +0.08（+0.38） | +2.33（+2.63） |
+| S_m60 @20k | routed | 11.41 | +1.69（+1.88） | +0.03（+0.35） | +2.30（+2.62） |
+
+容量兩次都一樣（C17 50 kpps、S_m60 20 kpps：S_m60 在 50 kpps 時四種工作負載都丟超過 0.1%、80 kpps 反而不丟，和特徵無關，原因沒查）。
+
+把 C17 的差拆成「每秒固定」加「每個封包」（用 20k、50k 兩個點解兩個未知數，是估計）：
+
+| | 每秒固定（user space 讀 map） | 每個封包（eBPF） |
+|---|---|---|
+| 改之前，三種 hook、兩種模式 | 0.74–0.78 秒／秒 | — |
+| 改之後，Fe bridge／routed | 0.077／0.099 秒／秒 | 3.0／2.6 µs |
+| 改之後，Fi bridge／routed | 0.065／0.074 秒／秒 | 0.1／0.5 µs |
+| 改之後，Fx bridge／routed | 0.076／0.105 秒／秒 | 4.3／3.5 µs |
+
+怎麼讀：
+- **改之前 C17 多的 40 µs 幾乎都是 user space 的固定成本**：速率從 20k 到 50k，差從 +42 降到 +20，固定成本約 0.75 秒／秒。bench（`tests/features/bench/`）量到原本讀 map 到寫 JSON 每筆 57.8 µs × 9,741 筆 = 0.56 秒／秒，其餘約 0.2 秒／秒沒有拆開。拆開的原因和改法在 `security_gateway/DECISIONS.md` §23「讀取的成本」。
+- **改之後固定成本降到約 0.07–0.10 秒／秒（約 8–11 倍）**。bench 量到的 wnc-gw 每筆 5.1 µs × 9,741 筆 = 0.050 秒／秒，實測多出 0.015–0.055 秒／秒；有流量時的 cache、tokio 的喚醒、每秒 3.6 MB 的 tmpfs 寫入都可能，沒有拆開量。
+- **每個封包的 eBPF 成本**：S_m60（59 條連線）Fe 約 1.5–1.7 µs、Fi 約 0.03–0.08 µs（看不到信任的封包）、Fx 約 2.3 µs；C17（5,079 條）的估計比較大（Fe 2.6–3.0、Fx 3.5–4.3 µs），map 大、每個封包查表 cache miss 多是可能的原因，沒驗證。generic XDP 比 tc-egress 貴約 1 µs。
+- 改之後 S_m60 的差也小了 0.2–0.3 µs：S_m60 每秒只讀 117 筆，舊做法約 0.007 秒／秒，20k 時約 0.3 µs／封包，對得上。

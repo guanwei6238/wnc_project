@@ -19,6 +19,8 @@
 #     192.168.137.0/24）經 eth0，其餘走 eth1.20；送進來的封包目的 MAC 要先改成 Pi 的（planb_run.sh routed_pcap）。
 #     start 寫 mode = "routed"
 #   TRUST_BACKEND=tc|ctmark（start）：寫進 setting.toml 的 [trust] backend；沒設就不寫（wnc-gw 預設 tc）
+#   FEATURE=tc-egress|tc-ingress|xdp-generic（start）：加一個 [[features]]（/tmp/wncgw/feat/prog.o 的 flows_tc 或 flows_xdp、
+#     flows.json，tests/features/），輸出在 /var/log/wnc-gw/features/f.jsonl（量測時掛 tmpfs，不寫 SD 卡；實驗 15）
 #   COPIES=N（start，ids）：另外一個 table inet wnc_copy（forward priority 10，在 wnc-gw 之後）對每個封包多送 N 份 NFLOG 複本
 #     （group 20..），每份由一個 tcpdump -i nflog:<group> -w /dev/null（只讀不做事，buffer 1 MiB，和 Suricata 的 group 一樣）接收；
 #     SNAPLEN=n 時每份只複製前 n bytes。stop 時印每個讀取端的收到／丟掉數
@@ -92,8 +94,13 @@ start)
     if [ "$q" -gt 1 ]; then
       if [ $P = ids ]; then printf 'group = "10-%d"\n' $((9 + q)); else printf 'queue = "0-%d"\n' $((q - 1)); fi
     fi
-    [ -n "$TRUST_BACKEND" ] && printf '\n[trust]\nbackend = "%s"\n' "$TRUST_BACKEND"; } > $L/setting.toml
+    [ -n "$TRUST_BACKEND" ] && printf '\n[trust]\nbackend = "%s"\n' "$TRUST_BACKEND"
+    case "$FEATURE" in
+    tc-egress|tc-ingress) printf '\n[[features]]\nname = "f"\nprogram = "/tmp/wncgw/feat/prog.o"\nentry = "flows_tc"\ndefinition = "/tmp/wncgw/feat/flows.json"\nhook = "%s"\n' $FEATURE ;;
+    xdp-generic) printf '\n[[features]]\nname = "f"\nprogram = "/tmp/wncgw/feat/prog.o"\nentry = "flows_xdp"\ndefinition = "/tmp/wncgw/feat/flows.json"\nhook = "xdp"\nxdp_mode = "generic"\n' ;;
+    esac; } > $L/setting.toml
   rm -f $LOG/*
+  if [ -n "$FEATURE" ]; then mkdir -p $LOG/../features; mountpoint -q $LOG/../features || mount -t tmpfs -o size=512m,mode=0750 wncgw-features $LOG/../features; rm -f $LOG/../features/*; fi
   $W $GW -c $L/setting.toml run > $L/run.out 2> $L/run.log &
   for i in $(seq 1 300); do grep -q "traffic is inspected" $L/run.log && break; sleep 1; done
   grep -q "traffic is inspected" $L/run.log || { echo "not ready"; tail -5 $L/run.log; exit 1; }
